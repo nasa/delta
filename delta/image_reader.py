@@ -1,0 +1,237 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# __BEGIN_LICENSE__
+#  Copyright (c) 2009-2013, United States Government as represented by the
+#  Administrator of the National Aeronautics and Space Administration. All
+#  rights reserved.
+#
+#  The NGT platform is licensed under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance with the
+#  License. You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+# __END_LICENSE__
+
+"""
+Classes for block-aligned reading from multiple Geotiff files.
+"""
+import sys, os
+import string, threading, time
+import copy
+import psutil
+import math
+
+from osgeo import gdal
+import numpy as np
+
+import utilities
+from utilities import Rectangle
+
+#------------------------------------------------------------------------------
+
+
+class TiffReader:
+    """Wrapper class to help read image data from GeoTiff files"""
+
+    def __init__(self):
+        self._handle = None
+
+    def __del__(self):
+        self.close_image()
+
+
+    def open_image(self, path):
+
+        self._handle = gdal.Open(path)
+
+    def close_image(self):
+        self._handle = None
+
+    # TODO: Error checking!!!
+    
+    def num_bands(self):
+        return self._handle.RasterCount
+      
+    def image_size(self):
+        return (self._handle.RasterXSize, self._handle.RasterYSize)
+      
+    def nodata_value(self, band=1):
+      band_handle = self._handle.GetRasterBand(band)
+      return band_handle.GetNoDataValue()
+
+    def get_bytes_per_pixel(self, band=1):
+      band_handle = self._handle.GetRasterBand(band)
+      return utilities.get_num_bytes_from_gdal_type(band_handle.DataType)
+
+    def get_block_info(self, band):
+        """Returns ((block height, block width), (num blocks x, num blocks y))"""
+        band_handle = self._handle.GetRasterBand(band)
+        block_size  = band_handle.GetBlockSize()
+        
+        # TODO: How to handle fractional values?
+        num_blocks_x = int(self._handle.RasterXSize / block_size[0])
+        num_blocks_y = int(self._handle.RasterYSize / block_size[1])
+        
+        return (block_size, (num_blocks_x, num_blocks_y))
+
+    def get_block_aligned_read_roi(self, desired_roi):
+        """Returns the block aligned pixel region to read in a Rectangle format
+           to get the requested data region while respecting block boundaries.
+        """
+        band = 1
+        (block_size, num_blocks) = self.get_block_info(band)
+        start_block_x = math.floor(desired_roi.min_x     / block_size[0])
+        start_block_y = math.floor(desired_roi.min_y     / block_size[1])
+        stop_block_x  = math.floor((desired_roi.max_x-1) / block_size[0]) # Rect max is exclusive
+        stop_block_y  = math.floor((desired_roi.max_y-1) / block_size[1]) # The stops are inclusive
+
+        start_col = start_block_x * block_size[0]
+        start_row = start_block_y * block_size[1]
+        num_cols  = (stop_block_x - start_block_x + 1) * block_size[0]
+        num_rows  = (stop_block_y - start_block_y + 1) * block_size[1]
+
+        return Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+
+    def read_pixels(self, roi, band):
+        """Reads in the requested region of the image."""
+        band_handle = self._handle.GetRasterBand(band)
+        data = band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height())
+        return data
+
+class MultiTiffFileReader():
+    """Class to synchronize loading of multiple pixel-matched files"""
+  
+    def __init__(self):
+        
+        self._image_handles = []
+        
+    def __del__(self):
+        self.close()
+      
+      
+    def load_images(self, image_path_list):
+        """Initialize with multiple image paths."""
+        
+        # Create a new TiffReader instance for each file.
+        for path in image_path_list:
+            new_handle = TiffReader()
+            new_handle.open_image(path)
+            self._image_handles.append(new_handle)
+        
+    def close(self):
+        """Coles all loaded images."""
+        for h in self._image_handles:
+            h.close_image()
+        self._image_handles = []
+    
+    # TODO: Error checking!
+    def image_size(self):
+        return self._image_handles[0].image_size()
+    
+    def num_bands(self):
+        return self._image_handles[0].num_bands()
+      
+    def nodata_value(self, band=1):
+        return self._image_handles[0].nodata_value(band)
+      
+    def get_block_info(self, band):
+        return self._image_handles[0].get_block_info(band)
+    
+    def estimate_memory_usage(self, roi):
+        """Estimate the amount of memory (in MB) that will be used to store the
+           requested pixel roi.
+        """
+        total_size = 0
+        for image in self._image_handles:
+            for band in range(1,image.num_bands()+1):
+                total_size += image.num_bands() * roi.area() * image.get_bytes_per_pixel(band)
+        return total_size / utilities.BYTES_PER_MB
+
+    def sleep_until_mem_free_for_roi(self, roi):
+        '''Sleep until enough free memory exists to load this ROI'''
+        # TODO: This will have to be more sophisticated.
+        WAIT_TIME_SECS = 5
+        mb_needed = self.estimate_memory_usage(roi)
+        mb_free   = 0
+        while mb_free < mb_needed:
+          mb_free = psutil.virtual_memory().free / utilities.BYTES_PER_MB
+          if mb_free < mb_needed:
+              print('Need %d MB to load the next ROI, but only have %d MB free. Sleep for %d seconds...'
+                    % (mb_needed, mb_free, WAIT_TIME_SECS))
+              time.sleep(WAIT_TIME_SECS)
+
+    def process_rois(self, requested_rois, callback_function):
+        """Process the given region broken up into blocks using the callback function.
+           Each block will get the image data from each input image passed into the function.
+           Function definition TBD!
+           Blocks that go over the image boundary will be passed as partial image blocks.
+        """
+
+        if not self._image_handles:
+            raise Exception('Cannot process region, no images loaded!')
+        first_image = self._image_handles[0]
+
+        ## For each block in row-major order, record the ROI in the image.
+        #block_rois = []
+        #for r in range(0,num_block_rows):
+        #    for c in range(0,num_block_cols):
+        #        this_col = col + c*block_width
+        #        this_row = row + r*block_width
+        #        this_roi = Rectangle(this_col, this_row,
+        #                             width=block_width, height=block_height)
+        #        block_rois.append(this_roi)
+        block_rois = copy.copy(requested_rois)
+
+        print('Ready to process ' + str(len(requested_rois)) +' tiles.')
+
+        # Loop until we have processed all of the blocks.
+        while len(block_rois) > 0:
+
+            # For the next (output) block, figure out the (input block) aligned
+            # data read that we need to perform to get it.
+            read_roi = first_image.get_block_aligned_read_roi(block_rois[0])
+            print('Want to process ROI: ' + str(block_rois[0]))
+            print('Reading input ROI: ' + str(read_roi))
+
+            # If we don't have enough memory to load the ROI, wait here until we do.
+            self.sleep_until_mem_free_for_roi(read_roi)
+
+            # TODO: We need a way to make sure the bands for certain image types always end up
+            #       in the same order!
+            # Read in all of the data for this region, appending all bands for
+            # each input image.
+            data_vec = []
+            for image in self._image_handles:
+                for band in range(1,image.num_bands()+1):
+                    print('Data read from image ' + str(image) + ', band ' + str(band))
+                    data_vec.append(image.read_pixels(read_roi, band))
+
+            # Loop through the remaining ROIs and apply the callback function to each
+            # ROI that is contained in the section we read in.
+            index = 0
+            num_processed = 0
+            while index < len(block_rois):
+                roi = block_rois[index]
+                if not read_roi.contains(roi):
+                    #print(read_roi + ' does not contain ' + )
+                    index += 1
+                    continue
+
+                # We pass the read roi to the function rather than doing
+                # any kind of cropping here.
+
+                # Execute the callback function with the data vector.
+                callback_function(roi, read_roi, data_vec)
+
+                # Instead of advancing the index, remove the current ROI from the list.
+                block_rois.pop(index)
+                num_processed += 1
+
+            print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
+
+        print('Finished processing tiles!')

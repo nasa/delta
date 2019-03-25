@@ -21,8 +21,30 @@
 Miscellaneous utility classes/functions.
 """
 
-#------------------------------------------------------------------------------
+import gdal
 
+
+
+#============================================================================
+# Constants
+
+BYTES_PER_MB = 1024*1024
+
+#============================================================================
+# Functions
+
+def get_num_bytes_from_gdal_type(gdal_type):
+    """Return the number of bytes for one pixel (one band) in a GDAL type."""
+    results = {
+        gdal.GDT_Byte:    1,
+        gdal.GDT_UInt16:  2,
+        gdal.GDT_UInt32:  4,
+        gdal.GDT_Float32: 4
+    }
+    return results.get(gdal_type)
+
+#============================================================================
+# Classes
 
 class Rectangle:
     """Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
