@@ -80,6 +80,16 @@ class TiffReader:
         
         return (block_size, (num_blocks_x, num_blocks_y))
 
+    def get_all_metadata(self):
+        """Returns all useful image metadata"""
+        d = dict()
+        d['projection'  ] = self._handle.GetProjection()
+        d['geotransform'] = self._handle.GetGeoTransform()
+        d['gcps'        ] = self._handle.GetGCPs()
+        d['gcpproj'     ] = self._handle.GetGCPProjection()
+        d['metadata'    ] = self._handle.GetMetadata()
+        return d
+
     def get_block_aligned_read_roi(self, desired_roi):
         """Returns the block aligned pixel region to read in a Rectangle format
            to get the requested data region while respecting block boundaries.
@@ -150,6 +160,10 @@ class MultiTiffFileReader():
     def get_block_info(self, band):
         return self._image_handles[0].get_block_info(band)
     
+    def get_all_metadata(self):
+        """All input images should share the same metadata"""
+        return self._image_handles[0].get_all_metadata()
+    
     def estimate_memory_usage(self, roi):
         """Estimate the amount of memory (in MB) that will be used to store the
            requested pixel roi.
@@ -200,8 +214,8 @@ class MultiTiffFileReader():
             # For the next (output) block, figure out the (input block) aligned
             # data read that we need to perform to get it.
             read_roi = first_image.get_block_aligned_read_roi(block_rois[0])
-            print('Want to process ROI: ' + str(block_rois[0]))
-            print('Reading input ROI: ' + str(read_roi))
+            #print('Want to process ROI: ' + str(block_rois[0]))
+            #print('Reading input ROI: ' + str(read_roi))
 
             # If we don't have enough memory to load the ROI, wait here until we do.
             self.sleep_until_mem_free_for_roi(read_roi)
@@ -213,7 +227,7 @@ class MultiTiffFileReader():
             data_vec = []
             for image in self._image_handles:
                 for band in range(1,image.num_bands()+1):
-                    print('Data read from image ' + str(image) + ', band ' + str(band))
+                    #print('Data read from image ' + str(image) + ', band ' + str(band))
                     data_vec.append(image.read_pixels(read_roi, band))
 
             # Loop through the remaining ROIs and apply the callback function to each

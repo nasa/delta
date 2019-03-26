@@ -143,7 +143,7 @@ class TiffWriter:
 
 
     def init_output_geotiff(self, path, num_rows, num_cols, noDataValue,
-                          tile_width=256, tile_height=256):
+                            tile_width=256, tile_height=256, metadata=None):
         '''Set up a geotiff file for writing and return the handle.'''
         # TODO: Copy metadata from the source file.
 
@@ -170,6 +170,13 @@ class TiffWriter:
         #handle.SetProjection( Projection.ExportToWkt() )
         if (noDataValue != None):
             self._handle.GetRasterBand(1).SetNoDataValue(noDataValue)
+
+        # Set the metadata values used in image_reader.py
+        if metadata:
+            self._handle.SetProjection  (metadata['projection'  ])
+            self._handle.SetGeoTransform(metadata['geotransform'])
+            self._handle.SetMetadata    (metadata['metadata'    ])
+            self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
 
     def write_geotiff_block(self, data, block_col, block_row):
         '''Add a tile write command to the queue.

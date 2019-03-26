@@ -86,6 +86,9 @@ def main(argsIn):
 
     input_bounds = Rectangle(0, 0, width=nCols, height=nRows)
 
+    input_metadata = input_reader.get_all_metadata()
+    #print('Read metadata: ' + str(input_metadata))
+
     #print('Num blocks = %f, %f' % (numBlocksX, numBlocksY))
 
     # TODO: Will we be faster using this method? Or ReadAsArray? Or ReadRaster?
@@ -121,7 +124,8 @@ def main(argsIn):
     writer = TiffWriter()
     writer.init_output_geotiff(options.outputPath, nRows, nCols, noData,
                              tile_width=output_tile_width,
-                             tile_height=output_tile_height)
+                             tile_height=output_tile_height,
+                             metadata=input_metadata)
 
     # Setting up output ROIs
     output_rois = []
