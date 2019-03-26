@@ -20,16 +20,16 @@
 """
 Multi-threaded Geotiff writing class using GDAL.
 """
-import sys, os
-import string, threading, time
-import copy
+import sys
+import os
+import threading
+import time
 import psutil
 import math
 
 from osgeo import gdal
 import numpy as np
 
-#import utilities
 from utilities import Rectangle
 
 #=============================================================================
@@ -52,8 +52,10 @@ class TiffWriter:
         
         self._writerThread.start()
         
-        self._tileWidth  = 256
-        self._tileHeight = 256
+        self._width  = 0
+        self._height = 0
+        self._tile_width  = 256
+        self._tile_height = 256
 
     def __del__(self):
         '''Try this just in case, but it may not work!'''
@@ -69,6 +71,16 @@ class TiffWriter:
         print('Terminating write thread...')
         self._writerThread.join(TIMEOUT)
 
+    def get_size(self):
+        return (self._width, self._height)
+    
+    def get_tile_size(self):
+        return (self._tile_width, self._tile_height)
+
+    def get_num_tiles(self):
+      num_x = int(math.ceil(self._width  / self._tile_width))
+      num_y = int(math.ceil(self._height / self._tile_height))
+      return (num_x, num_y)
 
     def _internal_writer(self):
         '''Internal thread that writes blocks as they become available.'''
@@ -111,7 +123,7 @@ class TiffWriter:
         print('Write thread ended after writing ' + str(blockCounter) +' blocks.')
 
 
-    def _write_geotiff_block_internal(self, data, blockCol, blockRow):
+    def _write_geotiff_block_internal(self, data, block_col, block_row):
         '''Write a single block to disk in a geotiff file'''
 
         if not self._handle:
@@ -121,50 +133,72 @@ class TiffWriter:
         #stuff = dir(band)
         #for s in stuff:
         #    print(s)
-        #band.WriteBlock(blockCol, blockRow, data) This function is not supported!
+        #band.WriteBlock(block_col, block_row, data) This function is not supported!
         
         bSize = band.GetBlockSize()
-        band.WriteArray(data, blockCol*bSize[0], blockRow*bSize[1])
+        band.WriteArray(data, block_col*bSize[0], block_row*bSize[1])
         
-        #band.FlushBlock(blockCol, blockRow) This function is not supported!
+        #band.FlushBlock(block_col, block_row) This function is not supported!
         band.FlushCache() # TODO: Call after every tile?
 
 
-    def init_output_geotiff(self, path, numRows, numCols, noDataValue,
-                          tileWidth=256, tileHeight=256):
+    def init_output_geotiff(self, path, num_rows, num_cols, noDataValue,
+                          tile_width=256, tile_height=256):
         '''Set up a geotiff file for writing and return the handle.'''
         # TODO: Copy metadata from the source file.
 
-        self._tileHeight = tileHeight
-        self._tileWidth  = tileWidth
+        self._width  = num_cols
+        self._height = num_rows
+        self._tile_height = tile_height
+        self._tile_width  = tile_width
 
         # Constants
-        dataType = gdal.GDT_Byte
+        data_type = gdal.GDT_Byte
         numBands = 1
-        # TODO: The block size must by synced up with the NN size!
-        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'TILED=YES',
-                  'BLOCKXSIZE='+str(self._tileWidth),
-                  'BLOCKYSIZE='+str(self._tileHeight)]
+        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER']
+        if self._tile_height > 1:
+            options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
+                        'BLOCKYSIZE='+str(self._tile_height)]
 
         print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create( path, numCols, numRows, numBands, dataType, options)
+        self._handle = driver.Create(path, num_cols, num_rows, numBands, data_type, options)
+        if not self._handle:
+            raise Exception('Failed to create output file: ' + path)
 
         #handle.SetGeoTransform(GeoT)
         #handle.SetProjection( Projection.ExportToWkt() )
         if (noDataValue != None):
             self._handle.GetRasterBand(1).SetNoDataValue(noDataValue)
 
-    def get_tile_size(self):
-        return (self._tileWidth, self._tileHeight)
+    def write_geotiff_block(self, data, block_col, block_row):
+        '''Add a tile write command to the queue.
+           Partial tiles are allowed at the right at bottom edges.
+        '''
 
-    def write_geotiff_block(self, data, blockCol, blockRow):
-        '''Add a tile write command to the queue.'''
+        # Check that the tile position is valid
+        num_tiles = self.get_num_tiles()
+        if (block_col >= num_tiles[0]) or (block_row >= num_tiles[1]):
+            raise Exception('Block position ' + str((block_col, block_row))
+                            + ' is outside the tile count: ' + str(num_tiles))
+        is_edge_block = ((block_col == num_tiles[0]-1) or 
+                         (block_row == num_tiles[1]-1))
 
-        if ( (data.shape[0] != self._tileHeight) or 
-             (data.shape[1] != self._tileWidth )  ):
-            raise Exception('Error: Data block size is ' + str(data.shape) +
-                            ', output file block size is ' + str((self._tileWidth, self._tileHeight)))
+        if is_edge_block: # Data must fit inside the image size
+          max_col = block_col*self._tile_width  + data.shape[1]
+          max_row = block_row*self._tile_height + data.shape[0]
+          if ( (max_col > self._width ) or 
+               (max_row > self._height)   ):
+              raise Exception('Error: Data block max position '
+                              + str((max_col, max_row))
+                              + ' falls outside the image bounds: '
+                              + str((self._width, self._height)))
+        else: # Shape must be exactly one tile 
+          if ( (data.shape[0] != self._tile_height) or 
+               (data.shape[1] != self._tile_width )  ):
+              raise Exception('Error: Data block size is ' + str(data.shape)
+                              + ', output file block size is '
+                              + str((self._tile_width, self._tile_height)))
 
         if not self._handle:
             time.sleep(0.5) # Sleep a short time then check again in case of race conditions.
@@ -173,7 +207,7 @@ class TiffWriter:
 
         # Grab the lock and append to it.
         with self._writeQueueLock:
-              self._writeQueue.append((data, blockCol, blockRow))
+              self._writeQueue.append((data, block_col, block_row))
 
     def finish_writing_geotiff(self):
         '''Call when we have finished writing a geotiff file.'''

@@ -20,8 +20,9 @@
 """
 Classes for block-aligned reading from multiple Geotiff files.
 """
-import sys, os
-import string, threading, time
+import sys
+import os
+import time
 import copy
 import psutil
 import math
@@ -46,7 +47,8 @@ class TiffReader:
 
 
     def open_image(self, path):
-
+        if not os.path.exists(path):
+            raise Exception('Image file does not exist: ' + path)
         self._handle = gdal.Open(path)
 
     def close_image(self):
@@ -73,9 +75,8 @@ class TiffReader:
         band_handle = self._handle.GetRasterBand(band)
         block_size  = band_handle.GetBlockSize()
         
-        # TODO: How to handle fractional values?
-        num_blocks_x = int(self._handle.RasterXSize / block_size[0])
-        num_blocks_y = int(self._handle.RasterYSize / block_size[1])
+        num_blocks_x = int(math.ceil(self._handle.RasterXSize / block_size[0]))
+        num_blocks_y = int(math.ceil(self._handle.RasterYSize / block_size[1]))
         
         return (block_size, (num_blocks_x, num_blocks_y))
 
@@ -83,6 +84,12 @@ class TiffReader:
         """Returns the block aligned pixel region to read in a Rectangle format
            to get the requested data region while respecting block boundaries.
         """
+        size = self.image_size()
+        bounds = Rectangle(0, 0, width=size[0], height=size[1])
+        if not bounds.contains(desired_roi):
+            raise Exception('desired_roi ' + str(desired_roi)
+                            + ' is outside the bounds of image with size' + str(size))
+        
         band = 1
         (block_size, num_blocks) = self.get_block_info(band)
         start_block_x = math.floor(desired_roi.min_x     / block_size[0])
@@ -94,8 +101,9 @@ class TiffReader:
         start_row = start_block_y * block_size[1]
         num_cols  = (stop_block_x - start_block_x + 1) * block_size[0]
         num_rows  = (stop_block_y - start_block_y + 1) * block_size[1]
-
+        
         return Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+
 
     def read_pixels(self, roi, band):
         """Reads in the requested region of the image."""
@@ -176,18 +184,15 @@ class MultiTiffFileReader():
             raise Exception('Cannot process region, no images loaded!')
         first_image = self._image_handles[0]
 
-        ## For each block in row-major order, record the ROI in the image.
-        #block_rois = []
-        #for r in range(0,num_block_rows):
-        #    for c in range(0,num_block_cols):
-        #        this_col = col + c*block_width
-        #        this_row = row + r*block_width
-        #        this_roi = Rectangle(this_col, this_row,
-        #                             width=block_width, height=block_height)
-        #        block_rois.append(this_roi)
         block_rois = copy.copy(requested_rois)
 
         print('Ready to process ' + str(len(requested_rois)) +' tiles.')
+
+        image_size = self.image_size()
+        whole_bounds = Rectangle(0, 0, width=image_size[0], height=image_size[1])
+        for roi in block_rois:
+            if not whole_bounds.contains(roi):
+                raise Exception('Roi outside image bounds: ' + str(roi))
 
         # Loop until we have processed all of the blocks.
         while len(block_rois) > 0:
@@ -216,6 +221,7 @@ class MultiTiffFileReader():
             index = 0
             num_processed = 0
             while index < len(block_rois):
+              
                 roi = block_rois[index]
                 if not read_roi.contains(roi):
                     #print(read_roi + ' does not contain ' + )

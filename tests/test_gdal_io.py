@@ -21,10 +21,8 @@
 Test for GDAL I/O classes.
 """
 import sys, os
-import string, argparse#, threading, time
-#import copy
-#import psutil
-#import math
+import argparse
+import math
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
@@ -32,14 +30,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../d
 
 from image_reader import *
 from image_writer import *
-
-#from osgeo import gdal
-#import numpy as np
-
-#from utilities import Rectangle
-
-
-
 
 #------------------------------------------------------------------------------
 
@@ -62,6 +52,10 @@ def main(argsIn):
         parser.add_argument("--output-path", dest="outputPath", default=None,
                                               help="Output path.")
 
+
+        parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
+                            dest='tile_size', default=[0,0], type=int,
+                            help="Specify the output tile size")
 
         # This call handles all the parallel_mapproject specific options.
         options = parser.parse_args(argsIn)
@@ -90,6 +84,8 @@ def main(argsIn):
     noData = input_reader.nodata_value()
     (bSize, (numBlocksX, numBlocksY)) = input_reader.get_block_info(band)
 
+    input_bounds = Rectangle(0, 0, width=nCols, height=nRows)
+
     #print('Num blocks = %f, %f' % (numBlocksX, numBlocksY))
 
     # TODO: Will we be faster using this method? Or ReadAsArray? Or ReadRaster?
@@ -105,11 +101,17 @@ def main(argsIn):
     
     # TODO: Need a more flexible test here!
     output_tile_width  = bSize[0]
-    output_tile_height = 32
+    output_tile_height = bSize[1]#32
+    if options.tile_size[0] > 0:
+        output_tile_width = options.tile_size[0]
+    if options.tile_size[1] > 0:
+        output_tile_height = options.tile_size[1]
+
+    print('Using output tile size ' + str(output_tile_width) + ' by ' + str(output_tile_height))
 
     # Make a list of output ROIs
-    numBlocksX = int(nCols / output_tile_width)
-    numBlocksY = int(nRows / output_tile_height)
+    numBlocksX = int(math.ceil(nCols / output_tile_width))
+    numBlocksY = int(math.ceil(nRows / output_tile_height))
 
     #stuff = dir(band)
     #for s in stuff:
@@ -118,15 +120,19 @@ def main(argsIn):
     print('Testing image duplication!')
     writer = TiffWriter()
     writer.init_output_geotiff(options.outputPath, nRows, nCols, noData,
-                             tileWidth=output_tile_width, tileHeight=output_tile_height)
+                             tile_width=output_tile_width,
+                             tile_height=output_tile_height)
 
     # Setting up output ROIs
     output_rois = []
     for r in range(0,numBlocksY):
         for c in range(0,numBlocksX):
-            
+
+            # Get the ROI for the block, cropped to fit the image size.
             roi = Rectangle(c*output_tile_width, r*output_tile_height,
                             width=output_tile_width, height=output_tile_height)
+            roi = roi.get_intersection(input_bounds)
+            
             output_rois.append(roi)
             #print(roi)
             #print(band)
@@ -136,12 +142,24 @@ def main(argsIn):
     
     def callback_function(output_roi, read_roi, data_vec):
       
-        print('For output roi: ' + str(output_roi) +' got read_roi ' + str(read_roi))
-        print(data_vec[0].shape)
+        #print('For output roi: ' + str(output_roi) +' got read_roi ' + str(read_roi))
+        #print('Data shape = ' + str(data_vec[0].shape))
         
-        col = output_roi.min_x / output_tile_width # Hack for testing!
+        # Figure out the output block
+        col = output_roi.min_x / output_tile_width
         row = output_roi.min_y / output_tile_height
-        writer.write_geotiff_block(data_vec[0], col, row)
+        
+        data = data_vec[0] # Just for testing
+        
+        # Figure out where the desired output data falls in read_roi
+        x0 = output_roi.min_x - read_roi.min_x
+        y0 = output_roi.min_y - read_roi.min_y
+        x1 = x0 + output_roi.width()
+        y1 = y0 + output_roi.height()
+
+        # Crop the desired data portion and write it out.
+        output_data = data[y0:y1, x0:x1]
+        writer.write_geotiff_block(output_data, col, row)
         
             
     print('Writing TIFF blocks...')
