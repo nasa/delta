@@ -38,6 +38,7 @@ from utilities import Rectangle
 class TiffWriter:
 
     """Class to manage block writes to a Geotiff file.
+       Currently only uint8 output is supported.
        TODO: Make sure everything works with opening and closing files in sequence!
     """
 
@@ -172,6 +173,7 @@ class TiffWriter:
             self._handle.GetRasterBand(1).SetNoDataValue(noDataValue)
 
         # Set the metadata values used in image_reader.py
+        # TODO: May need to adjust the order here to work with some files
         if metadata:
             self._handle.SetProjection  (metadata['projection'  ])
             self._handle.SetGeoTransform(metadata['geotransform'])

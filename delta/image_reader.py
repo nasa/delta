@@ -112,7 +112,12 @@ class TiffReader:
         num_cols  = (stop_block_x - start_block_x + 1) * block_size[0]
         num_rows  = (stop_block_y - start_block_y + 1) * block_size[1]
         
-        return Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        # Restrict the output region to the bounding box of the image.
+        # - Needed to handle images with partial tiles at the boundaries.
+        ans    = Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        size   = self.image_size()
+        bounds = Rectangle(0, 0, width=size[0], height=size[1])
+        return ans.get_intersection(bounds)
 
 
     def read_pixels(self, roi, band):
@@ -252,6 +257,6 @@ class MultiTiffFileReader():
                 block_rois.pop(index)
                 num_processed += 1
 
-            print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
+            #print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
 
         print('Finished processing tiles!')
