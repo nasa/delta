@@ -102,10 +102,10 @@ class TiffReader:
         
         band = 1
         (block_size, num_blocks) = self.get_block_info(band)
-        start_block_x = math.floor(desired_roi.min_x     / block_size[0])
-        start_block_y = math.floor(desired_roi.min_y     / block_size[1])
-        stop_block_x  = math.floor((desired_roi.max_x-1) / block_size[0]) # Rect max is exclusive
-        stop_block_y  = math.floor((desired_roi.max_y-1) / block_size[1]) # The stops are inclusive
+        start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
+        start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
+        stop_block_x  = int(math.floor((desired_roi.max_x-1) / block_size[0])) # Rect max is exclusive
+        stop_block_y  = int(math.floor((desired_roi.max_y-1) / block_size[1])) # The stops are inclusive
 
         start_col = start_block_x * block_size[0]
         start_row = start_block_y * block_size[1]
@@ -123,6 +123,7 @@ class TiffReader:
     def read_pixels(self, roi, band):
         """Reads in the requested region of the image."""
         band_handle = self._handle.GetRasterBand(band)
+
         data = band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height())
         return data
 
@@ -197,6 +198,8 @@ class MultiTiffFileReader():
            Each block will get the image data from each input image passed into the function.
            Function definition TBD!
            Blocks that go over the image boundary will be passed as partial image blocks.
+           All data reading and function calling takes place in the current thread, to use
+           multiple threads you need to hand off the work in the callback function.
         """
 
         if not self._image_handles:
@@ -240,7 +243,7 @@ class MultiTiffFileReader():
             index = 0
             num_processed = 0
             while index < len(block_rois):
-              
+
                 roi = block_rois[index]
                 if not read_roi.contains(roi):
                     #print(read_roi + ' does not contain ' + )

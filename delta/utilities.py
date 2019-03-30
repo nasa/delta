@@ -43,6 +43,20 @@ def get_num_bytes_from_gdal_type(gdal_type):
     }
     return results.get(gdal_type)
 
+def get_gdal_data_type(type_str):
+
+    s = type_str.lower()
+    if (s == 'byte') or (s == 'uint8'):
+        return gdal.GDT_Byte
+    if (s == 'short') or (s == 'uint16'):
+        return gdal.GDT_UInt16
+    if (s == 'uint32'):
+        return gdal.GDT_UInt32
+    if (s == 'float') or (s == 'float32'):
+        return gdal.GDT_Float32
+    raise Exception('Unrecognized data type string: ' + type_str)
+
+
 #============================================================================
 # Classes
 
@@ -68,8 +82,12 @@ class Rectangle:
         #    print 'RECTANGLE WARNING: ' + str(self)
     
     def __str__(self):
-        return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
-                (self.min_x, self.max_x, self.min_y, self.max_y))
+        if type(self.min_x) == int:
+            return ('min_x: %d, max_x: %d, min_y: %d, max_y: %d' %
+                    (self.min_x, self.max_x, self.min_y, self.max_y))
+        else:
+            return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
+                    (self.min_x, self.max_x, self.min_y, self.max_y))
     
 #    def indexGenerator(self):
 #        '''Generator function used to iterate over all integer indices.

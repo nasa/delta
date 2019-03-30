@@ -102,9 +102,9 @@ def main(argsIn):
     ##print('len(data) = ' + str(len(data)))
     #print('data.shape = ' + str(data.shape))
     
-    # TODO: Need a more flexible test here!
+    # Use the input tile size unless the user specified one.
     output_tile_width  = bSize[0]
-    output_tile_height = bSize[1]#32
+    output_tile_height = bSize[1]
     if options.tile_size[0] > 0:
         output_tile_width = options.tile_size[0]
     if options.tile_size[1] > 0:
@@ -145,6 +145,7 @@ def main(argsIn):
             
     
     def callback_function(output_roi, read_roi, data_vec):
+        """Callback function to write the first channel to the output file."""
       
         #print('For output roi: ' + str(output_roi) +' got read_roi ' + str(read_roi))
         #print('Data shape = ' + str(data_vec[0].shape))

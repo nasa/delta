@@ -18,7 +18,7 @@
 # __END_LICENSE__
 
 """
-Multi-threaded Geotiff writing class using GDAL.
+Geotiff writing class using GDAL with dedicated writer thread.
 """
 import sys
 import os
@@ -31,6 +31,7 @@ from osgeo import gdal
 import numpy as np
 
 from utilities import Rectangle
+import utilities
 
 #=============================================================================
 # Image writer class -> Move to another file!
@@ -144,7 +145,8 @@ class TiffWriter:
 
 
     def init_output_geotiff(self, path, num_rows, num_cols, noDataValue,
-                            tile_width=256, tile_height=256, metadata=None):
+                            tile_width=256, tile_height=256, metadata=None,
+                            data_type = 'byte'):
         '''Set up a geotiff file for writing and return the handle.'''
         # TODO: Copy metadata from the source file.
 
@@ -154,7 +156,7 @@ class TiffWriter:
         self._tile_width  = tile_width
 
         # Constants
-        data_type = gdal.GDT_Byte
+        gdal_type = utilities.get_gdal_data_type(data_type)
         numBands = 1
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER']
         if self._tile_height > 1:
@@ -163,7 +165,7 @@ class TiffWriter:
 
         print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, num_cols, num_rows, numBands, data_type, options)
+        self._handle = driver.Create(path, num_cols, num_rows, numBands, gdal_type, options)
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
@@ -247,7 +249,7 @@ class TiffWriter:
 
         # Make sure that the write queue is empty.
         with self._writeQueueLock:
-            self._writeQueue.clear()
+            self._writeQueue = []
 
         # Finish whatever we are writing, then close the handle.
         print('Closing TIFF handle...')
