@@ -24,7 +24,8 @@ import sys, os
 import argparse
 import math
 import functools
-
+import multiprocessing
+import traceback
 import numpy as np
 
 # TODO: Clean this up
@@ -35,6 +36,7 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
+import utilities
 from image_reader import *
 from image_writer import *
 
@@ -46,6 +48,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
        result into the output path.  The function is applied to each tile of data.
     """
 
+    print('Starting function for: ' + input_path)
+
     # Open the input image and get information about it
     input_paths = [input_path]
     input_reader = MultiTiffFileReader()
@@ -56,6 +60,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     input_metadata = input_reader.get_all_metadata()
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
+    sys.stdout.flush()
 
     X = 0 # Make indices easier to read
     Y = 1
@@ -67,7 +72,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     if tile_size[Y] > 0:
         block_size_out[Y] = int(tile_size[Y])
 
-    print('Using output tile size: ' + str(block_size_out))
+    #print('Using output tile size: ' + str(block_size_out))
 
     # Make a list of output ROIs
     num_blocks_out = (int(math.ceil(num_cols / block_size_out[X])),
@@ -91,6 +96,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
                             width=block_size_out[X], height=block_size_out[Y])
             roi = roi.get_intersection(input_bounds)
             output_rois.append(roi)
+    #print('Made ' + str(len(output_rois))+ ' output ROIs.')
 
     # TODO: Perform this processing in multiple threads!
     def callback_function(output_roi, read_roi, data_vec):
@@ -110,9 +116,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
 
         # Crop the desired data portion and apply the user function.
         output_data = user_function(data[y0:y1, x0:x1])
-        
-        #print(data[y0:y1, x0:x1][0][0])
-        #print(output_data[0][0])
 
         # Write out the result
         writer.write_geotiff_block(output_data, col, row)
@@ -130,6 +133,16 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     writer.cleanup()
 
     image = None # Close the image
+
+# Cleaner ways to do this don't work with multiprocessing!
+def try_catch_and_call(*args, **kwargs):
+    """Wrap the previous function in a try/catch statement"""
+    try:
+        return apply_function_to_file(*args, **kwargs)
+    except Exception as e:
+        traceback.print_exc()
+        sys.stdout.flush()
+        return -1
 
 
 def allocate_bands_for_spacecraft(landsat_number):
@@ -195,10 +208,7 @@ def parse_mtl_file(mtl_path):
                         data[tag][band] = value # String
                     else:
                         data[tag][band] = float(value)
-    
-    #print('Read MTL data')
-    #print(data)
-    
+
     return data
 
 
@@ -225,9 +235,6 @@ def main(argsIn):
         usage  = "usage: landsat_toa [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
-        #parser.add_argument('input_paths', metavar='N', type=str, nargs='+',
-        #                    help='Input files')
-
         parser.add_argument("--mtl-path", dest="mtl_path", required=True,
                             help="Path to the MTL file in the same folder as the image band files.")
 
@@ -237,6 +244,12 @@ def main(argsIn):
         parser.add_argument("--calc-reflectance", action="store_true", 
                             dest="calc_reflectance", default=False, 
                             help="Compute TOA reflectance (and temperature) instead of radiance.")
+
+        parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
+                            help="Number of parallel processes to use.")
+
+        #parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
+        #                    help="Number of threads to use per process.")
 
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
                             dest='tile_size', default=[0,0], type=int,
@@ -253,43 +266,36 @@ def main(argsIn):
     if not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
 
-    # TODO: Process all bands simultaneously?
-
     # Get all of the TOA coefficients and input file names
     data = parse_mtl_file(options.mtl_path)
     print(data)
 
-pool = multiprocessing.Pool(options.numProcesses)
-    taskHandles = []
+    pool = multiprocessing.Pool(options.num_processes)
+    task_handles = []
 
     # Loop through the input files
     input_folder = os.path.dirname(options.mtl_path)
     num_bands    = len(data['FILE_NAME'])
-    for band in range(0, num_bands):
-    #for band in [9]:
-      
+    #for band in range(0, num_bands):
+    for band in [0, 1, 2]:
+
         print('Processing band: ' + str(band))
-      
+
         fname = data['FILE_NAME'][band]
-        print(fname)
-        
+
         input_path  = os.path.join(input_folder,  fname)
         output_path = os.path.join(options.output_folder, fname)
-        
+
         #print(input_path)
         #print(output_path)
-        
+
         rad_mult = data['RADIANCE_MULT'   ][band]
         rad_add  = data['RADIANCE_ADD'    ][band]
         ref_mult = data['REFLECTANCE_MULT'][band]
         ref_add  = data['REFLECTANCE_ADD' ][band]
         k1_const = data['K1_CONSTANT'][band]
         k2_const = data['K2_CONSTANT'][band]
-        
-        #print(rad_mult)
-        #print(rad_add)
-        
-        
+
         if options.calc_reflectance:
             if k1_const == None:
                 user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, constant=ref_add, 
@@ -298,12 +304,21 @@ pool = multiprocessing.Pool(options.numProcesses)
                 user_function = functools.partial(apply_toa_temperature, factor=rad_mult, constant=rad_add, k1=k1_const, k2=k2_const)
         else:
             user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
-        
-        
-        apply_function_to_file(input_path, output_path, user_function, options.tile_size)
-          
+
+        task_handles.append(pool.apply_async(try_catch_and_call,
+                              (input_path, output_path, user_function, options.tile_size)))
+        #try_catch_and_call(input_path, output_path, user_function, options.tile_size)
+
         #raise Exception('DEBUG')
-    
+
+    # Wait for all the tasks to complete
+    print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+
+    # All tasks should be finished, clean up the processing pool
+    utilities.stop_task_pool(pool)
+    print('Jobs finished.')
+
     print('Landsat TOA conversion is finished.')
 
 if __name__ == "__main__":

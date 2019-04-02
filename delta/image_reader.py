@@ -224,6 +224,7 @@ class MultiTiffFileReader():
             read_roi = first_image.get_block_aligned_read_roi(block_rois[0])
             #print('Want to process ROI: ' + str(block_rois[0]))
             #print('Reading input ROI: ' + str(read_roi))
+            #sys.stdout.flush()
 
             # If we don't have enough memory to load the ROI, wait here until we do.
             self.sleep_until_mem_free_for_roi(read_roi)

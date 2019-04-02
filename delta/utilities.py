@@ -20,10 +20,11 @@
 """
 Miscellaneous utility classes/functions.
 """
-
+import sys
+import time
 import gdal
-
-
+import psutil
+import traceback
 
 #============================================================================
 # Constants
@@ -55,6 +56,90 @@ def get_gdal_data_type(type_str):
     if (s == 'float') or (s == 'float32'):
         return gdal.GDT_Float32
     raise Exception('Unrecognized data type string: ' + type_str)
+
+def logger_print(logger, msg):
+    '''Print to logger, if present. This helps keeps all messages in sync.'''
+    if logger is not None:
+        logger.info(msg)
+    else:
+        print(msg)
+
+# This block of code is just to get a non-blocking keyboard check!
+import signal
+class AlarmException(Exception):
+    pass
+def alarmHandler(signum, frame):
+    raise AlarmException
+def nonBlockingRawInput(prompt='', timeout=20):
+    '''Return a key if pressed or an empty string otherwise.
+       Waits for timeout, non-blocking.'''
+    signal.signal(signal.SIGALRM, alarmHandler)
+    signal.alarm(timeout)
+    try:
+        text = raw_input(prompt)
+        signal.alarm(0)
+        return text
+    except AlarmException:
+        pass # Timeout
+    signal.signal(signal.SIGALRM, signal.SIG_IGN)
+    return ''
+
+def waitForTaskCompletionOrKeypress(taskHandles, logger = None, interactive=True,
+                                    quitKey='q', sleepTime=20):
+    '''Block in this function until the user presses a key or all tasks complete'''
+
+    # Wait for all the tasks to complete
+    notReady = len(taskHandles)
+    while notReady > 0:
+
+        if interactive:
+            # Wait and see if the user presses a key
+            msg = ('Waiting on ' + str(notReady) + ' process(es), press '
+                   +str(quitKey)+'<Enter> to abort...\n')
+            keypress = nonBlockingRawInput(prompt=msg, timeout=sleepTime)
+            if keypress == quitKey:
+                logger_print(logger, 'Recieved quit command!')
+                break
+        else:
+            logger_print(logger, "Waiting on " + str(notReady) + ' incomplete tasks.')
+            time.sleep(sleepTime)
+
+        # As long as we have this process waiting, keep track of our resource consumption.
+        cpuPercentUsage = psutil.cpu_percent()
+        memInfo         = psutil.virtual_memory()
+        memUsed         = memInfo[0] - memInfo[1]
+        memPercentUsage = float(memUsed) / float(memInfo[0])
+
+        usageMessage = ('CPU percent usage = %f, Memory percent usage = %f' 
+                        % (cpuPercentUsage, memPercentUsage))
+        logger_print(logger, usageMessage)
+
+        # Otherwise count up the tasks we are still waiting on.
+        notReady = 0
+        for task in taskHandles:
+            if not task.ready():
+                notReady += 1
+    return
+
+def stop_task_pool(pool):
+    """Stop remaining tasks and kill the pool"""
+
+    PROCESS_POOL_KILL_TIMEOUT = 3
+    pool.close()
+    time.sleep(PROCESS_POOL_KILL_TIMEOUT)
+    pool.terminate()
+    pool.join()
+
+def exception_print_wrapper(func):
+    """Wrap the function in a try-except printing wrapper"""
+    def try_catch_and_call(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            traceback.print_exc()
+            sys.stdout.flush()
+            return -1
+    return try_catch_and_call
 
 
 #============================================================================
