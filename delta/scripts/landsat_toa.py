@@ -25,6 +25,8 @@ import argparse
 import math
 import functools
 
+import numpy as np
+
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
@@ -89,8 +91,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
                             width=block_size_out[X], height=block_size_out[Y])
             roi = roi.get_intersection(input_bounds)
             output_rois.append(roi)
-            
-            
 
     # TODO: Perform this processing in multiple threads!
     def callback_function(output_roi, read_roi, data_vec):
@@ -142,12 +142,12 @@ def allocate_bands_for_spacecraft(landsat_number):
     # There are fewer K constants but we store in the the
     # appropriate band indices.
     data['FILE_NAME'       ] = [''] * num_bands
-    data['RADIANCE_MULT'   ] = [1] * num_bands
-    data['RADIANCE_ADD'    ] = [0] * num_bands
-    data['REFLECTANCE_MULT'] = [1] * num_bands
-    data['REFLECTANCE_ADD' ] = [0] * num_bands
-    data['K1_CONSTANT'     ] = [1] * num_bands
-    data['K2_CONSTANT'     ] = [1] * num_bands
+    data['RADIANCE_MULT'   ] = [None] * num_bands
+    data['RADIANCE_ADD'    ] = [None] * num_bands
+    data['REFLECTANCE_MULT'] = [None] * num_bands
+    data['REFLECTANCE_ADD' ] = [None] * num_bands
+    data['K1_CONSTANT'     ] = [None] * num_bands
+    data['K2_CONSTANT'     ] = [None] * num_bands
 
     return data
 
@@ -172,6 +172,10 @@ def parse_mtl_file(mtl_path):
             if 'SPACECRAFT_ID = LANDSAT_' in line:
                 spacecraft_id = line.split('_')[-1].strip()
                 data = allocate_bands_for_spacecraft(spacecraft_id)
+
+            if 'SUN_ELEVATION = ' in line:
+                value = line.split('=')[-1].strip()
+                data['SUN_ELEVATION'] = float(value)
 
             # Look for the other info we want
             for tag in DESIRED_TAGS:
@@ -198,10 +202,19 @@ def parse_mtl_file(mtl_path):
     return data
 
 
-def apply_toa(data, factor, constant):
-    """Apply a top of atmosphere conversion to landsat data"""
+def apply_toa_radiance(data, factor, constant):
+    """Apply a top of atmosphere radiance conversion to landsat data"""
     return (data * factor) + constant
 
+def apply_toa_temperature(data, factor, constant, k1, k2):
+    """Apply a top of atmosphere radiance + temp conversion to landsat data"""
+    rad = (data * factor) + constant
+    return k2 / np.log(k1/rad + 1)
+
+def apply_toa_reflectance(data, factor, constant, sun_elevation):
+    """Apply a top of atmosphere radiance + temp conversion to landsat data"""
+    ref = (data * factor) + constant
+    return ref / math.sin(sun_elevation)
 
 
 def main(argsIn):
@@ -221,6 +234,10 @@ def main(argsIn):
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Write output band files to this output folder with the same names.")
 
+        parser.add_argument("--calc-reflectance", action="store_true", 
+                            dest="calc_reflectance", default=False, 
+                            help="Compute TOA reflectance (and temperature) instead of radiance.")
+
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
                             dest='tile_size', default=[0,0], type=int,
                             help="Specify the output tile size.  Default is to keep the input tile size.")
@@ -237,19 +254,24 @@ def main(argsIn):
         os.mkdir(options.output_folder)
 
     # TODO: Process all bands simultaneously?
-    # TODO: Allow radiance and reflectance options!
 
     # Get all of the TOA coefficients and input file names
     data = parse_mtl_file(options.mtl_path)
+    print(data)
+
+pool = multiprocessing.Pool(options.numProcesses)
+    taskHandles = []
 
     # Loop through the input files
     input_folder = os.path.dirname(options.mtl_path)
     num_bands    = len(data['FILE_NAME'])
     for band in range(0, num_bands):
+    #for band in [9]:
       
         print('Processing band: ' + str(band))
       
         fname = data['FILE_NAME'][band]
+        print(fname)
         
         input_path  = os.path.join(input_folder,  fname)
         output_path = os.path.join(options.output_folder, fname)
@@ -267,9 +289,17 @@ def main(argsIn):
         #print(rad_mult)
         #print(rad_add)
         
-        # TODO: Not every band uses a K value!
-
-        user_function = functools.partial(apply_toa, factor=rad_mult, constant=rad_add)
+        
+        if options.calc_reflectance:
+            if k1_const == None:
+                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, constant=ref_add, 
+                                                  sun_elevation=math.radians(data['SUN_ELEVATION']))
+            else:
+                user_function = functools.partial(apply_toa_temperature, factor=rad_mult, constant=rad_add, k1=k1_const, k2=k2_const)
+        else:
+            user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
+        
+        
         apply_function_to_file(input_path, output_path, user_function, options.tile_size)
           
         #raise Exception('DEBUG')
