@@ -42,6 +42,7 @@ from image_writer import *
 
 #------------------------------------------------------------------------------
 
+OUTPUT_NODATA = 0.0
 
 def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,0)):
     """Apply the given function to the entire input image and write the
@@ -55,7 +56,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     input_reader = MultiTiffFileReader()
     input_reader.load_images(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
-    no_data_val = input_reader.nodata_value()
+    #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
+    nodata_val = OUTPUT_NODATA
     (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
 
@@ -80,7 +82,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
 
     # Set up the output image
     writer = TiffWriter()
-    writer.init_output_geotiff(output_path, num_rows, num_cols, no_data_val,
+    writer.init_output_geotiff(output_path, num_rows, num_cols, nodata_val,
                                tile_width=block_size_out[X],
                                tile_height=block_size_out[Y],
                                metadata=input_metadata,
@@ -123,14 +125,12 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     print('Writing TIFF blocks...')
     input_reader.process_rois(output_rois, callback_function)
 
-
-    print('Done sending in blocks!')
     writer.finish_writing_geotiff()
-    print('Done duplicating the image!')
 
     time.sleep(2)
-    print('Cleaning up the writer!')
     writer.cleanup()
+
+    print('Done writing: ' + output_path)
 
     image = None # Close the image
 
@@ -147,7 +147,7 @@ def try_catch_and_call(*args, **kwargs):
 
 def allocate_bands_for_spacecraft(landsat_number):
 
-    BAND_COUNTS = {'5':7, '7':8, '8':11}
+    BAND_COUNTS = {'5':7, '7':9, '8':11}
 
     num_bands = BAND_COUNTS[landsat_number]
     data = dict()
@@ -200,6 +200,11 @@ def parse_mtl_file(mtl_path):
                     name  = parts[0].strip()
                     value = parts[1].strip()
                     try:
+                        # Landsat 7 has two thermal readings from the same wavelength bad
+                        # bit with different gain settings.  Just treat the second file
+                        # as another band (9).
+                        name = name.replace('BAND_6_VCID_1', 'BAND_6')
+                        name = name.replace('BAND_6_VCID_2', 'BAND_9')
                         band  = int(name.split('_')[-1]) -1 # One-based to zero-based
                     except ValueError: # Means this is not a proper match
                         break
@@ -211,20 +216,19 @@ def parse_mtl_file(mtl_path):
 
     return data
 
+# The np.where clause handles input nodata values.
 
 def apply_toa_radiance(data, factor, constant):
     """Apply a top of atmosphere radiance conversion to landsat data"""
-    return (data * factor) + constant
+    return np.where(data>0, (data * factor) + constant, OUTPUT_NODATA)
 
 def apply_toa_temperature(data, factor, constant, k1, k2):
     """Apply a top of atmosphere radiance + temp conversion to landsat data"""
-    rad = (data * factor) + constant
-    return k2 / np.log(k1/rad + 1)
+    return np.where(data>0, k2/np.log(k1/((data*factor)+constant) +1.0), OUTPUT_NODATA)
 
 def apply_toa_reflectance(data, factor, constant, sun_elevation):
     """Apply a top of atmosphere radiance + temp conversion to landsat data"""
-    ref = (data * factor) + constant
-    return ref / math.sin(sun_elevation)
+    return np.where(data>0, ((data*factor)+constant)/math.sin(sun_elevation), OUTPUT_NODATA)
 
 
 def main(argsIn):
@@ -276,10 +280,8 @@ def main(argsIn):
     # Loop through the input files
     input_folder = os.path.dirname(options.mtl_path)
     num_bands    = len(data['FILE_NAME'])
-    #for band in range(0, num_bands):
-    for band in [0, 1, 2]:
-
-        print('Processing band: ' + str(band))
+    for band in range(0, num_bands):
+    #for band in [5]:
 
         fname = data['FILE_NAME'][band]
 
@@ -298,10 +300,14 @@ def main(argsIn):
 
         if options.calc_reflectance:
             if k1_const == None:
-                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, constant=ref_add, 
+                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, 
+                                                  constant=ref_add, 
                                                   sun_elevation=math.radians(data['SUN_ELEVATION']))
             else:
-                user_function = functools.partial(apply_toa_temperature, factor=rad_mult, constant=rad_add, k1=k1_const, k2=k2_const)
+                print(k1_const)
+                print(k2_const)
+                user_function = functools.partial(apply_toa_temperature, factor=rad_mult,
+                                                  constant=rad_add, k1=k1_const, k2=k2_const)
         else:
             user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
 
