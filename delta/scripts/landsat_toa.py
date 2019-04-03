@@ -100,7 +100,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
             output_rois.append(roi)
     #print('Made ' + str(len(output_rois))+ ' output ROIs.')
 
-    # TODO: Perform this processing in multiple threads!
     def callback_function(output_roi, read_roi, data_vec):
         """Callback function to write the first channel to the output file."""
 
