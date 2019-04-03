@@ -18,7 +18,7 @@
 # __END_LICENSE__
 
 """
-Script to apply Top of Atmosphere correction to WorldView 1, 2, and 3 files.
+Script to apply Top of Atmosphere correction to WorldView 2 and 3 files.
 """
 import sys, os
 import argparse
@@ -43,6 +43,24 @@ from image_writer import *
 #------------------------------------------------------------------------------
 
 OUTPUT_NODATA = 0.0
+
+def get_esun_value(sat_id, band):
+    """Get the ESUN value for the given satellite and band"""
+
+    VALUES = {'WV02':[1580.814, 1758.2229, 1974.2416, 1856.4104,
+                      1738.4791, 1559.4555, 1342.0695, 1069.7302, 861.2866],
+              'WV03':[1583.58, 1743.81, 1971.48, 1856.26,
+                      1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
+    try:
+        return VALUES[sat_id][band]
+    except Exception:
+        raise Exception('No ESUN value for ' + sat_id
+                        + ', band ' + str(band))
+
+def get_earth_sun_distance():
+    """Returns the distance between the Earth and the Sun in AU for the given date"""
+    # TODO: Copy the calculation from the WV manuals.
+    return 1.0
 
 def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,0)):
     """Apply the given function to the entire input image and write the
@@ -166,39 +184,49 @@ def parse_meta_file(meta_path):
         for line in f:
 
             #line = line.replace('"','') # Clean up
+            upline = line.replace(';','').upper().strip()
 
-            #if 'SUN_ELEVATION = ' in line:
-            #    value = line.split('=')[-1].strip()
-            #    data['SUN_ELEVATION'] = float(value)
+            if 'MEANSUNEL = ' in upline:
+                value = upline.split('=')[-1]
+                data['MEANSUNEL'] = float(value)
+
+            if 'SATID = ' in upline:
+                value = upline.split('=')[-1].replace('"','').strip()
+                data['SATID'] = value
 
             # Look for the other info we want
             for tag in DESIRED_TAGS:
-                upline = line.upper()
                 if tag in upline:
-
-                    upline = upline.replace(';','')
 
                     # Add the value to the appropriate list
                     # -> If the bands are not in order we will need to be more careful here.
                     parts = upline.split('=')
-                    value = parts[1].strip()
+                    value = parts[1]
                     data[tag].append(float(value))
 
     return data
 
 # The np.where clause handles input nodata values.
 
-def apply_toa_radiance(data, band, factor, constant):
-    """Apply a top of atmosphere radiance conversion to landsat data"""
-    f = factor  [band]
-    c = constant[band]
-    return np.where(data>0, (data * f) + c, OUTPUT_NODATA)
+def apply_toa_radiance(data, band, factor, width):
+    """Apply a top of atmosphere radiance conversion to WorldView data"""
+    f = factor[band]
+    w = width [band]
+    return np.where(data>0, (data*f)/w, OUTPUT_NODATA)
 
-def apply_toa_reflectance(data, band, factor, constant, sun_elevation):
-    """Apply a top of atmosphere radiance + temp conversion to landsat data"""
-    f = factor  [band]
-    c = constant[band]
-    return np.where(data>0, ((data*f)+c)/math.sin(sun_elevation), OUTPUT_NODATA)
+def apply_toa_reflectance(data, band, factor, width, sun_elevation,
+                          satellite, earth_sun_distance):
+    """Apply a top of atmosphere reflectance conversion to WorldView data"""
+    f = factor[band]
+    w = width [band]
+
+    # TODO: Something is wrong here!
+    esun    = get_esun_value(satellite, band)
+    des2    = earth_sun_distance*earth_sun_distance
+    theta   = np.pi/2 - sun_elevation
+    scaling = (des2*np.pi) / (esun*math.cos(theta))
+    print('scaling='+str(scaling))
+    return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
 
 
 def main(argsIn):
@@ -250,16 +278,18 @@ def main(argsIn):
     #pool = multiprocessing.Pool(options.num_processes)
     #task_handles = []
 
-    rad_mult = data['ABSCALFACTOR']
-    rad_add  = data['EFFECTIVEBANDWIDTH']
+    scale  = data['ABSCALFACTOR']
+    bwidth = data['EFFECTIVEBANDWIDTH']
+
+    ds = get_earth_sun_distance() # TODO: Implement this function!
 
     if options.calc_reflectance:
-        raise Exception('TODO!')
-#        user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, 
-#                                          constant=ref_add, 
-#                                          sun_elevation=math.radians(data['SUN_ELEVATION']))
+      user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
+                                          sun_elevation=math.radians(data['MEANSUNEL']),
+                                          satellite=data['SATID'],
+                                          earth_sun_distance=ds)
     else:
-        user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
+        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
 
     try_catch_and_call(options.image_path, options.output_path, user_function, options.tile_size)
 
