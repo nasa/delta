@@ -166,7 +166,6 @@ def main(argsIn):
 
     try:
 
-        # Use parser that ignores unknown options
         usage  = "usage: landsat_toa [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
@@ -188,8 +187,6 @@ def main(argsIn):
                             help="Specify the output tile size.  Default is to keep the input tile size.")
 
         options = parser.parse_args(argsIn)
-
-        # Check the required positional arguments.
 
     except argparse.ArgumentError as msg:
         raise Usage(msg)

@@ -18,7 +18,7 @@
 # __END_LICENSE__
 
 """
-Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
+Script test out the image chunk generation calls.
 """
 import sys, os
 import argparse
@@ -47,35 +47,31 @@ def main(argsIn):
 
     try:
 
-        # Use parser that ignores unknown options
-        usage  = "usage: landsat_toa [options]"
+        usage  = "usage: landsat_chunk_test [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--mtl-path", dest="mtl_path", default=None,
-                            help="Path to the MTL file in the same folder as the image band files.")
+                            help="Path to the MTL file in the same folder as Landsat image band files.")
 
         parser.add_argument("--image-path", dest="image_path", default=None,
                             help="Instead of using an MTL file, just load this one image.")
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
-                            help="Write output band files to this output folder with the same names.")
+                            help="Write output chunk files to this folder.")
 
         parser.add_argument("--output-band", dest="output_band", type=int, default=0,
-                            help="Write out the chunks from this band to disk.")
+                            help="Only chunks from this band are written to disk.")
 
         parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
                             help="Number of threads to use for parallel image loading.")
 
         parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=1024,
                             help="The length of each side of the output image chunks.")
-        
+
         parser.add_argument("--chunk-overlap", dest="chunk_overlap", type=int, default=0,
-                            help="The amount of overlap of image chunks.")
+                            help="The amount of overlap of the image chunks.")
 
-        # This call handles all the specific options.
         options = parser.parse_args(argsIn)
-
-        # Check the required positional arguments.
 
     except argparse.ArgumentError as msg:
         raise Usage(msg)
@@ -113,10 +109,10 @@ def main(argsIn):
     # For debug output, write each individual chunk to disk from a single band
     shape = chunk_data.shape
     num_chunks = shape[0]
-    num_bands = shape[1]
+    num_bands  = shape[1]
     print('num_chunks = ' + str(num_chunks))
     print('num_bands = ' + str(num_bands))
-    
+
     for chunk in range(0,num_chunks):
         data = chunk_data[chunk,options.output_band,:,:]
         #print('data.shape = ' + str(data.shape))
@@ -131,6 +127,4 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-    
-    
-    
+
