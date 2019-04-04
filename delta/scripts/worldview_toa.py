@@ -104,7 +104,9 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     writer = TiffWriter()
     writer.init_output_geotiff(output_path, num_rows, num_cols, nodata_val,
                                block_size_out[X], block_size_out[Y],
-                               input_metadata, 'float', num_bands)
+                               input_metadata,
+                               utilities.get_gdal_data_type('float'),
+                               num_bands)
 
     # Setting up output ROIs
     output_rois = []
@@ -260,7 +262,6 @@ def main(argsIn):
                             dest='tile_size', default=[0,0], type=int,
                             help="Specify the output tile size.  Default is to keep the input tile size.")
 
-        # This call handles all the parallel_mapproject specific options.
         options = parser.parse_args(argsIn)
 
         # Check the required positional arguments.

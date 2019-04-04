@@ -278,7 +278,7 @@ class MultiTiffFileReader():
 
         # Call process_one_image in parallel using a thread pool
         pool = ThreadPool(num_threads)
-        pool.map(process_one_image, range(0,self.num_bands()))
+        pool.map(process_one_image, range(0,len(self._image_handles)))
         pool.close()
         pool.join()
         return data_store

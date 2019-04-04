@@ -88,7 +88,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
                                tile_width=block_size_out[X],
                                tile_height=block_size_out[Y],
                                metadata=input_metadata,
-                               data_type='float') # TODO: data type option?
+                               data_type=utilities.get_gdal_data_type('float'),
+                               num_bands=1)
 
     # Setting up output ROIs
     output_rois = []
@@ -182,14 +183,10 @@ def main(argsIn):
         parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
                             help="Number of parallel processes to use.")
 
-        #parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
-        #                    help="Number of threads to use per process.")
-
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
                             dest='tile_size', default=[0,0], type=int,
                             help="Specify the output tile size.  Default is to keep the input tile size.")
 
-        # This call handles all the parallel_mapproject specific options.
         options = parser.parse_args(argsIn)
 
         # Check the required positional arguments.

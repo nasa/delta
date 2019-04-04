@@ -51,20 +51,28 @@ def main(argsIn):
         usage  = "usage: landsat_toa [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
-        parser.add_argument("--mtl-path", dest="mtl_path", required=True,
+        parser.add_argument("--mtl-path", dest="mtl_path", default=None,
                             help="Path to the MTL file in the same folder as the image band files.")
+
+        parser.add_argument("--image-path", dest="image_path", default=None,
+                            help="Instead of using an MTL file, just load this one image.")
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Write output band files to this output folder with the same names.")
 
+        parser.add_argument("--output-band", dest="output_band", type=int, default=0,
+                            help="Write out the chunks from this band to disk.")
+
         parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
-                            help="Number of threads to use per process.")
+                            help="Number of threads to use for parallel image loading.")
 
-        parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
-                            dest='tile_size', default=[0,0], type=int,
-                            help="Specify the output tile size.  Default is to keep the input tile size.")
+        parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=1024,
+                            help="The length of each side of the output image chunks.")
+        
+        parser.add_argument("--chunk-overlap", dest="chunk_overlap", type=int, default=0,
+                            help="The amount of overlap of image chunks.")
 
-        # This call handles all the parallel_mapproject specific options.
+        # This call handles all the specific options.
         options = parser.parse_args(argsIn)
 
         # Check the required positional arguments.
@@ -75,15 +83,20 @@ def main(argsIn):
     if not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
 
-    # Get all of the TOA coefficients and input file names
-    data = landsat_utils.parse_mtl_file(options.mtl_path)
+    if options.mtl_path:
 
-    input_folder = os.path.dirname(options.mtl_path)
+        # Get all of the TOA coefficients and input file names
+        data = landsat_utils.parse_mtl_file(options.mtl_path)
 
-    input_paths = []
-    for fname in data['FILE_NAME']:
-        input_path = os.path.join(input_folder, fname)
-        input_paths.append(input_path)
+        input_folder = os.path.dirname(options.mtl_path)
+
+        input_paths = []
+        for fname in data['FILE_NAME']:
+            input_path = os.path.join(input_folder, fname)
+            input_paths.append(input_path)
+
+    else: # Just load the specified image
+        input_paths = [options.image_path]
 
     # Open the input image and get information about it
     input_reader = MultiTiffFileReader()
@@ -92,25 +105,25 @@ def main(argsIn):
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
     sys.stdout.flush()
 
-    chunk_size = 256
-    chunk_overlap = 0
+    # Process the entire input image(s) into chunks at once.
     roi = Rectangle(0,0,width=num_cols,height=num_rows)
-    chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, options.num_threads)
-    
+    chunk_data = input_reader.parallel_load_chunks(roi, options.chunk_size,
+                                                   options.chunk_overlap, options.num_threads)
+
+    # For debug output, write each individual chunk to disk from a single band
     shape = chunk_data.shape
     num_chunks = shape[0]
     num_bands = shape[1]
     print('num_chunks = ' + str(num_chunks))
     print('num_bands = ' + str(num_bands))
     
-    band = 3 # Write this band out to debug.
     for chunk in range(0,num_chunks):
-        data = chunk_data[chunk,band,:,:]
+        data = chunk_data[chunk,options.output_band,:,:]
         #print('data.shape = ' + str(data.shape))
 
         # Dump to disk
         output_path = os.path.join(options.output_folder, 'chunk_'+str(chunk) + '.tif')
-        write_simple_image(output_path, data, data_type='uint16')
+        write_simple_image(output_path, data, data_type=utilities.numpy_dtype_to_gdal_type(chunk_data.dtype))
 
         #raise Exception('DEBUG')
 

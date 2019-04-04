@@ -26,6 +26,7 @@ import math
 import gdal
 import psutil
 import traceback
+import numpy as np
 
 #============================================================================
 # Constants
@@ -41,7 +42,8 @@ def get_num_bytes_from_gdal_type(gdal_type):
         gdal.GDT_Byte:    1,
         gdal.GDT_UInt16:  2,
         gdal.GDT_UInt32:  4,
-        gdal.GDT_Float32: 4
+        gdal.GDT_Float32: 4,
+        gdal.GDT_Float64: 8
     }
     return results.get(gdal_type)
 
@@ -52,11 +54,28 @@ def get_gdal_data_type(type_str):
         return gdal.GDT_Byte
     if (s == 'short') or (s == 'uint16'):
         return gdal.GDT_UInt16
-    if (s == 'uint32'):
+    if s == 'uint32':
         return gdal.GDT_UInt32
     if (s == 'float') or (s == 'float32'):
         return gdal.GDT_Float32
+    if s == 'float64':
+        return gdal.GDT_Float64
     raise Exception('Unrecognized data type string: ' + type_str)
+
+def numpy_dtype_to_gdal_type(dtype):
+
+    if dtype == np.uint8:
+        return gdal.GDT_Byte
+    if dtype == np.uint16:
+        return gdal.GDT_UInt16
+    if dtype == np.uint32:
+        return gdal.GDT_UInt32
+    if dtype == np.float:
+        return gdal.GDT_Float32
+    if dtype == np.float64:
+        return gdal.GDT_Float64
+    raise Exception('Unrecognized numpy data type: ' + dtype)
+
 
 def logger_print(logger, msg):
     '''Print to logger, if present. This helps keeps all messages in sync.'''
