@@ -37,8 +37,10 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 import utilities
+import landsat_utils
 from image_reader import *
 from image_writer import *
+
 
 #------------------------------------------------------------------------------
 
@@ -144,77 +146,6 @@ def try_catch_and_call(*args, **kwargs):
         return -1
 
 
-def allocate_bands_for_spacecraft(landsat_number):
-
-    BAND_COUNTS = {'5':7, '7':9, '8':11}
-
-    num_bands = BAND_COUNTS[landsat_number]
-    data = dict()
-
-    # There are fewer K constants but we store in the the
-    # appropriate band indices.
-    data['FILE_NAME'       ] = [''] * num_bands
-    data['RADIANCE_MULT'   ] = [None] * num_bands
-    data['RADIANCE_ADD'    ] = [None] * num_bands
-    data['REFLECTANCE_MULT'] = [None] * num_bands
-    data['REFLECTANCE_ADD' ] = [None] * num_bands
-    data['K1_CONSTANT'     ] = [None] * num_bands
-    data['K2_CONSTANT'     ] = [None] * num_bands
-
-    return data
-
-def parse_mtl_file(mtl_path):
-    """Parse out the needed values from the MTL file"""
-
-    if not os.path.exists(mtl_path):
-        raise Exception('MTL file not found: ' + mtl_path)
-
-    # These are all the values we want to read in
-    DESIRED_TAGS = ['FILE_NAME', 'RADIANCE_MULT', 'RADIANCE_ADD',
-                    'REFLECTANCE_MULT', 'REFLECTANCE_ADD',
-                    'K1_CONSTANT', 'K2_CONSTANT']
-
-    data = None
-    with open(mtl_path, 'r') as f:
-        for line in f:
-
-            line = line.replace('"','') # Clean up
-
-            # Get the spacecraft ID and allocate storage
-            if 'SPACECRAFT_ID = LANDSAT_' in line:
-                spacecraft_id = line.split('_')[-1].strip()
-                data = allocate_bands_for_spacecraft(spacecraft_id)
-
-            if 'SUN_ELEVATION = ' in line:
-                value = line.split('=')[-1].strip()
-                data['SUN_ELEVATION'] = float(value)
-
-            # Look for the other info we want
-            for tag in DESIRED_TAGS:
-                t = tag + '_BAND'
-                if t in line: # TODO: Better to do regex here
-
-                    # Break out the name, value, and band
-                    parts = line.split('=')
-                    name  = parts[0].strip()
-                    value = parts[1].strip()
-                    try:
-                        # Landsat 7 has two thermal readings from the same wavelength bad
-                        # bit with different gain settings.  Just treat the second file
-                        # as another band (9).
-                        name = name.replace('BAND_6_VCID_1', 'BAND_6')
-                        name = name.replace('BAND_6_VCID_2', 'BAND_9')
-                        band  = int(name.split('_')[-1]) -1 # One-based to zero-based
-                    except ValueError: # Means this is not a proper match
-                        break
-
-                    if tag == 'FILE_NAME':
-                        data[tag][band] = value # String
-                    else:
-                        data[tag][band] = float(value)
-
-    return data
-
 # The np.where clause handles input nodata values.
 
 def apply_toa_radiance(data, factor, constant):
@@ -270,8 +201,8 @@ def main(argsIn):
         os.mkdir(options.output_folder)
 
     # Get all of the TOA coefficients and input file names
-    data = parse_mtl_file(options.mtl_path)
-    print(data)
+    data = landsat_utils.parse_mtl_file(options.mtl_path)
+    #print(data)
 
     pool = multiprocessing.Pool(options.num_processes)
     task_handles = []

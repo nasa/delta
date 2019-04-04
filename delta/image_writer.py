@@ -36,6 +36,21 @@ import utilities
 #=============================================================================
 # Image writer class -> Move to another file!
 
+def write_simple_image(output_path, data, data_type='byte'):
+    """Just dump 2D numpy data to a single channel image file"""
+
+    num_cols  = data.shape[1]
+    num_rows  = data.shape[0]
+    gdal_type = utilities.get_gdal_data_type(data_type)
+    num_bands = 1
+
+    driver = gdal.GetDriverByName('GTiff')
+    handle = driver.Create(output_path, num_cols, num_rows, num_bands, gdal_type)
+    band   = handle.GetRasterBand(1)
+    band.WriteArray(data)
+    band.FlushCache()
+
+
 class TiffWriter:
 
     """Class to manage block writes to a Geotiff file.

@@ -27,6 +27,7 @@ import copy
 import psutil
 import math
 
+from multiprocessing.dummy import Pool as ThreadPool
 from osgeo import gdal
 import numpy as np
 
@@ -96,7 +97,7 @@ class TiffReader:
         """
         size = self.image_size()
         bounds = Rectangle(0, 0, width=size[0], height=size[1])
-        if not bounds.contains(desired_roi):
+        if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(size))
         
@@ -127,8 +128,24 @@ class TiffReader:
         data = band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height())
         return data
 
+
+
 class MultiTiffFileReader():
-    """Class to synchronize loading of multiple pixel-matched files"""
+    """Class to synchronize loading of multiple pixel-matched files.
+    
+    TODO: Support for breaking an image up into chunks!
+    
+    User is going to select a region which is bigger than tiles or chunks,
+    then will process all chunks centered in that region.
+    
+    Need to make sure that each chunk is only used once, minimize tile reloads.
+    
+    Each chunk is associated with a single input pixel, there is a spacing between
+    'center' pixels which defines the overlap.  When a region is called for, generate
+    each chunk inside that region.  Load tiles as needed.
+    Record which regions have already been used.
+    
+    """
   
     def __init__(self):
         
@@ -148,7 +165,7 @@ class MultiTiffFileReader():
             self._image_handles.append(new_handle)
         
     def close(self):
-        """Coles all loaded images."""
+        """Close all loaded images."""
         for h in self._image_handles:
             h.close_image()
         self._image_handles = []
@@ -158,8 +175,12 @@ class MultiTiffFileReader():
         return self._image_handles[0].image_size()
     
     def num_bands(self):
-        return self._image_handles[0].num_bands()
-      
+        """Get the total number of bands across all input images"""
+        b = 0
+        for image in self._image_handles:
+            b += image.num_bands()
+        return b
+
     def nodata_value(self, band=1):
         return self._image_handles[0].nodata_value(band)
       
@@ -181,7 +202,7 @@ class MultiTiffFileReader():
         return total_size / utilities.BYTES_PER_MB
 
     def sleep_until_mem_free_for_roi(self, roi):
-        '''Sleep until enough free memory exists to load this ROI'''
+        """Sleep until enough free memory exists to load this ROI"""
         # TODO: This will have to be more sophisticated.
         WAIT_TIME_SECS = 5
         mb_needed = self.estimate_memory_usage(roi)
@@ -192,6 +213,76 @@ class MultiTiffFileReader():
               print('Need %d MB to load the next ROI, but only have %d MB free. Sleep for %d seconds...'
                     % (mb_needed, mb_free, WAIT_TIME_SECS))
               time.sleep(WAIT_TIME_SECS)
+
+    def _get_band_index(self, image_index):
+        """Return the absolute band index of the first band in the given image index"""
+        b = 0
+        for i in range(0,image_index):
+            b += self._image_handles[i].num_bands()
+        return b
+
+    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1):
+        """Uses multiple threads to populate a numpy data structure with
+           image chunks spanning the given roi, formatted for Tensorflow to load.
+          """
+
+        # Get image chunk centers
+        chunk_info = utilities.generate_chunk_info(chunk_size, chunk_overlap)
+        (chunk_center_list, chunk_roi) = utilities.get_chunk_center_list_in_region(roi,
+                                              chunk_info[0], chunk_info[1], chunk_size)
+        #print('Initial num chunks = ' + str(len(chunk_center_list)))
+        #print('Initial chunk ROI = ' + str(chunk_roi))
+
+        # Throw out any partial chunks.
+        image_size = self.image_size()
+        whole_image_roi = Rectangle(0,0,width=image_size[0],height=image_size[1])
+        (chunk_center_list, chunk_roi) = utilities.restrict_chunk_list_to_roi(
+                                          chunk_center_list, chunk_size, whole_image_roi)
+
+        num_chunks = len(chunk_center_list)
+        #print('Computed chunks = ' + str(chunk_center_list))
+        #print('Final num chunks = ' + str(len(chunk_center_list)))
+        #print('Final chunk ROI = ' + str(chunk_roi))
+
+        # Get the block-aligned read ROI (for the larger chunk containing ROI)
+        read_roi = self._image_handles[0].get_block_aligned_read_roi(chunk_roi)
+        #print('Read ROI = ' + str(read_roi))
+
+        #raise Exception('DEBUG')
+
+        # Adjust centers to be relative to the read ROI.
+        offset_centers = [(c[0]-read_roi.min_x,c[1]-read_roi.min_y)
+                          for c in chunk_center_list]
+
+        # Allocate the output data structure
+        output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
+        data_store = np.zeros(shape=output_shape)
+
+
+        # Internal function to copy all chunks from all bands of one image handle to data_store
+        def process_one_image(image_index):
+            image = self._image_handles[image_index]
+            band_index = self._get_band_index(image_index)
+            for band in range(1,image.num_bands()+1):
+                #print('Data read from image ' + str(image) + ', band ' + str(band))
+                this_data = image.read_pixels(read_roi, band)
+
+                # Copy each of the data chunks into the output.
+                chunk_index = 0
+                for center in offset_centers:
+                    rect = utilities.rect_from_chunk_center(center, chunk_size)
+                    data_store[chunk_index, band_index, :, :] = this_data[rect.min_y:rect.max_y,
+                                                                          rect.min_x:rect.max_x]
+                    chunk_index += 1
+                band_index += 1
+
+        # Call process_one_image in parallel using a thread pool
+        pool = ThreadPool(num_threads)
+        pool.map(process_one_image, range(0,self.num_bands()))
+        pool.close()
+        pool.join()
+        return data_store
+
 
     def process_rois(self, requested_rois, callback_function):
         """Process the given region broken up into blocks using the callback function.
@@ -213,7 +304,7 @@ class MultiTiffFileReader():
         image_size = self.image_size()
         whole_bounds = Rectangle(0, 0, width=image_size[0], height=image_size[1])
         for roi in block_rois:
-            if not whole_bounds.contains(roi):
+            if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi))
 
         # Loop until we have processed all of the blocks.
@@ -246,7 +337,7 @@ class MultiTiffFileReader():
             while index < len(block_rois):
 
                 roi = block_rois[index]
-                if not read_roi.contains(roi):
+                if not read_roi.contains_rect(roi):
                     #print(read_roi + ' does not contain ' + )
                     index += 1
                     continue

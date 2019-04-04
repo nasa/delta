@@ -22,6 +22,7 @@ Miscellaneous utility classes/functions.
 """
 import sys
 import time
+import math
 import gdal
 import psutil
 import traceback
@@ -141,6 +142,82 @@ def exception_print_wrapper(func):
             return -1
     return try_catch_and_call
 
+#------------------------------------------------------------------
+# Functions for working with image chunks.
+
+def generate_chunk_info(chunk_size, chunk_overlap):
+    """From chunk size and overlap,
+       compute chunk_start_offset and chunk_spacing.
+    """
+    chunk_start_offset = int(math.floor(chunk_size / 2))
+    chunk_spacing      = chunk_size - chunk_overlap 
+    return (chunk_start_offset, chunk_spacing)
+
+
+def get_chunk_center_list_in_region(region_rect, chunk_start_offset,
+                                    chunk_spacing, chunk_size):
+    """Return a list of (x,y) chunk centers, one for each chunk that is centered
+       in the region Rectangle.  This function does not prune out chunks that
+       extend out past the right and bottom boundaries of the image.
+    """
+
+    # Figure out the first x/y center that falls in the region.
+    init_x = (int(math.ceil((region_rect.min_x - chunk_start_offset) / chunk_spacing))
+              * chunk_spacing + chunk_start_offset)
+    init_y = (int(math.ceil((region_rect.min_y - chunk_start_offset) / chunk_spacing))
+              * chunk_spacing + chunk_start_offset)
+
+    # Also get the last x/y center in the region
+    last_x = (int(math.floor((region_rect.max_x-1 - init_x) / chunk_spacing))
+              * chunk_spacing + init_x)
+    last_y = (int(math.floor((region_rect.max_y-1 - init_y) / chunk_spacing))
+              * chunk_spacing + init_y)
+
+    # Find the bounding box that includes the full chunks from this region.
+    chunk_bbox = Rectangle(init_x, init_y, init_x, init_y)
+    for x in [init_x, last_x]:
+        for y in [init_y, last_y]:
+            rect = rect_from_chunk_center((x,y), chunk_size)
+            chunk_bbox.expand_to_contain_rect(rect)
+
+    # Generate a list of all of the centers in the region.
+    center_list = []
+    y = init_y
+    while y < region_rect.max_y:
+        x = init_x
+        while x < region_rect.max_x:
+            if not region_rect.contains_pt(x, y):
+                raise Exception('Contain error: ' % (x, y, region_rect))
+            center_list.append((x,y))
+            x += chunk_spacing
+        y += chunk_spacing
+
+    return (center_list, chunk_bbox)
+
+def rect_from_chunk_center(center, chunk_size):
+    """Given a chunk center and size, get the bounding Rectangle"""
+
+    # Offset of the center coord from the top left coord.
+    chunk_center_offset = int(math.floor(chunk_size / 2))
+
+    (x, y) = center
+    min_x = x+chunk_center_offset-chunk_size
+    min_y = y+chunk_center_offset-chunk_size
+    return Rectangle(min_x, min_y, min_x+chunk_size, min_y+chunk_size)
+
+def restrict_chunk_list_to_roi(chunk_center_list, chunk_size, roi):
+    """Remove all chunks from the list which extend out past the ROI"""
+    output_list = []
+    output_chunk_roi = None
+    for center in chunk_center_list:
+        rect = rect_from_chunk_center(center, chunk_size)
+        if roi.contains_rect(rect):
+            output_list.append(center)
+            if output_chunk_roi == None:
+                output_chunk_roi = rect
+            else:
+                output_chunk_roi.expand_to_contain_rect(rect)
+    return (output_list, output_chunk_roi)
 
 #============================================================================
 # Classes
@@ -236,7 +313,7 @@ class Rectangle:
         self.max_x += right
         self.max_y += up
 
-    def expand_to_contain(self, x, y):
+    def expand_to_contain_pt(self, x, y):
         '''Expands the rectangle to contain the given point'''
         if isinstance(self.min_x, float):
             delta = 0.001
@@ -246,7 +323,15 @@ class Rectangle:
         if y < self.min_y: self.min_y = y
         if x > self.max_x: self.max_x = x + delta
         if y > self.max_y: self.max_y = y + delta
-        
+
+    def expand_to_contain_rect(self, other_rect):
+        '''Expands the rectangle to contain the given rectangle'''
+
+        if other_rect.min_x < self.min_x: self.min_x = other_rect.min_x
+        if other_rect.min_y < self.min_y: self.min_y = other_rect.min_y
+        if other_rect.max_x > self.max_x: self.max_x = other_rect.max_x
+        if other_rect.max_y > self.max_y: self.max_y = other_rect.max_y
+
     def get_intersection(self, other_rect):
         '''Returns the overlapping region of two rectangles'''
         overlap = Rectangle(max(self.min_x, other_rect.min_x),
@@ -254,8 +339,16 @@ class Rectangle:
                             min(self.max_x, other_rect.max_x),
                             min(self.max_y, other_rect.max_y))
         return overlap
-        
-    def contains(self, other_rect):
+
+    def contains_pt(self, x, y):
+        '''Returns true if this rect contains the given point'''
+        if self.min_x > x: return False
+        if self.min_y > y: return False
+        if self.max_x < x: return False
+        if self.max_y < y: return False
+        return True
+
+    def contains_rect(self, other_rect):
         '''Returns true if this rect contains all of the other rect'''
         if self.min_x > other_rect.min_x: return False
         if self.min_y > other_rect.min_y: return False
