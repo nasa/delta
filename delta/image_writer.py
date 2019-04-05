@@ -18,7 +18,7 @@
 # __END_LICENSE__
 
 """
-Multi-threaded Geotiff writing class using GDAL.
+Geotiff writing class using GDAL with dedicated writer thread.
 """
 import sys
 import os
@@ -31,9 +31,24 @@ from osgeo import gdal
 import numpy as np
 
 from utilities import Rectangle
+import utilities
 
 #=============================================================================
-# Image writer class -> Move to another file!
+# Image writer class
+
+def write_simple_image(output_path, data, data_type=gdal.GDT_Byte):
+    """Just dump 2D numpy data to a single channel image file"""
+
+    num_cols  = data.shape[1]
+    num_rows  = data.shape[0]
+    num_bands = 1
+
+    driver = gdal.GetDriverByName('GTiff')
+    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
+    band   = handle.GetRasterBand(1)
+    band.WriteArray(data)
+    band.FlushCache()
+
 
 class TiffWriter:
 
@@ -115,22 +130,22 @@ class TiffWriter:
 
             # Write out the block
             try:
-                self._write_geotiff_block_internal(parts[0], parts[1], parts[2])
+                self._write_geotiff_block_internal(parts[0], parts[1], parts[2], parts[3])
                 blockCounter += 1
             except Exception as e:
                 print(str(e))
                 print('Caught exception writing: ' + str(parts[1] +', '+ str(parts[2])))
-                
+
         print('Write thread ended after writing ' + str(blockCounter) +' blocks.')
 
 
-    def _write_geotiff_block_internal(self, data, block_col, block_row):
+    def _write_geotiff_block_internal(self, data, block_col, block_row, band):
         '''Write a single block to disk in a geotiff file'''
 
         if not self._handle:
             raise Exception('Failed to write block: output file not initialized!')
 
-        band = self._handle.GetRasterBand(1)
+        band = self._handle.GetRasterBand(band+1)
         #stuff = dir(band)
         #for s in stuff:
         #    print(s)
@@ -144,7 +159,8 @@ class TiffWriter:
 
 
     def init_output_geotiff(self, path, num_rows, num_cols, noDataValue,
-                            tile_width=256, tile_height=256, metadata=None):
+                            tile_width=256, tile_height=256, metadata=None,
+                            data_type=gdal.GDT_Byte, num_bands=1):
         '''Set up a geotiff file for writing and return the handle.'''
         # TODO: Copy metadata from the source file.
 
@@ -154,23 +170,20 @@ class TiffWriter:
         self._tile_width  = tile_width
 
         # Constants
-        data_type = gdal.GDT_Byte
-        numBands = 1
-        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER']
-        if self._tile_height > 1:
+        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
+        if self._tile_height == self._tile_width: # TODO: Better check?
             options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
                         'BLOCKYSIZE='+str(self._tile_height)]
 
         print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, num_cols, num_rows, numBands, data_type, options)
+        self._handle = driver.Create(path, num_cols, num_rows, num_bands, data_type, options)
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
-        #handle.SetGeoTransform(GeoT)
-        #handle.SetProjection( Projection.ExportToWkt() )
         if (noDataValue != None):
-            self._handle.GetRasterBand(1).SetNoDataValue(noDataValue)
+            for i in range(1,num_bands+1):
+                self._handle.GetRasterBand(i).SetNoDataValue(noDataValue)
 
         # Set the metadata values used in image_reader.py
         # TODO: May need to adjust the order here to work with some files
@@ -180,7 +193,7 @@ class TiffWriter:
             self._handle.SetMetadata    (metadata['metadata'    ])
             self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
 
-    def write_geotiff_block(self, data, block_col, block_row):
+    def write_geotiff_block(self, data, block_col, block_row, band=0):
         '''Add a tile write command to the queue.
            Partial tiles are allowed at the right at bottom edges.
         '''
@@ -216,7 +229,7 @@ class TiffWriter:
 
         # Grab the lock and append to it.
         with self._writeQueueLock:
-              self._writeQueue.append((data, block_col, block_row))
+              self._writeQueue.append((data, block_col, block_row, band))
 
     def finish_writing_geotiff(self):
         '''Call when we have finished writing a geotiff file.'''
@@ -247,7 +260,7 @@ class TiffWriter:
 
         # Make sure that the write queue is empty.
         with self._writeQueueLock:
-            self._writeQueue.clear()
+            self._writeQueue = []
 
         # Finish whatever we are writing, then close the handle.
         print('Closing TIFF handle...')
