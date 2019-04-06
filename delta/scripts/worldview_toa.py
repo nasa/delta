@@ -82,7 +82,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     #print(input_metadata)
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
-    sys.stdout.flush()
+    
 
     X = 0 # Make indices easier to read
     Y = 1
@@ -94,7 +94,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     if tile_size[Y] > 0:
         block_size_out[Y] = int(tile_size[Y])
 
-    #print('Using output tile size: ' + str(block_size_out))
+    print('Using output tile size: ' + str(block_size_out))
+    sys.stdout.flush()
 
     # Make a list of output ROIs
     num_blocks_out = (int(math.ceil(num_cols / block_size_out[X])),
@@ -222,12 +223,10 @@ def apply_toa_reflectance(data, band, factor, width, sun_elevation,
     f = factor[band]
     w = width [band]
 
-    # TODO: Something is wrong here!
     esun    = get_esun_value(satellite, band)
     des2    = earth_sun_distance*earth_sun_distance
-    theta   = np.pi/2 - sun_elevation
+    theta   = np.pi/2.0 - sun_elevation
     scaling = (des2*np.pi) / (esun*math.cos(theta))
-    print('scaling='+str(scaling))
     return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
 
 
@@ -258,7 +257,7 @@ def main(argsIn):
         #                    help="Number of threads to use per process.")
 
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
-                            dest='tile_size', default=[0,0], type=int,
+                            dest='tile_size', default=[256, 256], type=int,
                             help="Specify the output tile size.  Default is to keep the input tile size.")
 
         options = parser.parse_args(argsIn)
@@ -266,15 +265,9 @@ def main(argsIn):
     except argparse.ArgumentError as msg:
         raise Usage(msg)
 
-    #if not os.path.exists(options.output_folder):
-    #    os.mkdir(options.output_folder)
-
     # Get all of the TOA coefficients and input file names
     data = parse_meta_file(options.meta_path)
     print(data)
-
-    #pool = multiprocessing.Pool(options.num_processes)
-    #task_handles = []
 
     scale  = data['ABSCALFACTOR']
     bwidth = data['EFFECTIVEBANDWIDTH']
@@ -290,16 +283,6 @@ def main(argsIn):
         user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
 
     try_catch_and_call(options.image_path, options.output_path, user_function, options.tile_size)
-
-    #raise Exception('DEBUG')
-
-    ## Wait for all the tasks to complete
-    #print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-    #utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
-
-    ## All tasks should be finished, clean up the processing pool
-    #utilities.stop_task_pool(pool)
-    #print('Jobs finished.')
 
     print('WorldView TOA conversion is finished.')
 

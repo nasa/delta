@@ -183,7 +183,7 @@ def main(argsIn):
                             help="Number of parallel processes to use.")
 
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
-                            dest='tile_size', default=[0,0], type=int,
+                            dest='tile_size', default=[256, 256], type=int,
                             help="Specify the output tile size.  Default is to keep the input tile size.")
 
         options = parser.parse_args(argsIn)

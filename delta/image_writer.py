@@ -171,9 +171,9 @@ class TiffWriter:
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        if self._tile_height == self._tile_width: # TODO: Better check?
-            options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
-                        'BLOCKYSIZE='+str(self._tile_height)]
+        # TODO: Some tile sizes fail to write if copied from the input image!!
+        options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
+                    'BLOCKYSIZE='+str(self._tile_height)]
 
         print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
