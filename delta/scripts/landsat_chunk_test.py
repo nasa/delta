@@ -98,8 +98,6 @@ def main(argsIn):
     input_reader = MultiTiffFileReader()
     input_reader.load_images(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
-    input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
-    sys.stdout.flush()
 
     # Process the entire input image(s) into chunks at once.
     roi = Rectangle(0,0,width=num_cols,height=num_rows)

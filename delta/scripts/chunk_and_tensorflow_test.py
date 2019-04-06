@@ -149,8 +149,6 @@ def main(argsIn):
     input_reader = MultiTiffFileReader()
     input_reader.load_images(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
-    input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
-    sys.stdout.flush()
 
     # Process the entire input image(s) into chunks at once.
     roi = Rectangle(0,0,width=num_cols,height=num_rows)
@@ -177,8 +175,8 @@ def main(argsIn):
 
     # Here is point where we would want to split the data into training and testing data
     # as well as labels and input data.
-    all_data = chunk_data[:,:7,:,:]
-    all_labels = chunk_data[:,7,:,:]
+    all_data   = chunk_data[:,:7,:,:] # Use bands 0-6 to train on
+    all_labels = chunk_data[:,7,:,:] # Use band 7 as the label?
     
 #     for idx in range(num_chunks):
 #         print(np.unique(all_labels[idx,:,:]))
@@ -186,17 +184,20 @@ def main(argsIn):
 #         plt.imshow(all_labels[idx,:,:])
 #         plt.show()
 
-    split_fraction = 0.7
+    split_fraction = 0.7 # This percentage of data becomes training data
     mlflow.log_param('data_split', split_fraction)
     # shuffle data:
     shuffled_idxs = list(range(num_chunks))
     random.shuffle(shuffled_idxs)
-    split_idx = int(split_fraction * num_chunks)
-    train_data = all_data[shuffled_idxs[:split_idx],:,:,:]
-    test_data = all_data[shuffled_idxs[split_idx:],:,:,:]
+    split_idx  = int(split_fraction * num_chunks)
+    train_idx  = shuffled_idxs[:split_idx]
+    test_idx   = shuffled_idxs[split_idx:]
+    train_data = all_data[train_idx,:,:,:]
+    test_data  = all_data[test_idx, :,:,:]
     # Want to get the pixel at the middle (approx) of the chunk.
-    train_labels = all_labels[shuffled_idxs[:split_idx],int(options.chunk_size/2),int(options.chunk_size/2)]
-    test_labels = all_labels[shuffled_idxs[split_idx:],int(options.chunk_size/2),int(options.chunk_size/2)]
+    center_pixel = int(options.chunk_size/2)
+    train_labels = all_labels[train_idx,center_pixel,center_pixel] # Center pixel becomes the label?
+    test_labels  = all_labels[test_idx, center_pixel,center_pixel]
 
 
     batch_size = 2048
@@ -207,13 +208,13 @@ def main(argsIn):
     mlflow.log_param('num_test', num_chunks - split_idx) 
 
     # Remove one band for the labels
-    model = make_model(num_bands-1,options.chunk_size)
-    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error',metrics=['accuracy'])
-    history = model.fit(train_data,train_labels,epochs=options.num_epochs,batch_size=batch_size)
+    model = make_model(num_bands-1, options.chunk_size)
+    model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+    history = model.fit(train_data, train_labels, epochs=options.num_epochs, batch_size=batch_size)
    
     for idx in range(options.num_epochs):
         mlflow.log_metric('loss', history.history['loss'][idx])
-        mlflow.log_metric('acc', history.history['acc'][idx])
+        mlflow.log_metric('acc',  history.history['acc' ][idx])
     ### end for
     mlflow.end_run()
 
