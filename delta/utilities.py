@@ -161,6 +161,17 @@ def exception_print_wrapper(func):
             return -1
     return try_catch_and_call
 
+
+def untar_to_folder(tar_path, untar_folder):
+    """Un-tar a file into the given folder"""
+
+    # Force create the output folder
+    os.system('mkdir -p ' + untar_folder)
+
+    cmd = 'tar -xf ' + tar_path + ' --directory ' + untar_folder
+    print(cmd)
+    os.system(cmd)
+
 #------------------------------------------------------------------
 # Functions for working with image chunks.
 

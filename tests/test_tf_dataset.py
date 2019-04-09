@@ -14,6 +14,8 @@ import image_reader
 import utilities
 from dataset_tools import *
 
+# Test out TensorFlow Dataset classes.
+
 
 def main(argsIn):
 

@@ -30,6 +30,21 @@ import image_reader
 import utilities
 
 
+def make_landsat_list(top_folder, output_path, ext, num_regions):
+    '''Write a file listing all of the files in a (recursive) folder
+       matching the provided extension.
+    '''
+
+    num_entries = 0
+    with open(output_path, 'w') as f:
+        for root, directories, filenames in os.walk(top_folder):
+            for filename in filenames:
+                if os.path.splitext(filename)[1] == ext:
+                    path = os.path.join(root,filename)
+                    for r in num_regions:
+                        f.write(path + ',' + str(r) +'\n')
+                        num_entries += 1
+    return num_entries
 
 def get_roi_horiz_band_split(image_size, region, num_splits):
     """Return the ROI of an image to load given the region.
@@ -76,13 +91,83 @@ def get_roi_tile_split(image_size, region, num_splits):
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
 
-def load_image_region(path, region, roi_function, chunk_size, chunk_overlap, num_threads):
+def get_landsat_bands_to_use(sensor_name):
+    """Return the list of one-based band indices that we are currently
+       using to process the given landsat sensor.
+    """
+
+    # For now just the 30 meter bands, in original order.
+    LS5_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
+    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
+    LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
+
+    if '5' sensor_name:
+        bands = LS5_DESIRED_BANDS
+        else:
+            if '7' sensor_name:
+                bands = LS7_DESIRED_BANDS
+            else:
+                if '8' sensor_name:
+                    bands = LS8_DESIRED_BANDS
+                else:
+                    raise Exception('Unknown landsat type: ' + sensor_name)
+    return bands
+
+def prep_landsat_image(path)
+    """Prepares a Landsat file from the archive for processing.
+       Returns [mtl_path, band, paths, in, order, ...]
+       TODO: Apply TOA conversion!
+       TODO: Intelligent caching!
+    """
+
+    BASE_FOLDER = '/nobackup/smcmich1/delta/landsat' # TODO
+
+    # Get info out of the filename
+    fname  = os.path.basename(path)
+    parts  = fname.split('_')
+    sensor = parts[0]
+    lpath  = parts[2][0:3]
+    lrow   = parts[2][3:6]
+    date   = parts[3]
+
+    # Unpack the input file
+    untar_folder = os.path.join(BASE_FOLDER, sensor, lpath, lrow, date)
+    utilities.untar_to_folder(path, untar_folder)
+
+    # Get the files we are interested in
+    new_path = os.path.join(untar_folder, fname)
+
+    bands = get_landsat_bands_to_use(sensor)
+
+    # Generate all the band file names
+    mtl_path     = new_path.replace('.tar.gz', '_MTL.txt')
+    output_paths = [mtl_path]
+    for band in bands:
+        band_path = new_path.replace('.tar.gz', '_B'+str(band)+'.TIF')
+        output_paths.append(band_path)
+
+    # Check that the files exist
+    for p in output_paths:
+        if not os.path.exists(p):
+            raise Exception('Did not find expected file: ' + p
+                            + ' after unpacking tar file ' + path)
+
+    return output_paths
+
+
+
+def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overlap, num_threads):
     """Load all image chunks for a given region of the image.
        The provided function converts the region to the image ROI.
     """
 
+    # Our input list is stored as "path, region" strings
+    parts  = line.split(',')
+    path   = parts[0].strip()
+    region = int(parts[1].strip())
+
     # Set up the input image handle
-    input_paths  = [path]
+    input_paths  = prep_function(paths)
     input_reader = image_reader.MultiTiffFileReader()
     input_reader.load_images(input_paths)
     image_size = input_reader.image_size()
@@ -90,23 +175,11 @@ def load_image_region(path, region, roi_function, chunk_size, chunk_overlap, num
     # Call the provided function to get the ROI to load
     roi = roi_function(image_size, region)
 
-    # Until we are ready to do a larger test, just return a short vector
-    return np.array([roi.min_x, roi.min_y, roi.max_x, roi.max_y], dtype=np.int32) # DEBUG
+    ## Until we are ready to do a larger test, just return a short vector
+    #return np.array([roi.min_x, roi.min_y, roi.max_x, roi.max_y], dtype=np.int32) # DEBUG
 
     # Load the chunks from inside the ROI
+    print('Loading chunk data from file ' + path + ' using ROI: ' + str(roi))
     chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, num_threads)
 
     return chunk_data
-
-
-def prep_input_pairs(image_file_list, num_regions):
-    """For each image generate a pair with each region"""
-
-    image_out  = []
-    region_out = []
-    for i in image_file_list:
-        for r in range(0,num_regions):
-            image_out.append(i)
-            region_out.append(r)
-
-    return (image_out, region_out)
