@@ -23,6 +23,8 @@ Functions to support the Landsat satellites.
 
 import os
 
+import utilities
+
 def allocate_bands_for_spacecraft(landsat_number):
 
     BAND_COUNTS = {'5':7, '7':9, '8':11}
@@ -93,3 +95,90 @@ def parse_mtl_file(mtl_path):
                         data[tag][band] = float(value)
 
     return data
+
+
+def get_landsat_bands_to_use(sensor_name):
+    """Return the list of one-based band indices that we are currently
+       using to process the given landsat sensor.
+    """
+
+    # For now just the 30 meter bands, in original order.
+    LS5_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
+    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
+    LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
+
+    if '5' in sensor_name:
+        bands = LS5_DESIRED_BANDS
+    else:
+        if '7' in sensor_name:
+            bands = LS7_DESIRED_BANDS
+        else:
+            if '8' in sensor_name:
+                bands = LS8_DESIRED_BANDS
+            else:
+                raise Exception('Unknown landsat type: ' + sensor_name)
+    return bands
+
+def check_if_files_present(mtl_data, folder):
+    """Return True if all the files associated with the MTL data are present."""
+
+    for b in mtl_data['FILE_NAME']:
+        band_path = os.path.join(folder, b)
+        if not os.path.exists(band_path): # TODO: Verify integrity!
+            return False
+    return True
+
+def prep_landsat_image(path, cache_folder):
+    """Prepares a Landsat file from the archive for processing.
+       Returns [band, paths, in, order, ...]
+       TODO: Apply TOA conversion!
+       TODO: Intelligent caching!
+    """
+
+    # Get info out of the filename
+    fname  = os.path.basename(path)
+    parts  = fname.split('_')
+    sensor = parts[0]
+    lpath  = parts[2][0:3]
+    lrow   = parts[2][3:6]
+    date   = parts[3]
+
+    untar_folder = os.path.join(cache_folder, sensor, lpath, lrow, date)
+
+    # Check if we already unpacked this data
+    all_files_present = False
+    if os.path.exists(untar_folder):
+        existing_files = os.listdir(untar_folder)
+        for f in existing_files:
+            if '_MTL.txt' in f:
+                mtl_path = os.path.join(untar_folder, f)
+                mtl_data = parse_mtl_file(mtl_path)
+
+                all_files_present = check_if_files_present(mtl_data, untar_folder)
+                break
+
+    if all_files_present:
+        print('Already have unpacked files in ' + untar_folder)
+    else:
+        print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
+        utilities.untar_to_folder(path, untar_folder)
+
+    # Get the files we are interested in
+    new_path = os.path.join(untar_folder, fname)
+
+    bands = get_landsat_bands_to_use(sensor)
+
+    # Generate all the band file names
+    mtl_path     = new_path.replace('.tar.gz', '_MTL.txt')
+    output_paths = []#[mtl_path] # TODO: Return the MTL path?
+    for band in bands:
+        band_path = new_path.replace('.tar.gz', '_B'+str(band)+'.TIF')
+        output_paths.append(band_path)
+
+    # Check that the files exist
+    for p in output_paths:
+        if not os.path.exists(p):
+            raise Exception('Did not find expected file: ' + p
+                            + ' after unpacking tar file ' + path)
+
+    return output_paths

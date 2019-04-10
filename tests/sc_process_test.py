@@ -18,9 +18,17 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../d
 
 import image_reader
 import utilities
+import landsat_utils
 import dataset_tools
 
-# Test out large scale data importing for the supercomputer.
+# Test out importing tarred Landsat images into a dataset which is passed
+# to a training function.
+
+# WARNING!!!!!!!!
+# There appears to be a serious bug in TensorFlow that affects this test,
+# but it can be easily fixed by manually applying this fix to your
+# TensorFlow installation:
+#   https://github.com/tensorflow/tensorflow/pull/24522/files
 
 
 def make_model(channel, in_len):
@@ -71,48 +79,67 @@ def init_network(num_bands, chunk_size):
 
 def main(argsIn):
 
-    # TODO: Use a much larger list!
     # Make a list of source landsat files from the NEX collection
-    input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/'
+    
+    # Supercomputer
+    # TODO: Use a much larger list!
+    #input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/' 
+    #list_path = '/nobackup/smcmich1/delta/ls_list.txt'
+    #CACHE_FOLDER = '/nobackup/smcmich1/delta/landsat'
+    
+    # A local test
+    input_folder = '/home/smcmich1/data/landsat/tars'
+    list_path = '/home/smcmich1/data/landsat/ls_list.txt'
+    CACHE_FOLDER = '/home/smcmich1/data/landsat/cache'
     ext = '.gz'
-    list_path = '/nobackup/smcmich1/delta/ls_list.txt'
+
+    # Generate a text file list of all the input images, plus region indices.
     num_regions = 4
     num_entries = dataset_tools.make_landsat_list(input_folder, list_path, ext, num_regions)
-    
-    print('Wrote input file list of length: ' + str(num_entries))
-    
-    dataset = tf.data.TextLineDataset(list_path)
-    
-    #raise Exception('DEBUG')
 
+    print('Wrote input file list of length: ' + str(num_entries))
+
+    dataset = tf.data.TextLineDataset(list_path)
 
     CHUNK_SIZE = 256
     NUM_EPOCHS = 1
+    
+    TEST_LIMIT = 1 # DEBUG: Only process this many image areas!
 
     # TODO: We can define a different ROI function for each type of input image to
     #       achieve the sizes we want.
+    # TODO: These values need to by synchronized with num_regions above!
     row_roi_split_funct  = functools.partial(dataset_tools.get_roi_horiz_band_split, num_splits=4)
     tile_roi_split_funct = functools.partial(dataset_tools.get_roi_tile_split,       num_splits=2)
 
+    # This function prepares landsat images and returns the band paths
+    ls_prep_func = functools.partial(landsat_utils.prep_landsat_image,
+                                    cache_folder=CACHE_FOLDER)
+
+    # This function loads the data and formats it for TF
     data_load_function = functools.partial(dataset_tools.load_image_region,
-                                           prep_function=dataset_tools.prep_landsat_image,
+                                           prep_function=ls_prep_func,
                                            roi_function=row_roi_split_funct,
                                            chunk_size=CHUNK_SIZE, chunk_overlap=0, num_threads=2)
 
+    # This function generates fake label info for loaded data.
     label_gen_function = functools.partial(dataset_tools.load_fake_labels,
-                                           prep_function=dataset_tools.prep_landsat_image,
+                                           prep_function=ls_prep_func,
                                            roi_function=row_roi_split_funct,
                                            chunk_size=CHUNK_SIZE, chunk_overlap=0)
 
 
-    # Tell TF how to load our data
-    chunk_set = dataset.map( lambda lines: tf.py_func(data_load_function, [lines], [tf.float64]),
+    # Tell TF to use the functions above to load our data.
+    chunk_set = dataset.map( lambda lines: tf.py_func(data_load_function,
+                                                      [lines], [tf.float64]),
                              num_parallel_calls=1)
 
-    label_set = dataset.map( lambda lines: tf.py_func(label_gen_function, [lines], [tf.int32]),
+    label_set = dataset.map( lambda lines: tf.py_func(label_gen_function,
+                                                      [lines], [tf.int32]),
                              num_parallel_calls=1)
-    
-    dataset = tf.data.Dataset.zip((chunk_set, label_set)) # Make it into (data, label) pairs.
+
+    # Pair the data and labels in our dataset
+    dataset = tf.data.Dataset.zip((chunk_set, label_set))
 
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
@@ -121,7 +148,6 @@ def main(argsIn):
     # TODO: Set this up to help with parallelization
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
-    TEST_LIMIT = 1 # Only process this many image areas!
     dataset = dataset.take(TEST_LIMIT) # DEBUG
     if num_entries > TEST_LIMIT:
         num_entries = TEST_LIMIT
@@ -129,11 +155,11 @@ def main(argsIn):
     # TODO: Is it a problem if image loads return different number of chunks?
     #       - May need to assure that each ROI contains the same number.
 
-    # Start a CPU-only session
-    config = tf.ConfigProto(device_count = {'GPU': 0})
-    sess   = tf.InteractiveSession(config=config)
+    ## Start a CPU-only session
+    #config = tf.ConfigProto(device_count = {'GPU': 0})
+    #sess   = tf.InteractiveSession(config=config)
 
-    num_bands = len(dataset_tools.get_landsat_bands_to_use('LS8'))
+    num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     print('Num bands = ' + str(num_bands))
     model = init_network(num_bands, CHUNK_SIZE)
 

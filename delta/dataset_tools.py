@@ -28,6 +28,7 @@ import numpy as np
 
 import image_reader
 import utilities
+import landsat_utils
 
 # TODO: Generalize
 def make_landsat_list(top_folder, output_path, ext, num_regions):
@@ -89,72 +90,6 @@ def get_roi_tile_split(image_size, region, num_splits):
     max_y = math.floor(tile_height * (tile_row+1.0))
 
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
-
-
-def get_landsat_bands_to_use(sensor_name):
-    """Return the list of one-based band indices that we are currently
-       using to process the given landsat sensor.
-    """
-
-    # For now just the 30 meter bands, in original order.
-    LS5_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
-    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
-    LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
-
-    if '5' in sensor_name:
-        bands = LS5_DESIRED_BANDS
-    else:
-        if '7' in sensor_name:
-            bands = LS7_DESIRED_BANDS
-        else:
-            if '8' in sensor_name:
-                bands = LS8_DESIRED_BANDS
-            else:
-                raise Exception('Unknown landsat type: ' + sensor_name)
-    return bands
-
-def prep_landsat_image(path):
-    """Prepares a Landsat file from the archive for processing.
-       Returns [mtl_path, band, paths, in, order, ...]
-       TODO: Apply TOA conversion!
-       TODO: Intelligent caching!
-    """
-
-    BASE_FOLDER = '/nobackup/smcmich1/delta/landsat' # TODO
-
-    # Get info out of the filename
-    fname  = os.path.basename(path)
-    parts  = fname.split('_')
-    sensor = parts[0]
-    lpath  = parts[2][0:3]
-    lrow   = parts[2][3:6]
-    date   = parts[3]
-
-    # TODO: Skip if files are present!
-    # Unpack the input file
-    untar_folder = os.path.join(BASE_FOLDER, sensor, lpath, lrow, date)
-    print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
-    utilities.untar_to_folder(path, untar_folder)
-
-    # Get the files we are interested in
-    new_path = os.path.join(untar_folder, fname)
-
-    bands = get_landsat_bands_to_use(sensor)
-
-    # Generate all the band file names
-    mtl_path     = new_path.replace('.tar.gz', '_MTL.txt')
-    output_paths = []#[mtl_path] # TODO: Return the MTL path!
-    for band in bands:
-        band_path = new_path.replace('.tar.gz', '_B'+str(band)+'.TIF')
-        output_paths.append(band_path)
-
-    # Check that the files exist
-    for p in output_paths:
-        if not os.path.exists(p):
-            raise Exception('Did not find expected file: ' + p
-                            + ' after unpacking tar file ' + path)
-
-    return output_paths
 
 
 
