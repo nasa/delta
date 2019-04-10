@@ -29,7 +29,7 @@ import numpy as np
 import image_reader
 import utilities
 
-
+# TODO: Generalize
 def make_landsat_list(top_folder, output_path, ext, num_regions):
     '''Write a file listing all of the files in a (recursive) folder
        matching the provided extension.
@@ -41,7 +41,7 @@ def make_landsat_list(top_folder, output_path, ext, num_regions):
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ext:
                     path = os.path.join(root,filename)
-                    for r in num_regions:
+                    for r in range(0,num_regions):
                         f.write(path + ',' + str(r) +'\n')
                         num_entries += 1
     return num_entries
@@ -101,19 +101,19 @@ def get_landsat_bands_to_use(sensor_name):
     LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
     LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
 
-    if '5' sensor_name:
+    if '5' in sensor_name:
         bands = LS5_DESIRED_BANDS
+    else:
+        if '7' in sensor_name:
+            bands = LS7_DESIRED_BANDS
         else:
-            if '7' sensor_name:
-                bands = LS7_DESIRED_BANDS
+            if '8' in sensor_name:
+                bands = LS8_DESIRED_BANDS
             else:
-                if '8' sensor_name:
-                    bands = LS8_DESIRED_BANDS
-                else:
-                    raise Exception('Unknown landsat type: ' + sensor_name)
+                raise Exception('Unknown landsat type: ' + sensor_name)
     return bands
 
-def prep_landsat_image(path)
+def prep_landsat_image(path):
     """Prepares a Landsat file from the archive for processing.
        Returns [mtl_path, band, paths, in, order, ...]
        TODO: Apply TOA conversion!
@@ -130,8 +130,10 @@ def prep_landsat_image(path)
     lrow   = parts[2][3:6]
     date   = parts[3]
 
+    # TODO: Skip if files are present!
     # Unpack the input file
     untar_folder = os.path.join(BASE_FOLDER, sensor, lpath, lrow, date)
+    print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
     utilities.untar_to_folder(path, untar_folder)
 
     # Get the files we are interested in
@@ -141,7 +143,7 @@ def prep_landsat_image(path)
 
     # Generate all the band file names
     mtl_path     = new_path.replace('.tar.gz', '_MTL.txt')
-    output_paths = [mtl_path]
+    output_paths = []#[mtl_path] # TODO: Return the MTL path!
     for band in bands:
         band_path = new_path.replace('.tar.gz', '_B'+str(band)+'.TIF')
         output_paths.append(band_path)
@@ -162,12 +164,13 @@ def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overl
     """
 
     # Our input list is stored as "path, region" strings
+    line   = line.decode() # Convert from TF to string type
     parts  = line.split(',')
     path   = parts[0].strip()
     region = int(parts[1].strip())
 
     # Set up the input image handle
-    input_paths  = prep_function(paths)
+    input_paths  = prep_function(path)
     input_reader = image_reader.MultiTiffFileReader()
     input_reader.load_images(input_paths)
     image_size = input_reader.image_size()
@@ -182,4 +185,40 @@ def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overl
     print('Loading chunk data from file ' + path + ' using ROI: ' + str(roi))
     chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, num_threads)
 
+    print('Chunk data shape = ' + str(chunk_data.shape))
     return chunk_data
+
+def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overlap):
+    """Use to generate fake label data for load_image_region"""
+
+    # Our input list is stored as "path, region" strings
+    #print('Label data input = ' + str(line))
+    line   = line.decode() # Convert from TF format to string
+    parts  = line.split(',')
+    path   = parts[0].strip()
+    region = int(parts[1].strip())
+
+    # Set up the input image handle
+    input_paths  = prep_function(path)
+    input_reader = image_reader.MultiTiffFileReader()
+    input_reader.load_images([input_paths[0]]) # Just the first band
+    image_size = input_reader.image_size()
+
+    # Call the provided function to get the ROI to load
+    roi = roi_function(image_size, region)
+
+    #return np.array([0, 1, 2, 3], dtype=np.int32) # DEBUG
+
+    # Load the chunks from inside the ROI
+    chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap)
+
+    # Make a fake label
+    full_shape = chunk_data.shape[0]
+    print('label shape in = ' + str(chunk_data.shape))
+    chunk_data = np.zeros(full_shape, dtype=np.int32)
+    print('label shape out = ' + str(chunk_data.shape))
+    chunk_data[ 0:10] = 1 # Junk labels
+    chunk_data[10:20] = 2
+    return chunk_data
+
+

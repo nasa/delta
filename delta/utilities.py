@@ -21,6 +21,7 @@
 Miscellaneous utility classes/functions.
 """
 import sys
+import os
 import time
 import math
 import gdal
