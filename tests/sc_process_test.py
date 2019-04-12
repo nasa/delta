@@ -20,6 +20,7 @@ import image_reader
 import utilities
 import landsat_utils
 import dataset_tools
+from disk_folder_cache import DiskFolderCache
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.
@@ -84,14 +85,18 @@ def main(argsIn):
     # Supercomputer
     # TODO: Use a much larger list!
     #input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/' 
-    #list_path = '/nobackup/smcmich1/delta/ls_list.txt'
-    #CACHE_FOLDER = '/nobackup/smcmich1/delta/landsat'
+    #list_path    = '/nobackup/smcmich1/delta/ls_list.txt'
+    #cache_folder = '/nobackup/smcmich1/delta/landsat'
     
     # A local test
     input_folder = '/home/smcmich1/data/landsat/tars'
-    list_path = '/home/smcmich1/data/landsat/ls_list.txt'
-    CACHE_FOLDER = '/home/smcmich1/data/landsat/cache'
+    list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
+    cache_folder = '/home/smcmich1/data/landsat/cache'
     ext = '.gz'
+
+    # This will clean up our unpacked folders if too many are created
+    cache_limit = 4
+    disk_cache_manager = DiskFolderCache(cache_folder, cache_limit)
 
     # Generate a text file list of all the input images, plus region indices.
     num_regions = 4
@@ -114,7 +119,7 @@ def main(argsIn):
 
     # This function prepares landsat images and returns the band paths
     ls_prep_func = functools.partial(landsat_utils.prep_landsat_image,
-                                    cache_folder=CACHE_FOLDER)
+                                     cache_manager=disk_cache_manager)
 
     # This function loads the data and formats it for TF
     data_load_function = functools.partial(dataset_tools.load_image_region,

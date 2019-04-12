@@ -128,11 +128,10 @@ def check_if_files_present(mtl_data, folder):
             return False
     return True
 
-def prep_landsat_image(path, cache_folder):
+def prep_landsat_image(path, cache_manager):
     """Prepares a Landsat file from the archive for processing.
        Returns [band, paths, in, order, ...]
        TODO: Apply TOA conversion!
-       TODO: Intelligent caching!
     """
 
     # Get info out of the filename
@@ -143,7 +142,9 @@ def prep_landsat_image(path, cache_folder):
     lrow   = parts[2][3:6]
     date   = parts[3]
 
-    untar_folder = os.path.join(cache_folder, sensor, lpath, lrow, date)
+    # Get the folder where this will be stored from the cach manager
+    name = '_'.join([sensor, lpath, lrow, date])
+    untar_folder = cache_manager.get_cache_folder(name)
 
     # Check if we already unpacked this data
     all_files_present = False
