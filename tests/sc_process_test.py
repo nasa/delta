@@ -89,9 +89,10 @@ def main(argsIn):
     #cache_folder = '/nobackup/smcmich1/delta/landsat'
     
     # A local test
-    input_folder = '/home/smcmich1/data/landsat/tars'
-    list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
-    cache_folder = '/home/smcmich1/data/landsat/cache'
+    user='pfurlong'
+    input_folder = '/home/%s/data/landsat/tars' % (user,)
+    list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
+    cache_folder = '/home/%s/data/landsat/cache' % (user,)
     ext = '.gz'
 
     # This will clean up our unpacked folders if too many are created
@@ -107,9 +108,9 @@ def main(argsIn):
     dataset = tf.data.TextLineDataset(list_path)
 
     CHUNK_SIZE = 256
-    NUM_EPOCHS = 1
+    NUM_EPOCHS = 5
     
-    TEST_LIMIT = 1 # DEBUG: Only process this many image areas!
+    TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
     # TODO: We can define a different ROI function for each type of input image to
     #       achieve the sizes we want.
@@ -161,16 +162,17 @@ def main(argsIn):
     #       - May need to assure that each ROI contains the same number.
 
     ## Start a CPU-only session
-    #config = tf.ConfigProto(device_count = {'GPU': 0})
-    #sess   = tf.InteractiveSession(config=config)
+#     config = tf.ConfigProto(device_count = {'GPU': 0})
+#     sess   = tf.InteractiveSession(config=config)
 
     num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     print('Num bands = ' + str(num_bands))
     model = init_network(num_bands, CHUNK_SIZE)
 
     # TODO: Does epochs need to be set here too?
-    BATCH_SIZE = 1 # TODO: Difference between number of regions and number of chunks!
-    history = model.fit(dataset, epochs=NUM_EPOCHS,
+    BATCH_SIZE = 4 # TODO: Difference between number of regions and number of chunks!
+    print(num_entries,num_entries//BATCH_SIZE)
+    history = model.fit(dataset.repeat(), epochs=NUM_EPOCHS,
                         steps_per_epoch=num_entries//BATCH_SIZE)
 #, batch_size=2048)
 
