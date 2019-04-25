@@ -89,6 +89,10 @@ def main(argsIn):
     #cache_folder = '/nobackup/smcmich1/delta/landsat'
     
     # A local test
+    #input_folder = '/home/smcmich1/data/landsat/tars'
+    #list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
+    #cache_folder = '/home/smcmich1/data/landsat/cache'
+
     user='pfurlong'
     input_folder = '/home/%s/data/landsat/tars' % (user,)
     list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
@@ -104,6 +108,9 @@ def main(argsIn):
     num_entries = dataset_tools.make_landsat_list(input_folder, list_path, ext, num_regions)
 
     print('Wrote input file list of length: ' + str(num_entries))
+    if num_entries == 0:
+        print('No input files detected, quitting!')
+        return
 
     dataset = tf.data.TextLineDataset(list_path)
 
