@@ -89,14 +89,14 @@ def main(argsIn):
     #cache_folder = '/nobackup/smcmich1/delta/landsat'
     
     # A local test
-    #input_folder = '/home/smcmich1/data/landsat/tars'
-    #list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
-    #cache_folder = '/home/smcmich1/data/landsat/cache'
+    input_folder = '/home/smcmich1/data/landsat/tars'
+    list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
+    cache_folder = '/home/smcmich1/data/landsat/cache'
 
-    user='pfurlong'
-    input_folder = '/home/%s/data/landsat/tars' % (user,)
-    list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
-    cache_folder = '/home/%s/data/landsat/cache' % (user,)
+    #user='pfurlong'
+    #input_folder = '/home/%s/data/landsat/tars' % (user,)
+    #list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
+    #cache_folder = '/home/%s/data/landsat/cache' % (user,)
     ext = '.gz'
 
     # This will clean up our unpacked folders if too many are created
@@ -112,10 +112,13 @@ def main(argsIn):
         print('No input files detected, quitting!')
         return
 
+    # This dataset returns the lines from the text file as entries.
     dataset = tf.data.TextLineDataset(list_path)
 
+    # TODO: Figure out what reasonable values are here
     CHUNK_SIZE = 256
     NUM_EPOCHS = 5
+    BATCH_SIZE = 4
     
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
@@ -151,12 +154,23 @@ def main(argsIn):
                                                       [lines], [tf.int32]),
                              num_parallel_calls=1)
 
+
+    # Break up the chunk sets to individual chunks
+    # TODO: Does this improve things?
+    chunk_set = chunk_set.flat_map(lambda x: tf.data.Dataset().from_tensor_slices(x))
+    label_set = label_set.flat_map(lambda x: tf.data.Dataset().from_tensor_slices(x))
+
     # Pair the data and labels in our dataset
     dataset = tf.data.Dataset.zip((chunk_set, label_set))
 
+    # Filter out all chunks with zero (nodata) values
+    dataset = dataset.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
+    # If we broke up the dataset to filter it, we can reassemble it here
+    dataset = dataset.batch(BATCH_SIZE)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
-    #dataset = dataset.repeat(NUM_EPOCHS)
+    dataset = dataset.repeat()#(NUM_EPOCHS) # Helps with steps_per_epoch math below...
 
     # TODO: Set this up to help with parallelization
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
@@ -165,21 +179,16 @@ def main(argsIn):
     if num_entries > TEST_LIMIT:
         num_entries = TEST_LIMIT
 
-    # TODO: Is it a problem if image loads return different number of chunks?
-    #       - May need to assure that each ROI contains the same number.
-
     ## Start a CPU-only session
-#     config = tf.ConfigProto(device_count = {'GPU': 0})
-#     sess   = tf.InteractiveSession(config=config)
+    #config = tf.ConfigProto(device_count = {'GPU': 0})
+    #sess   = tf.InteractiveSession(config=config)
 
     num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     print('Num bands = ' + str(num_bands))
     model = init_network(num_bands, CHUNK_SIZE)
 
-    # TODO: Does epochs need to be set here too?
-    BATCH_SIZE = 4 # TODO: Difference between number of regions and number of chunks!
     print(num_entries,num_entries//BATCH_SIZE)
-    history = model.fit(dataset.repeat(), epochs=NUM_EPOCHS,
+    history = model.fit(dataset, epochs=NUM_EPOCHS,
                         steps_per_epoch=num_entries//BATCH_SIZE)
 #, batch_size=2048)
 

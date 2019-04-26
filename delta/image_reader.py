@@ -261,8 +261,8 @@ class MultiTiffFileReader():
 
         # Internal function to copy all chunks from all bands of one image handle to data_store
         def process_one_image(image_index):
-            image = self._image_handles[image_index]
-            band_index = self._get_band_index(image_index)
+            image      = self._image_handles[image_index]
+            band_index = self._get_band_index(image_index) # The first index of one or more sequential bands
             for band in range(1,image.num_bands()+1):
                 #print('Data read from image ' + str(image) + ', band ' + str(band))
                 this_data = image.read_pixels(read_roi, band)

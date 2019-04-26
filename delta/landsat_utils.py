@@ -131,6 +131,7 @@ def check_if_files_present(mtl_data, folder):
 def prep_landsat_image(path, cache_manager):
     """Prepares a Landsat file from the archive for processing.
        Returns [band, paths, in, order, ...]
+       TODO: Handle bands which are not 30 meters!
        TODO: Apply TOA conversion!
     """
 
