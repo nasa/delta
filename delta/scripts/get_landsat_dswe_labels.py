@@ -44,6 +44,22 @@ import landsat_utils
 
 #------------------------------------------------------------------------------
 
+def look_for_file(folder, contains):
+    """Return the name of a file inside folder that has all strings
+       in the 'contains' list.
+    """
+    
+    files = os.listdir(folder)
+    for f in files:
+        good = True
+        for c in contains:
+            if c not in f:
+                good = False
+                break
+        if good:
+            return os.path.join(folder, f)
+    return None
+    
 
 def unpack_inputs(tar_folder, unpack_folder):
     """Make sure all of the input label files are untarred.
@@ -57,26 +73,29 @@ def unpack_inputs(tar_folder, unpack_folder):
     file_list = []
 
     # Loop through tar files
-    input_list = os.listdir(tar_folder)
+    input_list  = os.listdir(tar_folder   )
+    unpack_list = os.listdir(unpack_folder)
 
     for f in input_list:
         ext = os.path.splitext(f)[1]
         if ext != '.tar':
             continue
-        print('f = ' + f)
+        # The name of the input tar does not fully match the untar file names
+        name   = os.path.basename(f)
+        parts  = name.split('_')
+        prefix = '_'.join(parts[0:4])
+
+        # Look to see if we have a matching label file
         tar_path   = os.path.join(tar_folder, f)
-        #tar_path = f
-        label_name = f.replace('SW.tar', 'INWM.tif')
-        label_path = os.path.join(unpack_folder, label_name)
-        #label_path = label_name
-        print(tar_path)
-        print(label_path)
-        
-        # If the expected untarred file is not present, untar the file.
-        if not os.path.exists(label_path):
+        label_path = look_for_file(unpack_folder, [prefix, '_INWM.tif'])
+
+        # If we did not find the INWM file, untar.
+        if not label_path:
             utilities.untar_to_folder(tar_path, unpack_folder)
-            if not os.path.exists(label_path):
-                raise Exception('Failed to untar label file: ' + label_path)
+            # Look again for a matching INWM file
+            label_path = look_for_file(unpack_folder, [prefix, '_INWM.tif'])
+            if not label_path:
+                raise Exception('Failed to untar label file: ' + tar_path)
         file_list.append(label_path)
 
     return file_list
@@ -216,11 +235,12 @@ def main(argsIn):
 
     merge_path = options.output_path + '_merge.vrt'
 
-    # TODO: Set the nodata value?
+    # Nodata note: If the default value of 255 is used we can't look at the images
+    #              using stereo_gui.  For now not using a nodata value!
     
     # TODO: This won't work well if all of the label files go in one folder!
     # Merge all of the label files into a single file
-    cmd = 'gdalbuildvrt ' + merge_path + ' ' + os.path.join(options.label_folder, '*INWM.tif')
+    cmd = 'gdalbuildvrt -vrtnodata None ' + merge_path + ' ' + os.path.join(options.label_folder, '*INWM.tif')
     print(cmd)
     os.system(cmd)
     if not os.path.exists(merge_path):
