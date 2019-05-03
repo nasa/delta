@@ -153,6 +153,12 @@ def main(argsIn):
 
     # TF additions
     seed_val = 12306 # number I typed out randomly on my keyboard
+    # If the mlfow directory doesn't exist, create it.
+    mlflow_tracking_dir = os.path.join(options.output_folder,'mlruns')
+    if not os.path.exists(mlflow_tracking_dir):
+        os.mkdir(mlflow_tracking_dir)
+    mlflow.set_tracking_uri('file:%s'%(mlflow_tracking_dir,))
+
     mlflow.set_experiment('train_autoencoder')
     mlflow.start_run()
     mlflow.log_param('file list', ' '.join(input_paths))
