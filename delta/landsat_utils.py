@@ -25,7 +25,15 @@ import os
 
 import utilities
 
+def get_date_from_filename(name):
+    """Extract the image capture date from a Landsat filename"""
+    s     = os.path.basename(name)
+    parts = s.split('_')
+    date  = parts[3]
+    return date
+
 def allocate_bands_for_spacecraft(landsat_number):
+    """Set up value storage for parse_mtl_file()"""
 
     BAND_COUNTS = {'5':7, '7':9, '8':11}
 
@@ -131,6 +139,8 @@ def check_if_files_present(mtl_data, folder):
 def prep_landsat_image(path, cache_manager):
     """Prepares a Landsat file from the archive for processing.
        Returns [band, paths, in, order, ...]
+       Uses the bands specified in get_landsat_bands_to_use()
+       TODO: Handle bands which are not 30 meters!
        TODO: Apply TOA conversion!
     """
 

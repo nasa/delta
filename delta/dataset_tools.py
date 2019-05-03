@@ -157,7 +157,49 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
     return chunk_data
 
 
+# TODO: Not currently used, but could be if the TF method of filtering chunks is inefficient.
+def parallel_filter_chunks(data, num_threads):
+    """Filter out chunks that contain the Landsat nodata value (zero)"""
 
+    (num_chunks, num_bands, width, height) = data.shape()
+    num_chunk_pixels = width * height
 
+    print('Num input chunks = ' + str(num_chunks))
+
+    valid_chunks = [True] * num_chunks
+    splits = []
+    thread_size = float(num_chunks) / float(num_threads)
+    for i in range(0,num_threads):
+        start_index = math.floor(i    *thread_size)
+        stop_index  = math.floor((i+1)*thread_size)
+        splits.append((start_index, stop_index))
+
+    # Internal function to flag nodata chunks from the start to stop indices (non-inclusive)
+    def check_chunks(pair):
+      
+        (start_index, stop_index) = pair
+        for i in range(start_index, stop_index):
+            chunk = data[i, 0, :, :]
+            print(chunk.shape())
+            print(chunk)
+            if np.count_nonzero(chunk) != num_chunk_pixels:
+                valid_chunks[i] = False
+                print('INVALID')
+
+    # Call check_chunks in parallel using a thread pool
+    pool = ThreadPool(num_threads)
+    pool.map(check_chunks, splits)
+    pool.close()
+    pool.join()
+    
+    # Remove the bad chunks
+    valid_indices = []
+    for i in range(0,num_chunks):
+        if valid_chunks[i]:
+            valid_indices.append(i)
+
+    print('Num remaining chunks = ' + str(len(valid_indices)))
+
+    return data[valid_indices, :, :, :]
 
 

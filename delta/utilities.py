@@ -173,6 +173,134 @@ def untar_to_folder(tar_path, untar_folder):
     print(cmd)
     os.system(cmd)
 
+# TODO: Do we need these functions?
+def isNotString(a):
+    """Returns true if the object is not a string"""
+
+    # Python 2/3 compatibilty
+    try:
+        basestring
+    except NameError:
+        basestring = str
+
+def argListToString(argList):
+    """Converts a list of arguments into a single argument string"""
+
+    string = ""
+    for arg in argList:
+        stringVersion = str(arg)
+
+        # Wrap arguments with spaces in them in "" so they stay together
+        if stringVersion.find(' ') >= 0:
+            stringVersion = '"' + stringVersion + '" '
+
+        if string == "":
+            string = stringVersion
+        else:
+            string = string + ' ' + stringVersion
+        
+    return string
+
+def executeCommand(cmd,
+                   outputPath=None,      # If given, throw if the file is not created.  Don't run if it already exists.
+                   suppressOutput=False, # If true, don't print anything!
+                   redo=False,           # If true, run even if outputPath already exists.
+                   noThrow=False,        # If true, don't throw if output is missing
+                   numAttempts = 1,      # How many attempts to use
+                   sleepTime = 60,       # How much to sleep between attempts
+                   timeout   = -1        # After how long to timeout in seconds
+                   ):
+    '''Executes a command with multiple options'''
+
+    # Initialize outputs
+    out    = ""
+    status = 0
+    err    = ""
+    
+    if cmd == '': # An empty task
+        return (out, err, status)
+
+    # Convert the input to list format if needed
+    if not isNotString(cmd):
+        cmd = shlex.split(cmd) # String to arg list
+    
+    for attempt in range(numAttempts):
+        
+        # Run the command if conditions are met
+        if redo or (outputPath is None) or (not os.path.exists(outputPath)):
+
+            if not suppressOutput:
+                print (argListToString(cmd))
+
+            if timeout > 0:
+                print("Will enforce timeout of " + str(timeout) + " seconds.")
+                signal.signal(signal.SIGALRM, timeout_alarm_handler)
+                signal.alarm(timeout)
+                    
+            try:
+                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     universal_newlines=True)
+                out, err = p.communicate()
+                status = p.returncode
+                if timeout > 0:
+                    signal.alarm(0)  # reset the alarm
+            except Exception as e:
+                out = ""
+                err = ('Error: %s: %s' % (argListToString(cmd), e))
+                if timeout > 0:
+                    # this module is generally not available, so this use is very niche
+                    import psutil
+                    def kill_proc_tree(pid, including_parent=True):    
+                        parent = psutil.Process(pid)
+                        for child in parent.children(recursive=True):
+                            print("Killing: " + str(child))
+                            child.kill()
+                        if including_parent:
+                            print("Killing: " + str(parent))
+                            parent.kill()
+                    pid = psutil.Process(p.pid)
+                    try:
+                        kill_proc_tree(p.pid)
+                    except:
+                        pass
+                    
+                status = 1
+                if not noThrow:
+                    raise Exception(err)
+
+            if out is None: out = ""
+            if err is None: err = ""
+
+            if not suppressOutput:
+                print (out + '\n' + err)
+
+            if status == 0:
+                break
+
+            if numAttempts <= 1:
+                break
+
+            if attempt < numAttempts - 1:
+                print("attempt: " + str(attempt))
+                print("ran: " + argListToString(cmd) )
+                print("out = " + out)
+                print("err = " + err)
+                print("status = " + str(status))
+                print("Will sleep for " + str(sleepTime) + " seconds")
+
+                time.sleep(sleepTime)
+        
+        else: # Output file already exists, don't re-run
+            out    = ""
+            err    = ""
+            status = 0
+
+        # Optionally check that the output file was created
+        if outputPath and (not os.path.exists(outputPath)) and (not noThrow):
+            raise Exception('Failed to create output file: ' + outputPath)
+
+    return (out, err, status)
+
 #------------------------------------------------------------------
 # Functions for working with image chunks.
 
