@@ -34,6 +34,10 @@ from usgs import api
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
+# TODO: Why is the path not being set correctly???
+os.environ['PATH'] = os.environ['PATH'].replace('/nobackup/smcmich1/code/anaconda3\\Library\\bin;','').replace('\\','/')
+#print('PATH = ' + str(os.environ['PATH']))
+
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
@@ -126,7 +130,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
 
-def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password):
+def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, force_login):
     """Download all DSWE images that fit the given criteria to the output folder
        if they are not already present.  The coordinates must be in lon/lat degrees.
     """
@@ -135,7 +139,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password):
         os.mkdir(output_folder)
 
     # Only log in if our session expired (ugly function use to check!)
-    if not api._get_api_key(None):
+    if force_login or (not api._get_api_key(None)):
         print('Logging in to USGS EarthExplorer...')
         result = api.login(user, password)
 
@@ -149,9 +153,9 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password):
                          max_results=12, extended=False)
     
     if not results['data']:
-        raise Exception('Did not find any DSWE data that matched the Landsat file!')
-    
-    print('Found ' + str(len(results['data'])) + ' matching files.')
+        raise Exception('Did not find any DSWE data that matched the Landsat file!')    
+    print('Found ' + str(len(results['data']['results'])) + ' matching files.')
+
     for scene in results['data']['results']:
         #print('------------')
         #print(scene)
@@ -203,6 +207,10 @@ def main(argsIn):
         parser.add_argument("--password", dest="password", required=False,
                             help="Password name for EarthExplorer website, needed to download new files.")
 
+        parser.add_argument("--force-login", action="store_true",
+                            dest="force_login", default=False,
+                            help="Don't reuse the cached EE API key if present.")
+
         #parser.add_argument("--download-files", action="store_true", 
         #                    dest="download_files", default=False, 
         #                    help="Download new DSWE files if they are not already there.")
@@ -225,13 +233,16 @@ def main(argsIn):
 
     if options.user and options.password:
         print('Login info provided, searching for overlapping label images...')
-        fetch_dswe_images(date, ll_coord, ur_coord, options.label_folder, options.user, options.password)
+        fetch_dswe_images(date, ll_coord, ur_coord, options.label_folder, options.user, options.password, options.force_login)
     else:
         print('--user and --password not provided, skipping label download step.')
   
     # Untar the input files if needed
     untar_folder = options.label_folder
     input_files = unpack_inputs(options.label_folder, untar_folder)
+    if not input_files:
+        print('Did not detect any input label files!')
+        return -1
 
     merge_path = options.output_path + '_merge.vrt'
 
