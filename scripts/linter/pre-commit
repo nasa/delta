@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# only check files being committed (but not deleted files)
+git diff-index -z --cached HEAD --name-only --diff-filter=ACMRTUXB |
+grep '\.py$' |
+xargs --null --no-run-if-empty ./scripts/linter/lint;
+
+if [ "$?" != "0" ]; then
+  echo "Linter failed."
+
+  exit 1;
+fi
