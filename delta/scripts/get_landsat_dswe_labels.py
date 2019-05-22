@@ -20,7 +20,8 @@
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """
-import sys, os
+import os
+import sys
 import argparse
 import subprocess
 import traceback
@@ -52,7 +53,7 @@ def look_for_file(folder, contains):
     """Return the name of a file inside folder that has all strings
        in the 'contains' list.
     """
-    
+
     files = os.listdir(folder)
     for f in files:
         good = True
@@ -63,7 +64,7 @@ def look_for_file(folder, contains):
         if good:
             return os.path.join(folder, f)
     return None
-    
+
 
 def unpack_inputs(tar_folder, unpack_folder):
     """Make sure all of the input label files are untarred.
@@ -151,23 +152,23 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
                          ll=dict([('longitude',ll_coord[0]),('latitude',ll_coord[1])]),
                          ur=dict([('longitude',ur_coord[0]),('latitude',ur_coord[1])]),
                          max_results=12, extended=False)
-    
+
     if not results['data']:
-        raise Exception('Did not find any DSWE data that matched the Landsat file!')    
+        raise Exception('Did not find any DSWE data that matched the Landsat file!')
     print('Found ' + str(len(results['data']['results'])) + ' matching files.')
 
     for scene in results['data']['results']:
         #print('------------')
         #print(scene)
         print('Found match: ' + scene['entityId'])
-        
+
         fname = scene['entityId'] + '.tar'
         output_path = os.path.join(output_folder, fname)
-        
+
         if os.path.exists(output_path):
             print('Already have image on disk!')
             continue
-        
+
         r = api.download(DATASET, CATALOG, [scene['entityId']], product='DSWE')
         print(r)
         if not r['data']:
@@ -176,14 +177,14 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
         cmd = ('wget "%s" --user %s --password %s -O %s' % (url, user, password, output_path))
         print(cmd)
         os.system(cmd)
-        
+
         if not os.path.exists(output_path):
             raise Exception('Failed to download file ' + output_path)
 
     print('Finished downloading DSWE files.')
     # Can just let this time out
     #api.logout()
-  
+
 
 
 def main(argsIn):
@@ -211,8 +212,8 @@ def main(argsIn):
                             dest="force_login", default=False,
                             help="Don't reuse the cached EE API key if present.")
 
-        #parser.add_argument("--download-files", action="store_true", 
-        #                    dest="download_files", default=False, 
+        #parser.add_argument("--download-files", action="store_true",
+        #                    dest="download_files", default=False,
         #                    help="Download new DSWE files if they are not already there.")
 
 
@@ -233,10 +234,11 @@ def main(argsIn):
 
     if options.user and options.password:
         print('Login info provided, searching for overlapping label images...')
-        fetch_dswe_images(date, ll_coord, ur_coord, options.label_folder, options.user, options.password, options.force_login)
+        fetch_dswe_images(date, ll_coord, ur_coord, options.label_folder,
+                          options.user, options.password, options.force_login)
     else:
         print('--user and --password not provided, skipping label download step.')
-  
+
     # Untar the input files if needed
     untar_folder = options.label_folder
     input_files = unpack_inputs(options.label_folder, untar_folder)
@@ -248,7 +250,7 @@ def main(argsIn):
 
     # Nodata note: If the default value of 255 is used we can't look at the images
     #              using stereo_gui.  For now not using a nodata value!
-    
+
     # TODO: This won't work well if all of the label files go in one folder!
     # Merge all of the label files into a single file
     cmd = 'gdalbuildvrt -vrtnodata None ' + merge_path + ' ' + os.path.join(options.label_folder, '*INWM.tif')
@@ -262,7 +264,7 @@ def main(argsIn):
     cmd = 'gdalinfo -proj4 ' + options.landsat_path
     print(cmd)
     p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     universal_newlines=True)
+                         universal_newlines=True)
     out, err = p.communicate()
     proj_string = None
     lines = out.split('\n')
@@ -279,7 +281,7 @@ def main(argsIn):
 
     # Reproject the merged label and crop to the landsat extent
     cmd = ('gdalwarp -overwrite -t_srs %s -te %s %s %s %s %s %s ' %
-            (proj_string, ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1], merge_path, options.output_path))
+          (proj_string, ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1], merge_path, options.output_path))
     print(cmd)
     os.system(cmd)
     os.remove(merge_path)
@@ -292,6 +294,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-    
-    
-    

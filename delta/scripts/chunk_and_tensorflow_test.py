@@ -20,7 +20,8 @@
 """
 Script test out the image chunk generation calls.
 """
-import sys, os
+import os
+import sys
 import argparse
 import math
 import functools
@@ -71,13 +72,13 @@ def make_model(channel, in_len):
     mlflow.log_param('fc3_size',fc3_size)
     mlflow.log_param('fc4_size',fc4_size)
     mlflow.log_param('dropout_rate',dropout_rate)
-    
+
 
     # Define network
     model = keras.Sequential([
         keras.layers.Flatten(input_shape=(channel, in_len, in_len)),
         # Note: use_bias is True by default, which is also the case in pytorch, which Robert used.
-        keras.layers.Dense(fc2_size, activation=tf.nn.relu), 
+        keras.layers.Dense(fc2_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
         keras.layers.Dense(fc3_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
@@ -111,7 +112,7 @@ def main(argsIn):
         parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
                             help="Number of threads to use for parallel image loading.")
 
-        # Note: changed the default chunk size to 28.  Smaller chunks work better for 
+        # Note: changed the default chunk size to 28.  Smaller chunks work better for
         # the toy network defined above.
         parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=28,
                             help="The length of each side of the output image chunks.")
@@ -177,7 +178,7 @@ def main(argsIn):
     # as well as labels and input data.
     all_data   = chunk_data[:,:7,:,:] # Use bands 0-6 to train on
     all_labels = chunk_data[:,7,:,:] # Use band 7 as the label?
-    
+
 #     for idx in range(num_chunks):
 #         print(np.unique(all_labels[idx,:,:]))
 #         print(idx,'/',num_chunks)
@@ -204,14 +205,14 @@ def main(argsIn):
     mlflow.log_param('chunk_size', options.chunk_size)
     mlflow.log_param('num_epochs', options.num_epochs)
     mlflow.log_param('batch_size', batch_size)
-    mlflow.log_param('num_train', split_idx) 
-    mlflow.log_param('num_test', num_chunks - split_idx) 
+    mlflow.log_param('num_train', split_idx)
+    mlflow.log_param('num_test', num_chunks - split_idx)
 
     # Remove one band for the labels
     model = make_model(num_bands-1, options.chunk_size)
     model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
     history = model.fit(train_data, train_labels, epochs=options.num_epochs, batch_size=batch_size)
-   
+
     for idx in range(options.num_epochs):
         mlflow.log_metric('loss', history.history['loss'][idx])
         mlflow.log_metric('acc',  history.history['acc' ][idx])
@@ -222,4 +223,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

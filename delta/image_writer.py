@@ -20,18 +20,11 @@
 """
 Geotiff writing class using GDAL with dedicated writer thread.
 """
-import sys
-import os
 import threading
 import time
-import psutil
 import math
 
 from osgeo import gdal
-import numpy as np
-
-from utilities import Rectangle
-import utilities
 
 #=============================================================================
 # Image writer class
@@ -65,9 +58,9 @@ class TiffWriter:
 
         print('Launching write thread...')
         self._writerThread = threading.Thread(target=self._internal_writer)
-        
+
         self._writerThread.start()
-        
+
         self._width  = 0
         self._height = 0
         self._tile_width  = 256
@@ -89,14 +82,14 @@ class TiffWriter:
 
     def get_size(self):
         return (self._width, self._height)
-    
+
     def get_tile_size(self):
         return (self._tile_width, self._tile_height)
 
     def get_num_tiles(self):
-      num_x = int(math.ceil(self._width  / self._tile_width))
-      num_y = int(math.ceil(self._height / self._tile_height))
-      return (num_x, num_y)
+        num_x = int(math.ceil(self._width  / self._tile_width))
+        num_y = int(math.ceil(self._height / self._tile_height))
+        return (num_x, num_y)
 
     def _internal_writer(self):
         '''Internal thread that writes blocks as they become available.'''
@@ -150,10 +143,10 @@ class TiffWriter:
         #for s in stuff:
         #    print(s)
         #band.WriteBlock(block_col, block_row, data) This function is not supported!
-        
+
         bSize = band.GetBlockSize()
         band.WriteArray(data, block_col*bSize[0], block_row*bSize[1])
-        
+
         #band.FlushBlock(block_col, block_row) This function is not supported!
         band.FlushCache() # TODO: Call after every tile?
 
@@ -181,7 +174,7 @@ class TiffWriter:
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
-        if (noDataValue != None):
+        if noDataValue != None:
             for i in range(1,num_bands+1):
                 self._handle.GetRasterBand(i).SetNoDataValue(noDataValue)
 
@@ -203,24 +196,24 @@ class TiffWriter:
         if (block_col >= num_tiles[0]) or (block_row >= num_tiles[1]):
             raise Exception('Block position ' + str((block_col, block_row))
                             + ' is outside the tile count: ' + str(num_tiles))
-        is_edge_block = ((block_col == num_tiles[0]-1) or 
+        is_edge_block = ((block_col == num_tiles[0]-1) or
                          (block_row == num_tiles[1]-1))
 
         if is_edge_block: # Data must fit inside the image size
-          max_col = block_col*self._tile_width  + data.shape[1]
-          max_row = block_row*self._tile_height + data.shape[0]
-          if ( (max_col > self._width ) or 
-               (max_row > self._height)   ):
-              raise Exception('Error: Data block max position '
-                              + str((max_col, max_row))
-                              + ' falls outside the image bounds: '
-                              + str((self._width, self._height)))
-        else: # Shape must be exactly one tile 
-          if ( (data.shape[0] != self._tile_height) or 
-               (data.shape[1] != self._tile_width )  ):
-              raise Exception('Error: Data block size is ' + str(data.shape)
-                              + ', output file block size is '
-                              + str((self._tile_width, self._tile_height)))
+            max_col = block_col*self._tile_width  + data.shape[1]
+            max_row = block_row*self._tile_height + data.shape[0]
+            if ( (max_col > self._width ) or
+                 (max_row > self._height)   ):
+                raise Exception('Error: Data block max position '
+                                + str((max_col, max_row))
+                                + ' falls outside the image bounds: '
+                                + str((self._width, self._height)))
+        else: # Shape must be exactly one tile
+            if ( (data.shape[0] != self._tile_height) or
+                 (data.shape[1] != self._tile_width )  ):
+                raise Exception('Error: Data block size is ' + str(data.shape)
+                                + ', output file block size is '
+                                + str((self._tile_width, self._tile_height)))
 
         if not self._handle:
             time.sleep(0.5) # Sleep a short time then check again in case of race conditions.
@@ -229,7 +222,7 @@ class TiffWriter:
 
         # Grab the lock and append to it.
         with self._writeQueueLock:
-              self._writeQueue.append((data, block_col, block_row, band))
+            self._writeQueue.append((data, block_col, block_row, band))
 
     def finish_writing_geotiff(self):
         '''Call when we have finished writing a geotiff file.'''
@@ -248,13 +241,13 @@ class TiffWriter:
                 print('All tiles have been written!')
                 break
             else:
-              if totalWait >= MAX_WAIT_TIME:
-                  print('Waited too long to finish, forcing shutdown!')
-                  break # Waited long enough, force shutdown.
-              else:
-                  print('Waiting on '+str(numTiles)+' writes to finish...')
-                  totalWait += SLEEP_TIME # Wait a bit longer
-                  time.sleep(SLEEP_TIME)
+                if totalWait >= MAX_WAIT_TIME:
+                    print('Waited too long to finish, forcing shutdown!')
+                    break # Waited long enough, force shutdown.
+                else:
+                    print('Waiting on '+str(numTiles)+' writes to finish...')
+                    totalWait += SLEEP_TIME # Wait a bit longer
+                    time.sleep(SLEEP_TIME)
 
         print('Clearing the write queue...')
 
@@ -268,4 +261,3 @@ class TiffWriter:
         band.FlushCache()
         self._handle = None
         print('TIFF handle is gone.')
-

@@ -20,7 +20,6 @@
 """
 Class to cap the number of unpacked images kept on disk at a fixed level.
 """
-import sys
 import os
 
 #============================================================================
@@ -64,7 +63,7 @@ class DiskFolderCache:
             self._subfolder_list.remove(name)
             self._subfolder_list.append(name)
             return self._full_path(name)
-        except ValueError: 
+        except ValueError:
             pass
 
         # Record the new name and delete the oldest folder if our list got too large

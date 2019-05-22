@@ -131,7 +131,7 @@ def waitForTaskCompletionOrKeypress(taskHandles, logger = None, interactive=True
         memUsed         = memInfo[0] - memInfo[1]
         memPercentUsage = float(memUsed) / float(memInfo[0])
 
-        usageMessage = ('CPU percent usage = %f, Memory percent usage = %f' 
+        usageMessage = ('CPU percent usage = %f, Memory percent usage = %f'
                         % (cpuPercentUsage, memPercentUsage))
         logger_print(logger, usageMessage)
 
@@ -198,7 +198,7 @@ def argListToString(argList):
             string = stringVersion
         else:
             string = string + ' ' + stringVersion
-        
+
     return string
 
 def executeCommand(cmd,
@@ -216,16 +216,15 @@ def executeCommand(cmd,
     out    = ""
     status = 0
     err    = ""
-    
+
     if cmd == '': # An empty task
         return (out, err, status)
 
     # Convert the input to list format if needed
     if not isNotString(cmd):
         cmd = shlex.split(cmd) # String to arg list
-    
+
     for attempt in range(numAttempts):
-        
         # Run the command if conditions are met
         if redo or (outputPath is None) or (not os.path.exists(outputPath)):
 
@@ -236,7 +235,7 @@ def executeCommand(cmd,
                 print("Will enforce timeout of " + str(timeout) + " seconds.")
                 signal.signal(signal.SIGALRM, timeout_alarm_handler)
                 signal.alarm(timeout)
-                    
+
             try:
                 p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      universal_newlines=True)
@@ -250,7 +249,7 @@ def executeCommand(cmd,
                 if timeout > 0:
                     # this module is generally not available, so this use is very niche
                     import psutil
-                    def kill_proc_tree(pid, including_parent=True):    
+                    def kill_proc_tree(pid, including_parent=True):
                         parent = psutil.Process(pid)
                         for child in parent.children(recursive=True):
                             print("Killing: " + str(child))
@@ -263,7 +262,7 @@ def executeCommand(cmd,
                         kill_proc_tree(p.pid)
                     except:
                         pass
-                    
+
                 status = 1
                 if not noThrow:
                     raise Exception(err)
@@ -289,7 +288,7 @@ def executeCommand(cmd,
                 print("Will sleep for " + str(sleepTime) + " seconds")
 
                 time.sleep(sleepTime)
-        
+
         else: # Output file already exists, don't re-run
             out    = ""
             err    = ""
@@ -309,7 +308,7 @@ def generate_chunk_info(chunk_size, chunk_overlap):
        compute chunk_start_offset and chunk_spacing.
     """
     chunk_start_offset = int(math.floor(chunk_size / 2))
-    chunk_spacing      = chunk_size - chunk_overlap 
+    chunk_spacing      = chunk_size - chunk_overlap
     return (chunk_start_offset, chunk_spacing)
 
 
@@ -401,7 +400,7 @@ class Rectangle:
         #
         #if not self.hasArea(): # Debug helper
         #    print 'RECTANGLE WARNING: ' + str(self)
-    
+
     def __str__(self):
         if type(self.min_x) == int:
             return ('min_x: %d, max_x: %d, min_y: %d, max_y: %d' %
@@ -409,30 +408,30 @@ class Rectangle:
         else:
             return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
                     (self.min_x, self.max_x, self.min_y, self.max_y))
-    
+
 #    def indexGenerator(self):
 #        '''Generator function used to iterate over all integer indices.
 #           Only use this with integer boundaries!'''
 #        for row in range(self.min_y, self.max_y):
 #            for col in range(self.min_x, self.max_x):
 #                yield(TileIndex(row,col))
-    
+
     def get_bounds(self):
         '''Returns (min_x, max_x, min_y, max_y)'''
         return (self.min_x, self.max_x, self.min_y, self.max_y)
-    
+
     def width(self):
         return self.max_x - self.min_x
     def height(self):
         return self.max_y - self.min_y
-    
+
     def has_area(self):
         '''Returns true if the rectangle contains any area.'''
         return (self.width() > 0) and (self.height() > 0)
-    
+
     def perimeter(self):
         return 2*self.width() + 2*self.height()
-    
+
     def area(self):
         '''Returns the valid area'''
         if not self.has_area():
@@ -444,14 +443,14 @@ class Rectangle:
         return (self.min_x, self.min_y)
     def get_max_coord(self):
         return (self.max_x, self.max_y)
-    
+
     def shift(self, dx, dy):
         '''Shifts the entire box'''
         self.min_x += dx
         self.max_x += dx
         self.min_y += dy
         self.max_y += dy
-    
+
     def scale_by_constant(self, xScale, yScale):
         '''Scale the units by a constant'''
         if yScale == None:
@@ -460,7 +459,7 @@ class Rectangle:
         self.max_x *= xScale
         self.min_y *= yScale
         self.max_y *= yScale
-        
+
     def expand(self, left, down, right=None, up=None):
         '''Expand the box by an amount in each direction'''
         self.min_x -= left
@@ -514,19 +513,8 @@ class Rectangle:
         if self.max_x < other_rect.max_x: return False
         if self.max_y < other_rect.max_y: return False
         return True
-        
+
     def overlaps(self, other_rect):
         '''Returns true if there is any overlap between this and another rectangle'''
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.hasArea()
-    
-
-
-    
-    
-    
-    
-    
-    
-    
-    

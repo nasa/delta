@@ -20,7 +20,8 @@
 """
 Script to apply Top of Atmosphere correction to WorldView 2 and 3 files.
 """
-import sys, os
+import os
+import sys
 import argparse
 import math
 import functools
@@ -82,7 +83,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     #print(input_metadata)
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
-    
+
 
     X = 0 # Make indices easier to read
     Y = 1
@@ -246,8 +247,8 @@ def main(argsIn):
         parser.add_argument("--output-path", dest="output_path", required=True,
                             help="Where to write the output image.")
 
-        parser.add_argument("--calc-reflectance", action="store_true", 
-                            dest="calc_reflectance", default=False, 
+        parser.add_argument("--calc-reflectance", action="store_true",
+                            dest="calc_reflectance", default=False,
                             help="Compute TOA reflectance (and temperature) instead of radiance.")
 
         #parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
@@ -275,7 +276,7 @@ def main(argsIn):
     ds = get_earth_sun_distance() # TODO: Implement this function!
 
     if options.calc_reflectance:
-      user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
+        user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
                                           sun_elevation=math.radians(data['MEANSUNEL']),
                                           satellite=data['SATID'],
                                           earth_sun_distance=ds)
@@ -288,6 +289,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-    
-    
-    

@@ -20,7 +20,8 @@
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """
-import sys, os
+import os
+import sys
 import argparse
 import math
 import functools
@@ -175,8 +176,8 @@ def main(argsIn):
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Write output band files to this output folder with the same names.")
 
-        parser.add_argument("--calc-reflectance", action="store_true", 
-                            dest="calc_reflectance", default=False, 
+        parser.add_argument("--calc-reflectance", action="store_true",
+                            dest="calc_reflectance", default=False,
                             help="Compute TOA reflectance (and temperature) instead of radiance.")
 
         parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
@@ -224,8 +225,8 @@ def main(argsIn):
 
         if options.calc_reflectance:
             if k1_const == None:
-                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult, 
-                                                  constant=ref_add, 
+                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult,
+                                                  constant=ref_add,
                                                   sun_elevation=math.radians(data['SUN_ELEVATION']))
             else:
                 print(k1_const)
@@ -235,8 +236,8 @@ def main(argsIn):
         else:
             user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
 
-        task_handles.append(pool.apply_async(try_catch_and_call,
-                              (input_path, output_path, user_function, options.tile_size)))
+        task_handles.append(pool.apply_async( \
+            try_catch_and_call, (input_path, output_path, user_function, options.tile_size)))
         #try_catch_and_call(input_path, output_path, user_function, options.tile_size)
 
         #raise Exception('DEBUG')
@@ -253,6 +254,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-    
-    
-    

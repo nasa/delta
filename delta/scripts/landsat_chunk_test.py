@@ -20,7 +20,8 @@
 """
 Script test out the image chunk generation calls.
 """
-import sys, os
+import os
+import sys
 import argparse
 import math
 import functools
@@ -125,4 +126,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

@@ -20,7 +20,6 @@
 """
 Tools for loading data into the TensorFlow Dataset class.
 """
-import sys
 import os
 import math
 
@@ -28,7 +27,6 @@ import numpy as np
 
 import image_reader
 import utilities
-import landsat_utils
 
 # TODO: Generalize
 def make_landsat_list(top_folder, output_path, ext, num_regions):
@@ -41,8 +39,8 @@ def make_landsat_list(top_folder, output_path, ext, num_regions):
         for root, directories, filenames in os.walk(top_folder):
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ext:
-                    path = os.path.join(root,filename)
-                    for r in range(0,num_regions):
+                    path = os.path.join(root, filename)
+                    for r in range(0, num_regions):
                         f.write(path + ',' + str(r) +'\n')
                         num_entries += 1
     return num_entries
@@ -176,7 +174,6 @@ def parallel_filter_chunks(data, num_threads):
 
     # Internal function to flag nodata chunks from the start to stop indices (non-inclusive)
     def check_chunks(pair):
-      
         (start_index, stop_index) = pair
         for i in range(start_index, stop_index):
             chunk = data[i, 0, :, :]
@@ -191,7 +188,7 @@ def parallel_filter_chunks(data, num_threads):
     pool.map(check_chunks, splits)
     pool.close()
     pool.join()
-    
+
     # Remove the bad chunks
     valid_indices = []
     for i in range(0,num_chunks):
@@ -201,5 +198,4 @@ def parallel_filter_chunks(data, num_threads):
     print('Num remaining chunks = ' + str(len(valid_indices)))
 
     return data[valid_indices, :, :, :]
-
 
