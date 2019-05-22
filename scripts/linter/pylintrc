@@ -39,7 +39,7 @@ load-plugins=
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
 # would rather only disable part of C0326...
-disable=C0103,C0111,W0511,C0321,C0326
+disable=C0103,C0111,W0511,C0321,C0326,similarities
 
 
 [REPORTS]
