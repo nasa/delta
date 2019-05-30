@@ -8,6 +8,9 @@ pip3 install --user -q pylint psutil usgs || { echo >&2 "ERROR. Failed to instal
 
 pip3 install --user -q tensorflow || { echo >&2 "ERROR. Failed to install tensorflow."; exit 1; }
 
+# To install gpu tensorflow uncomment this line
+# pip3 install --user -q tensorflow-gpu || { echo >&2 "ERROR. Failed to install tensorflow."; exit 1; }
+
 pip3 install --user -q mlflow || { echo >&2 "ERROR. Failed to install mlflow."; exit 1; }
 
 
