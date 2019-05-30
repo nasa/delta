@@ -5,6 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 sudo apt install -y python3-pip python3-dev python3-gdal || { echo >&2 "ERROR. Failed to install pip3."; exit 1; }
 
 pip3 install --user -q pylint psutil usgs || { echo >&2 "ERROR. Failed to install prequired packages."; exit 1; }
+pip3 install --user -q numpy scipy matplotlib || { echo >&2 "ERROR. Failed to install one of numpy, scipy, matplotlib."; exit 1; }
 
 pip3 install --user -q tensorflow || { echo >&2 "ERROR. Failed to install tensorflow."; exit 1; }
 
