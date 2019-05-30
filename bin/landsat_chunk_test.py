@@ -30,7 +30,7 @@ import traceback
 import numpy as np
 
 # TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
 
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):

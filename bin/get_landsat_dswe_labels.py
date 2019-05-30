@@ -33,7 +33,7 @@ from osgeo import osr
 from usgs import api
 
 # TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
 
 # TODO: Why is the path not being set correctly???
 os.environ['PATH'] = os.environ['PATH'].replace('/nobackup/smcmich1/code/anaconda3\\Library\\bin;','').replace('\\','/')
