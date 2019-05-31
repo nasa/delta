@@ -27,7 +27,18 @@ import math
 import functools
 import multiprocessing
 import traceback
+import random
+
+
+### Tensorflow includes
+
+import mlflow
 import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+
+import matplotlib.pyplot as plt
+
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
@@ -42,15 +53,6 @@ import landsat_utils
 from image_reader import *
 from image_writer import *
 
-### Tensorflow includes
-
-import mlflow
-import random
-
-import tensorflow as tf
-from tensorflow import keras
-
-import matplotlib.pyplot as plt
 
 #------------------------------------------------------------------------------
 
