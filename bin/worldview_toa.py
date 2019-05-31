@@ -25,7 +25,6 @@ import sys
 import argparse
 import math
 import functools
-import multiprocessing
 import traceback
 import numpy as np
 
@@ -37,9 +36,9 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities
-from image_reader import *
-from image_writer import *
+import utilities #pylint: disable=C0413
+from image_reader import * #pylint: disable=W0614,W0401,C0413
+from image_writer import * #pylint: disable=W0614,W0401,C0413
 
 #------------------------------------------------------------------------------
 
@@ -78,7 +77,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     num_bands = input_reader.num_bands()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1)
+    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1)  #pylint: disable=W0612
     input_metadata = input_reader.get_all_metadata()
     #print(input_metadata)
 
@@ -157,14 +156,14 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
 
     print('Done writing: ' + output_path)
 
-    image = None # Close the image
+    image = None # Close the image  #pylint: disable=W0612
 
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):
     """Wrap the previous function in a try/catch statement"""
     try:
         return apply_function_to_file(*args, **kwargs)
-    except Exception as e:
+    except Exception:  #pylint: disable=W0703
         traceback.print_exc()
         sys.stdout.flush()
         return -1
@@ -263,8 +262,9 @@ def main(argsIn):
 
         options = parser.parse_args(argsIn)
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     # Get all of the TOA coefficients and input file names
     data = parse_meta_file(options.meta_path)
@@ -286,6 +286,7 @@ def main(argsIn):
     try_catch_and_call(options.image_path, options.output_path, user_function, options.tile_size)
 
     print('WorldView TOA conversion is finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

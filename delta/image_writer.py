@@ -102,7 +102,7 @@ class TiffWriter:
 
             # Check the write queue
             with self._writeQueueLock:
-                noTiles = (len(self._writeQueue) == 0)
+                noTiles = not self._writeQueue
                 # If there is a tile, grab it while we have tho lock.
                 if not noTiles:
                     parts = self._writeQueue.pop(0)
@@ -125,7 +125,7 @@ class TiffWriter:
             try:
                 self._write_geotiff_block_internal(parts[0], parts[1], parts[2], parts[3])
                 blockCounter += 1
-            except Exception as e:
+            except Exception as e: #pylint: disable=W0703
                 print(str(e))
                 print('Caught exception writing: ' + str(parts[1] +', '+ str(parts[2])))
 
@@ -151,7 +151,7 @@ class TiffWriter:
         band.FlushCache() # TODO: Call after every tile?
 
 
-    def init_output_geotiff(self, path, num_rows, num_cols, noDataValue,
+    def init_output_geotiff(self, path, num_rows, num_cols, noDataValue, #pylint: disable=R0913
                             tile_width=256, tile_height=256, metadata=None,
                             data_type=gdal.GDT_Byte, num_bands=1):
         '''Set up a geotiff file for writing and return the handle.'''
@@ -174,7 +174,7 @@ class TiffWriter:
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
-        if noDataValue != None:
+        if noDataValue is not None:
             for i in range(1,num_bands+1):
                 self._handle.GetRasterBand(i).SetNoDataValue(noDataValue)
 

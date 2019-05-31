@@ -37,10 +37,10 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities
-import landsat_utils
-from image_reader import *
-from image_writer import *
+import utilities #pylint: disable=C0413
+import landsat_utils #pylint: disable=C0413
+from image_reader import * #pylint: disable=W0614,W0401,C0413
+from image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     (num_cols, num_rows) = input_reader.image_size()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1)
+    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1) #pylint: disable=W0612
     input_metadata = input_reader.get_all_metadata()
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
@@ -135,14 +135,14 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
 
     print('Done writing: ' + output_path)
 
-    image = None # Close the image
+    image = None # Close the image #pylint: disable=W0612
 
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):
     """Wrap the previous function in a try/catch statement"""
     try:
         return apply_function_to_file(*args, **kwargs)
-    except Exception as e:
+    except Exception:  #pylint: disable=W0703
         traceback.print_exc()
         sys.stdout.flush()
         return -1
@@ -189,8 +189,9 @@ def main(argsIn):
 
         options = parser.parse_args(argsIn)
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     if not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
@@ -224,7 +225,7 @@ def main(argsIn):
         k2_const = data['K2_CONSTANT'][band]
 
         if options.calc_reflectance:
-            if k1_const == None:
+            if k1_const is None:
                 user_function = functools.partial(apply_toa_reflectance, factor=ref_mult,
                                                   constant=ref_add,
                                                   sun_elevation=math.radians(data['SUN_ELEVATION']))
@@ -251,6 +252,7 @@ def main(argsIn):
     print('Jobs finished.')
 
     print('Landsat TOA conversion is finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

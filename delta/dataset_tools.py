@@ -36,7 +36,7 @@ def make_landsat_list(top_folder, output_path, ext, num_regions):
 
     num_entries = 0
     with open(output_path, 'w') as f:
-        for root, directories, filenames in os.walk(top_folder):
+        for root, directories, filenames in os.walk(top_folder): #pylint: disable=W0612
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ext:
                     path = os.path.join(root, filename)
@@ -74,12 +74,13 @@ def get_roi_tile_split(image_size, region, num_splits):
     assert region < num_tiles, 'Input region ' + str(region) \
            + ' is greater than num_tiles: ' + str(num_tiles)
 
+    # Convert region index to row and column index
     tile_row = math.floor(region / num_splits)
     tile_col = region % num_splits
 
     # Fractional sizes are fine here
-    tile_width  = floor(image_size[0] / side)
-    tile_height = floor(image_size[1] / side)
+    tile_width  = math.floor(image_size[0] / num_splits)
+    tile_height = math.floor(image_size[1] / num_splits)
 
     # TODO: Check boundary conditions!
     min_x = math.floor(tile_width  * tile_col)
@@ -159,7 +160,7 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
 def parallel_filter_chunks(data, num_threads):
     """Filter out chunks that contain the Landsat nodata value (zero)"""
 
-    (num_chunks, num_bands, width, height) = data.shape()
+    (num_chunks, num_bands, width, height) = data.shape() #pylint: disable=W0612
     num_chunk_pixels = width * height
 
     print('Num input chunks = ' + str(num_chunks))
@@ -184,7 +185,7 @@ def parallel_filter_chunks(data, num_threads):
                 print('INVALID')
 
     # Call check_chunks in parallel using a thread pool
-    pool = ThreadPool(num_threads)
+    pool = ThreadPool(num_threads) #pylint: disable=E0602
     pool.map(check_chunks, splits)
     pool.close()
     pool.join()
@@ -198,4 +199,3 @@ def parallel_filter_chunks(data, num_threads):
     print('Num remaining chunks = ' + str(len(valid_indices)))
 
     return data[valid_indices, :, :, :]
-

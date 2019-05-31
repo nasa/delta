@@ -50,13 +50,13 @@ def get_num_bytes_from_gdal_type(gdal_type):
 def get_gdal_data_type(type_str):
 
     s = type_str.lower()
-    if (s == 'byte') or (s == 'uint8'):
+    if s in ['byte', 'uint8']:
         return gdal.GDT_Byte
-    if (s == 'short') or (s == 'uint16'):
+    if s in ['short', 'uint16']:
         return gdal.GDT_UInt16
     if s == 'uint32':
         return gdal.GDT_UInt32
-    if (s == 'float') or (s == 'float32'):
+    if s in ['float', 'float32']:
         return gdal.GDT_Float32
     if s == 'float64':
         return gdal.GDT_Float64

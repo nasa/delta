@@ -1,23 +1,33 @@
 
 import os
 import sys
-import math
 import functools
-import numpy as np
 import tensorflow as tf
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
 
 
-import image_reader
-import utilities
-from dataset_tools import *
+#import image_reader #pylint: disable=C0413
+#import utilities #pylint: disable=C0413
+from dataset_tools import * #pylint: disable=W0614,W0401,C0413
 
 # Test out TensorFlow Dataset classes.
 
 
-def main(argsIn):
+def prep_input_pairs(image_file_list, num_regions):
+    """For each image generate a pair with each region"""
+
+    image_out  = []
+    region_out = []
+    for i in image_file_list:
+        for r in range(0,num_regions):
+            image_out.append(i)
+            region_out.append(r)
+
+    return (image_out, region_out)
+
+def main(argsIn): #pylint: disable=W0613
 
     # The inputs we will feed into the tensor graph
     # TODO: Have a function that makes a list of all of the input files.
@@ -43,15 +53,15 @@ def main(argsIn):
     # TODO: We can define a different ROI function for each type of input image to
     #       achieve the sizes we want.
     row_roi_split_function  = functools.partial(get_roi_horiz_band_split, num_splits=4)
-    tile_roi_split_function = functools.partial(get_roi_tile_split,       num_splits=2)
+#    tile_roi_split_function = functools.partial(get_roi_tile_split,       num_splits=2)
 
     data_load_function = functools.partial(load_image_region, roi_function=row_roi_split_function,
                                            chunk_size=256, chunk_overlap=0, num_threads=2)
 
     # Tell TF how to load our data
-    dataset = dataset.map( lambda paths, regions: tuple(tf.py_func(
-                            data_load_function, [paths, regions], [tf.int32])),
-                           num_parallel_calls=1)
+    dataset = dataset.map(lambda paths, regions: tuple(tf.py_func(
+                          data_load_function, [paths, regions], [tf.int32])), #pylint: disable=C0330
+                          num_parallel_calls=1)
     dataset = dataset.shuffle(buffer_size=1000) # Use a random order
     dataset = dataset.repeat(NUM_EPOCHS)
 
