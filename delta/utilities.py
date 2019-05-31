@@ -20,13 +20,12 @@
 """
 Miscellaneous utility classes/functions.
 """
-import sys
 import os
 import time
 import math
+import signal
 import gdal
 import psutil
-import traceback
 import numpy as np
 
 #============================================================================
@@ -51,13 +50,13 @@ def get_num_bytes_from_gdal_type(gdal_type):
 def get_gdal_data_type(type_str):
 
     s = type_str.lower()
-    if (s == 'byte') or (s == 'uint8'):
+    if s in ['byte', 'uint8']:
         return gdal.GDT_Byte
-    if (s == 'short') or (s == 'uint16'):
+    if s in ['short', 'uint16']:
         return gdal.GDT_UInt16
     if s == 'uint32':
         return gdal.GDT_UInt32
-    if (s == 'float') or (s == 'float32'):
+    if s in ['float', 'float32']:
         return gdal.GDT_Float32
     if s == 'float64':
         return gdal.GDT_Float64
@@ -78,6 +77,24 @@ def numpy_dtype_to_gdal_type(dtype):
     raise Exception('Unrecognized numpy data type: ' + dtype)
 
 
+def get_pbs_node_list():
+    """Get the list of machines we have access to in a PBS job"""
+
+    # When running a PBS job, the list of machines is contained in $PBS_NODEFILE
+    #  but there can be duplicate entries in the file.
+    node_list = []
+    list_path = os.environ['PBS_NODEFILE']
+    with os.open(list_path, 'r') as f:
+        for line in f:
+            entry = line.strip()
+            if entry not in node_list:
+                node_list.append(entry)
+    return node_list
+
+
+#======================================================
+# Functions copied from ASP
+
 def logger_print(logger, msg):
     '''Print to logger, if present. This helps keeps all messages in sync.'''
     if logger is not None:
@@ -86,7 +103,6 @@ def logger_print(logger, msg):
         print(msg)
 
 # This block of code is just to get a non-blocking keyboard check!
-import signal
 class AlarmException(Exception):
     pass
 def alarmHandler(signum, frame):
@@ -97,7 +113,7 @@ def nonBlockingRawInput(prompt='', timeout=20):
     signal.signal(signal.SIGALRM, alarmHandler)
     signal.alarm(timeout)
     try:
-        text = raw_input(prompt)
+        text = input(prompt)
         signal.alarm(0)
         return text
     except AlarmException:
@@ -140,7 +156,6 @@ def waitForTaskCompletionOrKeypress(taskHandles, logger = None, interactive=True
         for task in taskHandles:
             if not task.ready():
                 notReady += 1
-    return
 
 def stop_task_pool(pool):
     """Stop remaining tasks and kill the pool"""
@@ -150,17 +165,6 @@ def stop_task_pool(pool):
     time.sleep(PROCESS_POOL_KILL_TIMEOUT)
     pool.terminate()
     pool.join()
-
-def exception_print_wrapper(func):
-    """Wrap the function in a try-except printing wrapper"""
-    def try_catch_and_call(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            traceback.print_exc()
-            sys.stdout.flush()
-            return -1
-    return try_catch_and_call
 
 
 def untar_to_folder(tar_path, untar_folder):
@@ -173,134 +177,8 @@ def untar_to_folder(tar_path, untar_folder):
     print(cmd)
     os.system(cmd)
 
-# TODO: Do we need these functions?
-def isNotString(a):
-    """Returns true if the object is not a string"""
 
-    # Python 2/3 compatibilty
-    try:
-        basestring
-    except NameError:
-        basestring = str
-
-def argListToString(argList):
-    """Converts a list of arguments into a single argument string"""
-
-    string = ""
-    for arg in argList:
-        stringVersion = str(arg)
-
-        # Wrap arguments with spaces in them in "" so they stay together
-        if stringVersion.find(' ') >= 0:
-            stringVersion = '"' + stringVersion + '" '
-
-        if string == "":
-            string = stringVersion
-        else:
-            string = string + ' ' + stringVersion
-
-    return string
-
-def executeCommand(cmd,
-                   outputPath=None,      # If given, throw if the file is not created.  Don't run if it already exists.
-                   suppressOutput=False, # If true, don't print anything!
-                   redo=False,           # If true, run even if outputPath already exists.
-                   noThrow=False,        # If true, don't throw if output is missing
-                   numAttempts = 1,      # How many attempts to use
-                   sleepTime = 60,       # How much to sleep between attempts
-                   timeout   = -1        # After how long to timeout in seconds
-                   ):
-    '''Executes a command with multiple options'''
-
-    # Initialize outputs
-    out    = ""
-    status = 0
-    err    = ""
-
-    if cmd == '': # An empty task
-        return (out, err, status)
-
-    # Convert the input to list format if needed
-    if not isNotString(cmd):
-        cmd = shlex.split(cmd) # String to arg list
-
-    for attempt in range(numAttempts):
-        # Run the command if conditions are met
-        if redo or (outputPath is None) or (not os.path.exists(outputPath)):
-
-            if not suppressOutput:
-                print (argListToString(cmd))
-
-            if timeout > 0:
-                print("Will enforce timeout of " + str(timeout) + " seconds.")
-                signal.signal(signal.SIGALRM, timeout_alarm_handler)
-                signal.alarm(timeout)
-
-            try:
-                p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                     universal_newlines=True)
-                out, err = p.communicate()
-                status = p.returncode
-                if timeout > 0:
-                    signal.alarm(0)  # reset the alarm
-            except Exception as e:
-                out = ""
-                err = ('Error: %s: %s' % (argListToString(cmd), e))
-                if timeout > 0:
-                    # this module is generally not available, so this use is very niche
-                    import psutil
-                    def kill_proc_tree(pid, including_parent=True):
-                        parent = psutil.Process(pid)
-                        for child in parent.children(recursive=True):
-                            print("Killing: " + str(child))
-                            child.kill()
-                        if including_parent:
-                            print("Killing: " + str(parent))
-                            parent.kill()
-                    pid = psutil.Process(p.pid)
-                    try:
-                        kill_proc_tree(p.pid)
-                    except:
-                        pass
-
-                status = 1
-                if not noThrow:
-                    raise Exception(err)
-
-            if out is None: out = ""
-            if err is None: err = ""
-
-            if not suppressOutput:
-                print (out + '\n' + err)
-
-            if status == 0:
-                break
-
-            if numAttempts <= 1:
-                break
-
-            if attempt < numAttempts - 1:
-                print("attempt: " + str(attempt))
-                print("ran: " + argListToString(cmd) )
-                print("out = " + out)
-                print("err = " + err)
-                print("status = " + str(status))
-                print("Will sleep for " + str(sleepTime) + " seconds")
-
-                time.sleep(sleepTime)
-
-        else: # Output file already exists, don't re-run
-            out    = ""
-            err    = ""
-            status = 0
-
-        # Optionally check that the output file was created
-        if outputPath and (not os.path.exists(outputPath)) and (not noThrow):
-            raise Exception('Failed to create output file: ' + outputPath)
-
-    return (out, err, status)
-
-#------------------------------------------------------------------
+#======================================================================================
 # Functions for working with image chunks.
 
 def generate_chunk_info(chunk_size, chunk_overlap):
@@ -345,7 +223,7 @@ def get_chunk_center_list_in_region(region_rect, chunk_start_offset,
         x = init_x
         while x < region_rect.max_x:
             if not region_rect.contains_pt(x, y):
-                raise Exception('Contain error: ' % (x, y, region_rect))
+                raise Exception('Contain error: %d, %d, %s' % (x, y, str(region_rect)))
             center_list.append((x,y))
             x += chunk_spacing
         y += chunk_spacing
@@ -371,7 +249,7 @@ def restrict_chunk_list_to_roi(chunk_center_list, chunk_size, roi):
         rect = rect_from_chunk_center(center, chunk_size)
         if roi.contains_rect(rect):
             output_list.append(center)
-            if output_chunk_roi == None:
+            if output_chunk_roi is None:
                 output_chunk_roi = rect
             else:
                 output_chunk_roi.expand_to_contain_rect(rect)
@@ -402,12 +280,11 @@ class Rectangle:
         #    print 'RECTANGLE WARNING: ' + str(self)
 
     def __str__(self):
-        if type(self.min_x) == int:
+        if isinstance(self.min_x, int):
             return ('min_x: %d, max_x: %d, min_y: %d, max_y: %d' %
                     (self.min_x, self.max_x, self.min_y, self.max_y))
-        else:
-            return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
-                    (self.min_x, self.max_x, self.min_y, self.max_y))
+        return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
+                (self.min_x, self.max_x, self.min_y, self.max_y))
 
 #    def indexGenerator(self):
 #        '''Generator function used to iterate over all integer indices.
@@ -436,8 +313,7 @@ class Rectangle:
         '''Returns the valid area'''
         if not self.has_area():
             return 0
-        else:
-            return self.height() * self.width()
+        return self.height() * self.width()
 
     def get_min_coord(self):
         return (self.min_x, self.min_y)
@@ -453,7 +329,7 @@ class Rectangle:
 
     def scale_by_constant(self, xScale, yScale):
         '''Scale the units by a constant'''
-        if yScale == None:
+        if yScale is None:
             yScale = xScale
         self.min_x *= xScale
         self.max_x *= xScale
@@ -464,9 +340,9 @@ class Rectangle:
         '''Expand the box by an amount in each direction'''
         self.min_x -= left
         self.min_y -= down
-        if right == None: # If right and up are not passed in, use left and down for both sides.
+        if right is None: # If right and up are not passed in, use left and down for both sides.
             right = left
-        if up == None:
+        if up is None:
             up = down
         self.max_x += right
         self.max_y += up
@@ -517,4 +393,4 @@ class Rectangle:
     def overlaps(self, other_rect):
         '''Returns true if there is any overlap between this and another rectangle'''
         overlap_area = self.get_intersection(other_rect)
-        return overlap_area.hasArea()
+        return overlap_area.has_area()

@@ -25,3 +25,13 @@ And the program should execute.  After execution to see the results using MLFlow
 
 And then in web browser open http://localhost:5000
 
+
+
+-- miniconda3 installation instructions (tensorflow v1.13):
+
+conda install numpy
+conda install gdal
+conda install matplotlib
+conda install 'tensorflow=*=mkl*'    <--- CPU version!
+conda install -c conda-forge mlflow
+pip install psutil

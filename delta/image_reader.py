@@ -102,7 +102,7 @@ class TiffReader:
                             + ' is outside the bounds of image with size' + str(size))
 
         band = 1
-        (block_size, num_blocks) = self.get_block_info(band)
+        (block_size, num_blocks) = self.get_block_info(band) #pylint: disable=W0612
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
         start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
         stop_block_x  = int(math.floor((desired_roi.max_x-1) / block_size[0])) # Rect max is exclusive
@@ -305,7 +305,7 @@ class MultiTiffFileReader():
                 raise Exception('Roi outside image bounds: ' + str(roi))
 
         # Loop until we have processed all of the blocks.
-        while len(block_rois) > 0:
+        while block_rois:
             # For the next (output) block, figure out the (input block) aligned
             # data read that we need to perform to get it.
             read_roi = first_image.get_block_aligned_read_roi(block_rois[0])

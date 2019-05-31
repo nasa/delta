@@ -23,22 +23,14 @@ Script test out the image chunk generation calls.
 import os
 import sys
 import argparse
-import math
-import functools
-import multiprocessing
-import traceback
-import random
-
 
 ### Tensorflow includes
 
+import random
 import mlflow
-import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-
-import matplotlib.pyplot as plt
-
+#import matplotlib.pyplot as plt
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
@@ -48,10 +40,9 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities
-import landsat_utils
-from image_reader import *
-from image_writer import *
+import landsat_utils #pylint: disable=C0413
+from image_reader import * #pylint: disable=W0614,W0401,C0413
+from image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
@@ -94,6 +85,8 @@ def make_model(channel, in_len):
 
 def main(argsIn):
 
+    #pylint: disable=R0914
+
     try:
 
         usage  = "usage: chunk_and_tensorflow [options]"
@@ -127,8 +120,9 @@ def main(argsIn):
 
         options = parser.parse_args(argsIn)
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     if not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
@@ -196,13 +190,13 @@ def main(argsIn):
     random.shuffle(shuffled_idxs)
     split_idx  = int(split_fraction * num_chunks)
     train_idx  = shuffled_idxs[:split_idx]
-    test_idx   = shuffled_idxs[split_idx:]
+#    test_idx   = shuffled_idxs[split_idx:]
     train_data = all_data[train_idx,:,:,:]
-    test_data  = all_data[test_idx, :,:,:]
+#    test_data  = all_data[test_idx, :,:,:]
     # Want to get the pixel at the middle (approx) of the chunk.
     center_pixel = int(options.chunk_size/2)
     train_labels = all_labels[train_idx,center_pixel,center_pixel] # Center pixel becomes the label?
-    test_labels  = all_labels[test_idx, center_pixel,center_pixel]
+#    test_labels  = all_labels[test_idx, center_pixel,center_pixel]
 
 
     batch_size = 2048
@@ -222,7 +216,7 @@ def main(argsIn):
         mlflow.log_metric('acc',  history.history['acc' ][idx])
     ### end for
     mlflow.end_run()
-
+    return 0
 
 
 if __name__ == "__main__":

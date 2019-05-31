@@ -1,26 +1,25 @@
 
 import os
 import sys
-import math
 import functools
 import random
 
 os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
-import numpy as np
-import tensorflow as tf
-from tensorflow import keras
+#import numpy as np
+import tensorflow as tf #pylint: disable=C0413
+from tensorflow import keras #pylint: disable=C0413
 #import mlflow
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
 
 
-import image_reader
-import utilities
-import landsat_utils
-import dataset_tools
-from disk_folder_cache import DiskFolderCache
+#import image_reader #pylint: disable=C0413
+#import utilities #pylint: disable=C0413
+import landsat_utils #pylint: disable=C0413
+import dataset_tools #pylint: disable=C0413
+from disk_folder_cache import DiskFolderCache #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.
@@ -34,7 +33,7 @@ from disk_folder_cache import DiskFolderCache
 
 def make_model(channel, in_len):
     # assumes square chunks.
-    fc1_size = channel * in_len ** 2
+#    fc1_size = channel * in_len ** 2
 #     fc2_size = fc1_size * 2
 #     fc3_size = fc2_size
 #     fc4_size = fc1_size
@@ -49,7 +48,7 @@ def make_model(channel, in_len):
     model = keras.Sequential([
         keras.layers.Flatten(input_shape=(channel, in_len, in_len)),
         # Note: use_bias is True by default, which is also the case in pytorch, which Robert used.
-        keras.layers.Dense(fc2_size, activation=tf.nn.relu), 
+        keras.layers.Dense(fc2_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
         keras.layers.Dense(fc3_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
@@ -78,16 +77,16 @@ def init_network(num_bands, chunk_size):
 
 
 
-def main(argsIn):
+def main(argsIn): #pylint: disable=W0613
 
     # Make a list of source landsat files from the NEX collection
-    
+
     # Supercomputer
     # TODO: Use a much larger list!
-    #input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/' 
+    #input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/'
     #list_path    = '/nobackup/smcmich1/delta/ls_list.txt'
     #cache_folder = '/nobackup/smcmich1/delta/landsat'
-    
+
     # A local test
     input_folder = '/home/smcmich1/data/landsat/tars'
     list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
@@ -119,14 +118,14 @@ def main(argsIn):
     CHUNK_SIZE = 256
     NUM_EPOCHS = 5
     BATCH_SIZE = 4
-    
+
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
     # TODO: We can define a different ROI function for each type of input image to
     #       achieve the sizes we want.
     # TODO: These values need to by synchronized with num_regions above!
     row_roi_split_funct  = functools.partial(dataset_tools.get_roi_horiz_band_split, num_splits=4)
-    tile_roi_split_funct = functools.partial(dataset_tools.get_roi_tile_split,       num_splits=2)
+#    tile_roi_split_funct = functools.partial(dataset_tools.get_roi_tile_split,       num_splits=2)
 
     # This function prepares landsat images and returns the band paths
     ls_prep_func = functools.partial(landsat_utils.prep_landsat_image,
@@ -157,8 +156,8 @@ def main(argsIn):
 
     # Break up the chunk sets to individual chunks
     # TODO: Does this improve things?
-    chunk_set = chunk_set.flat_map(lambda x: tf.data.Dataset().from_tensor_slices(x))
-    label_set = label_set.flat_map(lambda x: tf.data.Dataset().from_tensor_slices(x))
+    chunk_set = chunk_set.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x)) #pylint: disable=W0108
+    label_set = label_set.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x)) #pylint: disable=W0108
 
     # Pair the data and labels in our dataset
     dataset = tf.data.Dataset.zip((chunk_set, label_set))
@@ -188,10 +187,8 @@ def main(argsIn):
     model = init_network(num_bands, CHUNK_SIZE)
 
     print(num_entries,num_entries//BATCH_SIZE)
-    history = model.fit(dataset, epochs=NUM_EPOCHS,
+    history = model.fit(dataset, epochs=NUM_EPOCHS, #pylint: disable=W0612
                         steps_per_epoch=num_entries//BATCH_SIZE)
-#, batch_size=2048)
-
 
     print('TF dataset test finished!')
 

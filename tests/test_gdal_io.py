@@ -20,16 +20,16 @@
 """
 Test for GDAL I/O classes.
 """
-import sys, os
+import sys
+import os
 import argparse
 import math
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
 
-
-from image_reader import *
-from image_writer import *
+from image_reader import * #pylint: disable=W0614,W0401,C0413
+from image_writer import * #pylint: disable=W0614,W0401,C0413
 
 #------------------------------------------------------------------------------
 
@@ -50,7 +50,7 @@ def main(argsIn):
         #                                      help="Input path")
 
         parser.add_argument("--output-path", dest="outputPath", default=None,
-                                              help="Output path.")
+                            help="Output path.")
 
 
         parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
@@ -62,8 +62,9 @@ def main(argsIn):
 
         # Check the required positional arguments.
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     #image = TiffReader()
     #image.open_image(options.inputPath)
@@ -76,7 +77,6 @@ def main(argsIn):
     #print('nBands = %d, nRows = %d, nCols = %d' % (nBands, nRows, nCols))
     #print('noData = %s, dType = %d, bSize = %d, %d' % (str(noData), dType, bSize[0], bSize[1]))
 
-    
     band = 1
     input_reader = MultiTiffFileReader()
     input_reader.load_images(options.input_paths)
@@ -95,13 +95,13 @@ def main(argsIn):
     #data = band.ReadBlock(0,0) # Reads in as 'bytes' or raw data
     #print(type(data))
     #print('len(data) = ' + str(len(data)))
-    
+
     #data = band.ReadAsArray(0, 0, bSize[0], bSize[1]) # Reads as numpy array
     ##np.array()
     #print(type(data))
     ##print('len(data) = ' + str(len(data)))
     #print('data.shape = ' + str(data.shape))
-    
+
     # Use the input tile size unless the user specified one.
     output_tile_width  = bSize[0]
     output_tile_height = bSize[1]
@@ -123,9 +123,9 @@ def main(argsIn):
     print('Testing image duplication!')
     writer = TiffWriter()
     writer.init_output_geotiff(options.outputPath, nRows, nCols, noData,
-                             tile_width=output_tile_width,
-                             tile_height=output_tile_height,
-                             metadata=input_metadata)
+                               tile_width=output_tile_width,
+                               tile_height=output_tile_height,
+                               metadata=input_metadata)
 
     # Setting up output ROIs
     output_rois = []
@@ -136,26 +136,25 @@ def main(argsIn):
             roi = Rectangle(c*output_tile_width, r*output_tile_height,
                             width=output_tile_width, height=output_tile_height)
             roi = roi.get_intersection(input_bounds)
-            
+
             output_rois.append(roi)
             #print(roi)
             #print(band)
             #data = image.read_pixels(roi, band)
             #writer.write_geotiff_block(data, c, r)
-            
-    
+
     def callback_function(output_roi, read_roi, data_vec):
         """Callback function to write the first channel to the output file."""
-      
+
         #print('For output roi: ' + str(output_roi) +' got read_roi ' + str(read_roi))
         #print('Data shape = ' + str(data_vec[0].shape))
-        
+
         # Figure out the output block
         col = output_roi.min_x / output_tile_width
         row = output_roi.min_y / output_tile_height
-        
+
         data = data_vec[0] # Just for testing
-        
+
         # Figure out where the desired output data falls in read_roi
         x0 = output_roi.min_x - read_roi.min_x
         y0 = output_roi.min_y - read_roi.min_y
@@ -165,8 +164,8 @@ def main(argsIn):
         # Crop the desired data portion and write it out.
         output_data = data[y0:y1, x0:x1]
         writer.write_geotiff_block(output_data, col, row)
-        
-            
+
+
     print('Writing TIFF blocks...')
     input_reader.process_rois(output_rois, callback_function)
 
@@ -180,21 +179,10 @@ def main(argsIn):
     print('Cleaning up the writer!')
     writer.cleanup()
 
-    image = None # Close the image
+    image = None # Close the image  #pylint: disable=W0612
 
     print('Script is finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    

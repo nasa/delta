@@ -24,10 +24,8 @@ import os
 import sys
 import argparse
 import subprocess
-import traceback
 
 import gdal
-from osgeo import ogr
 from osgeo import osr
 
 from usgs import api
@@ -44,8 +42,8 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities
-import landsat_utils
+import utilities  #pylint: disable=C0413
+import landsat_utils #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
@@ -78,8 +76,7 @@ def unpack_inputs(tar_folder, unpack_folder):
     file_list = []
 
     # Loop through tar files
-    input_list  = os.listdir(tar_folder   )
-    unpack_list = os.listdir(unpack_folder)
+    input_list = os.listdir(tar_folder   )
 
     for f in input_list:
         ext = os.path.splitext(f)[1]
@@ -111,7 +108,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
 
     # Get the projected coordinates
     src = gdal.Open(landsat_path)
-    ulx, xres, xskew, uly, yskew, yres  = src.GetGeoTransform()
+    ulx, xres, xskew, uly, yskew, yres  = src.GetGeoTransform() #pylint: disable=W0612
     lrx = ulx + (src.RasterXSize * xres)
     lry = uly + (src.RasterYSize * yres)
 
@@ -125,8 +122,8 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
         transform = osr.CoordinateTransformation(source, target)
 
         # Transform the point. You can also create an ogr geometry and use the more generic `point.Transform()`
-        (lrx, lry, h) = transform.TransformPoint(lrx, lry)
-        (ulx, uly, h) = transform.TransformPoint(ulx, uly)
+        (lrx, lry, h) = transform.TransformPoint(lrx, lry) #pylint: disable=W0612
+        (ulx, uly, h) = transform.TransformPoint(ulx, uly) #pylint: disable=W0612
 
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
@@ -140,9 +137,12 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
         os.mkdir(output_folder)
 
     # Only log in if our session expired (ugly function use to check!)
-    if force_login or (not api._get_api_key(None)):
+    if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        result = api.login(user, password)
+        result = api.login(user, password) #pylint: disable=W0612
+
+    #print(api._get_api_key(None))
+    #raise Exception('DEBUG')
 
     DATASET = 'SP_TILE_DSWE'
     CATALOG = 'EE'
@@ -219,8 +219,9 @@ def main(argsIn):
 
         options = parser.parse_args(argsIn)
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     output_folder = os.path.dirname(options.output_path)
     if output_folder and not os.path.exists(output_folder):
@@ -265,7 +266,7 @@ def main(argsIn):
     print(cmd)
     p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=True)
-    out, err = p.communicate()
+    out = p.communicate()[0]
     proj_string = None
     lines = out.split('\n')
     for line in lines:
@@ -281,7 +282,7 @@ def main(argsIn):
 
     # Reproject the merged label and crop to the landsat extent
     cmd = ('gdalwarp -overwrite -t_srs %s -te %s %s %s %s %s %s ' %
-          (proj_string, ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1], merge_path, options.output_path))
+           (proj_string, ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1], merge_path, options.output_path))
     print(cmd)
     os.system(cmd)
     os.remove(merge_path)
@@ -291,6 +292,7 @@ def main(argsIn):
 
 
     print('Landsat label file conversion is finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

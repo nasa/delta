@@ -23,11 +23,6 @@ Script test out the image chunk generation calls.
 import os
 import sys
 import argparse
-import math
-import functools
-import multiprocessing
-import traceback
-import numpy as np
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
@@ -37,10 +32,10 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities
-import landsat_utils
-from image_reader import *
-from image_writer import *
+import utilities #pylint: disable=C0413
+import landsat_utils #pylint: disable=C0413
+from image_reader import * #pylint: disable=W0614,W0401,C0413
+from image_writer import * #pylint: disable=W0614,W0401,C0413
 
 #------------------------------------------------------------------------------
 
@@ -74,8 +69,9 @@ def main(argsIn):
 
         options = parser.parse_args(argsIn)
 
-    except argparse.ArgumentError as msg:
-        raise Usage(msg)
+    except argparse.ArgumentError:
+        print(usage)
+        return -1
 
     if not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
@@ -123,6 +119,7 @@ def main(argsIn):
         #raise Exception('DEBUG')
 
     print('Landsat chunker is finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
