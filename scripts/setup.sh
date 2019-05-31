@@ -23,3 +23,7 @@ echo "All dependencies successfully installed."
 
 
 echo "TODO: Get data from known location"
+mkdir -p $DIR/../data/{in/toy_data,out/mlflow}
+
+# ssh -fNL 12345:gramps.ndc.nasa.gov:22 $USER@wow.ndc.nasa.gov
+# scp -P 12345 $USER@localhost://path/to/remote/file $DIR/../data/in/toy_data/ 
