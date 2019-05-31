@@ -167,6 +167,8 @@ def main(argsIn):
 
     # TF additions
     seed_val = 12306 # number I typed out randomly on my keyboard
+    mlflow.set_tracking_uri('file:../data/out/mlruns')
+    mlflow.set_experiment('chunk_and_tensorflow_test')
     mlflow.start_run()
     mlflow.log_param('file list', ' '.join(input_paths))
     mlflow.log_param('seed_val', seed_val)
