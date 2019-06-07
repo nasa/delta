@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Classes for block-aligned reading from multiple Geotiff files.
 """
