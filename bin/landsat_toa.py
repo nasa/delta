@@ -42,7 +42,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     (num_cols, num_rows) = input_reader.image_size()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1) #pylint: disable=W0612
+    (block_size_in, dummy_num_blocks_in) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
@@ -115,8 +115,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     writer.cleanup()
 
     print('Done writing: ' + output_path)
-
-    image = None # Close the image #pylint: disable=W0612
 
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):

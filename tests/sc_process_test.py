@@ -99,8 +99,8 @@ def main():
     num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     model = init_network(num_bands, CHUNK_SIZE)
 
-    history = model.fit(ds, epochs=NUM_EPOCHS, #pylint: disable=W0612
-                        steps_per_epoch=num_entries//BATCH_SIZE)
+    unused_history = model.fit(ds, epochs=NUM_EPOCHS,
+                               steps_per_epoch=num_entries//BATCH_SIZE)
 
     print('TF dataset test finished!')
 

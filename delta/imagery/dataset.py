@@ -5,6 +5,8 @@ import functools
 import os
 import math
 
+from multiprocessing.dummy import Pool as ThreadPool
+
 import numpy as np
 import tensorflow as tf
 
@@ -21,7 +23,7 @@ def make_landsat_list(top_folder, output_path, ext, num_regions):
 
     num_entries = 0
     with open(output_path, 'w') as f:
-        for root, directories, filenames in os.walk(top_folder): #pylint: disable=W0612
+        for root, dummy_directories, filenames in os.walk(top_folder):
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ext:
                     path = os.path.join(root, filename)
@@ -142,7 +144,7 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
 def parallel_filter_chunks(data, num_threads):
     """Filter out chunks that contain the Landsat nodata value (zero)"""
 
-    (num_chunks, num_bands, width, height) = data.shape() #pylint: disable=W0612
+    (num_chunks, unused_num_bands, width, height) = data.shape()
     num_chunk_pixels = width * height
 
     valid_chunks = [True] * num_chunks
@@ -165,7 +167,7 @@ def parallel_filter_chunks(data, num_threads):
                 print('INVALID')
 
     # Call check_chunks in parallel using a thread pool
-    pool = ThreadPool(num_threads) #pylint: disable=E0602
+    pool = ThreadPool(num_threads)
     pool.map(check_chunks, splits)
     pool.close()
     pool.join()
@@ -235,8 +237,8 @@ class ImageryDataset:
 
         # Break up the chunk sets to individual chunks
         # TODO: Does this improve things?
-        chunk_set = chunk_set.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x)) #pylint: disable=W0108
-        label_set = label_set.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x)) #pylint: disable=W0108
+        chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))

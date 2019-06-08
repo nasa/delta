@@ -12,7 +12,6 @@ import random
 import mlflow
 import tensorflow as tf
 from tensorflow import keras
-#import matplotlib.pyplot as plt
 
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))

@@ -89,7 +89,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
 
     # Get the projected coordinates
     src = gdal.Open(landsat_path)
-    ulx, xres, xskew, uly, yskew, yres  = src.GetGeoTransform() #pylint: disable=W0612
+    ulx, xres, dummyxskew, uly, dummyyskew, yres  = src.GetGeoTransform()
     lrx = ulx + (src.RasterXSize * xres)
     lry = uly + (src.RasterYSize * yres)
 
@@ -103,8 +103,8 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
         transform = osr.CoordinateTransformation(source, target)
 
         # Transform the point. You can also create an ogr geometry and use the more generic `point.Transform()`
-        (lrx, lry, h) = transform.TransformPoint(lrx, lry) #pylint: disable=W0612
-        (ulx, uly, h) = transform.TransformPoint(ulx, uly) #pylint: disable=W0612
+        (lrx, lry, dummy_h) = transform.TransformPoint(lrx, lry)
+        (ulx, uly, dummy_h) = transform.TransformPoint(ulx, uly)
 
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
@@ -120,7 +120,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
     # Only log in if our session expired (ugly function use to check!)
     if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        result = api.login(user, password) #pylint: disable=W0612
+        dummy_result = api.login(user, password)
 
     #print(api._get_api_key(None))
     #raise Exception('DEBUG')

@@ -83,7 +83,7 @@ class TiffReader:
                             + ' is outside the bounds of image with size' + str(size))
 
         band = 1
-        (block_size, num_blocks) = self.get_block_info(band) #pylint: disable=W0612
+        (block_size, unused_num_blocks) = self.get_block_info(band)
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
         start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
         stop_block_x  = int(math.floor((desired_roi.max_x-1) / block_size[0])) # Rect max is exclusive

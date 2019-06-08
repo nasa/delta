@@ -160,8 +160,6 @@ def main(argsIn):
     print('Cleaning up the writer!')
     writer.cleanup()
 
-    image = None # Close the image  #pylint: disable=W0612
-
     print('Script is finished.')
     return 0
 

@@ -57,7 +57,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     num_bands = input_reader.num_bands()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1)  #pylint: disable=W0612
+    (block_size_in, dummy_num_blocks_in) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
     #print(input_metadata)
 
