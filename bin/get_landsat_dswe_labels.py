@@ -283,7 +283,7 @@ def main(argsIn):
     # Reproject the merged label and crop to the landsat extent
     LANDSAT_RES = 30.0 # Meters per pixel
     cmd = ('gdalwarp -overwrite -tr %f %f -t_srs %s -te %s %s %s %s %s %s ' %
-           (LANDSAT_RES, LANDSAT_RES, proj_string, 
+           (LANDSAT_RES, LANDSAT_RES, proj_string,
             ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1],
             merge_path, options.output_path))
     print(cmd)

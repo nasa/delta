@@ -161,7 +161,7 @@ def main(argsIn):
         print('Loading label data...')
         label_reader = MultiTiffFileReader()
         label_reader.load_images([options.label_path])
-        if label_reader.image_size() != input_reader.image_size()
+        if label_reader.image_size() != input_reader.image_size():
             print('Label image size does not match input image size!')
             return -1
         label_data = label_reader.parallel_load_chunks(roi, options.chunk_size,
@@ -210,19 +210,19 @@ def main(argsIn):
     random.shuffle(shuffled_idxs)
     split_idx  = int(split_fraction * num_chunks)
     train_idx  = shuffled_idxs[:split_idx]
-#    test_idx   = shuffled_idxs[split_idx:]
+    test_idx   = shuffled_idxs[split_idx:]
     train_data = all_data[train_idx,:,:,:]
-#    test_data  = all_data[test_idx, :,:,:]
+    test_data  = all_data[test_idx, :,:,:]
     # Want to get the pixel at the middle (approx) of the chunk.
     center_pixel = int(options.chunk_size/2)
 
     if options.label_path:
-      train_labels = all_labels[train_idx, center_pixel, center_pixel]
-#    test_labels  = all_labels[test_idx, center_pixel, center_pixel]
+        train_labels = all_labels[train_idx, center_pixel, center_pixel]
+        test_labels  = all_labels[test_idx, center_pixel, center_pixel]
 
     else: # Use junk labels (center pixel value)
-      train_labels = all_labels[train_idx, center_pixel, center_pixel]
-#    test_labels  = all_labels[test_idx, center_pixel,center_pixel]
+        train_labels = all_labels[train_idx, center_pixel, center_pixel]
+        test_labels  = all_labels[test_idx, center_pixel,center_pixel]
 
     batch_size = 2048
     mlflow.log_param('chunk_size', options.chunk_size)
@@ -234,7 +234,9 @@ def main(argsIn):
     # Remove one band for the labels
     model = make_model(NUM_TRAIN_BANDS, options.chunk_size)
     model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
-    history = model.fit(train_data, train_labels, epochs=options.num_epochs, batch_size=batch_size)
+    history = model.fit(train_data, train_labels,
+                        epochs=options.num_epochs, batch_size=batch_size,
+                        validation_data=(test_data, test_labels))
 
     for idx in range(options.num_epochs):
         mlflow.log_metric('loss', history.history['loss'][idx])
