@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """
@@ -37,10 +18,10 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities #pylint: disable=C0413
-import landsat_utils #pylint: disable=C0413
-from image_reader import * #pylint: disable=W0614,W0401,C0413
-from image_writer import * #pylint: disable=W0614,W0401,C0413
+from imagery import utilities #pylint: disable=C0413
+from imagery import landsat_utils #pylint: disable=C0413
+from imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+from imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
@@ -61,7 +42,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     (num_cols, num_rows) = input_reader.image_size()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1) #pylint: disable=W0612
+    (block_size_in, dummy_num_blocks_in) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
 
     input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
@@ -134,8 +115,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     writer.cleanup()
 
     print('Done writing: ' + output_path)
-
-    image = None # Close the image #pylint: disable=W0612
 
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):

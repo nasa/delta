@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Script to fetch DSWE (label) images from USGS corresponding to a given Landsat image.
 """
@@ -42,8 +23,8 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities  #pylint: disable=C0413
-import landsat_utils #pylint: disable=C0413
+from imagery import utilities  #pylint: disable=C0413
+from imagery import landsat_utils #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
@@ -108,7 +89,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
 
     # Get the projected coordinates
     src = gdal.Open(landsat_path)
-    ulx, xres, xskew, uly, yskew, yres  = src.GetGeoTransform() #pylint: disable=W0612
+    ulx, xres, dummyxskew, uly, dummyyskew, yres  = src.GetGeoTransform()
     lrx = ulx + (src.RasterXSize * xres)
     lry = uly + (src.RasterYSize * yres)
 
@@ -122,8 +103,8 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
         transform = osr.CoordinateTransformation(source, target)
 
         # Transform the point. You can also create an ogr geometry and use the more generic `point.Transform()`
-        (lrx, lry, h) = transform.TransformPoint(lrx, lry) #pylint: disable=W0612
-        (ulx, uly, h) = transform.TransformPoint(ulx, uly) #pylint: disable=W0612
+        (lrx, lry, dummy_h) = transform.TransformPoint(lrx, lry)
+        (ulx, uly, dummy_h) = transform.TransformPoint(ulx, uly)
 
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
@@ -142,7 +123,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
     # Only log in if our session expired (ugly function use to check!)
     if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
+        dummy_result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')

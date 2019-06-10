@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../d
 
 #import image_reader #pylint: disable=C0413
 #import utilities #pylint: disable=C0413
-from dataset_tools import * #pylint: disable=W0614,W0401,C0413
+from dataset import * #pylint: disable=W0614,W0401,C0413
 
 # Test out TensorFlow Dataset classes.
 
@@ -27,7 +27,7 @@ def prep_input_pairs(image_file_list, num_regions):
 
     return (image_out, region_out)
 
-def main(argsIn): #pylint: disable=W0613
+def main():
 
     # The inputs we will feed into the tensor graph
     # TODO: Have a function that makes a list of all of the input files.
@@ -59,8 +59,8 @@ def main(argsIn): #pylint: disable=W0613
                                            chunk_size=256, chunk_overlap=0, num_threads=2)
 
     # Tell TF how to load our data
-    dataset = dataset.map(lambda paths, regions: tuple(tf.py_func(
-                          data_load_function, [paths, regions], [tf.int32])), #pylint: disable=C0330
+    dataset = dataset.map(lambda paths, regions: tuple(tf.py_func(data_load_function,
+                                                                  [paths, regions], [tf.int32])),
                           num_parallel_calls=1)
     dataset = dataset.shuffle(buffer_size=1000) # Use a random order
     dataset = dataset.repeat(NUM_EPOCHS)
@@ -96,4 +96,4 @@ def main(argsIn): #pylint: disable=W0613
     print('TF dataset test finished!')
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

@@ -1,32 +1,19 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Tools for loading data into the TensorFlow Dataset class.
 """
+import functools
 import os
 import math
 
-import numpy as np
+from multiprocessing.dummy import Pool as ThreadPool
 
-import image_reader
-import utilities
+import numpy as np
+import tensorflow as tf
+
+from . import image_reader
+from . import landsat_utils
+from . import utilities
+from . import disk_folder_cache
 
 # TODO: Generalize
 def make_landsat_list(top_folder, output_path, ext, num_regions):
@@ -36,7 +23,7 @@ def make_landsat_list(top_folder, output_path, ext, num_regions):
 
     num_entries = 0
     with open(output_path, 'w') as f:
-        for root, directories, filenames in os.walk(top_folder): #pylint: disable=W0612
+        for root, dummy_directories, filenames in os.walk(top_folder):
             for filename in filenames:
                 if os.path.splitext(filename)[1] == ext:
                     path = os.path.join(root, filename)
@@ -98,7 +85,7 @@ def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overl
     """
 
     # Our input list is stored as "path, region" strings
-    line   = line.decode() # Convert from TF to string type
+    line   = line.numpy().decode() # Convert from TF to string type
     parts  = line.split(',')
     path   = parts[0].strip()
     region = int(parts[1].strip())
@@ -119,7 +106,6 @@ def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overl
     print('Loading chunk data from file ' + path + ' using ROI: ' + str(roi))
     chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, num_threads)
 
-    print('Chunk data shape = ' + str(chunk_data.shape))
     return chunk_data
 
 def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overlap):
@@ -127,7 +113,7 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
 
     # Our input list is stored as "path, region" strings
     #print('Label data input = ' + str(line))
-    line   = line.decode() # Convert from TF format to string
+    line   = line.numpy().decode() # Convert from TF format to string
     parts  = line.split(',')
     path   = parts[0].strip()
     region = int(parts[1].strip())
@@ -148,9 +134,7 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
 
     # Make a fake label
     full_shape = chunk_data.shape[0]
-    print('label shape in = ' + str(chunk_data.shape))
     chunk_data = np.zeros(full_shape, dtype=np.int32)
-    print('label shape out = ' + str(chunk_data.shape))
     chunk_data[ 0:10] = 1 # Junk labels
     chunk_data[10:20] = 2
     return chunk_data
@@ -160,10 +144,8 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
 def parallel_filter_chunks(data, num_threads):
     """Filter out chunks that contain the Landsat nodata value (zero)"""
 
-    (num_chunks, num_bands, width, height) = data.shape() #pylint: disable=W0612
+    (num_chunks, unused_num_bands, width, height) = data.shape()
     num_chunk_pixels = width * height
-
-    print('Num input chunks = ' + str(num_chunks))
 
     valid_chunks = [True] * num_chunks
     splits = []
@@ -185,7 +167,7 @@ def parallel_filter_chunks(data, num_threads):
                 print('INVALID')
 
     # Call check_chunks in parallel using a thread pool
-    pool = ThreadPool(num_threads) #pylint: disable=E0602
+    pool = ThreadPool(num_threads)
     pool.map(check_chunks, splits)
     pool.close()
     pool.join()
@@ -199,3 +181,73 @@ def parallel_filter_chunks(data, num_threads):
     print('Num remaining chunks = ' + str(len(valid_indices)))
 
     return data[valid_indices, :, :, :]
+
+class ImageryDataset:
+    # TODO: default cache in /tmp
+    # TODO: something better with num_regions, chunk_size
+    """
+    Create dataset with all files in image_folder with extension ext.
+
+    Cache list of files to list_path, and use caching folder cache_folder.
+    """
+    def __init__(self, image_folder, ext, list_path, cache_folder, cache_limit=4, num_regions=4, chunk_size=256):
+        self.__disk_cache_manager = disk_folder_cache.DiskFolderCache(cache_folder, cache_limit)
+
+        # Generate a text file list of all the input images, plus region indices.
+        self._num_regions = make_landsat_list(image_folder, list_path, ext, num_regions)
+        assert self._num_regions > 0
+
+        # This dataset returns the lines from the text file as entries.
+        ds = tf.data.TextLineDataset(list_path)
+
+        # TODO: We can define a different ROI function for each type of input image to
+        #       achieve the sizes we want.
+        # TODO: These values need to by synchronized with num_regions above!
+        row_roi_split_funct = functools.partial(get_roi_horiz_band_split, num_splits=num_regions)
+
+        # This function prepares landsat images and returns the band paths
+        ls_prep_func = functools.partial(landsat_utils.prep_landsat_image,
+                                         cache_manager=self.__disk_cache_manager)
+
+        # This function loads the data and formats it for TF
+        data_load_function = functools.partial(load_image_region,
+                                               prep_function=ls_prep_func,
+                                               roi_function=row_roi_split_funct,
+                                               chunk_size=chunk_size, chunk_overlap=0, num_threads=2)
+
+        # This function generates fake label info for loaded data.
+        label_gen_function = functools.partial(load_fake_labels,
+                                               prep_function=ls_prep_func,
+                                               roi_function=row_roi_split_funct,
+                                               chunk_size=chunk_size, chunk_overlap=0)
+
+        def generate_chunks(lines):
+            y = tf.py_function(data_load_function, [lines], [tf.float64])
+            y[0].set_shape((0, 8, chunk_size, chunk_size))
+            return y
+
+        def generate_labels(lines):
+            y = tf.py_function(label_gen_function, [lines], [tf.int32])
+            y[0].set_shape((0, 1))
+            return y
+
+        # Tell TF to use the functions above to load our data.
+        chunk_set = ds.map(generate_chunks, num_parallel_calls=1)
+        label_set = ds.map(generate_labels, num_parallel_calls=1)
+
+        # Break up the chunk sets to individual chunks
+        # TODO: Does this improve things?
+        chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
+
+        # Pair the data and labels in our dataset
+        ds = tf.data.Dataset.zip((chunk_set, label_set))
+
+        # Filter out all chunks with zero (nodata) values
+        self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
+    def dataset(self):
+        return self._ds
+
+    def num_regions(self):
+        return self._num_regions
