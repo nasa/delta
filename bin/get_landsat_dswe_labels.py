@@ -18,7 +18,7 @@
 # __END_LICENSE__
 
 """
-Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
+Script to fetch DSWE (label) images from USGS corresponding to a given Landsat image.
 """
 import os
 import sys
@@ -93,7 +93,7 @@ def unpack_inputs(tar_folder, unpack_folder):
 
         # If we did not find the INWM file, untar.
         if not label_path:
-            utilities.untar_to_folder(tar_path, unpack_folder)
+            utilities.unpack_to_folder(tar_path, unpack_folder)
             # Look again for a matching INWM file
             label_path = look_for_file(unpack_folder, [prefix, '_INWM.tif'])
             if not label_path:
@@ -136,16 +136,16 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
+    CATALOG = 'EE'
+    DATASET = 'SP_TILE_DSWE'
+
     # Only log in if our session expired (ugly function use to check!)
     if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        result = api.login(user, password) #pylint: disable=W0612
+        result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
 
-    #print(api._get_api_key(None))
-    #raise Exception('DEBUG')
-
-    DATASET = 'SP_TILE_DSWE'
-    CATALOG = 'EE'
+        #print(api._get_api_key(None))
+        #raise Exception('DEBUG')
 
     print('Submitting EarthExplorer query...')
     results = api.search(DATASET, CATALOG, where={}, start_date=date, end_date=date,
@@ -281,8 +281,11 @@ def main(argsIn):
                                                     convert_to_lonlat=False)
 
     # Reproject the merged label and crop to the landsat extent
-    cmd = ('gdalwarp -overwrite -t_srs %s -te %s %s %s %s %s %s ' %
-           (proj_string, ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1], merge_path, options.output_path))
+    LANDSAT_RES = 30.0 # Meters per pixel
+    cmd = ('gdalwarp -overwrite -tr %f %f -t_srs %s -te %s %s %s %s %s %s ' %
+           (LANDSAT_RES, LANDSAT_RES, proj_string, 
+            ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1],
+            merge_path, options.output_path))
     print(cmd)
     os.system(cmd)
     os.remove(merge_path)
