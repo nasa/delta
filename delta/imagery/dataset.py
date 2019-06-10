@@ -12,11 +12,12 @@ import tensorflow as tf
 
 from . import image_reader
 from . import landsat_utils
+from . import worldview_utils
 from . import utilities
 from . import disk_folder_cache
 
 # TODO: Generalize
-def make_landsat_list(top_folder, output_path, ext, num_regions):
+def make_image_list(top_folder, output_path, ext, num_regions):
     '''Write a file listing all of the files in a (recursive) folder
        matching the provided extension.
     '''
@@ -190,11 +191,23 @@ class ImageryDataset:
 
     Cache list of files to list_path, and use caching folder cache_folder.
     """
-    def __init__(self, image_folder, ext, list_path, cache_folder, cache_limit=4, num_regions=4, chunk_size=256):
+    def __init__(self, image_folder, image_type, list_path, cache_folder,
+                 cache_limit=4, num_regions=4, chunk_size=256):
+
+        if image_type == 'landsat':
+            ext = '.gz'
+        else:
+            if image_type == 'worldview':
+                ext = '.zip'
+            else:
+                raise Exception('Unrecognized input type: ' + image_type)
+
+        if not os.path.exists(cache_folder):
+            os.mkdir(cache_folder)
         self.__disk_cache_manager = disk_folder_cache.DiskFolderCache(cache_folder, cache_limit)
 
         # Generate a text file list of all the input images, plus region indices.
-        self._num_regions = make_landsat_list(image_folder, list_path, ext, num_regions)
+        self._num_regions = make_image_list(image_folder, list_path, ext, num_regions)
         assert self._num_regions > 0
 
         # This dataset returns the lines from the text file as entries.
@@ -202,24 +215,32 @@ class ImageryDataset:
 
         # TODO: We can define a different ROI function for each type of input image to
         #       achieve the sizes we want.
-        # TODO: These values need to by synchronized with num_regions above!
-        row_roi_split_funct = functools.partial(get_roi_horiz_band_split, num_splits=num_regions)
+        num_splits = num_regions
+        row_roi_split_funct  = functools.partial(get_roi_horiz_band_split, num_splits=num_splits)
+        #num_splits = math.sqrt(num_regions)
+        #tile_roi_split_funct = functools.partial(get_roi_tile_split,       num_splits=num_splits)
 
-        # This function prepares landsat images and returns the band paths
-        ls_prep_func = functools.partial(landsat_utils.prep_landsat_image,
-                                         cache_manager=self.__disk_cache_manager)
+        # This function prepares gets input images ready to use and returns paths to them
+        if image_type == 'landsat':
+            image_prep_func = functools.partial(landsat_utils.prep_landsat_image,
+                                                cache_manager=self.__disk_cache_manager)
+        else: # WV
+            image_prep_func = functools.partial(worldview_utils.prep_worldview_image,
+                                                cache_manager=self.__disk_cache_manager)
 
         # This function loads the data and formats it for TF
         data_load_function = functools.partial(load_image_region,
-                                               prep_function=ls_prep_func,
+                                               prep_function=image_prep_func,
                                                roi_function=row_roi_split_funct,
                                                chunk_size=chunk_size, chunk_overlap=0, num_threads=2)
 
         # This function generates fake label info for loaded data.
         label_gen_function = functools.partial(load_fake_labels,
-                                               prep_function=ls_prep_func,
+                                               prep_function=image_prep_func,
                                                roi_function=row_roi_split_funct,
                                                chunk_size=chunk_size, chunk_overlap=0)
+
+
 
         def generate_chunks(lines):
             y = tf.py_function(data_load_function, [lines], [tf.float64])

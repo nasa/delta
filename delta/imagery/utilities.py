@@ -148,13 +148,18 @@ def stop_task_pool(pool):
     pool.join()
 
 
-def untar_to_folder(tar_path, untar_folder):
-    """Un-tar a file into the given folder"""
+def unpack_to_folder(compressed_path, unpack_folder):
+    """Unpack a file into the given folder"""
 
     # Force create the output folder
-    os.system('mkdir -p ' + untar_folder)
+    os.system('mkdir -p ' + unpack_folder)
 
-    cmd = 'tar -xf ' + tar_path + ' --directory ' + untar_folder
+    ext = os.path.splitext(compressed_path)[1]
+    if ext.lower() == '.zip':
+        cmd = 'unzip ' + compressed_path + ' -d ' + unpack_folder
+    else: # Assume a tar file
+        cmd = 'tar -xf ' + compressed_path + ' --directory ' + unpack_folder
+
     print(cmd)
     os.system(cmd)
 

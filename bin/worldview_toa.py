@@ -17,6 +17,8 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
+from imagery import utilities #pylint: disable=C0413
+from imagery import worldview_utils #pylint: disable=C0413
 from imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
@@ -150,44 +152,7 @@ def try_catch_and_call(*args, **kwargs):
 
 
 
-def parse_meta_file(meta_path):
-    """Parse out the needed values from the MTL file"""
 
-    if not os.path.exists(meta_path):
-        raise Exception('Metadata file not found: ' + meta_path)
-
-    # TODO: Add more tags!
-    # These are all the values we want to read in
-    DESIRED_TAGS = ['ABSCALFACTOR', 'EFFECTIVEBANDWIDTH']
-
-    data = {'ABSCALFACTOR':[],
-            'EFFECTIVEBANDWIDTH':[]}
-
-    with open(meta_path, 'r') as f:
-        for line in f:
-
-            #line = line.replace('"','') # Clean up
-            upline = line.replace(';','').upper().strip()
-
-            if 'MEANSUNEL = ' in upline:
-                value = upline.split('=')[-1]
-                data['MEANSUNEL'] = float(value)
-
-            if 'SATID = ' in upline:
-                value = upline.split('=')[-1].replace('"','').strip()
-                data['SATID'] = value
-
-            # Look for the other info we want
-            for tag in DESIRED_TAGS:
-                if tag in upline:
-
-                    # Add the value to the appropriate list
-                    # -> If the bands are not in order we will need to be more careful here.
-                    parts = upline.split('=')
-                    value = parts[1]
-                    data[tag].append(float(value))
-
-    return data
 
 # The np.where clause handles input nodata values.
 
@@ -247,7 +212,7 @@ def main(argsIn):
         return -1
 
     # Get all of the TOA coefficients and input file names
-    data = parse_meta_file(options.meta_path)
+    data = worldview_utils.parse_meta_file(options.meta_path)
     print(data)
 
     scale  = data['ABSCALFACTOR']

@@ -133,7 +133,7 @@ def prep_landsat_image(path, cache_manager):
     lrow   = parts[2][3:6]
     date   = parts[3]
 
-    # Get the folder where this will be stored from the cach manager
+    # Get the folder where this will be stored from the cache manager
     name = '_'.join([sensor, lpath, lrow, date])
     untar_folder = cache_manager.get_cache_folder(name)
 
@@ -153,7 +153,7 @@ def prep_landsat_image(path, cache_manager):
         print('Already have unpacked files in ' + untar_folder)
     else:
         print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
-        utilities.untar_to_folder(path, untar_folder)
+        utilities.unpack_to_folder(path, untar_folder)
 
     # Get the files we are interested in
     new_path = os.path.join(untar_folder, fname)
