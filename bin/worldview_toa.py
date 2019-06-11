@@ -9,18 +9,17 @@ import functools
 import traceback
 import numpy as np
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from imagery import utilities #pylint: disable=C0413
-from imagery import worldview_utils #pylint: disable=C0413
-from imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
-from imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery import worldview_utils #pylint: disable=C0413
+from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
 #------------------------------------------------------------------------------
 
@@ -63,7 +62,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     input_metadata = input_reader.get_all_metadata()
     #print(input_metadata)
 
-    input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
+    input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
 
 
     X = 0 # Make indices easier to read
@@ -97,8 +96,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         for c in range(0,num_blocks_out[X]):
 
             # Get the ROI for the block, cropped to fit the image size.
-            roi = Rectangle(c*block_size_out[X], r*block_size_out[Y],
-                            width=block_size_out[X], height=block_size_out[Y])
+            roi = utilities.Rectangle(c*block_size_out[X], r*block_size_out[Y],
+                                      width=block_size_out[X], height=block_size_out[Y])
             roi = roi.get_intersection(input_bounds)
             output_rois.append(roi)
     #print('Made ' + str(len(output_rois))+ ' output ROIs.')

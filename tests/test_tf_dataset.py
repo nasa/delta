@@ -4,13 +4,11 @@ import sys
 import functools
 import tensorflow as tf
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
-
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 #import image_reader #pylint: disable=C0413
 #import utilities #pylint: disable=C0413
-from dataset import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import imagery_dataset
 
 # Test out TensorFlow Dataset classes.
 
@@ -52,10 +50,10 @@ def main():
 
     # TODO: We can define a different ROI function for each type of input image to
     #       achieve the sizes we want.
-    row_roi_split_function  = functools.partial(get_roi_horiz_band_split, num_splits=4)
+    row_roi_split_function  = functools.partial(imagery_dataset.get_roi_horiz_band_split, num_splits=4)
 #    tile_roi_split_function = functools.partial(get_roi_tile_split,       num_splits=2)
 
-    data_load_function = functools.partial(load_image_region, roi_function=row_roi_split_function,
+    data_load_function = functools.partial(imagery_dataset.load_image_region, roi_function=row_roi_split_function,
                                            chunk_size=256, chunk_overlap=0, num_threads=2)
 
     # Tell TF how to load our data

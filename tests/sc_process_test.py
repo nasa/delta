@@ -1,4 +1,4 @@
-
+import argparse
 import os
 import sys
 import random
@@ -9,12 +9,12 @@ import tensorflow as tf #pylint: disable=C0413
 from tensorflow import keras #pylint: disable=C0413
 
 # TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-from imagery import landsat_utils #pylint: disable=C0413,W0611
-from imagery import worldview_utils #pylint: disable=C0413,W0611
-from imagery import dataset #pylint: disable=C0413
+from delta.imagery import landsat_utils #pylint: disable=C0413,W0611
+from delta.imagery import worldview_utils #pylint: disable=C0413,W0611
+from delta.imagery import imagery_dataset #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.
@@ -60,43 +60,29 @@ def init_network(num_bands, chunk_size):
 
     return model
 
-def main():
-    # Make a list of source landsat files from the NEX collection
+def main(args):
+    parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
-    # TODO: create config file with paths
-    #input_folder = '/home/bcoltin/data/landsat'
-    #list_path    = '/home/bcoltin/data/landsat/ls_list.txt'
-    #cache_folder = '/home/bcoltin/data/landsat/cache'
+    parser.add_argument("--input-folder", dest="input_folder", required=True,
+                        help="A folder with images to load.")
+    parser.add_argument("--image-type", dest="image_type", required=True,
+                        help="The imgae type (landsat, worldview, etc.).")
 
-    # Supercomputer
-    # TODO: Use a much larger list!
-    #input_folder = '/nex/datapool/landsat/collection01/oli/T1/2015/113/052/'
-    #list_path    = '/nobackup/smcmich1/delta/ls_list.txt'
-    #cache_folder = '/nobackup/smcmich1/delta/landsat'
+    try:
+        options = parser.parse_args(args[1:])
+    except argparse.ArgumentError:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
 
-    # A local test
-    input_folder = '/home/smcmich1/data/landsat/tars'
-    list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
-    cache_folder = '/home/smcmich1/data/landsat/cache'
-
-    #user='pfurlong'
-    #input_folder = '/home/%s/data/landsat/tars' % (user,)
-    #list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
-    #cache_folder = '/home/%s/data/landsat/cache' % (user,)
-
-    num_regions = 4
-    num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
-    image_type = 'landsat'
-
-    # WorldView test
-    #input_folder = '/home/smcmich1/data/delta/hdds'
-    #list_path    = '/home/smcmich1/data/wv_list.txt'
-    #cache_folder = '/home/smcmich1/data/delta_cache'
-    #image_type = 'worldview'
-    #num_regions = 16
-    #num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
-
-    cache_limit = 4
+    if options.image_type == 'landsat':
+        num_regions = 4
+        num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
+    elif options.image_type == 'worldview':
+        num_regions = 16
+        num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
+    else:
+        print('Unsupported image type %s.' % (options.image_type), file=sys.stderr)
+        sys.exit(1)
 
     # TODO: Figure out what reasonable values are here
     CHUNK_SIZE = 256
@@ -107,9 +93,8 @@ def main():
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = dataset.ImageryDataset(input_folder, image_type, list_path,
-                                 cache_folder, cache_limit=cache_limit,
-                                 chunk_size=CHUNK_SIZE, num_regions=num_regions)
+    ids = imagery_dataset.ImageryDataset(options.input_folder, options.image_type,
+                                         chunk_size=CHUNK_SIZE, num_regions=num_regions)
     ds  = ids.dataset()
 
     ds = ds.batch(BATCH_SIZE)
@@ -138,4 +123,4 @@ def main():
     print('TF dataset test finished!')
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))

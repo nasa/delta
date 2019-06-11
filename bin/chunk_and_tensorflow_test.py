@@ -13,18 +13,17 @@ import mlflow
 import tensorflow as tf
 from tensorflow import keras
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from imagery import landsat_utils #pylint: disable=C0413
-from imagery import image_reader #pylint: disable=C0413
-from imagery import utilities #pylint: disable=C0413
-from ml.train import train #pylint: disable=C0413
+from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery import image_reader #pylint: disable=C0413
+from delta.imagery import utilities #pylint: disable=C0413
+from delta.ml.train import train #pylint: disable=C0413
 
 
 #------------------------------------------------------------------------------
@@ -66,7 +65,7 @@ def make_model(channel, in_len):
 
 
 def main(argsIn): # pylint:disable=R0914
-    parser = argparse.ArgumentParser(usage='usage: chunk_and_tensorflow [options]')
+    parser = argparse.ArgumentParser(usage='chunk_and_tensorflow [options]')
 
     parser.add_argument("--mtl-path", dest="mtl_path", default=None,
                         help="Path to the MTL file in the same folder as Landsat image band files.")

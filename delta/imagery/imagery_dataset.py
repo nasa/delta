@@ -3,18 +3,21 @@ Tools for loading data into the TensorFlow Dataset class.
 """
 import functools
 import os
+import os.path
 import math
+import tempfile
 
 from multiprocessing.dummy import Pool as ThreadPool
 
 import numpy as np
 import tensorflow as tf
 
-from . import image_reader
-from . import landsat_utils
-from . import worldview_utils
-from . import utilities
-from . import disk_folder_cache
+from delta.imagery import image_reader
+from delta.imagery import landsat_utils
+from delta.imagery import worldview_utils
+from delta.imagery import utilities
+from delta.imagery import disk_folder_cache
+from delta import config
 
 # TODO: Generalize
 def make_image_list(top_folder, output_path, ext, num_regions):
@@ -191,9 +194,8 @@ class ImageryDataset:
 
     Cache list of files to list_path, and use caching folder cache_folder.
     """
-    def __init__(self, image_folder, image_type, list_path, cache_folder,
-                 cache_limit=4, num_regions=4, chunk_size=256):
-
+    def __init__(self, image_folder, image_type, num_regions=4, chunk_size=256,
+                 list_path=None, cache_limit=4):
         if image_type == 'landsat':
             ext = '.gz'
         else:
@@ -202,9 +204,14 @@ class ImageryDataset:
             else:
                 raise Exception('Unrecognized input type: ' + image_type)
 
-        if not os.path.exists(cache_folder):
-            os.mkdir(cache_folder)
-        self.__disk_cache_manager = disk_folder_cache.DiskFolderCache(cache_folder, cache_limit)
+        self.__disk_cache_manager = disk_folder_cache.DiskFolderCache(config.cache_dir(), cache_limit)
+
+        if list_path is None:
+            tempfd, list_path = tempfile.mkstemp()
+            os.close(tempfd)
+            self.__temp_path = list_path
+        else:
+            self.__temp_path = None
 
         # Generate a text file list of all the input images, plus region indices.
         self._num_regions = make_image_list(image_folder, list_path, ext, num_regions)
@@ -266,6 +273,10 @@ class ImageryDataset:
 
         # Filter out all chunks with zero (nodata) values
         self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
+    def __del__(self):
+        if self.__temp_path is not None:
+            os.remove(self.__temp_path)
 
     def dataset(self):
         return self._ds
