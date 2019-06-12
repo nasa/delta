@@ -1,6 +1,7 @@
 """
 Tools for loading data into the TensorFlow Dataset class.
 """
+from abc import ABC, abstractmethod
 import functools
 import os
 import os.path
@@ -16,8 +17,6 @@ from delta.imagery import image_reader
 from delta.imagery import landsat_utils
 from delta.imagery import worldview_utils
 from delta.imagery import utilities
-from delta.imagery import disk_folder_cache
-from delta import config
 
 # TODO: Generalize
 def make_image_list(top_folder, output_path, ext, num_regions):
@@ -36,83 +35,8 @@ def make_image_list(top_folder, output_path, ext, num_regions):
                         num_entries += 1
     return num_entries
 
-def get_roi_horiz_band_split(image_size, region, num_splits):
-    """Return the ROI of an image to load given the region.
-       Each region represents one horizontal band of the image.
-    """
 
-    assert region < num_splits, 'Input region ' + str(region) \
-           + ' is greater than num_splits: ' + str(num_splits)
-
-    min_x = 0
-    max_x = image_size[0]
-
-    # Fractional height here is fine
-    band_height = image_size[1] / num_splits
-
-    # TODO: Check boundary conditions!
-    min_y = math.floor(band_height*region)
-    max_y = math.floor(band_height*(region+1.0))
-
-    return utilities.Rectangle(min_x, min_y, max_x, max_y)
-
-
-def get_roi_tile_split(image_size, region, num_splits):
-    """Return the ROI of an image to load given the region.
-       Each region represents one tile in a grid split.
-    """
-    num_tiles = num_splits*num_splits
-    assert region < num_tiles, 'Input region ' + str(region) \
-           + ' is greater than num_tiles: ' + str(num_tiles)
-
-    # Convert region index to row and column index
-    tile_row = math.floor(region / num_splits)
-    tile_col = region % num_splits
-
-    # Fractional sizes are fine here
-    tile_width  = math.floor(image_size[0] / num_splits)
-    tile_height = math.floor(image_size[1] / num_splits)
-
-    # TODO: Check boundary conditions!
-    min_x = math.floor(tile_width  * tile_col)
-    max_x = math.floor(tile_width  * (tile_col+1.0))
-    min_y = math.floor(tile_height * tile_row)
-    max_y = math.floor(tile_height * (tile_row+1.0))
-
-    return utilities.Rectangle(min_x, min_y, max_x, max_y)
-
-
-
-def load_image_region(line, prep_function, roi_function, chunk_size, chunk_overlap, num_threads):
-    """Load all image chunks for a given region of the image.
-       The provided function converts the region to the image ROI.
-    """
-
-    # Our input list is stored as "path, region" strings
-    line   = line.numpy().decode() # Convert from TF to string type
-    parts  = line.split(',')
-    path   = parts[0].strip()
-    region = int(parts[1].strip())
-
-    # Set up the input image handle
-    input_paths  = prep_function(path)
-    input_reader = image_reader.MultiTiffFileReader()
-    input_reader.load_images(input_paths)
-    image_size = input_reader.image_size()
-
-    # Call the provided function to get the ROI to load
-    roi = roi_function(image_size, region)
-
-    ## Until we are ready to do a larger test, just return a short vector
-    #return np.array([roi.min_x, roi.min_y, roi.max_x, roi.max_y], dtype=np.int32) # DEBUG
-
-    # Load the chunks from inside the ROI
-    print('Loading chunk data from file ' + path + ' using ROI: ' + str(roi))
-    chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, num_threads)
-
-    return chunk_data
-
-def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overlap):
+def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overlap, num_regions):
     """Use to generate fake label data for load_image_region"""
 
     # Our input list is stored as "path, region" strings
@@ -129,7 +53,7 @@ def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overla
     image_size = input_reader.image_size()
 
     # Call the provided function to get the ROI to load
-    roi = roi_function(image_size, region)
+    roi = roi_function(image_size, region, num_regions)
 
     #return np.array([0, 1, 2, 3], dtype=np.int32) # DEBUG
 
@@ -186,16 +110,99 @@ def parallel_filter_chunks(data, num_threads):
 
     return data[valid_indices, :, :, :]
 
+# TODO: make it take an roi instead of region number
+class DeltaImage(ABC):
+    @abstractmethod
+    def chunk_image_region(self, region, num_regions, chunk_size, chunk_overlap):
+        pass
+
+class TiffImage(DeltaImage):
+    def __init__(self, path):
+        self.path = path
+
+    @abstractmethod
+    def prep(self):
+        pass
+
+    def chunk_image_region(self, region, num_regions, chunk_size, chunk_overlap):
+        input_paths = self.prep()
+
+        # Set up the input image handle
+        input_reader = image_reader.MultiTiffFileReader()
+        input_reader.load_images(input_paths)
+        image_size = input_reader.image_size()
+
+        # Call the provided function to get the ROI to load
+        roi = get_roi_horiz_band_split(image_size, region, num_regions)
+
+        # Load the chunks from inside the ROI
+        print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
+        # TODO: configure number of threads
+        chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1)
+
+        return chunk_data
+
+class LandsatImage(TiffImage):
+    def prep(self):
+        return landsat_utils.prep_landsat_image(self.path)
+
+class WorldviewImage(TiffImage):
+    def prep(self):
+        return worldview_utils.prep_worldview_image(self.path)
+
+def get_roi_horiz_band_split(image_size, region, num_splits):
+    """Return the ROI of an image to load given the region.
+       Each region represents one horizontal band of the image.
+    """
+
+    assert region < num_splits, 'Input region ' + str(region) \
+           + ' is greater than num_splits: ' + str(num_splits)
+
+    min_x = 0
+    max_x = image_size[0]
+
+    # Fractional height here is fine
+    band_height = image_size[1] / num_splits
+
+    # TODO: Check boundary conditions!
+    min_y = math.floor(band_height*region)
+    max_y = math.floor(band_height*(region+1.0))
+
+    return utilities.Rectangle(min_x, min_y, max_x, max_y)
+
+def get_roi_tile_split(image_size, region, num_splits):
+    """Return the ROI of an image to load given the region.
+       Each region represents one tile in a grid split.
+    """
+    num_tiles = num_splits*num_splits
+    assert region < num_tiles, 'Input region ' + str(region) \
+           + ' is greater than num_tiles: ' + str(num_tiles)
+
+    # Convert region index to row and column index
+    tile_row = math.floor(region / num_splits)
+    tile_col = region % num_splits
+
+    # Fractional sizes are fine here
+    tile_width  = math.floor(image_size[0] / num_splits)
+    tile_height = math.floor(image_size[1] / num_splits)
+
+    # TODO: Check boundary conditions!
+    min_x = math.floor(tile_width  * tile_col)
+    max_x = math.floor(tile_width  * (tile_col+1.0))
+    min_y = math.floor(tile_height * tile_row)
+    max_y = math.floor(tile_height * (tile_row+1.0))
+
+    return utilities.Rectangle(min_x, min_y, max_x, max_y)
+
 class ImageryDataset:
-    # TODO: default cache in /tmp
     # TODO: something better with num_regions, chunk_size
     """
     Create dataset with all files in image_folder with extension ext.
 
     Cache list of files to list_path, and use caching folder cache_folder.
     """
-    def __init__(self, image_folder, image_type, num_regions=4, chunk_size=256,
-                 list_path=None, cache_limit=4):
+    def __init__(self, image_type, image_folder=None, num_regions=4, chunk_size=256,
+                 list_path=None):
         if image_type == 'landsat':
             ext = '.gz'
         else:
@@ -204,14 +211,16 @@ class ImageryDataset:
             else:
                 raise Exception('Unrecognized input type: ' + image_type)
 
-        self.__disk_cache_manager = disk_folder_cache.DiskFolderCache(config.cache_dir(), cache_limit)
-
         if list_path is None:
             tempfd, list_path = tempfile.mkstemp()
             os.close(tempfd)
             self.__temp_path = list_path
         else:
             self.__temp_path = None
+
+        self._image_type = image_type
+        self._chunk_size = 256
+        self._chunk_overlap = 0
 
         # Generate a text file list of all the input images, plus region indices.
         self._num_regions = make_image_list(image_folder, list_path, ext, num_regions)
@@ -220,37 +229,14 @@ class ImageryDataset:
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
 
-        # TODO: We can define a different ROI function for each type of input image to
-        #       achieve the sizes we want.
-        num_splits = num_regions
-        row_roi_split_funct  = functools.partial(get_roi_horiz_band_split, num_splits=num_splits)
-        #num_splits = math.sqrt(num_regions)
-        #tile_roi_split_funct = functools.partial(get_roi_tile_split,       num_splits=num_splits)
-
-        # This function prepares gets input images ready to use and returns paths to them
-        if image_type == 'landsat':
-            image_prep_func = functools.partial(landsat_utils.prep_landsat_image,
-                                                cache_manager=self.__disk_cache_manager)
-        else: # WV
-            image_prep_func = functools.partial(worldview_utils.prep_worldview_image,
-                                                cache_manager=self.__disk_cache_manager)
-
-        # This function loads the data and formats it for TF
-        data_load_function = functools.partial(load_image_region,
-                                               prep_function=image_prep_func,
-                                               roi_function=row_roi_split_funct,
-                                               chunk_size=chunk_size, chunk_overlap=0, num_threads=2)
-
         # This function generates fake label info for loaded data.
         label_gen_function = functools.partial(load_fake_labels,
-                                               prep_function=image_prep_func,
-                                               roi_function=row_roi_split_funct,
-                                               chunk_size=chunk_size, chunk_overlap=0)
-
-
+                                               prep_function=landsat_utils.prep_landsat_image,
+                                               roi_function=get_roi_horiz_band_split,
+                                               chunk_size=chunk_size, chunk_overlap=0, num_regions=self._num_regions)
 
         def generate_chunks(lines):
-            y = tf.py_function(data_load_function, [lines], [tf.float64])
+            y = tf.py_function(self.__load_data, [lines], [tf.float64])
             y[0].set_shape((0, 8, chunk_size, chunk_size))
             return y
 
@@ -277,6 +263,20 @@ class ImageryDataset:
     def __del__(self):
         if self.__temp_path is not None:
             os.remove(self.__temp_path)
+
+    def __load_data(self, text_line):
+        text_line = text_line.numpy().decode() # Convert from TF to string type
+        parts  = text_line.split(',')
+        path   = parts[0].strip()
+        region = int(parts[1].strip())
+
+        if self._image_type == 'landsat':
+            image = LandsatImage(path)
+        elif self._image_type == 'worldview':
+            image = WorldviewImage(path)
+        else:
+            raise Exception('Unexpected input type.')
+        return image.chunk_image_region(region, self._num_regions, self._chunk_size, self._chunk_overlap)
 
     def dataset(self):
         return self._ds

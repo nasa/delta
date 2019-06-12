@@ -93,7 +93,7 @@ def main(args):
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.ImageryDataset(options.input_folder, options.image_type,
+    ids = imagery_dataset.ImageryDataset(options.image_type, image_folder=options.input_folder,
                                          chunk_size=CHUNK_SIZE, num_regions=num_regions)
     ds  = ids.dataset()
 
