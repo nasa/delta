@@ -18,56 +18,6 @@ from delta.imagery import landsat_utils
 from delta.imagery import worldview_utils
 from delta.imagery import utilities
 
-# TODO: Generalize
-def make_image_list(top_folder, output_path, ext, num_regions):
-    '''Write a file listing all of the files in a (recursive) folder
-       matching the provided extension.
-    '''
-
-    num_entries = 0
-    with open(output_path, 'w') as f:
-        for root, dummy_directories, filenames in os.walk(top_folder):
-            for filename in filenames:
-                if os.path.splitext(filename)[1] == ext:
-                    path = os.path.join(root, filename)
-                    for r in range(0, num_regions):
-                        f.write(path + ',' + str(r) +'\n')
-                        num_entries += 1
-    return num_entries
-
-
-def load_fake_labels(line, prep_function, roi_function, chunk_size, chunk_overlap, num_regions):
-    """Use to generate fake label data for load_image_region"""
-
-    # Our input list is stored as "path, region" strings
-    #print('Label data input = ' + str(line))
-    line   = line.numpy().decode() # Convert from TF format to string
-    parts  = line.split(',')
-    path   = parts[0].strip()
-    region = int(parts[1].strip())
-
-    # Set up the input image handle
-    input_paths  = prep_function(path)
-    input_reader = image_reader.MultiTiffFileReader()
-    input_reader.load_images([input_paths[0]]) # Just the first band
-    image_size = input_reader.image_size()
-
-    # Call the provided function to get the ROI to load
-    roi = roi_function(image_size, region, num_regions)
-
-    #return np.array([0, 1, 2, 3], dtype=np.int32) # DEBUG
-
-    # Load the chunks from inside the ROI
-    chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap)
-
-    # Make a fake label
-    full_shape = chunk_data.shape[0]
-    chunk_data = np.zeros(full_shape, dtype=np.int32)
-    chunk_data[ 0:10] = 1 # Junk labels
-    chunk_data[10:20] = 2
-    return chunk_data
-
-
 # TODO: Not currently used, but could be if the TF method of filtering chunks is inefficient.
 def parallel_filter_chunks(data, num_threads):
     """Filter out chunks that contain the Landsat nodata value (zero)"""
@@ -110,47 +60,7 @@ def parallel_filter_chunks(data, num_threads):
 
     return data[valid_indices, :, :, :]
 
-# TODO: make it take an roi instead of region number
-class DeltaImage(ABC):
-    @abstractmethod
-    def chunk_image_region(self, region, num_regions, chunk_size, chunk_overlap):
-        pass
-
-class TiffImage(DeltaImage):
-    def __init__(self, path):
-        self.path = path
-
-    @abstractmethod
-    def prep(self):
-        pass
-
-    def chunk_image_region(self, region, num_regions, chunk_size, chunk_overlap):
-        input_paths = self.prep()
-
-        # Set up the input image handle
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        image_size = input_reader.image_size()
-
-        # Call the provided function to get the ROI to load
-        roi = get_roi_horiz_band_split(image_size, region, num_regions)
-
-        # Load the chunks from inside the ROI
-        print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
-        # TODO: configure number of threads
-        chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1)
-
-        return chunk_data
-
-class LandsatImage(TiffImage):
-    def prep(self):
-        return landsat_utils.prep_landsat_image(self.path)
-
-class WorldviewImage(TiffImage):
-    def prep(self):
-        return worldview_utils.prep_worldview_image(self.path)
-
-def get_roi_horiz_band_split(image_size, region, num_splits):
+def horizontal_split(image_size, region, num_splits):
     """Return the ROI of an image to load given the region.
        Each region represents one horizontal band of the image.
     """
@@ -170,7 +80,7 @@ def get_roi_horiz_band_split(image_size, region, num_splits):
 
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
-def get_roi_tile_split(image_size, region, num_splits):
+def tile_split(image_size, region, num_splits):
     """Return the ROI of an image to load given the region.
        Each region represents one tile in a grid split.
     """
@@ -194,6 +104,64 @@ def get_roi_tile_split(image_size, region, num_splits):
 
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
+
+class DeltaImage(ABC):
+    @abstractmethod
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+        pass
+    @abstractmethod
+    def size(self):
+        pass
+
+    def tiles(self):
+        s = self.size()
+        # TODO: add to config, replace with max buffer size?
+        num_regions = 4
+        for i in range(num_regions):
+            yield horizontal_split(s, i, num_regions)
+
+class TiffImage(DeltaImage):
+    def __init__(self, path):
+        self.path = path
+
+    @abstractmethod
+    def prep(self):
+        pass
+
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+        input_paths = self.prep()
+
+        # Set up the input image handle
+        input_reader = image_reader.MultiTiffFileReader()
+        input_reader.load_images(input_paths)
+
+        # Load the chunks from inside the ROI
+        print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
+        # TODO: configure number of threads
+        chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1)
+
+        return chunk_data
+
+    def size(self):
+        input_paths = self.prep()
+
+        input_reader = image_reader.MultiTiffFileReader()
+        input_reader.load_images(input_paths)
+        return input_reader.image_size()
+
+class LandsatImage(TiffImage):
+    def prep(self):
+        return landsat_utils.prep_landsat_image(self.path)
+
+class WorldviewImage(TiffImage):
+    def prep(self):
+        return worldview_utils.prep_worldview_image(self.path)
+
+IMAGE_CLASSES = {
+        'landsat' : LandsatImage,
+        'worldview' : WorldviewImage
+}
+
 class ImageryDataset:
     # TODO: something better with num_regions, chunk_size
     """
@@ -201,7 +169,7 @@ class ImageryDataset:
 
     Cache list of files to list_path, and use caching folder cache_folder.
     """
-    def __init__(self, image_type, image_folder=None, num_regions=4, chunk_size=256,
+    def __init__(self, image_type, image_folder=None, chunk_size=256,
                  list_path=None):
         if image_type == 'landsat':
             ext = '.gz'
@@ -223,17 +191,14 @@ class ImageryDataset:
         self._chunk_overlap = 0
 
         # Generate a text file list of all the input images, plus region indices.
-        self._num_regions = make_image_list(image_folder, list_path, ext, num_regions)
+        self._num_regions = self.__make_image_list(image_folder, list_path, ext)
         assert self._num_regions > 0
 
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
 
         # This function generates fake label info for loaded data.
-        label_gen_function = functools.partial(load_fake_labels,
-                                               prep_function=landsat_utils.prep_landsat_image,
-                                               roi_function=get_roi_horiz_band_split,
-                                               chunk_size=chunk_size, chunk_overlap=0, num_regions=self._num_regions)
+        label_gen_function = functools.partial(self.__load_fake_labels)
 
         def generate_chunks(lines):
             y = tf.py_function(self.__load_data, [lines], [tf.float64])
@@ -264,19 +229,54 @@ class ImageryDataset:
         if self.__temp_path is not None:
             os.remove(self.__temp_path)
 
+    def image_class(self):
+        return IMAGE_CLASSES[self._image_type]
+
     def __load_data(self, text_line):
         text_line = text_line.numpy().decode() # Convert from TF to string type
         parts  = text_line.split(',')
         path   = parts[0].strip()
-        region = int(parts[1].strip())
+        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+                                  int(parts[3].strip()), int(parts[4].strip()))
 
-        if self._image_type == 'landsat':
-            image = LandsatImage(path)
-        elif self._image_type == 'worldview':
-            image = WorldviewImage(path)
-        else:
-            raise Exception('Unexpected input type.')
-        return image.chunk_image_region(region, self._num_regions, self._chunk_size, self._chunk_overlap)
+        image = self.image_class()(path)
+        return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+
+    # TODO: delete this and load actual labels
+    def __load_fake_labels(self, text_line):
+        """Use to generate fake label data for load_image_region"""
+        text_line = text_line.numpy().decode() # Convert from TF to string type
+        parts  = text_line.split(',')
+        path   = parts[0].strip()
+        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+                                  int(parts[3].strip()), int(parts[4].strip()))
+
+        image = self.image_class()(path)
+        chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+
+        # Make a fake label
+        full_shape = chunk_data.shape[0]
+        chunk_data = np.zeros(full_shape, dtype=np.int32)
+        chunk_data[ 0:10] = 1 # Junk labels
+        chunk_data[10:20] = 2
+        return chunk_data
+
+    def __make_image_list(self, top_folder, output_path, ext):
+        '''Write a file listing all of the files in a (recursive) folder
+           matching the provided extension.
+        '''
+
+        num_entries = 0
+        with open(output_path, 'w') as f:
+            for root, dummy_directories, filenames in os.walk(top_folder):
+                for filename in filenames:
+                    if os.path.splitext(filename)[1] == ext:
+                        path = os.path.join(root, filename)
+                        rois = self.image_class()(path).tiles()
+                        for r in rois:
+                            f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
+                            num_entries += 1
+        return num_entries
 
     def dataset(self):
         return self._ds
