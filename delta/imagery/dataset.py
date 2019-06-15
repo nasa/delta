@@ -183,6 +183,30 @@ def parallel_filter_chunks(data, num_threads):
 
     return data[valid_indices, :, :, :]
 
+
+
+def prep_simple_image(path):
+    """Trivial prep function for uncompressed small image files"""
+    return [path]
+
+def prep_rgba_image(path, convert_folder):
+    """Converts RGBA images to RGB images.
+       WARNING: This function does never deletes cached images!
+    """
+
+    # Check if we already converted this image
+    fname = os.path.basename(path)
+    output_path = os.path.join(convert_folder, fname)
+
+    if not os.path.exists(output_path):
+        # Just remove the alpha band
+        cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + path + ' ' + output_path
+        print(cmd)
+        os.system(cmd)
+
+    return [output_path]
+
+
 class ImageryDataset:
     # TODO: default cache in /tmp
     # TODO: something better with num_regions, chunk_size
@@ -194,13 +218,19 @@ class ImageryDataset:
     def __init__(self, image_folder, image_type, list_path, cache_folder,
                  cache_limit=4, num_regions=4, chunk_size=256):
 
-        if image_type == 'landsat':
-            ext = '.gz'
-        else:
-            if image_type == 'worldview':
-                ext = '.zip'
-            else:
-                raise Exception('Unrecognized input type: ' + image_type)
+        # TODO: May need to pass in this value!
+        num_bands_dict = {'landsat':8, 'worldview':8, 'tif':3, 'rgba':3}
+        try:
+            num_bands = num_bands_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
+
+        # Figure out the image file extension
+        ext_dict = {'landsat':'.gz', 'worldview':'.zip', 'tif':'.tif', 'rgba':'.tif'}
+        try:
+            ext = ext_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
 
         if not os.path.exists(cache_folder):
             os.mkdir(cache_folder)
@@ -216,7 +246,7 @@ class ImageryDataset:
         # TODO: We can define a different ROI function for each type of input image to
         #       achieve the sizes we want.
         num_splits = num_regions
-        row_roi_split_funct  = functools.partial(get_roi_horiz_band_split, num_splits=num_splits)
+        row_roi_split_funct = functools.partial(get_roi_horiz_band_split, num_splits=num_splits)
         #num_splits = math.sqrt(num_regions)
         #tile_roi_split_funct = functools.partial(get_roi_tile_split,       num_splits=num_splits)
 
@@ -224,9 +254,16 @@ class ImageryDataset:
         if image_type == 'landsat':
             image_prep_func = functools.partial(landsat_utils.prep_landsat_image,
                                                 cache_manager=self.__disk_cache_manager)
-        else: # WV
-            image_prep_func = functools.partial(worldview_utils.prep_worldview_image,
-                                                cache_manager=self.__disk_cache_manager)
+        else:
+            if image_type == 'worldview':
+                image_prep_func = functools.partial(worldview_utils.prep_worldview_image,
+                                                    cache_manager=self.__disk_cache_manager)
+            else:
+                if image_type == 'rgba':
+                    image_prep_func = functools.partial(prep_rgba_image,
+                                                        convert_folder=self.__disk_cache_manager.folder())
+                else: # Trivial image types
+                    image_prep_func = prep_simple_image
 
         # This function loads the data and formats it for TF
         data_load_function = functools.partial(load_image_region,
@@ -244,7 +281,7 @@ class ImageryDataset:
 
         def generate_chunks(lines):
             y = tf.py_function(data_load_function, [lines], [tf.float64])
-            y[0].set_shape((0, 8, chunk_size, chunk_size))
+            y[0].set_shape((0, num_bands, chunk_size, chunk_size))
             return y
 
         def generate_labels(lines):

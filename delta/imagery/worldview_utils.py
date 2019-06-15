@@ -131,7 +131,8 @@ def prep_worldview_image(path, cache_manager):
     (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
     if imd_path and tif_path:
-        print('Already have unpacked files in ' + unpack_folder)
+        #print('Already have unpacked files in ' + unpack_folder)
+        pass
     else:
         print('Unpacking file ' + path + ' to folder ' + unpack_folder)
         utilities.unpack_to_folder(path, unpack_folder)

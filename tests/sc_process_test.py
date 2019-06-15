@@ -75,33 +75,46 @@ def main():
     #cache_folder = '/nobackup/smcmich1/delta/landsat'
 
     # A local test
-    input_folder = '/home/smcmich1/data/landsat/tars'
-    list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
-    cache_folder = '/home/smcmich1/data/landsat/cache'
+    #input_folder = '/home/smcmich1/data/landsat/tars'
+    #list_path    = '/home/smcmich1/data/landsat/ls_list.txt'
+    #cache_folder = '/home/smcmich1/data/landsat/cache'
 
     #user='pfurlong'
     #input_folder = '/home/%s/data/landsat/tars' % (user,)
     #list_path    = '/home/%s/data/landsat/ls_list.txt' % (user,)
     #cache_folder = '/home/%s/data/landsat/cache' % (user,)
 
+    # Landsat values
     num_regions = 4
     num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     image_type = 'landsat'
+    cache_limit = 4
 
-    # WorldView test
+    ## WorldView test
     #input_folder = '/home/smcmich1/data/delta/hdds'
     #list_path    = '/home/smcmich1/data/wv_list.txt'
     #cache_folder = '/home/smcmich1/data/delta_cache'
+
+    # WorldView values
     #image_type = 'worldview'
     #num_regions = 16
     #num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
+    #cache_limit = 4
 
-    cache_limit = 4
+    # Small RGBA images
+    input_folder = '/home/smcmich1/data/delta/damage'
+    list_path    = '/home/smcmich1/data/delta/damage/ls_list.txt'
+    cache_folder = '/home/smcmich1/data/delta/damage/cache'
+    image_type = 'rgba'
+    num_regions = 1
+    num_bands = 3
+
+
 
     # TODO: Figure out what reasonable values are here
     CHUNK_SIZE = 256
     NUM_EPOCHS = 5
-    BATCH_SIZE = 4
+    BATCH_SIZE = 3 # Don't let this be greater than the number of input images!
 
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
