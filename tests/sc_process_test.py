@@ -75,11 +75,11 @@ def main(args):
         sys.exit(1)
 
     if options.image_type == 'landsat':
-        num_regions = 4
         num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
     elif options.image_type == 'worldview':
-        num_regions = 16
         num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
+    elif options.image_type == 'rgba':
+        num_bands = 3
     else:
         print('Unsupported image type %s.' % (options.image_type), file=sys.stderr)
         sys.exit(1)
@@ -87,14 +87,14 @@ def main(args):
     # TODO: Figure out what reasonable values are here
     CHUNK_SIZE = 256
     NUM_EPOCHS = 5
-    BATCH_SIZE = 4
+    BATCH_SIZE = 3 # Don't let this be greater than the number of input images!
 
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
     ids = imagery_dataset.ImageryDataset(options.image_type, image_folder=options.input_folder,
-                                         chunk_size=CHUNK_SIZE, num_regions=num_regions)
+                                         chunk_size=CHUNK_SIZE)
     ds  = ids.dataset()
 
     ds = ds.batch(BATCH_SIZE)

@@ -13,6 +13,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 import numpy as np
 import tensorflow as tf
 
+from delta import config
 from delta.imagery import image_reader
 from delta.imagery import landsat_utils
 from delta.imagery import worldview_utils
@@ -104,7 +105,6 @@ def tile_split(image_size, region, num_splits):
 
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
-
 class DeltaImage(ABC):
     @abstractmethod
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
@@ -157,9 +157,27 @@ class WorldviewImage(TiffImage):
     def prep(self):
         return worldview_utils.prep_worldview_image(self.path)
 
+class RGBAImage(TiffImage):
+    def prep(self):
+        """Converts RGBA images to RGB images.
+           WARNING: This function does never deletes cached images!
+        """
+
+        # Check if we already converted this image
+        fname = os.path.basename(self.path)
+        output_path = os.path.join(config.cache_dir(), fname)
+
+        if not os.path.exists(output_path):
+            # Just remove the alpha band
+            cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + self.path + ' ' + output_path
+            print(cmd)
+            os.system(cmd)
+        return [output_path]
+
 IMAGE_CLASSES = {
         'landsat' : LandsatImage,
-        'worldview' : WorldviewImage
+        'worldview' : WorldviewImage,
+        'rgba' : RGBAImage
 }
 
 class ImageryDataset:
