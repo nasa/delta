@@ -76,6 +76,10 @@ def get_pbs_node_list():
 #======================================================
 # Functions copied from ASP
 
+def file_is_good(path):
+    '''Make sure file exists and is non-empty.'''
+    return os.path.exists(path) and (os.path.getsize(path) > 0)
+
 def logger_print(logger, msg):
     '''Print to logger, if present. This helps keeps all messages in sync.'''
     if logger is not None:

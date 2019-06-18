@@ -28,7 +28,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from imagery import utilities  #pylint: disable=C0413
-from imagery import landsat_utils #pylint: disable=C0413
+#from imagery import landsat_utils #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
@@ -51,7 +51,7 @@ def unpack_inputs(tar_folder, unpack_folder):
         ext = os.path.splitext(f)[1]
         if ext != '.zip':
             continue
-        
+
         name_out = f.replace('.hgt.zip','.tif')
 
         # Look to see if we have a matching label file
@@ -59,7 +59,7 @@ def unpack_inputs(tar_folder, unpack_folder):
         label_path = os.path.join(tar_folder, name_out)
 
         # If we did not find the INWM file, untar.
-        if not os.path.exists(label_path):
+        if not utilities.file_is_good(label_path):
             #utilities.unpack_to_folder(tar_path, unpack_folder)
             cmd = 'srtm_to_tif.sh ' + tar_path
             print(cmd)
@@ -69,7 +69,7 @@ def unpack_inputs(tar_folder, unpack_folder):
             except FileNotFoundError:
                 pass
             # Look again for a matching file
-            if not os.path.exists(label_path):
+            if not utilities.file_is_good(label_path):
                 raise Exception('Failed to untar label file: ' + tar_path)
         file_list.append(label_path)
 
@@ -101,7 +101,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
 
-def fetch_images(date, ll_coord, ur_coord, output_folder, user, password, force_login):
+def fetch_images(ll_coord, ur_coord, output_folder, user, password, force_login):
     """Download all images that fit the given criteria to the output folder
        if they are not already present.  The coordinates must be in lon/lat degrees.
     """
@@ -142,7 +142,7 @@ def fetch_images(date, ll_coord, ur_coord, output_folder, user, password, force_
         fname = scene['displayId'].replace('.SRTMGL1','') + '.hgt.zip'
         output_path = os.path.join(output_folder, fname)
 
-        if os.path.exists(output_path):
+        if utilities.file_is_good(output_path):
             print('Already have image on disk!')
             continue
 
@@ -155,7 +155,7 @@ def fetch_images(date, ll_coord, ur_coord, output_folder, user, password, force_
         print(cmd)
         os.system(cmd)
 
-        if not os.path.exists(output_path):
+        if not utilities.file_is_good(output_path):
             raise Exception('Failed to download file ' + output_path)
 
     print('Finished downloading files.')
@@ -205,15 +205,15 @@ def main(argsIn):
         os.mkdir(output_folder)
 
     # Extract information about the landsat file
-    date = landsat_utils.get_date_from_filename(options.landsat_path)
-    date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
+    #date = landsat_utils.get_date_from_filename(options.landsat_path)
+    #date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
 
     if options.user and options.password:
         print('Login info provided, searching for overlapping label images...')
-        fetch_images(date, ll_coord, ur_coord, options.label_folder,
-                          options.user, options.password, options.force_login)
+        fetch_images(ll_coord, ur_coord, options.label_folder,
+                     options.user, options.password, options.force_login)
     else:
         print('--user and --password not provided, skipping label download step.')
 
