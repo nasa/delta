@@ -2,7 +2,7 @@ import configparser
 import os
 from pathlib import Path
 
-from imagery import disk_folder_cache
+from delta.imagery import disk_folder_cache
 
 __config = configparser.ConfigParser()
 
