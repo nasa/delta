@@ -4,7 +4,7 @@ Functions to support the Landsat satellites.
 
 import os
 
-import delta.config
+from delta import config
 from . import utilities
 
 def get_date_from_filename(name):
