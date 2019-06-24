@@ -101,7 +101,7 @@ def get_bounding_coordinates(landsat_path, convert_to_lonlat):
     return ((ulx, lry), (lrx, uly)) # Switch the corners
 
 
-def fetch_images(ll_coord, ur_coord, output_folder, user, password, force_login):
+def fetch_images(ll_coord, ur_coord, output_folder, options):
     """Download all images that fit the given criteria to the output folder
        if they are not already present.  The coordinates must be in lon/lat degrees.
     """
@@ -116,9 +116,10 @@ def fetch_images(ll_coord, ur_coord, output_folder, user, password, force_login)
     product='STANDARD'
 
     # Only log in if our session expired (ugly function use to check!)
-    if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
+    if options.force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        dummy_result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
+        dummy_result = api.login(options.user_ee, options.password_ee,
+                                 save=True, catalogId=CATALOG) #pylint: disable=W0612
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')
@@ -147,11 +148,13 @@ def fetch_images(ll_coord, ur_coord, output_folder, user, password, force_login)
             continue
 
         r = api.download(DATASET, CATALOG, [scene['entityId']], product=product)
+        print('Download response:')
         print(r)
         if not r['data']:
             raise Exception('Failed to get download URL!')
         url = r['data'][0]['url']
-        cmd = ('wget "%s" --user %s --password %s -O %s' % (url, user, password, output_path))
+        cmd = ('wget "%s" --user %s --password %s -O %s'
+               % (url, options.user_urs, options.password_urs, output_path))
         print(cmd)
         os.system(cmd)
 
@@ -180,10 +183,15 @@ def main(argsIn):
         parser.add_argument("--dl-folder", dest="label_folder", required=True,
                             help="Download files to this folder.")
 
-        parser.add_argument("--user", dest="user", required=False,
+        parser.add_argument("--user-ee", dest="user_ee", required=False,
                             help="User name for EarthExplorer website, needed to download new files.")
-        parser.add_argument("--password", dest="password", required=False,
-                            help="Password name for EarthExplorer website, needed to download new files.")
+        parser.add_argument("--password-ee", dest="password_ee", required=False,
+                            help="Password for EarthExplorer website, needed to download new files.")
+
+        parser.add_argument("--user-urs", dest="user_urs", required=False,
+                            help="User name for NASA URS account, needed to download SRTM files.")
+        parser.add_argument("--password-urs", dest="password_urs", required=False,
+                            help="Password for NASA URS account, needed to download SRTM files.")
 
         parser.add_argument("--force-login", action="store_true",
                             dest="force_login", default=False,
@@ -210,12 +218,11 @@ def main(argsIn):
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
 
-    if options.user and options.password:
+    if options.user_ee and options.password_ee and options.user_urs and options.password_urs:
         print('Login info provided, searching for overlapping label images...')
-        fetch_images(ll_coord, ur_coord, options.label_folder,
-                     options.user, options.password, options.force_login)
+        fetch_images(ll_coord, ur_coord, options.label_folder, options)
     else:
-        print('--user and --password not provided, skipping label download step.')
+        print('user and password inputs not provided, skipping label download step.')
 
     ## Untar the input files if needed
     untar_folder = options.label_folder
