@@ -245,18 +245,28 @@ def main(argsIn):
         print('Failed to run command: ' + cmd)
         return -1
 
-    # Get the projection of the file we want to match
+    # Get the projection and pixel size of the file we want to match
     cmd = 'gdalinfo -proj4 ' + options.landsat_path
     print(cmd)
     p = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=True)
     out = p.communicate()[0]
     proj_string = None
+    x_res = 30 # LANDSAT default, 30 meters per pixel
+    y_res = 30
     lines = out.split('\n')
     for line in lines:
         if '+proj' in line:
             proj_string = line
-            break
+            continue
+        if 'Pixel Size' in line:
+             start = line.find('(')
+             stop  = line.find(')')
+             s = line[start+1:stop]
+             parts = s.split(',')
+             x_res = float(parts[0])
+             y_res = float(parts[1])
+             continue
     if not proj_string:
         raise Exception('Could not read projection string!')
 
@@ -265,9 +275,8 @@ def main(argsIn):
                                                     convert_to_lonlat=False)
 
     # Reproject the merged label and crop to the landsat extent
-    LANDSAT_RES = 30.0 # Meters per pixel
-    cmd = ('gdalwarp -overwrite -tr %f %f -t_srs %s -te %s %s %s %s %s %s ' %
-           (LANDSAT_RES, LANDSAT_RES, proj_string,
+    cmd = ('gdalwarp -overwrite -tr %.20f %.20f -t_srs %s -te %s %s %s %s %s %s ' %
+            (x_res, y_res, proj_string,
             ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1],
             merge_path, options.output_path))
     print(cmd)
