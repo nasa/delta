@@ -105,28 +105,31 @@ def tile_split(image_size, region, num_splits):
 
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
+# TODO: Clean all of this up!
 class DeltaImage(ABC):
+    NUM_REGIONS = 4
+    
     @abstractmethod
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
         pass
+
     @abstractmethod
     def size(self):
+        pass
+
+    @abstractmethod
+    def prep(self):
         pass
 
     def tiles(self):
         s = self.size()
         # TODO: add to config, replace with max buffer size?
-        num_regions = 4
-        for i in range(num_regions):
-            yield horizontal_split(s, i, num_regions)
+        for i in range(self.NUM_REGIONS):
+            yield horizontal_split(s, i, self.NUM_REGIONS)
 
 class TiffImage(DeltaImage):
     def __init__(self, path):
         self.path = path
-
-    @abstractmethod
-    def prep(self):
-        pass
 
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
         input_paths = self.prep()
@@ -136,7 +139,7 @@ class TiffImage(DeltaImage):
         input_reader.load_images(input_paths)
 
         # Load the chunks from inside the ROI
-        print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
+        #print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
         # TODO: configure number of threads
         chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1)
 
@@ -150,19 +153,21 @@ class TiffImage(DeltaImage):
         return input_reader.image_size()
 
 class LandsatImage(TiffImage):
+    NUM_REGIONS = 4
     def prep(self):
         return landsat_utils.prep_landsat_image(self.path)
 
 class WorldviewImage(TiffImage):
+    NUM_REGIONS = 10 # May be too small
     def prep(self):
         return worldview_utils.prep_worldview_image(self.path)
 
 class RGBAImage(TiffImage):
+    NUM_REGIONS = 1
     def prep(self):
         """Converts RGBA images to RGB images.
            WARNING: This function does never deletes cached images!
         """
-
         # Check if we already converted this image
         fname = os.path.basename(self.path)
         output_path = os.path.join(config.cache_dir(), fname)
@@ -182,6 +187,7 @@ IMAGE_CLASSES = {
 
 class ImageryDataset:
     # TODO: something better with num_regions, chunk_size
+    # TODO: Need to clean up this whole class!
     """
     Create dataset with all files in image_folder with extension ext.
 
@@ -189,13 +195,21 @@ class ImageryDataset:
     """
     def __init__(self, image_type, image_folder=None, chunk_size=256,
                  list_path=None):
-        if image_type == 'landsat':
-            ext = '.gz'
-        else:
-            if image_type == 'worldview':
-                ext = '.zip'
-            else:
-                raise Exception('Unrecognized input type: ' + image_type)
+
+        # TODO: Merge with the classes above!
+        # TODO: May need to pass in this value!
+        num_bands_dict = {'landsat':8, 'worldview':8, 'tif':3, 'rgba':3}
+        try:
+            num_bands = num_bands_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
+
+        # Figure out the image file extension
+        ext_dict = {'landsat':'.gz', 'worldview':'.zip', 'tif':'.tif', 'rgba':'.tif'}
+        try:
+            ext = ext_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
 
         if list_path is None:
             tempfd, list_path = tempfile.mkstemp()
@@ -205,12 +219,13 @@ class ImageryDataset:
             self.__temp_path = None
 
         self._image_type = image_type
-        self._chunk_size = 256
-        self._chunk_overlap = 0
+        self._chunk_size = chunk_size
+        self._chunk_overlap = 0 # TODO: MAKE AN OPTION!
 
         # Generate a text file list of all the input images, plus region indices.
-        self._num_regions = self.__make_image_list(image_folder, list_path, ext)
+        self._num_regions, self._num_images = self.__make_image_list(image_folder, list_path, ext)
         assert self._num_regions > 0
+        
 
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
@@ -220,7 +235,7 @@ class ImageryDataset:
 
         def generate_chunks(lines):
             y = tf.py_function(self.__load_data, [lines], [tf.float64])
-            y[0].set_shape((0, 8, chunk_size, chunk_size))
+            y[0].set_shape((0, num_bands, chunk_size, chunk_size))
             return y
 
         def generate_labels(lines):
@@ -285,6 +300,7 @@ class ImageryDataset:
         '''
 
         num_entries = 0
+        num_images = 0
         with open(output_path, 'w') as f:
             for root, dummy_directories, filenames in os.walk(top_folder):
                 for filename in filenames:
@@ -294,10 +310,13 @@ class ImageryDataset:
                         for r in rois:
                             f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
                             num_entries += 1
-        return num_entries
+                    num_images += 1
+        return num_entries, num_images
 
     def dataset(self):
         return self._ds
 
-    def num_regions(self):
+    def num_images(self):
+        return
+    def total_num_regions(self):
         return self._num_regions

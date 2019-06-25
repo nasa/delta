@@ -207,7 +207,9 @@ class MultiTiffFileReader():
         chunk_info = utilities.generate_chunk_info(chunk_size, chunk_overlap)
         (chunk_center_list, chunk_roi) = \
             utilities.get_chunk_center_list_in_region(roi, chunk_info[0], chunk_info[1], chunk_size)
-        #print('Initial num chunks = ' + str(len(chunk_center_list)))
+        if not chunk_center_list:
+            raise ValueError('Unable to load any chunks from this ROI!')
+            #print('Initial num chunks = ' + str(len(chunk_center_list)))
         #print('Initial chunk ROI = ' + str(chunk_roi))
 
         # Throw out any partial chunks.
@@ -217,6 +219,8 @@ class MultiTiffFileReader():
                 utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size, whole_image_roi)
 
         num_chunks = len(chunk_center_list)
+        if not num_chunks:
+            raise Exception('Failed to load any chunks from this ROI!')
         #print('Computed chunks = ' + str(chunk_center_list))
         #print('Final num chunks = ' + str(len(chunk_center_list)))
         #print('Final chunk ROI = ' + str(chunk_roi))

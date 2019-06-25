@@ -84,10 +84,10 @@ def main(args):
         print('Unsupported image type %s.' % (options.image_type), file=sys.stderr)
         sys.exit(1)
 
-    # TODO: Figure out what reasonable values are here
-    CHUNK_SIZE = 256
+    # TODO: Figure out what reasonable values are here for each input sensor!
+    CHUNK_SIZE = 35
     NUM_EPOCHS = 5
-    BATCH_SIZE = 3 # Don't let this be greater than the number of input images!
+    BATCH_SIZE = 2 # Don't let this be greater than the number of input images!
 
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
@@ -97,6 +97,9 @@ def main(args):
                                          chunk_size=CHUNK_SIZE)
     ds  = ids.dataset()
 
+    if ids.total_num_regions() < BATCH_SIZE:
+        raise Exception('BATCH_SIZE (%d) is too large for the number of input regions (%d)!'
+                        % (BATCH_SIZE, ids.total_num_regions()))
     ds = ds.batch(BATCH_SIZE)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
@@ -106,7 +109,7 @@ def main(args):
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
     ds = ds.take(TEST_LIMIT) # DEBUG
-    num_entries = ids.num_regions()
+    num_entries = ids.total_num_regions()
     if num_entries > TEST_LIMIT:
         num_entries = TEST_LIMIT
 
