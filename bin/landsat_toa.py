@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """
@@ -29,18 +10,17 @@ import multiprocessing
 import traceback
 import numpy as np
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import utilities #pylint: disable=C0413
-import landsat_utils #pylint: disable=C0413
-from image_reader import * #pylint: disable=W0614,W0401,C0413
-from image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
@@ -61,10 +41,10 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     (num_cols, num_rows) = input_reader.image_size()
     #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
     nodata_val = OUTPUT_NODATA
-    (block_size_in, num_blocks_in) = input_reader.get_block_info(band=1) #pylint: disable=W0612
+    (block_size_in, dummy_num_blocks_in) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
 
-    input_bounds = Rectangle(0, 0, width=num_cols, height=num_rows)
+    input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
     sys.stdout.flush()
 
     X = 0 # Make indices easier to read
@@ -98,8 +78,8 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         for c in range(0,num_blocks_out[X]):
 
             # Get the ROI for the block, cropped to fit the image size.
-            roi = Rectangle(c*block_size_out[X], r*block_size_out[Y],
-                            width=block_size_out[X], height=block_size_out[Y])
+            roi = utilities.Rectangle(c*block_size_out[X], r*block_size_out[Y],
+                                      width=block_size_out[X], height=block_size_out[Y])
             roi = roi.get_intersection(input_bounds)
             output_rois.append(roi)
     #print('Made ' + str(len(output_rois))+ ' output ROIs.')
@@ -134,8 +114,6 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     writer.cleanup()
 
     print('Done writing: ' + output_path)
-
-    image = None # Close the image #pylint: disable=W0612
 
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):

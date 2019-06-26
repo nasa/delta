@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Classes for block-aligned reading from multiple Geotiff files.
 """
@@ -31,8 +12,7 @@ import psutil
 from osgeo import gdal
 import numpy as np
 
-import utilities
-from utilities import Rectangle
+from delta.imagery import utilities
 
 #------------------------------------------------------------------------------
 
@@ -96,13 +76,13 @@ class TiffReader:
            to get the requested data region while respecting block boundaries.
         """
         size = self.image_size()
-        bounds = Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
         if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(size))
 
         band = 1
-        (block_size, num_blocks) = self.get_block_info(band) #pylint: disable=W0612
+        (block_size, unused_num_blocks) = self.get_block_info(band)
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
         start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
         stop_block_x  = int(math.floor((desired_roi.max_x-1) / block_size[0])) # Rect max is exclusive
@@ -115,9 +95,9 @@ class TiffReader:
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
-        ans    = Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        ans    = utilities.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
         size   = self.image_size()
-        bounds = Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
         return ans.get_intersection(bounds)
 
     def read_pixels(self, roi, band):
@@ -227,16 +207,20 @@ class MultiTiffFileReader():
         chunk_info = utilities.generate_chunk_info(chunk_size, chunk_overlap)
         (chunk_center_list, chunk_roi) = \
             utilities.get_chunk_center_list_in_region(roi, chunk_info[0], chunk_info[1], chunk_size)
-        #print('Initial num chunks = ' + str(len(chunk_center_list)))
+        if not chunk_center_list:
+            raise ValueError('Unable to load any chunks from this ROI!')
+            #print('Initial num chunks = ' + str(len(chunk_center_list)))
         #print('Initial chunk ROI = ' + str(chunk_roi))
 
         # Throw out any partial chunks.
         image_size = self.image_size()
-        whole_image_roi = Rectangle(0,0,width=image_size[0],height=image_size[1])
+        whole_image_roi = utilities.Rectangle(0,0,width=image_size[0],height=image_size[1])
         (chunk_center_list, chunk_roi) = \
                 utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size, whole_image_roi)
 
         num_chunks = len(chunk_center_list)
+        if not num_chunks:
+            raise Exception('Failed to load any chunks from this ROI!')
         #print('Computed chunks = ' + str(chunk_center_list))
         #print('Final num chunks = ' + str(len(chunk_center_list)))
         #print('Final chunk ROI = ' + str(chunk_roi))
@@ -299,7 +283,7 @@ class MultiTiffFileReader():
         print('Ready to process ' + str(len(requested_rois)) +' tiles.')
 
         image_size = self.image_size()
-        whole_bounds = Rectangle(0, 0, width=image_size[0], height=image_size[1])
+        whole_bounds = utilities.Rectangle(0, 0, width=image_size[0], height=image_size[1])
         for roi in block_rois:
             if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi))

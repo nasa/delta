@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Miscellaneous utility classes/functions.
 """
@@ -95,6 +76,10 @@ def get_pbs_node_list():
 #======================================================
 # Functions copied from ASP
 
+def file_is_good(path):
+    '''Make sure file exists and is non-empty.'''
+    return os.path.exists(path) and (os.path.getsize(path) > 0)
+
 def logger_print(logger, msg):
     '''Print to logger, if present. This helps keeps all messages in sync.'''
     if logger is not None:
@@ -167,13 +152,18 @@ def stop_task_pool(pool):
     pool.join()
 
 
-def untar_to_folder(tar_path, untar_folder):
-    """Un-tar a file into the given folder"""
+def unpack_to_folder(compressed_path, unpack_folder):
+    """Unpack a file into the given folder"""
 
     # Force create the output folder
-    os.system('mkdir -p ' + untar_folder)
+    os.system('mkdir -p ' + unpack_folder)
 
-    cmd = 'tar -xf ' + tar_path + ' --directory ' + untar_folder
+    ext = os.path.splitext(compressed_path)[1]
+    if ext.lower() == '.zip':
+        cmd = 'unzip ' + compressed_path + ' -d ' + unpack_folder
+    else: # Assume a tar file
+        cmd = 'tar -xf ' + compressed_path + ' --directory ' + unpack_folder
+
     print(cmd)
     os.system(cmd)
 

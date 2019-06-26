@@ -1,29 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Functions to support the Landsat satellites.
 """
 
 import os
 
-import utilities
+from delta import config
+from . import utilities
 
 def get_date_from_filename(name):
     """Extract the image capture date from a Landsat filename"""
@@ -136,7 +118,7 @@ def check_if_files_present(mtl_data, folder):
             return False
     return True
 
-def prep_landsat_image(path, cache_manager):
+def prep_landsat_image(path):
     """Prepares a Landsat file from the archive for processing.
        Returns [band, paths, in, order, ...]
        Uses the bands specified in get_landsat_bands_to_use()
@@ -152,9 +134,9 @@ def prep_landsat_image(path, cache_manager):
     lrow   = parts[2][3:6]
     date   = parts[3]
 
-    # Get the folder where this will be stored from the cach manager
+    # Get the folder where this will be stored from the cache manager
     name = '_'.join([sensor, lpath, lrow, date])
-    untar_folder = cache_manager.get_cache_folder(name)
+    untar_folder = config.cache_manager().get_cache_folder(name)
 
     # Check if we already unpacked this data
     all_files_present = False
@@ -172,7 +154,7 @@ def prep_landsat_image(path, cache_manager):
         print('Already have unpacked files in ' + untar_folder)
     else:
         print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
-        utilities.untar_to_folder(path, untar_folder)
+        utilities.unpack_to_folder(path, untar_folder)
 
     # Get the files we are interested in
     new_path = os.path.join(untar_folder, fname)

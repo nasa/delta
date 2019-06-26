@@ -1,22 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# __BEGIN_LICENSE__
-#  Copyright (c) 2009-2013, United States Government as represented by the
-#  Administrator of the National Aeronautics and Space Administration. All
-#  rights reserved.
-#
-#  The NGT platform is licensed under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance with the
-#  License. You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-# __END_LICENSE__
-
 """
 Script test out the image chunk generation calls.
 """
@@ -34,17 +15,16 @@ import tensorflow as tf
 from tensorflow import keras
 #import matplotlib.pyplot as plt
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-import landsat_utils #pylint: disable=C0413
-from image_reader import * #pylint: disable=W0614,W0401,C0413
-from image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
@@ -137,7 +117,7 @@ def main(argsIn):
     (num_cols, num_rows) = input_reader.image_size()
 
     # Process the entire input image(s) into chunks at once.
-    roi = Rectangle(0,0,width=num_cols,height=num_rows)
+    roi = utilities.Rectangle(0,0,width=num_cols,height=num_rows)
     chunk_data = input_reader.parallel_load_chunks(roi, options.chunk_size,
                                                    options.chunk_overlap, options.num_threads)
 
