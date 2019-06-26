@@ -52,7 +52,7 @@ def main(argsIn):
 
     try:
 
-        usage  = "usage: chunk_and_tensorflow [options]"
+        usage  = "usage: train_autoencoder [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--mtl-path", dest="mtl_path", default=None,
