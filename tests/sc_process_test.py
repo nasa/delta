@@ -1,7 +1,6 @@
 import argparse
 import os
 import sys
-import random
 
 os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
@@ -49,12 +48,6 @@ def make_model(channel, in_len):
 def init_network(num_bands, chunk_size):
     """Create a TF model to train"""
 
-    # TF additions
-    seed_val = 12306 # number I typed out randomly on my keyboard
-
-    random.seed(seed_val) # Probably poor form to use the same seed twice.
-    tf.random.set_random_seed(seed_val)
-
     model = make_model(num_bands, chunk_size)
     model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
@@ -74,16 +67,6 @@ def main(args):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    if options.image_type == 'landsat':
-        num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
-    elif options.image_type == 'worldview':
-        num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
-    elif options.image_type == 'rgba':
-        num_bands = 3
-    else:
-        print('Unsupported image type %s.' % (options.image_type), file=sys.stderr)
-        sys.exit(1)
-
     # TODO: Figure out what reasonable values are here for each input sensor!
     CHUNK_SIZE = 35
     NUM_EPOCHS = 5
@@ -97,9 +80,9 @@ def main(args):
                                          chunk_size=CHUNK_SIZE)
     ds  = ids.dataset()
 
-    if ids.total_num_regions() < BATCH_SIZE:
+    if ids.num_regions() < BATCH_SIZE:
         raise Exception('BATCH_SIZE (%d) is too large for the number of input regions (%d)!'
-                        % (BATCH_SIZE, ids.total_num_regions()))
+                        % (BATCH_SIZE, ids.num_regions()))
     ds = ds.batch(BATCH_SIZE)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
@@ -109,7 +92,7 @@ def main(args):
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
     ds = ds.take(TEST_LIMIT) # DEBUG
-    num_entries = ids.total_num_regions()
+    num_entries = ids.num_regions()
     if num_entries > TEST_LIMIT:
         num_entries = TEST_LIMIT
 
@@ -117,8 +100,7 @@ def main(args):
     #config = tf.ConfigProto(device_count = {'GPU': 0})
     #sess   = tf.InteractiveSession(config=config)
 
-    #print('Num bands = ' + str(num_bands))
-    model = init_network(num_bands, CHUNK_SIZE)
+    model = init_network(ids.num_bands(), ids.chunk_size())
 
     unused_history = model.fit(ds, epochs=NUM_EPOCHS,
                                steps_per_epoch=num_entries//BATCH_SIZE)

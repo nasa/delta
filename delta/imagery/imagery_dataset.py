@@ -108,7 +108,17 @@ def tile_split(image_size, region, num_splits):
 # TODO: Clean all of this up!
 class DeltaImage(ABC):
     NUM_REGIONS = 4
-    
+    EXTENSIONS = []
+    NUM_BANDS = 0
+
+    @classmethod
+    def extensions(cls):
+        return cls.EXTENSIONS
+
+    @classmethod
+    def num_bands(cls):
+        return cls.NUM_BANDS
+
     @abstractmethod
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
         pass
@@ -128,8 +138,14 @@ class DeltaImage(ABC):
             yield horizontal_split(s, i, self.NUM_REGIONS)
 
 class TiffImage(DeltaImage):
+    EXTENSIONS = ['.tif']
+
     def __init__(self, path):
         self.path = path
+
+    @abstractmethod
+    def prep(self):
+        pass
 
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
         input_paths = self.prep()
@@ -154,16 +170,21 @@ class TiffImage(DeltaImage):
 
 class LandsatImage(TiffImage):
     NUM_REGIONS = 4
+    EXTENSIONS = ['.gz']
+    NUM_BANDS = 8
     def prep(self):
         return landsat_utils.prep_landsat_image(self.path)
 
 class WorldviewImage(TiffImage):
     NUM_REGIONS = 10 # May be too small
+    EXTENSIONS = ['.zip']
+    NUM_BANDS = 8
     def prep(self):
         return worldview_utils.prep_worldview_image(self.path)
 
 class RGBAImage(TiffImage):
     NUM_REGIONS = 1
+    NUM_BANDS = 3
     def prep(self):
         """Converts RGBA images to RGB images.
            WARNING: This function does never deletes cached images!
@@ -194,22 +215,13 @@ class ImageryDataset:
     Cache list of files to list_path, and use caching folder cache_folder.
     """
     def __init__(self, image_type, image_folder=None, chunk_size=256,
-                 list_path=None):
-
-        # TODO: Merge with the classes above!
-        # TODO: May need to pass in this value!
-        num_bands_dict = {'landsat':8, 'worldview':8, 'tif':3, 'rgba':3}
+                 chunk_overlap=0, list_path=None):
         try:
-            num_bands = num_bands_dict[image_type]
+            im_type = IMAGE_CLASSES[image_type]
         except IndexError:
             raise Exception('Unrecognized input type: ' + image_type)
-
-        # Figure out the image file extension
-        ext_dict = {'landsat':'.gz', 'worldview':'.zip', 'tif':'.tif', 'rgba':'.tif'}
-        try:
-            ext = ext_dict[image_type]
-        except IndexError:
-            raise Exception('Unrecognized input type: ' + image_type)
+        exts = im_type.extensions()
+        self._num_bands = im_type.num_bands()
 
         if list_path is None:
             tempfd, list_path = tempfile.mkstemp()
@@ -220,12 +232,12 @@ class ImageryDataset:
 
         self._image_type = image_type
         self._chunk_size = chunk_size
-        self._chunk_overlap = 0 # TODO: MAKE AN OPTION!
+        self._chunk_overlap = chunk_overlap
 
         # Generate a text file list of all the input images, plus region indices.
-        self._num_regions, self._num_images = self.__make_image_list(image_folder, list_path, ext)
+        self._num_regions, self._num_images = self.__make_image_list(image_folder, list_path, exts)
         assert self._num_regions > 0
-        
+
 
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
@@ -235,7 +247,7 @@ class ImageryDataset:
 
         def generate_chunks(lines):
             y = tf.py_function(self.__load_data, [lines], [tf.float64])
-            y[0].set_shape((0, num_bands, chunk_size, chunk_size))
+            y[0].set_shape((0, self._num_bands, chunk_size, chunk_size))
             return y
 
         def generate_labels(lines):
@@ -294,7 +306,7 @@ class ImageryDataset:
         chunk_data[10:20] = 2
         return chunk_data
 
-    def __make_image_list(self, top_folder, output_path, ext):
+    def __make_image_list(self, top_folder, output_path, exts):
         '''Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
         '''
@@ -304,7 +316,7 @@ class ImageryDataset:
         with open(output_path, 'w') as f:
             for root, dummy_directories, filenames in os.walk(top_folder):
                 for filename in filenames:
-                    if os.path.splitext(filename)[1] == ext:
+                    if os.path.splitext(filename)[1] in exts:
                         path = os.path.join(root, filename)
                         rois = self.image_class()(path).tiles()
                         for r in rois:
@@ -317,6 +329,10 @@ class ImageryDataset:
         return self._ds
 
     def num_images(self):
-        return
-    def total_num_regions(self):
+        return self._num_images
+    def num_regions(self):
         return self._num_regions
+    def num_bands(self):
+        return self._num_bands
+    def chunk_size(self):
+        return self._chunk_size
