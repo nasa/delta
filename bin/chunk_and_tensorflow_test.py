@@ -23,7 +23,7 @@ if sys.version_info < (3, 0, 0):
 from delta.imagery import landsat_utils #pylint: disable=C0413
 from delta.imagery import image_reader #pylint: disable=C0413
 from delta.imagery import utilities #pylint: disable=C0413
-from delta.ml.train import train #pylint: disable=C0413
+from delta.ml.train import Experiment #pylint: disable=C0413
 
 
 #------------------------------------------------------------------------------
@@ -169,19 +169,23 @@ def main(argsIn): # pylint:disable=R0914
         train_labels = all_labels[train_idx, center_pixel, center_pixel]
         test_labels  = all_labels[test_idx, center_pixel,center_pixel]
 
-    mlflow.set_tracking_uri('file:../data/out/mlruns')
-    mlflow.set_experiment('chunk_and_tensorflow_test')
-    mlflow.start_run()
-    mlflow.log_param('file list', ' '.join(input_paths))
-    mlflow.log_param('data_split', split_fraction)
-    mlflow.log_param('chunk_size', options.chunk_size)
+#     mlflow.set_tracking_uri('file:../data/out/mlruns')
+#     mlflow.set_experiment('chunk_and_tensorflow_test')
+#     mlflow.start_run()
+
+    experiment = Experiment('file:../data/out/mlruns', 'chunk_and_tensorflow_test')
+    
+    exp_parameters = {'file list':' '.join(input_paths), 
+            'data_split': split_fraction,
+            'chunk_size': options.chunk_size}
+    experiment.log_parameters(exp_parameters)
 
     # Remove one band for the labels
     model = make_model(NUM_TRAIN_BANDS, options.chunk_size)
-    history = train(model, train_data, train_labels, options.num_epochs, validation_data=(test_data, test_labels))
+    history = experiment.train(model, train_data, train_labels, options.num_epochs, validation_data=(test_data, test_labels))
     assert history is not None
 
-    mlflow.end_run()
+#     mlflow.end_run()
     return 0
 
 
