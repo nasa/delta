@@ -10,9 +10,6 @@ from tensorflow import keras #pylint: disable=C0413
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-from delta.imagery import landsat_utils #pylint: disable=C0413,W0611
-from delta.imagery import worldview_utils #pylint: disable=C0413,W0611
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed

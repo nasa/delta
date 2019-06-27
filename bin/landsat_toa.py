@@ -18,7 +18,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.sources import landsat #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
@@ -175,7 +175,7 @@ def main(argsIn):
         os.mkdir(options.output_folder)
 
     # Get all of the TOA coefficients and input file names
-    data = landsat_utils.parse_mtl_file(options.mtl_path)
+    data = landsat.parse_mtl_file(options.mtl_path)
     #print(data)
 
     pool = multiprocessing.Pool(options.num_processes)

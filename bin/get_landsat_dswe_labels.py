@@ -23,7 +23,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta.imagery import utilities  #pylint: disable=C0413
-from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.sources import landsat #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
@@ -208,7 +208,7 @@ def main(argsIn):
         os.mkdir(output_folder)
 
     # Extract information about the landsat file
-    date = landsat_utils.get_date_from_filename(options.landsat_path)
+    date = landsat.get_date_from_filename(options.landsat_path)
     date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)

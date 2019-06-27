@@ -28,7 +28,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from imagery import utilities  #pylint: disable=C0413
-#from imagery import landsat_utils #pylint: disable=C0413
+#from imagery import landsat #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
@@ -213,7 +213,7 @@ def main(argsIn):
         os.mkdir(output_folder)
 
     # Extract information about the landsat file
-    #date = landsat_utils.get_date_from_filename(options.landsat_path)
+    #date = landsat.get_date_from_filename(options.landsat_path)
     #date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
@@ -260,13 +260,13 @@ def main(argsIn):
             proj_string = line
             continue
         if 'Pixel Size' in line:
-             start = line.find('(')
-             stop  = line.find(')')
-             s = line[start+1:stop]
-             parts = s.split(',')
-             x_res = float(parts[0])
-             y_res = float(parts[1])
-             continue
+            start = line.find('(')
+            stop  = line.find(')')
+            s = line[start+1:stop]
+            parts = s.split(',')
+            x_res = float(parts[0])
+            y_res = float(parts[1])
+            continue
     if not proj_string:
         raise Exception('Could not read projection string!')
 
@@ -276,7 +276,7 @@ def main(argsIn):
 
     # Reproject the merged label and crop to the landsat extent
     cmd = ('gdalwarp -overwrite -tr %.20f %.20f -t_srs %s -te %s %s %s %s %s %s ' %
-            (x_res, y_res, proj_string,
+           (x_res, y_res, proj_string,
             ll_coord[0], ll_coord[1], ur_coord[0], ur_coord[1],
             merge_path, options.output_path))
     print(cmd)

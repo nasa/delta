@@ -5,7 +5,8 @@ Functions to support the Landsat satellites.
 import os
 
 from delta import config
-from . import utilities
+from delta.imagery import utilities
+from . import basic_sources
 
 def get_date_from_filename(name):
     """Extract the image capture date from a Landsat filename"""
@@ -175,3 +176,10 @@ def prep_landsat_image(path):
                             + ' after unpacking tar file ' + path)
 
     return output_paths
+
+class LandsatImage(basic_sources.TiffImage):
+    NUM_REGIONS = 4
+    EXTENSIONS = ['.gz']
+    NUM_BANDS = 8
+    def prep(self):
+        return prep_landsat_image(self.path)

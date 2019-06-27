@@ -24,7 +24,8 @@ Functions to support the WorldView satellites.
 import os
 
 from delta import config
-from . import utilities
+from delta.imagery import utilities
+from . import basic_sources
 
 def parse_meta_file(meta_path):
     """Parse out the needed values from the IMD or XML file"""
@@ -140,3 +141,10 @@ def prep_worldview_image(path):
         (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
     return [tif_path]
+
+class WorldviewImage(basic_sources.TiffImage):
+    NUM_REGIONS = 10 # May be too small
+    EXTENSIONS = ['.zip']
+    NUM_BANDS = 8
+    def prep(self):
+        return prep_worldview_image(self.path)

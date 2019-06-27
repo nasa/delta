@@ -22,7 +22,7 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.sources import landsat #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
@@ -99,7 +99,7 @@ def main(argsIn):
     if options.mtl_path:
 
         # Get all of the TOA coefficients and input file names
-        data = landsat_utils.parse_mtl_file(options.mtl_path)
+        data = landsat.parse_mtl_file(options.mtl_path)
 
         input_folder = os.path.dirname(options.mtl_path)
 

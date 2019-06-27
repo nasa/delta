@@ -17,7 +17,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery import worldview_utils #pylint: disable=C0413
+from delta.imagery.sources import worldview #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
@@ -211,7 +211,7 @@ def main(argsIn):
         return -1
 
     # Get all of the TOA coefficients and input file names
-    data = worldview_utils.parse_meta_file(options.meta_path)
+    data = worldview.parse_meta_file(options.meta_path)
     print(data)
 
     scale  = data['ABSCALFACTOR']
