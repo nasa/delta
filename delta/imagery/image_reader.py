@@ -112,8 +112,6 @@ class TiffReader:
 class MultiTiffFileReader():
     """Class to synchronize loading of multiple pixel-matched files.
 
-    TODO: Support for breaking an image up into chunks!
-
     User is going to select a region which is bigger than tiles or chunks,
     then will process all chunks centered in that region.
 
@@ -201,7 +199,7 @@ class MultiTiffFileReader():
     def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
-          """
+        """
 
         # Get image chunk centers
         chunk_info = utilities.generate_chunk_info(chunk_size, chunk_overlap)

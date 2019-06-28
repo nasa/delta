@@ -4,6 +4,9 @@ from pathlib import Path
 
 from delta.imagery import disk_folder_cache
 
+# Set up configuration values, based on the file:
+#  ~/.config/delta/delta.ini
+
 __config = configparser.ConfigParser()
 
 # create defaults if no file exists

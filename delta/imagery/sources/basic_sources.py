@@ -100,48 +100,69 @@ def tile_split(image_size, region, num_splits):
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
 
-class DeltaImage(ABC):
-    NUM_REGIONS = 4
-    EXTENSIONS = []
-    NUM_BANDS = 0
+class DeltaImage:
+    """Base class used for wrapping input images in a way that they can be passed
+       to Tensorflow dataset objects.
+    """
 
-    @classmethod
-    def extensions(cls):
-        return cls.EXTENSIONS
-
-    @classmethod
-    def num_bands(cls):
-        return cls.NUM_BANDS
+    # Constants which must be specified for all image types, these are the default values.
+    _NUM_REGIONS = 4
+    DEFAULT_EXTENSIONS = ['.tif']
+    CACHE_CLASS = None
 
     @abstractmethod
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+        """Return this portion of the image broken up into small segments.
+           The output format is a numpy array of size [N, num_bands, chunk_size, chunk_size]
+        """
         pass
 
     @abstractmethod
     def size(self):
+        """Return the size of this image in pixels"""
         pass
 
     @abstractmethod
     def prep(self):
+        """Prepare the file to be opened by other tools (unpack, etc)"""
+        pass
+
+    @abstractmethod
+    def get_num_bands(self, sample_path):
+        """Return the number of bands in the image"""
         pass
 
     def tiles(self):
+        """Generator to yield ROIs for the image."""
         s = self.size()
         # TODO: add to config, replace with max buffer size?
-        for i in range(self.NUM_REGIONS):
-            yield horizontal_split(s, i, self.NUM_REGIONS)
+        for i in range(self._NUM_REGIONS):
+            yield horizontal_split(s, i, self._NUM_REGIONS)
+
 
 class TiffImage(DeltaImage):
-    EXTENSIONS = ['.tif']
-
-    def __init__(self, path):
+    """For all versions of DeltaImage that can use our image_reader class"""
+  
+    DEFAULT_EXTENSIONS = ['.tif']
+  
+    def __init__(self, path, cache_manager):
         self.path = path
+        self.cache_manager = cache_manager
 
     @abstractmethod
     def prep(self):
         pass
 
+    def get_num_bands(self):
+        """Return the number of bands in a prepared file"""
+        input_paths = self.prep()
+
+        input_reader = image_reader.MultiTiffFileReader()
+        input_reader.load_images(input_paths)
+        return input_reader.num_bands()
+
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+        # First make sure that the image is unpacked and ready to load
         input_paths = self.prep()
 
         # Set up the input image handle
@@ -162,20 +183,33 @@ class TiffImage(DeltaImage):
         input_reader.load_images(input_paths)
         return input_reader.image_size()
 
-class RGBAImage(TiffImage):
-    NUM_REGIONS = 1
-    NUM_BANDS = 3
+
+class SimpleTiff(TiffImage):
+    """A basic image which comes ready to use"""
+    _NUM_REGIONS = 1
+    DEFAULT_EXTENSIONS = ['.tif']
+    CACHE_CLASS = disk_folder_cache.DiskFileCache
     def prep(self):
-        """Converts RGBA images to RGB images.
-           WARNING: This function does never deletes cached images!
-        """
-        # Check if we already converted this image
+        return self.path
+
+
+class RGBAImage(TiffImage):
+    """Basic RGBA images where the alpha channel needs to be stripped"""
+
+    _NUM_REGIONS = 1
+    DEFAULT_EXTENSIONS = ['.tif']
+    CACHE_CLASS = disk_folder_cache.DiskFileCache
+    def prep(self):
+        """Converts RGBA images to RGB images"""
+
+        # Get the path to the cached image
         fname = os.path.basename(self.path)
-        output_path = os.path.join(config.cache_dir(), fname)
+        output_path = self.cache_manager.register_item(fname)
 
         if not os.path.exists(output_path):
-            # Just remove the alpha band
+            # Just remove the alpha band from the original image
             cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + self.path + ' ' + output_path
             print(cmd)
             os.system(cmd)
         return [output_path]
+

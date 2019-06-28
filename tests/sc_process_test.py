@@ -53,10 +53,14 @@ def init_network(num_bands, chunk_size):
 def main(args):
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
-    parser.add_argument("--input-folder", dest="input_folder", required=True,
-                        help="A folder with images to load.")
-    parser.add_argument("--image-type", dest="image_type", required=True,
-                        help="The imgae type (landsat, worldview, etc.).")
+    parser.add_argument("--dataset-config-file", dest="dataset_config", required=True,
+                        help="Dataset configuration file.")
+    parser.add_argument("--num-epochs", dest="num_epochs", type=int, default=5,
+                        help="Number of training epochs.")
+    parser.add_argument("--batch-size", dest="batch_size", type=int, default=2,
+                        help="Training batch size.")
+    parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
+                        help="If set, use a maximum of this many input values for training.")
 
     try:
         options = parser.parse_args(args[1:])
@@ -64,23 +68,18 @@ def main(args):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # TODO: Figure out what reasonable values are here for each input sensor!
-    CHUNK_SIZE = 35
-    NUM_EPOCHS = 5
-    BATCH_SIZE = 2 # Don't let this be greater than the number of input images!
 
     TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.ImageryDataset(options.image_type, image_folder=options.input_folder,
-                                         chunk_size=CHUNK_SIZE)
-    ds  = ids.dataset()
+    ids = imagery_dataset.ImageryDataset(options.dataset_config)
+    ds = ids.dataset()
 
-    if ids.num_regions() < BATCH_SIZE:
-        raise Exception('BATCH_SIZE (%d) is too large for the number of input regions (%d)!'
-                        % (BATCH_SIZE, ids.num_regions()))
-    ds = ds.batch(BATCH_SIZE)
+    if ids.total_num_regions() < options.batch_size:
+        raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
+                        % (options.batch_size, ids.total_num_regions()))
+    ds = ds.batch(options.batch_size)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
     ds = ds.repeat()#(NUM_EPOCHS) # Helps with steps_per_epoch math below...
@@ -88,10 +87,13 @@ def main(args):
     # TODO: Set this up to help with parallelization
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
-    ds = ds.take(TEST_LIMIT) # DEBUG
-    num_entries = ids.num_regions()
-    if num_entries > TEST_LIMIT:
-        num_entries = TEST_LIMIT
+
+    num_entries = ids.total_num_regions()
+    if options.test_limit:
+        ds = ds.take(options.test_limit)
+        num_entries = ids.total_num_regions()
+        if num_entries > options.test_limit:
+            num_entries = options.test_limit
 
     ## Start a CPU-only session
     #config = tf.ConfigProto(device_count = {'GPU': 0})
@@ -99,8 +101,8 @@ def main(args):
 
     model = init_network(ids.num_bands(), ids.chunk_size())
 
-    unused_history = model.fit(ds, epochs=NUM_EPOCHS,
-                               steps_per_epoch=num_entries//BATCH_SIZE)
+    unused_history = model.fit(ds, epochs=options.num_epochs,
+                               steps_per_epoch=num_entries//options.batch_size)
 
     print('TF dataset test finished!')
 
