@@ -5,19 +5,28 @@ import os
 from abc import ABC, abstractmethod
 
 
+DEFAULT_CACHE_DIR = os.path.expanduser('~/.cache/delta')
+DEFAULT_CACHE_LIMIT = 8
+
 #============================================================================
 # Classes
 
 class DiskCache:
-    """Base class for caching folders and files on disk with limits on how much is kept.
+    """Class for caching folders and files on disk with limits on how much is kept.
+       It is safe to mix different datasets in the cache folder, though all items in
+       the folder will count towards the limit.
     """
 
     def __init__(self, top_folder, limit):
 
         if limit < 1:
             raise Exception('Illegal limit passed to Disk Cache: ' + str(limit))
+
         if not os.path.exists(top_folder):
-            raise Exception('Folder passed to Disk Cache does not exist: ' + top_folder)
+            try:
+                os.mkdir(top_folder)
+            except:
+                raise Exception('Could not create disk cache folder: ' + top_folder)
 
         self._limit  = limit
         self._folder = top_folder
@@ -60,46 +69,19 @@ class DiskCache:
         # Get the full path to one of the stored items by name
         return os.path.join(self._folder, name)
 
-    @abstractmethod
-    def _update_items(self):
-        """Update the list of all currently stored items"""
-        pass
-
-
-
-class DiskFileCache(DiskCache):
-    """Class to keep track of the number of allocated files on disk and delete
-       old ones when the list gets too large.
-    """
 
     def _update_items(self):
-        """Update the list of all files contained in the folder.
-           Currently these files are not ordered.
+        """Update the list of all files and folders contained in the folder.
+           Currently these items are not ordered.
         """
 
         self._item_list = []
         for f in os.listdir(self._folder):
-            # Skip folders and text files
+            # Skip text files
             # -> It is important that we don't delete the list file if the user puts it here!
-            if os.path.isdir(f):
-                continue
-            ext = os.path.splitext(f)[1]
-            if ext not in ['.csv', 'txt']:
-                self._item_list.append(f)
-
-class DiskFolderCache(DiskCache):
-    """Class to keep track of the number of allocated folders on disk and delete
-       old ones when the list gets too large.  The idea is that users will use a consistent
-       naming convention and store data in the folders.
-    """
-
-
-    def _update_items(self):
-        """Update the list of all folders contained in the top level folder.
-           Currently these folders are not ordered.
-        """
-
-        self._item_list = []
-        for f in os.listdir(self._folder):
-            if os.path.isdir(f):
+            try:
+                ext = os.path.splitext(f)[1]
+                if ext not in ['.csv', 'txt']:
+                    self._item_list.append(f)
+            except: # Track all items without an extension
                 self._item_list.append(f)

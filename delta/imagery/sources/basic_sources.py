@@ -9,7 +9,6 @@ import os
 
 import numpy as np
 
-from delta import config
 from delta.imagery import image_reader
 from delta.imagery import utilities
 
@@ -108,7 +107,6 @@ class DeltaImage:
     # Constants which must be specified for all image types, these are the default values.
     _NUM_REGIONS = 4
     DEFAULT_EXTENSIONS = ['.tif']
-    CACHE_CLASS = None
 
     @abstractmethod
     def chunk_image_region(self, roi, chunk_size, chunk_overlap):
@@ -188,7 +186,7 @@ class SimpleTiff(TiffImage):
     """A basic image which comes ready to use"""
     _NUM_REGIONS = 1
     DEFAULT_EXTENSIONS = ['.tif']
-    CACHE_CLASS = disk_folder_cache.DiskFileCache
+
     def prep(self):
         return self.path
 
@@ -198,7 +196,7 @@ class RGBAImage(TiffImage):
 
     _NUM_REGIONS = 1
     DEFAULT_EXTENSIONS = ['.tif']
-    CACHE_CLASS = disk_folder_cache.DiskFileCache
+
     def prep(self):
         """Converts RGBA images to RGB images"""
 

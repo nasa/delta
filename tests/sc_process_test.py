@@ -10,6 +10,7 @@ from tensorflow import keras #pylint: disable=C0413
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from delta import config
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed
@@ -53,12 +54,14 @@ def init_network(num_bands, chunk_size):
 def main(args):
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
-    parser.add_argument("--dataset-config-file", dest="dataset_config", required=True,
+    parser.add_argument("--config-file", dest="config_file", required=False,
                         help="Dataset configuration file.")
-    parser.add_argument("--num-epochs", dest="num_epochs", type=int, default=5,
-                        help="Number of training epochs.")
-    parser.add_argument("--batch-size", dest="batch_size", type=int, default=2,
-                        help="Training batch size.")
+
+    parser.add_argument("--data-folder", dest="data_folder", required=False,
+                        help="Specify data folder instead of supplying config file.")
+    parser.add_argument("--image-type", dest="image_type", required=False,
+                        help="Specify image type along with the data folder. (landsat, worldview, or rgba)")
+
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
 
@@ -68,18 +71,25 @@ def main(args):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+    if not options.config_file and not (options.data_folder and options.image_type):
+        parser.print_help(sys.stderr)
+        print('Must specify either --config-file or --data-folder and --image-type')
+        sys.exit(1)
 
-    TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
+    config_values = config.parse_config_file(options.config_file,
+                                             options.data_folder, options.image_type)
+    batch_size = config_values['ml']['batch_size']
+    num_epochs = config_values['ml']['num_epochs']
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.ImageryDataset(options.dataset_config)
+    ids = imagery_dataset.ImageryDataset(config_values)
     ds = ids.dataset()
 
-    if ids.total_num_regions() < options.batch_size:
+    if ids.total_num_regions() < batch_size:
         raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
-                        % (options.batch_size, ids.total_num_regions()))
-    ds = ds.batch(options.batch_size)
+                        % (batch_size, ids.total_num_regions()))
+    ds = ds.batch(batch_size)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
     ds = ds.repeat()#(NUM_EPOCHS) # Helps with steps_per_epoch math below...
@@ -101,8 +111,8 @@ def main(args):
 
     model = init_network(ids.num_bands(), ids.chunk_size())
 
-    unused_history = model.fit(ds, epochs=options.num_epochs,
-                               steps_per_epoch=num_entries//options.batch_size)
+    unused_history = model.fit(ds, epochs=num_epochs,
+                               steps_per_epoch=num_entries//batch_size)
 
     print('TF dataset test finished!')
 

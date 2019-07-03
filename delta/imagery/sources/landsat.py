@@ -182,6 +182,6 @@ class LandsatImage(basic_sources.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
     _NUM_REGIONS = 4
     DEFAULT_EXTENSIONS = ['.gz']
-    CACHE_CLASS = disk_folder_cache.DiskFolderCache
+
     def prep(self):
         return landsat_utils.prep_landsat_image(self.path, self.cache_manager)

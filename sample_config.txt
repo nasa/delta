@@ -1,0 +1,14 @@
+[input_dataset]
+data_directory=/home/smcmich1/data/delta/damage
+image_type=rgba
+extension=.tif
+
+[cache]
+cache_dir=/home/smcmich1/data/delta/damage/cache
+cache_limit=8
+
+[ml]
+chunk_size=28
+chunk_overlap=0
+num_epochs=5
+batch_size=2
