@@ -4,8 +4,6 @@ Tools for loading input images into the TensorFlow Dataset class.
 import functools
 import os
 import os.path
-import tempfile
-import configparser
 
 import numpy as np
 import tensorflow as tf
@@ -57,8 +55,10 @@ class ImageryDataset:
                                                           config_values['cache']['cache_limit'])
 
         # Generate a text file list of all the input images, plus region indices.
-        data_folder = config_values['input_dataset']['data_directory']
-        self._num_regions, self._num_images = self._make_image_list(data_folder, list_path, input_extensions)
+        data_folder  = config_values['input_dataset']['data_directory']
+        label_folder = config_values['input_dataset']['label_directory']
+        self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                    list_path, input_extensions)
         assert self._num_regions > 0
 
         # Load the first image just to figure out the number of bands
@@ -72,8 +72,8 @@ class ImageryDataset:
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
 
-        # This function generates fake label info for loaded data.
-        label_gen_function = functools.partial(self._load_fake_labels)
+        # This function generates real or fake label info for loaded data.
+        label_gen_function = functools.partial(self._load_labels)
 
         def generate_chunks(lines):
             y = tf.py_function(self._load_data, [lines], [tf.float64])
@@ -135,32 +135,57 @@ class ImageryDataset:
         # Create a new image class instance to handle this input path
         image = self.image_class()(path, self._cache_manager)
         # Load a region of the image and break it up into small image chunks
-        return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+        result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+        return result
 
-    # TODO: delete this and load actual labels
-    def _load_fake_labels(self, text_line):
-        """Use to generate fake label data for load_image_region"""
+    def _load_labels(self, text_line):
+        """Use to generate real or fake label data for load_image_region"""
         text_line = text_line.numpy().decode() # Convert from TF to string type
-        parts  = text_line.split(',')
-        path   = parts[0].strip()
+        parts = text_line.split(',')
+        path  = parts[0].strip()
 
         roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
                                   int(parts[3].strip()), int(parts[4].strip()))
 
-        image = self.image_class()(path, self._cache_manager)
-        chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+        if len(parts) > 5: # pylint:disable=R1705
+            # A label folder was provided
+            label_path = parts[5].strip()
+            if not os.path.exists(label_path):
+                raise Exception('Missing label file: ' + label_path)
 
-        # Make a fake label
-        full_shape = chunk_data.shape[0]
-        chunk_data = np.zeros(full_shape, dtype=np.int32)
-        chunk_data[ 0:10] = 1 # Junk labels
-        chunk_data[10:20] = 2
-        return chunk_data
+            label_image = basic_sources.SimpleTiff(label_path, self._cache_manager)
+            chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+            #num_chunks = chunk_data.shape[0]
+            #labels = np.zeros(num_chunks, dtype=np.int32)
+            center_pixel = int(self._chunk_size/2)
+            labels = chunk_data[:, 0, center_pixel, center_pixel]
+            return labels
+        else:
+            # No labels were provided
+            image = self.image_class()(path, self._cache_manager)
+            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
 
-    def _make_image_list(self, top_folder, output_path, extensions):
+            # Make a fake label in the shape matching the input image
+            num_chunks = chunk_data.shape[0]
+            labels = np.zeros(num_chunks, dtype=np.int32)
+            labels[ 0:10] = 1 # Junk labels
+            labels[10:20] = 2
+            return labels
+
+    def _make_image_list(self, top_folder, label_folder, output_path, extensions):
         '''Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
+           If a label folder is provided, look for corresponding label files which
+           have the same relative path in that folder but ending with "_label.tif"
         '''
+        LABEL_POSTFIX = '_label.tif'
+
+        if label_folder:
+            if not os.path.exists(label_folder):
+                raise Exception('Supplied label folder does not exist: ' + label_folder)
+            print('Using image labels from folder: ' + label_folder)
+        else:
+            print('Using fake label data!')
 
         num_entries = 0
         num_images  = 0
@@ -170,8 +195,20 @@ class ImageryDataset:
                     if os.path.splitext(filename)[1] in extensions:
                         path = os.path.join(root, filename)
                         rois = self.image_class()(path, self._cache_manager).tiles()
+                        label_path = None
+
+                        if label_folder: # Append label path to the end of the line
+                            rel_path   = os.path.relpath(path, top_folder)
+                            label_path = os.path.join(label_folder, rel_path) + LABEL_POSTFIX
+                            # If labels are provided then we need a label file for every image in the data set!
+                            if not os.path.exists(label_path):
+                                raise Exception('Error: Expected label file to exist at path: ' + label_path)
+
                         for r in rois:
-                            f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
+                            line = '%s,%d,%d,%d,%d' % (path, r.min_x, r.min_y, r.max_x, r.max_y)
+                            if label_path:
+                                line += ',' + label_path
+                            f.write(line + '\n')
                             num_entries += 1
                     num_images += 1
         return num_entries, num_images

@@ -1,6 +1,5 @@
 import configparser
 import os
-from pathlib import Path
 
 from delta.imagery import disk_folder_cache
 
@@ -11,8 +10,9 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
        the config data will be set to defaults.
 
        Returns a dictionary containing all possible config values filled with either
-       the values in the file or the default values.  The exception is the
-       "input_dataset:extension" field which is populated with "None" instead of a default value.
+       the values in the file or the default values.  The exception are the
+       "input_dataset:extension" and "input_dataset:label_directory" fields which are
+       populated with "None" instead of a default value.
        The values are generally not checked for correctness.
     """
 
@@ -20,14 +20,16 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
 
     # Specify all of variables that we accept and their default values
     # - Some input_dataset values are not handled in this list because they are more complicated.
-    DEFAULT_CONFIG_VALUES = {'input_dataset':{'extension':None},
+    DEFAULT_CONFIG_VALUES = {'input_dataset':{'extension':None,
+                                              'label_directory':None
+                                             },
                              'cache':{'cache_dir':disk_folder_cache.DEFAULT_CACHE_DIR,
-                                       'cache_limit':disk_folder_cache.DEFAULT_CACHE_LIMIT
+                                      'cache_limit':disk_folder_cache.DEFAULT_CACHE_LIMIT
                                      },
                              'ml':{'chunk_size':17,
-                                    'chunk_overlap':0,
-                                    'num_epochs':5,
-                                    'batch_size':2
+                                   'chunk_overlap':0,
+                                   'num_epochs':5,
+                                   'batch_size':2
                                   }
                             }
 
@@ -35,11 +37,11 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
         if (not data_directory) and (not image_type):
             raise Exception('Error: Either a configuration file or a data directory '
                             'and image type must be specified!')
-        else:
-            # Manually generate a config object
-            config_data = {'input_dataset':{'data_directory':data_directory,
-                                            'image_type':image_type}
-                          }
+
+        # Manually generate a config object
+        config_data = {'input_dataset':{'data_directory':data_directory,
+                                        'image_type':image_type}
+                      }
 
     else: # Config file was provided
 
@@ -67,11 +69,14 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
             config_data[section] = {} # Init to empty dictionary
         for name, value in items.items(): # Make sure there is an entry for each item
             if name in config_data[section]:
-                try:
-                    config_data[section][name] = int(value) # Convert eligible values to integers
-                except (ValueError, TypeError):
-                    print(value)
-                    pass
+                input_val = config_data[section][name]
+                if input_val.lower() == 'none': # Useful in some cases
+                    config_data[section][name] = None
+                else:
+                    try: # Convert eligible values to integers
+                        config_data[section][name] = int(config_data[section][name])
+                    except (ValueError, TypeError):
+                        pass
             else: # Value not present, use the default value
                 print('"%s:%s" value not found in config file, using default value %s'
                       % (section, name, str(value)))

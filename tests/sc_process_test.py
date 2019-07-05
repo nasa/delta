@@ -10,7 +10,7 @@ from tensorflow import keras #pylint: disable=C0413
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from delta import config
+from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed
@@ -61,6 +61,8 @@ def main(args):
                         help="Specify data folder instead of supplying config file.")
     parser.add_argument("--image-type", dest="image_type", required=False,
                         help="Specify image type along with the data folder. (landsat, worldview, or rgba)")
+    parser.add_argument("--label-folder", dest="label_folder", required=False,
+                        help="Specify label folder instead of supplying config file.")
 
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
@@ -78,6 +80,8 @@ def main(args):
 
     config_values = config.parse_config_file(options.config_file,
                                              options.data_folder, options.image_type)
+    if options.label_folder:
+        config_values['input_dataset']['label_directory'] = options.label_folder
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']
 

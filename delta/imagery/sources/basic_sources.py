@@ -99,7 +99,7 @@ def tile_split(image_size, region, num_splits):
     return utilities.Rectangle(min_x, min_y, max_x, max_y)
 
 
-class DeltaImage:
+class DeltaImage(ABC):
     """Base class used for wrapping input images in a way that they can be passed
        to Tensorflow dataset objects.
     """
@@ -113,22 +113,18 @@ class DeltaImage:
         """Return this portion of the image broken up into small segments.
            The output format is a numpy array of size [N, num_bands, chunk_size, chunk_size]
         """
-        pass
 
     @abstractmethod
     def size(self):
         """Return the size of this image in pixels"""
-        pass
 
     @abstractmethod
     def prep(self):
         """Prepare the file to be opened by other tools (unpack, etc)"""
-        pass
 
     @abstractmethod
-    def get_num_bands(self, sample_path):
+    def get_num_bands(self):
         """Return the number of bands in the image"""
-        pass
 
     def tiles(self):
         """Generator to yield ROIs for the image."""
@@ -140,9 +136,9 @@ class DeltaImage:
 
 class TiffImage(DeltaImage):
     """For all versions of DeltaImage that can use our image_reader class"""
-  
+
     DEFAULT_EXTENSIONS = ['.tif']
-  
+
     def __init__(self, path, cache_manager):
         self.path = path
         self.cache_manager = cache_manager
@@ -188,7 +184,7 @@ class SimpleTiff(TiffImage):
     DEFAULT_EXTENSIONS = ['.tif']
 
     def prep(self):
-        return self.path
+        return [self.path]
 
 
 class RGBAImage(TiffImage):
@@ -210,4 +206,3 @@ class RGBAImage(TiffImage):
             print(cmd)
             os.system(cmd)
         return [output_path]
-
