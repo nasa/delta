@@ -320,3 +320,121 @@ class ImageryDataset:
         return
     def total_num_regions(self):
         return self._num_regions
+
+class AutoencoderDataset:
+    # TODO: something better with num_regions, chunk_size
+    # TODO: Need to clean up this whole class!
+    """
+    Create dataset with all files in image_folder with extension ext.
+
+    Cache list of files to list_path, and use caching folder cache_folder.
+    """
+    def __init__(self, image_type, image_folder=None, chunk_size=256,
+                 list_path=None):
+
+        # TODO: Merge with the classes above!
+        # TODO: May need to pass in this value!
+        num_bands_dict = {'landsat':8, 'worldview':8, 'tif':3, 'rgba':3}
+        try:
+            num_bands = num_bands_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
+
+        # Figure out the image file extension
+        ext_dict = {'landsat':'.gz', 'worldview':'.zip', 'tif':'.tif', 'rgba':'.tif'}
+        try:
+            ext = ext_dict[image_type]
+        except IndexError:
+            raise Exception('Unrecognized input type: ' + image_type)
+
+        if list_path is None:
+            tempfd, list_path = tempfile.mkstemp()
+            os.close(tempfd)
+            self.__temp_path = list_path
+        else:
+            self.__temp_path = None
+
+        self._image_type = image_type
+        self._chunk_size = chunk_size
+        self._chunk_overlap = 0 # TODO: MAKE AN OPTION!
+
+        # Generate a text file list of all the input images, plus region indices.
+        self._num_regions, self._num_images = self.__make_image_list(image_folder, list_path, ext)
+        assert self._num_regions > 0
+        
+
+        # This dataset returns the lines from the text file as entries.
+        ds = tf.data.TextLineDataset(list_path)
+
+        def generate_chunks(lines):
+            y = tf.py_function(self.__load_data, [lines], [tf.float64])
+            y[0].set_shape((0, num_bands, chunk_size, chunk_size))
+            return y
+
+
+        # Tell TF to use the functions above to load our data.
+        chunk_set = ds.map(generate_chunks, num_parallel_calls=1)
+        # We duplicate the chunks twice because autoencoders 
+        label_set = ds.map(generate_chunks, num_parallel_calls=1)
+
+        # Break up the chunk sets to individual chunks
+        # TODO: Does this improve things?
+        chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
+
+        # Pair the data and labels in our dataset
+        ds = tf.data.Dataset.zip((chunk_set, label_set))
+        # HACK: this is a bad solution.
+        self._steps_per_epoch = len(list(ds))
+
+        # Filter out all chunks with zero (nodata) values
+        self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
+    def __del__(self):
+        if self.__temp_path is not None:
+            os.remove(self.__temp_path)
+
+    def image_class(self):
+        return IMAGE_CLASSES[self._image_type]
+
+    def __load_data(self, text_line):
+        text_line = text_line.numpy().decode() # Convert from TF to string type
+        parts  = text_line.split(',')
+        path   = parts[0].strip()
+        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+                                  int(parts[3].strip()), int(parts[4].strip()))
+
+        image = self.image_class()(path)
+        return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+
+    def __make_image_list(self, top_folder, output_path, ext):
+        '''Write a file listing all of the files in a (recursive) folder
+           matching the provided extension.
+        '''
+
+        num_entries = 0
+        num_images = 0
+        with open(output_path, 'w') as f:
+            for root, dummy_directories, filenames in os.walk(top_folder):
+                for filename in filenames:
+                    if os.path.splitext(filename)[1] == ext:
+                        path = os.path.join(root, filename)
+                        rois = self.image_class()(path).tiles()
+                        for r in rois:
+                            f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
+                            num_entries += 1
+                    num_images += 1
+        return num_entries, num_images
+
+    def dataset(self):
+        return self._ds
+
+    def data_shape(self):
+        return (self._chunk_size, self._chunk_size)
+
+    def steps_per_epoch(self):
+        return self._steps_per_epoch
+    def num_images(self):
+        return
+    def total_num_regions(self):
+        return self._num_regions
