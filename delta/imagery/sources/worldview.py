@@ -148,6 +148,6 @@ class WorldviewImage(basic_sources.TiffImage):
     DEFAULT_EXTENSIONS = ['.zip']
 
     def prep(self):
-        return worldview_utils.prep_worldview_image(self.path, self.cache_manager)
+        return prep_worldview_image(self.path, self.cache_manager)
 
 
