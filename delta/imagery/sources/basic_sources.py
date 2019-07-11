@@ -109,7 +109,7 @@ class DeltaImage(ABC):
     DEFAULT_EXTENSIONS = ['.tif']
 
     @abstractmethod
-    def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type):
         """Return this portion of the image broken up into small segments.
            The output format is a numpy array of size [N, num_bands, chunk_size, chunk_size]
         """
@@ -155,7 +155,7 @@ class TiffImage(DeltaImage):
         input_reader.load_images(input_paths)
         return input_reader.num_bands()
 
-    def chunk_image_region(self, roi, chunk_size, chunk_overlap):
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type):
         # First make sure that the image is unpacked and ready to load
         input_paths = self.prep()
 
@@ -166,7 +166,7 @@ class TiffImage(DeltaImage):
         # Load the chunks from inside the ROI
         #print('Loading chunk data from file ' + self.path + ' using ROI: ' + str(roi))
         # TODO: configure number of threads
-        chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1)
+        chunk_data = input_reader.parallel_load_chunks(roi, chunk_size, chunk_overlap, 1, data_type=data_type)
 
         return chunk_data
 

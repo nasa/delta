@@ -29,7 +29,8 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
                              'ml':{'chunk_size':17,
                                    'chunk_overlap':0,
                                    'num_epochs':5,
-                                   'batch_size':2
+                                   'batch_size':2,
+                                   'model_folder':None
                                   }
                             }
 

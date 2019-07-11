@@ -27,7 +27,10 @@ IMAGE_CLASSES = {
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
-    def __init__(self, config_values):
+
+    def __init__(self, config_values, no_dataset=False):
+        """If no_dataset is True, just populate some dataset information and then finish
+           without setting up the actual TF dataset."""
 
         # Record some of the config values
         self._chunk_size    = config_values['ml']['chunk_size']
@@ -58,7 +61,8 @@ class ImageryDataset:
         data_folder  = config_values['input_dataset']['data_directory']
         label_folder = config_values['input_dataset']['label_directory']
         self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
-                                                                    list_path, input_extensions)
+                                                                    list_path, input_extensions,
+                                                                    just_one=no_dataset)
         assert self._num_regions > 0
 
         # Load the first image just to figure out the number of bands
@@ -69,19 +73,23 @@ class ImageryDataset:
             image = self.image_class()(parts[0], self._cache_manager)
             self._num_bands = image.get_num_bands()
 
+        if no_dataset: # Quit early
+            return
+
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
 
         # This function generates real or fake label info for loaded data.
         label_gen_function = functools.partial(self._load_labels)
 
+        # TODO: Handle data types more carefully!
         def generate_chunks(lines):
-            y = tf.py_function(self._load_data, [lines], [tf.float64])
+            y = tf.py_func(self._load_data, [lines], [tf.float64])
             y[0].set_shape((0, self._num_bands, self._chunk_size, self._chunk_size))
             return y
 
         def generate_labels(lines):
-            y = tf.py_function(label_gen_function, [lines], [tf.int32])
+            y = tf.py_func(label_gen_function, [lines], [tf.int32])
             y[0].set_shape((0, 1))
             return y
 
@@ -125,7 +133,9 @@ class ImageryDataset:
 
     def _load_data(self, text_line):
         """Load the image chunk data corresponding ot an image/region text line"""
-        text_line = text_line.numpy().decode() # Convert from TF to string type
+        #text_line = text_line.numpy().decode() # Convert from TF to string type
+        text_line = tf.compat.as_str_any(text_line) # Convert from TF to string type
+        #print('Data: ' + text_line)
         parts  = text_line.split(',')
         path   = parts[0].strip()
 
@@ -135,12 +145,14 @@ class ImageryDataset:
         # Create a new image class instance to handle this input path
         image = self.image_class()(path, self._cache_manager)
         # Load a region of the image and break it up into small image chunks
-        result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+        result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.float64)
         return result
 
     def _load_labels(self, text_line):
         """Use to generate real or fake label data for load_image_region"""
-        text_line = text_line.numpy().decode() # Convert from TF to string type
+        #text_line = text_line.numpy().decode() # Convert from TF to string type
+        text_line = tf.compat.as_str_any(text_line) # Convert from TF to string type
+        #print('Label: ' + text_line)
         parts = text_line.split(',')
         path  = parts[0].strip()
 
@@ -154,7 +166,7 @@ class ImageryDataset:
                 raise Exception('Missing label file: ' + label_path)
 
             label_image = basic_sources.SimpleTiff(label_path, self._cache_manager)
-            chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+            chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
             #num_chunks = chunk_data.shape[0]
             #labels = np.zeros(num_chunks, dtype=np.int32)
             center_pixel = int(self._chunk_size/2)
@@ -163,7 +175,7 @@ class ImageryDataset:
         else:
             # No labels were provided
             image = self.image_class()(path, self._cache_manager)
-            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
 
             # Make a fake label in the shape matching the input image
             num_chunks = chunk_data.shape[0]
@@ -172,11 +184,13 @@ class ImageryDataset:
             labels[10:20] = 2
             return labels
 
-    def _make_image_list(self, top_folder, label_folder, output_path, extensions):
+    def _make_image_list(self, top_folder, label_folder, output_path, extensions,
+                         just_one=False):
         '''Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
            If a label folder is provided, look for corresponding label files which
-           have the same relative path in that folder but ending with "_label.tif"
+           have the same relative path in that folder but ending with "_label.tif".
+           If just_one is set, only find one file!
         '''
         LABEL_POSTFIX = '_label.tif'
 
@@ -210,5 +224,9 @@ class ImageryDataset:
                                 line += ',' + label_path
                             f.write(line + '\n')
                             num_entries += 1
-                    num_images += 1
+                        num_images += 1
+
+                        if just_one:
+                            return num_entries, num_images
+
         return num_entries, num_images

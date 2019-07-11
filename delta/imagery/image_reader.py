@@ -196,7 +196,7 @@ class MultiTiffFileReader():
             b += self._image_handles[i].num_bands()
         return b
 
-    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1):
+    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
         """
@@ -235,7 +235,7 @@ class MultiTiffFileReader():
 
         # Allocate the output data structure
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
-        data_store = np.zeros(shape=output_shape)
+        data_store = np.zeros(shape=output_shape, dtype=data_type)
 
 
         # Internal function to copy all chunks from all bands of one image handle to data_store

@@ -48,3 +48,6 @@ num_epochs=5
 
 # The number of input images used in each training iteration
 batch_size=2
+
+# If specified, this folder is used to store model checkpoints.
+model_folder=/home/smcmich1/data/delta/damage/models
