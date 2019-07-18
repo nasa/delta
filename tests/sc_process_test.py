@@ -1,7 +1,6 @@
 import argparse
 import os
 import sys
-import random
 
 os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
@@ -11,9 +10,7 @@ from tensorflow import keras #pylint: disable=C0413
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-from delta.imagery import landsat_utils #pylint: disable=C0413,W0611
-from delta.imagery import worldview_utils #pylint: disable=C0413,W0611
+from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 
 # Test out importing tarred Landsat images into a dataset which is passed
@@ -49,12 +46,6 @@ def make_model(channel, in_len):
 def init_network(num_bands, chunk_size):
     """Create a TF model to train"""
 
-    # TF additions
-    seed_val = 12306 # number I typed out randomly on my keyboard
-
-    random.seed(seed_val) # Probably poor form to use the same seed twice.
-    tf.random.set_random_seed(seed_val)
-
     model = make_model(num_bands, chunk_size)
     model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
@@ -63,10 +54,18 @@ def init_network(num_bands, chunk_size):
 def main(args):
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
-    parser.add_argument("--input-folder", dest="input_folder", required=True,
-                        help="A folder with images to load.")
-    parser.add_argument("--image-type", dest="image_type", required=True,
-                        help="The imgae type (landsat, worldview, etc.).")
+    parser.add_argument("--config-file", dest="config_file", required=False,
+                        help="Dataset configuration file.")
+
+    parser.add_argument("--data-folder", dest="data_folder", required=False,
+                        help="Specify data folder instead of supplying config file.")
+    parser.add_argument("--image-type", dest="image_type", required=False,
+                        help="Specify image type along with the data folder. (landsat, worldview, or rgba)")
+    parser.add_argument("--label-folder", dest="label_folder", required=False,
+                        help="Specify label folder instead of supplying config file.")
+
+    parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
+                        help="If set, use a maximum of this many input values for training.")
 
     try:
         options = parser.parse_args(args[1:])
@@ -74,33 +73,27 @@ def main(args):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    if options.image_type == 'landsat':
-        num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
-    elif options.image_type == 'worldview':
-        num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
-    elif options.image_type == 'rgba':
-        num_bands = 3
-    else:
-        print('Unsupported image type %s.' % (options.image_type), file=sys.stderr)
+    if not options.config_file and not (options.data_folder and options.image_type):
+        parser.print_help(sys.stderr)
+        print('Must specify either --config-file or --data-folder and --image-type')
         sys.exit(1)
 
-    # TODO: Figure out what reasonable values are here for each input sensor!
-    CHUNK_SIZE = 35
-    NUM_EPOCHS = 5
-    BATCH_SIZE = 2 # Don't let this be greater than the number of input images!
-
-    TEST_LIMIT = 256 # DEBUG: Only process this many image areas!
+    config_values = config.parse_config_file(options.config_file,
+                                             options.data_folder, options.image_type)
+    if options.label_folder:
+        config_values['input_dataset']['label_directory'] = options.label_folder
+    batch_size = config_values['ml']['batch_size']
+    num_epochs = config_values['ml']['num_epochs']
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.ImageryDataset(options.image_type, image_folder=options.input_folder,
-                                         chunk_size=CHUNK_SIZE)
-    ds  = ids.dataset()
+    ids = imagery_dataset.ImageryDataset(config_values)
+    ds = ids.dataset()
 
-    if ids.total_num_regions() < BATCH_SIZE:
-        raise Exception('BATCH_SIZE (%d) is too large for the number of input regions (%d)!'
-                        % (BATCH_SIZE, ids.total_num_regions()))
-    ds = ds.batch(BATCH_SIZE)
+    if ids.total_num_regions() < batch_size:
+        raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
+                        % (batch_size, ids.total_num_regions()))
+    ds = ds.batch(batch_size)
 
     #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
     ds = ds.repeat()#(NUM_EPOCHS) # Helps with steps_per_epoch math below...
@@ -108,20 +101,22 @@ def main(args):
     # TODO: Set this up to help with parallelization
     #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
-    ds = ds.take(TEST_LIMIT) # DEBUG
+
     num_entries = ids.total_num_regions()
-    if num_entries > TEST_LIMIT:
-        num_entries = TEST_LIMIT
+    if options.test_limit:
+        ds = ds.take(options.test_limit)
+        num_entries = ids.total_num_regions()
+        if num_entries > options.test_limit:
+            num_entries = options.test_limit
 
     ## Start a CPU-only session
     #config = tf.ConfigProto(device_count = {'GPU': 0})
     #sess   = tf.InteractiveSession(config=config)
 
-    #print('Num bands = ' + str(num_bands))
-    model = init_network(num_bands, CHUNK_SIZE)
+    model = init_network(ids.num_bands(), ids.chunk_size())
 
-    unused_history = model.fit(ds, epochs=NUM_EPOCHS,
-                               steps_per_epoch=num_entries//BATCH_SIZE)
+    unused_history = model.fit(ds, epochs=num_epochs,
+                               steps_per_epoch=num_entries//batch_size)
 
     print('TF dataset test finished!')
 

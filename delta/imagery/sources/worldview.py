@@ -23,8 +23,8 @@ Functions to support the WorldView satellites.
 
 import os
 
-from delta import config
-from . import utilities
+from delta.imagery import utilities
+from . import basic_sources
 
 def parse_meta_file(meta_path):
     """Parse out the needed values from the IMD or XML file"""
@@ -111,7 +111,7 @@ def get_files_from_unpack_folder(folder):
 
 # This function is currently set up for the HDDS archived WV data, files from other
 #  locations will need to be handled differently.
-def prep_worldview_image(path):
+def prep_worldview_image(path, cache_manager):
     """Prepares a WorldView file from the archive for processing.
        Returns the path to the file ready to use.
        TODO: Apply TOA conversion!
@@ -126,7 +126,7 @@ def prep_worldview_image(path):
 
     # Get the folder where this will be stored from the cache manager
     name = '_'.join([sensor, date])
-    unpack_folder = config.cache_manager().get_cache_folder(name)
+    unpack_folder = cache_manager.register_item(name)
 
     # Check if we already unpacked this data
     (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
@@ -140,3 +140,14 @@ def prep_worldview_image(path):
         (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
     return [tif_path]
+
+
+class WorldviewImage(basic_sources.TiffImage):
+    """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    _NUM_REGIONS = 10 # May be too small
+    DEFAULT_EXTENSIONS = ['.zip']
+
+    def prep(self):
+        return worldview_utils.prep_worldview_image(self.path, self.cache_manager)
+
+

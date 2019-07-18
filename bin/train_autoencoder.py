@@ -27,7 +27,6 @@ from delta.imagery import worldview_utils #pylint: disable=C0413,W0611
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment
 
-
 #------------------------------------------------------------------------------
 def make_model(in_shape, encoding_size=32):
 

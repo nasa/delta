@@ -20,7 +20,7 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from delta.imagery import landsat_utils #pylint: disable=C0413
+from delta.imagery.sources import landsat #pylint: disable=C0413
 from delta.imagery import image_reader #pylint: disable=C0413
 from delta.imagery import utilities #pylint: disable=C0413
 from delta.ml.train import Experiment #pylint: disable=C0413
@@ -75,9 +75,6 @@ def main(argsIn): # pylint:disable=R0914
                         help="Path to a label file for this image.  If not used, will train on junk labels.")
     parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
                         help="Number of threads to use for parallel image loading.")
-    parser.add_argument("--output-folder", dest="output_folder",
-                        default=os.path.join(os.path.dirname(__file__), '../data/out/test'),
-                        help="Write output chunk files to this folder.")
 
     # Note: changed the default chunk size to 28.  Smaller chunks work better for
     # the toy network defined above.
@@ -87,7 +84,7 @@ def main(argsIn): # pylint:disable=R0914
     parser.add_argument("--chunk-overlap", dest="chunk_overlap", type=int, default=0,
                         help="The amount of overlap of the image chunks.")
 
-    parser.add_argument("--num-epochs", dest="num_epochs", type=int, default=70,
+    parser.add_argument("--num-epochs", dest="num_epochs", type=int, default=2,
                         help="The number of epochs to train for")
     try:
         options = parser.parse_args(argsIn)
@@ -95,15 +92,12 @@ def main(argsIn): # pylint:disable=R0914
         parser.print_help(sys.stderr)
         return -1
 
-    if not os.path.exists(options.output_folder):
-        os.mkdir(options.output_folder)
-
     if options.label_path and not os.path.exists(options.label_path):
         print('Label file does not exist: ' + options.label_path)
 
     if options.mtl_path:
         # Get all of the TOA coefficients and input file names
-        data = landsat_utils.parse_mtl_file(options.mtl_path)
+        data = landsat.parse_mtl_file(options.mtl_path)
 
         input_folder = os.path.dirname(options.mtl_path)
 

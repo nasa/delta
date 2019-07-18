@@ -4,8 +4,9 @@ Functions to support the Landsat satellites.
 
 import os
 
-from delta import config
-from . import utilities
+from delta.imagery import utilities
+from . import basic_sources
+
 
 def get_date_from_filename(name):
     """Extract the image capture date from a Landsat filename"""
@@ -118,7 +119,7 @@ def check_if_files_present(mtl_data, folder):
             return False
     return True
 
-def prep_landsat_image(path):
+def prep_landsat_image(path, cache_manager):
     """Prepares a Landsat file from the archive for processing.
        Returns [band, paths, in, order, ...]
        Uses the bands specified in get_landsat_bands_to_use()
@@ -136,7 +137,7 @@ def prep_landsat_image(path):
 
     # Get the folder where this will be stored from the cache manager
     name = '_'.join([sensor, lpath, lrow, date])
-    untar_folder = config.cache_manager().get_cache_folder(name)
+    untar_folder = cache_manager.register_item(name)
 
     # Check if we already unpacked this data
     all_files_present = False
@@ -175,3 +176,12 @@ def prep_landsat_image(path):
                             + ' after unpacking tar file ' + path)
 
     return output_paths
+
+
+class LandsatImage(basic_sources.TiffImage):
+    """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    _NUM_REGIONS = 4
+    DEFAULT_EXTENSIONS = ['.gz']
+
+    def prep(self):
+        return landsat_utils.prep_landsat_image(self.path, self.cache_manager)
