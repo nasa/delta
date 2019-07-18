@@ -22,8 +22,8 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from delta.imagery import landsat_utils #pylint: disable=C0413
-from delta.imagery import worldview_utils #pylint: disable=C0413,W0611
+from delta.imagery.sources import landsat #pylint: disable=C0413
+from delta.imagery.sources import worldview #pylint: disable=C0413,W0611
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment
 
@@ -94,9 +94,9 @@ def main(argsIn):
         os.mkdir(options.output_folder)
 
     if options.image_type == 'landsat':
-        num_bands = len(landsat_utils.get_landsat_bands_to_use('LS8'))
+        num_bands = len(landsat.get_landsat_bands_to_use('LS8'))
     elif options.image_type == 'worldview':
-        num_bands = len(worldview_utils.get_worldview_bands_to_use('WV02'))
+        num_bands = len(worldview.get_worldview_bands_to_use('WV02'))
     elif options.image_type == 'rgba':
         num_bands = 3
     else:
