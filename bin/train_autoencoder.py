@@ -24,8 +24,8 @@ if sys.version_info < (3, 0, 0):
 
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
-from delta.imagery.sources import landsat # TODO: Remove this dependency!
-from delta.imagery.sources import worldview # TODO: Remove this dependency!
+from delta.imagery.sources import landsat #pylint: disable=C0413
+from delta.imagery.sources import worldview #pylint: disable=C0413,W0611
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment
 
