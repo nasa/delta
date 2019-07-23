@@ -9,7 +9,7 @@
 data_directory=/home/smcmich1/data/delta/damage/input_files
 
 # The type of images in the folder.
-# Can be "landsat", "worldview", or "rgba".
+# Can be "landsat", "landsat-simple", "worldview", or "rgba".
 image_type=rgba
 
 # Extension of the images in the input folder

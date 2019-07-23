@@ -18,6 +18,7 @@ from delta.imagery.sources import worldview
 # Map text strings to the Image wrapper classes defined above
 IMAGE_CLASSES = {
         'landsat' : landsat.LandsatImage,
+        'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
         'tif' : basic_sources.SimpleTiff
