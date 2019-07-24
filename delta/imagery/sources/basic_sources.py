@@ -5,6 +5,7 @@ Support for TIFF imagery.
 from abc import ABC, abstractmethod
 import math
 from multiprocessing.dummy import Pool as ThreadPool
+import sys
 import os
 
 import numpy as np
@@ -104,12 +105,14 @@ class DeltaImage(ABC):
        to Tensorflow dataset objects.
     """
 
-    # Constants which must be specified for all image types, these are the default values.
-    _NUM_REGIONS = 4
     DEFAULT_EXTENSIONS = ['.tif']
 
+    # Constants which must be specified for all image types, these are the default values.
+    def __init__(self, num_regions):
+        self._num_regions = num_regions
+
     @abstractmethod
-    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type):
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type=np.float64):
         """Return this portion of the image broken up into small segments.
            The output format is a numpy array of size [N, num_bands, chunk_size, chunk_size]
         """
@@ -130,8 +133,23 @@ class DeltaImage(ABC):
         """Generator to yield ROIs for the image."""
         s = self.size()
         # TODO: add to config, replace with max buffer size?
-        for i in range(self._NUM_REGIONS):
-            yield horizontal_split(s, i, self._NUM_REGIONS)
+        for i in range(self._num_regions):
+            yield horizontal_split(s, i, self._num_regions)
+
+
+    def estimate_memory_usage(self, chunk_size, chunk_overlap, data_type=np.float64,
+                              num_bands=0):
+        """Estimate the memory needed to chunk one region in bytes.
+           Assumes horizontal regions, overwrite if using a different method."""
+        if num_bands < 1:
+            num_bands = self.get_num_bands()
+        full_size  = self.size()
+        height     = full_size[1] / self._num_regions
+        num_pixels = height * full_size[0]
+        spacing    = chunk_size - chunk_overlap
+        num_chunks = num_pixels / (spacing*spacing)
+        chunk_area = chunk_size * chunk_size
+        return num_chunks * chunk_area * num_bands * sys.getsizeof(data_type(0))
 
 
 class TiffImage(DeltaImage):
@@ -139,9 +157,10 @@ class TiffImage(DeltaImage):
 
     DEFAULT_EXTENSIONS = ['.tif']
 
-    def __init__(self, path, cache_manager):
+    def __init__(self, path, cache_manager, num_regions):
+        super(TiffImage, self).__init__(num_regions)
         self.path = path
-        self.cache_manager = cache_manager
+        self._cache_manager = cache_manager
 
     @abstractmethod
     def prep(self):
@@ -155,7 +174,7 @@ class TiffImage(DeltaImage):
         input_reader.load_images(input_paths)
         return input_reader.num_bands()
 
-    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type):
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type=np.float64):
         # First make sure that the image is unpacked and ready to load
         input_paths = self.prep()
 
@@ -198,7 +217,7 @@ class RGBAImage(TiffImage):
 
         # Get the path to the cached image
         fname = os.path.basename(self.path)
-        output_path = self.cache_manager.register_item(fname)
+        output_path = self._cache_manager.register_item(fname)
 
         if not os.path.exists(output_path):
             # Just remove the alpha band from the original image

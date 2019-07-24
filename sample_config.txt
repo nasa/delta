@@ -20,7 +20,11 @@ extension=.tif
 # replaced with label images with the same name with "_label.tif" appended.
 label_directory=/home/smcmich1/data/delta/damage/fake_labels
 
-
+# Split the image up into this many sections when loading data for training.
+# More regions will require some more overhead but will require less RAM for
+# storing image chunks.  If you have a high chunk overlay you may need to
+# increase this number.
+num_regions=8
 
 # Parameters that govern temporary images on disk.
 [cache]
@@ -41,7 +45,7 @@ cache_limit=8
 chunk_size=28
 
 # The overlap amount in pixels of adjacent image chunks.
-chunk_overlap=0
+chunk_overlap=10
 
 # The number of times each input image is fed through the training network.
 num_epochs=5

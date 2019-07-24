@@ -21,13 +21,14 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
     # Specify all of variables that we accept and their default values
     # - Some input_dataset values are not handled in this list because they are more complicated.
     DEFAULT_CONFIG_VALUES = {'input_dataset':{'extension':None,
-                                              'label_directory':None
+                                              'label_directory':None,
+                                              'num_regions':None # Default is in the image type classes
                                              },
                              'cache':{'cache_dir':disk_folder_cache.DEFAULT_CACHE_DIR,
                                       'cache_limit':disk_folder_cache.DEFAULT_CACHE_LIMIT
                                      },
                              'ml':{'chunk_size':17,
-                                   'chunk_overlap':0,
+                                   'chunk_overlap':5,
                                    'num_epochs':5,
                                    'batch_size':2,
                                    'model_folder':None

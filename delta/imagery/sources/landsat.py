@@ -180,15 +180,15 @@ def prep_landsat_image(path, cache_manager):
 
 class LandsatImage(basic_sources.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    _NUM_REGIONS = 4
+    DEFAULT_NUM_REGIONS = 24
     DEFAULT_EXTENSIONS = ['.gz']
 
     def prep(self):
-        return prep_landsat_image(self.path, self.cache_manager)
+        return prep_landsat_image(self.path, self._cache_manager)
 
 class SimpleLandsatImage(basic_sources.TiffImage):
     """All landsat bands in one tiff file"""
-    _NUM_REGIONS = 1
+    DEFAULT_NUM_REGIONS = 1
     DEFAULT_EXTENSIONS = ['.tif']
 
     def prep(self):

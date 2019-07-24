@@ -4,6 +4,8 @@ Tools for loading input images into the TensorFlow Dataset class.
 import functools
 import os
 import os.path
+import math
+import psutil
 
 import numpy as np
 import tensorflow as tf
@@ -52,11 +54,41 @@ class ImageryDataset:
             print('"input_dataset:extension" value not found in config file, using default value of '
                   + str(self._image_class.DEFAULT_EXTENSIONS))
 
+        if config_values['input_dataset']['num_regions']:
+            self._regions_per_image = config_values['input_dataset']['num_regions']
+        else:
+            self._regions_per_image = self._image_class.DEFAULT_NUM_REGIONS
+            print('"input_dataset:num_regions" value not found in config file, using default value of '
+                  + str(self._image_class.DEFAULT_NUM_REGIONS))
 
         list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
 
         self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
                                                           config_values['cache']['cache_limit'])
+
+        # Load the first image just to figure out the number of bands
+        # - This is the only way to be sure of the number in all cases.
+        with open(list_path, 'r') as f:
+            line  = f.readline()
+            parts = line.split(',')
+            image = self.image_class()(parts[0], self._cache_manager, self._regions_per_image)
+
+            self._num_bands = image.get_num_bands()
+
+            # Automatically adjust the number of image regions if memory is too low
+            bytes_needed = image.estimate_memory_usage(self._chunk_size, self._chunk_overlap,
+                                                       num_bands = self._num_bands)
+            bytes_free   = psutil.virtual_memory().free
+            if bytes_needed > bytes_free:
+                MEM_EXPAND_FACTOR = 2.0
+                ratio = bytes_needed / bytes_free
+                new_num_regions = math.floor(ratio * self._regions_per_image * MEM_EXPAND_FACTOR)
+                if not no_dataset: # Don't double print this
+                    print('Estimated input image region memory usage is ', bytes_needed/utilities.BYTES_PER_GB,
+                          ' GB, but only ', bytes_free/utilities.BYTES_PER_GB, ' GB is available. ',
+                          'Adjusting number of regions per image from ', self._regions_per_image, ' to ',
+                          new_num_regions, ' in order to stay within memory limits.')
+                self._regions_per_image = new_num_regions
 
         # Generate a text file list of all the input images, plus region indices.
         data_folder  = config_values['input_dataset']['data_directory']
@@ -65,14 +97,6 @@ class ImageryDataset:
                                                                     list_path, input_extensions,
                                                                     just_one=no_dataset)
         assert self._num_regions > 0
-
-        # Load the first image just to figure out the number of bands
-        # - This is the only way to be sure of the number in all cases.
-        with open(list_path, 'r') as f:
-            line  = f.readline()
-            parts = line.split(',')
-            image = self.image_class()(parts[0], self._cache_manager)
-            self._num_bands = image.get_num_bands()
 
         if no_dataset: # Quit early
             return
@@ -144,7 +168,7 @@ class ImageryDataset:
                                   int(parts[3].strip()), int(parts[4].strip()))
 
         # Create a new image class instance to handle this input path
-        image = self.image_class()(path, self._cache_manager)
+        image = self.image_class()(path, self._cache_manager, self._regions_per_image)
         # Load a region of the image and break it up into small image chunks
         result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.float64)
         return result
@@ -166,7 +190,7 @@ class ImageryDataset:
             if not os.path.exists(label_path):
                 raise Exception('Missing label file: ' + label_path)
 
-            label_image = basic_sources.SimpleTiff(label_path, self._cache_manager)
+            label_image = basic_sources.SimpleTiff(label_path, self._cache_manager, self._regions_per_image)
             chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
             #num_chunks = chunk_data.shape[0]
             #labels = np.zeros(num_chunks, dtype=np.int32)
@@ -175,7 +199,7 @@ class ImageryDataset:
             return labels
         else:
             # No labels were provided
-            image = self.image_class()(path, self._cache_manager)
+            image = self.image_class()(path, self._cache_manager, self._regions_per_image)
             chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
 
             # Make a fake label in the shape matching the input image
@@ -209,7 +233,7 @@ class ImageryDataset:
                 for filename in filenames:
                     if os.path.splitext(filename)[1] in extensions:
                         path = os.path.join(root, filename)
-                        rois = self.image_class()(path, self._cache_manager).tiles()
+                        rois = self.image_class()(path, self._cache_manager, self._regions_per_image).tiles()
                         label_path = None
 
                         if label_folder: # Append label path to the end of the line

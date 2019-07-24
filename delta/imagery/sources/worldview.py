@@ -144,10 +144,8 @@ def prep_worldview_image(path, cache_manager):
 
 class WorldviewImage(basic_sources.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    _NUM_REGIONS = 10 # May be too small
+    DEFAULT_NUM_REGIONS = 40 # May be too small
     DEFAULT_EXTENSIONS = ['.zip']
 
     def prep(self):
-        return prep_worldview_image(self.path, self.cache_manager)
-
-
+        return prep_worldview_image(self.path, self._cache_manager)
