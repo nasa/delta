@@ -61,10 +61,17 @@ class ImageryDataset:
             print('"input_dataset:num_regions" value not found in config file, using default value of '
                   + str(self._image_class.DEFAULT_NUM_REGIONS))
 
-        list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
+        list_path    = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
+        data_folder  = config_values['input_dataset']['data_directory']
+        label_folder = config_values['input_dataset']['label_directory']
 
         self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
                                                           config_values['cache']['cache_limit'])
+
+        # Generate a text file list of all the input images, plus region indices.
+        self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                    list_path, input_extensions,
+                                                                    just_one=no_dataset)
 
         # Load the first image just to figure out the number of bands
         # - This is the only way to be sure of the number in all cases.
@@ -90,12 +97,10 @@ class ImageryDataset:
                           new_num_regions, ' in order to stay within memory limits.')
                 self._regions_per_image = new_num_regions
 
-        # Generate a text file list of all the input images, plus region indices.
-        data_folder  = config_values['input_dataset']['data_directory']
-        label_folder = config_values['input_dataset']['label_directory']
-        self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
-                                                                    list_path, input_extensions,
-                                                                    just_one=no_dataset)
+                # Regenerate the list file with the new number of regions
+                self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                            list_path, input_extensions,
+                                                                            just_one=no_dataset)
         assert self._num_regions > 0
 
         if no_dataset: # Quit early

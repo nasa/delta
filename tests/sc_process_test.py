@@ -65,7 +65,7 @@ def main(args):
     parser.add_argument("--label-folder", dest="label_folder", required=False,
                         help="Specify label folder instead of supplying config file.")
 
-    parser.add_argument("--num-gpus", dest="num_gpus", required=False, default=0,
+    parser.add_argument("--num-gpus", dest="num_gpus", required=False, default=0, type=int,
                         help="Try to use this many GPUs.")
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
