@@ -172,14 +172,26 @@ def main(argsIn): # pylint:disable=R0914
     exp_parameters = {'file list':' '.join(input_paths), 
             'data_split': split_fraction,
             'chunk_size': options.chunk_size}
-    experiment.log_parameters(exp_parameters)
+#     experiment.log_parameters(exp_parameters)
+
+#     in_data_set = tf.data.Dataset.from_tnsor_slices(train_data)
+#     out_data_set = tf.data.Dataset.from_ensor_slices(train_labels)
+    ds = tf.data.Dataset.from_tensor_slices((train_data, train_labels))
+    print(train_data.shape)
+    print(ds)
+    exit()
+    ds = ds.repeat()
 
     # Remove one band for the labels
     model = make_model(NUM_TRAIN_BANDS, options.chunk_size)
-    history = experiment.train(model, train_data, train_labels, options.num_epochs, validation_data=(test_data, test_labels))
+    history = experiment.train(model, 
+                               ds,
+#                                train_data, train_labels, 
+#                                num_epochs=options.num_epochs, 
+#                                validation_data=(test_data, test_labels)
+                               )
     assert history is not None
 
-#     mlflow.end_run()
     return 0
 
 
