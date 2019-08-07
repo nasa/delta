@@ -1,5 +1,4 @@
 # A sample config file for sc_process_test.py.
-# These are comments!
 
 
 # Parameters describing input data.
@@ -8,31 +7,17 @@
 # The folder where the input files are located (required)
 data_directory=/home/smcmich1/data/delta/damage/input_files
 
-# The type of images in the folder.
-# Can be "landsat", "worldview", or "rgba".
-image_type=rgba
-
-# Extension of the images in the input folder
-extension=.tif
+# Extension of the images in the input folder, usually .tfrecord
+extension=.tfrecord
 
 # A folder containing label files for the input images.  The folder
 # must be a mirror of the input image folder with the input images
-# replaced with label images with the same name with "_label.tif" appended.
+# replaced with label images with the same name but with the ".tfrecordlabel" extension.
 label_directory=/home/smcmich1/data/delta/damage/fake_labels
 
-
-
-# Parameters that govern temporary images on disk.
-[cache]
-
-# Folder to put temporary image files in.
-cache_dir=/home/smcmich1/data/delta/damage/cache
-
-# The maximum number of items to be kept on disk in the cache folder.
-# A higher number will use more disk space but will help avoid re-processing input images.
-cache_limit=8
-
-
+# The number of parallel threads to use for loading input data.
+# The actual number is twice this, half for input and half for labels.
+num_input_threads=1
 
 # Machine learning parameters.
 [ml]
@@ -41,10 +26,13 @@ cache_limit=8
 chunk_size=28
 
 # The overlap amount in pixels of adjacent image chunks.
-chunk_overlap=0
+chunk_overlap=10
 
 # The number of times each input image is fed through the training network.
 num_epochs=5
 
 # The number of input images used in each training iteration
 batch_size=2
+
+# If specified, this folder is used to store model checkpoints.
+model_folder=/home/smcmich1/data/delta/damage/models

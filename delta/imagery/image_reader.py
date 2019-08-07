@@ -2,6 +2,7 @@
 Classes for block-aligned reading from multiple Geotiff files.
 """
 import os
+import sys
 import time
 import copy
 import math
@@ -46,6 +47,11 @@ class TiffReader:
     def nodata_value(self, band=1):
         band_handle = self._handle.GetRasterBand(band)
         return band_handle.GetNoDataValue()
+
+    def data_type(self, band=1):
+        """Returns the GDAL data type of the image"""
+        band_handle = self._handle.GetRasterBand(band)
+        return band_handle.DataType
 
     def get_bytes_per_pixel(self, band=1):
         band_handle = self._handle.GetRasterBand(band)
@@ -149,6 +155,9 @@ class MultiTiffFileReader():
     def image_size(self):
         return self._image_handles[0].image_size()
 
+    def data_type(self):
+        return self._image_handles[0].data_type()
+
     def num_bands(self):
         """Get the total number of bands across all input images"""
         b = 0
@@ -196,7 +205,7 @@ class MultiTiffFileReader():
             b += self._image_handles[i].num_bands()
         return b
 
-    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1):
+    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
         """
@@ -235,7 +244,15 @@ class MultiTiffFileReader():
 
         # Allocate the output data structure
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
-        data_store = np.zeros(shape=output_shape)
+        num_elements = num_chunks * self.num_bands() * chunk_size * chunk_size
+        num_bytes    = num_elements*sys.getsizeof(data_type(0))
+        bytes_free   = psutil.virtual_memory().free
+        #print('num_bytes GB = ', num_bytes/utilities.BYTES_PER_GB)
+        #print('bytes_free GB = ', bytes_free/utilities.BYTES_PER_GB)
+        if num_bytes > bytes_free:
+            raise Exception('Tried to allocate chunk buffer of size: ', num_bytes/utilities.BYTES_PER_GB, ' GB',
+                            ' but only ', bytes_free/utilities.BYTES_PER_GB, ' GB is available!')
+        data_store = np.zeros(shape=output_shape, dtype=data_type)
 
 
         # Internal function to copy all chunks from all bands of one image handle to data_store

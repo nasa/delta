@@ -23,11 +23,24 @@ def write_simple_image(output_path, data, data_type=gdal.GDT_Byte):
     band.WriteArray(data)
     band.FlushCache()
 
+def write_multiband_image(output_path, data, data_type=gdal.GDT_Byte):
+    """Dump 3D numpy data to a multi channel image file"""
+
+    num_cols  = data.shape[2]
+    num_rows  = data.shape[1]
+    num_bands = data.shape[0]
+
+    driver = gdal.GetDriverByName('GTiff')
+    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
+    for b in range(0,num_bands):
+        band   = handle.GetRasterBand(b+1)
+        band.WriteArray(data[b,:,:])
+    band.FlushCache()
+
 
 class TiffWriter:
 
     """Class to manage block writes to a Geotiff file.
-       Currently only uint8 output is supported.
        TODO: Make sure everything works with opening and closing files in sequence!
     """
 
@@ -211,8 +224,8 @@ class TiffWriter:
         if not self._handle:
             return
 
-        MAX_WAIT_TIME = 20  # Wait up to this long to finish writing tiles.
-        SLEEP_TIME    = 0.5 # Wait interval
+        MAX_WAIT_TIME = 180  # Wait up to this long to finish writing tiles.
+        SLEEP_TIME    = 1.0 # Wait interval
         totalWait     = 0.0
         print('Finishing TIFF writing...')
         while True:

@@ -13,6 +13,7 @@ import numpy as np
 # Constants
 
 BYTES_PER_MB = 1024*1024
+BYTES_PER_GB = 1024*1024*1024
 
 #============================================================================
 # Functions
@@ -51,10 +52,24 @@ def numpy_dtype_to_gdal_type(dtype):
         return gdal.GDT_UInt16
     if dtype == np.uint32:
         return gdal.GDT_UInt32
-    if dtype == np.float:
+    if dtype == np.float32:
         return gdal.GDT_Float32
     if dtype == np.float64:
         return gdal.GDT_Float64
+    raise Exception('Unrecognized numpy data type: ' + dtype)
+
+def gdal_dtype_to_numpy_type(dtype):
+
+    if dtype == gdal.GDT_Byte:
+        return np.uint8
+    if dtype == gdal.GDT_UInt16:
+        return np.uint16
+    if dtype == gdal.GDT_UInt32:
+        return np.uint32
+    if dtype == gdal.GDT_Float32:
+        return np.float32
+    if dtype == gdal.GDT_Float64:
+        return np.float64
     raise Exception('Unrecognized numpy data type: ' + dtype)
 
 

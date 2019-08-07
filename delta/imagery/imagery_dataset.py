@@ -3,12 +3,16 @@ Tools for loading input images into the TensorFlow Dataset class.
 """
 import functools
 import os
-import os.path
+#import sys
+#import os.path
+import math
+import psutil
 
 import numpy as np
 import tensorflow as tf
 
 from delta.imagery import utilities
+from delta.imagery import tfrecord_utils
 from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
 from delta.imagery.sources import landsat
@@ -18,16 +22,20 @@ from delta.imagery.sources import worldview
 # Map text strings to the Image wrapper classes defined above
 IMAGE_CLASSES = {
         'landsat' : landsat.LandsatImage,
+        'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
         'tif' : basic_sources.SimpleTiff
 }
 
-
+# This class is deprecated!
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
-    def __init__(self, config_values):
+
+    def __init__(self, config_values, no_dataset=False):
+        """If no_dataset is True, just populate some dataset information and then finish
+           without setting up the actual TF dataset."""
 
         # Record some of the config values
         self._chunk_size    = config_values['ml']['chunk_size']
@@ -48,26 +56,57 @@ class ImageryDataset:
             print('"input_dataset:extension" value not found in config file, using default value of '
                   + str(self._image_class.DEFAULT_EXTENSIONS))
 
+        if config_values['input_dataset']['num_regions']:
+            self._regions_per_image = config_values['input_dataset']['num_regions']
+        else:
+            self._regions_per_image = self._image_class.DEFAULT_NUM_REGIONS
+            print('"input_dataset:num_regions" value not found in config file, using default value of '
+                  + str(self._image_class.DEFAULT_NUM_REGIONS))
 
-        list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
+        list_path    = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
+        data_folder  = config_values['input_dataset']['data_directory']
+        label_folder = config_values['input_dataset']['label_directory']
 
         self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
                                                           config_values['cache']['cache_limit'])
 
         # Generate a text file list of all the input images, plus region indices.
-        data_folder  = config_values['input_dataset']['data_directory']
-        label_folder = config_values['input_dataset']['label_directory']
         self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
-                                                                    list_path, input_extensions)
-        assert self._num_regions > 0
+                                                                    list_path, input_extensions,
+                                                                    just_one=no_dataset)
 
         # Load the first image just to figure out the number of bands
         # - This is the only way to be sure of the number in all cases.
         with open(list_path, 'r') as f:
             line  = f.readline()
             parts = line.split(',')
-            image = self.image_class()(parts[0], self._cache_manager)
+            image = self.image_class()(parts[0], self._cache_manager, self._regions_per_image)
+
             self._num_bands = image.get_num_bands()
+
+            # Automatically adjust the number of image regions if memory is too low
+            bytes_needed = image.estimate_memory_usage(self._chunk_size, self._chunk_overlap,
+                                                       num_bands = self._num_bands)
+            bytes_free   = psutil.virtual_memory().free
+            if bytes_needed > bytes_free:
+                MEM_EXPAND_FACTOR = 2.0
+                ratio = bytes_needed / bytes_free
+                new_num_regions = math.floor(ratio * self._regions_per_image * MEM_EXPAND_FACTOR)
+                if not no_dataset: # Don't double print this
+                    print('Estimated input image region memory usage is ', bytes_needed/utilities.BYTES_PER_GB,
+                          ' GB, but only ', bytes_free/utilities.BYTES_PER_GB, ' GB is available. ',
+                          'Adjusting number of regions per image from ', self._regions_per_image, ' to ',
+                          new_num_regions, ' in order to stay within memory limits.')
+                self._regions_per_image = new_num_regions
+
+                # Regenerate the list file with the new number of regions
+                self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                            list_path, input_extensions,
+                                                                            just_one=no_dataset)
+        assert self._num_regions > 0
+
+        if no_dataset: # Quit early
+            return
 
         # This dataset returns the lines from the text file as entries.
         ds = tf.data.TextLineDataset(list_path)
@@ -75,13 +114,14 @@ class ImageryDataset:
         # This function generates real or fake label info for loaded data.
         label_gen_function = functools.partial(self._load_labels)
 
+        # TODO: Handle data types more carefully!
         def generate_chunks(lines):
-            y = tf.py_function(self._load_data, [lines], [tf.float64])
+            y = tf.py_func(self._load_data, [lines], [tf.float64])
             y[0].set_shape((0, self._num_bands, self._chunk_size, self._chunk_size))
             return y
 
         def generate_labels(lines):
-            y = tf.py_function(label_gen_function, [lines], [tf.int32])
+            y = tf.py_func(label_gen_function, [lines], [tf.int32])
             y[0].set_shape((0, 1))
             return y
 
@@ -125,7 +165,9 @@ class ImageryDataset:
 
     def _load_data(self, text_line):
         """Load the image chunk data corresponding ot an image/region text line"""
-        text_line = text_line.numpy().decode() # Convert from TF to string type
+        #text_line = text_line.numpy().decode() # Convert from TF to string type
+        text_line = tf.compat.as_str_any(text_line) # Convert from TF to string type
+        #print('Data: ' + text_line)
         parts  = text_line.split(',')
         path   = parts[0].strip()
 
@@ -133,14 +175,16 @@ class ImageryDataset:
                                   int(parts[3].strip()), int(parts[4].strip()))
 
         # Create a new image class instance to handle this input path
-        image = self.image_class()(path, self._cache_manager)
+        image = self.image_class()(path, self._cache_manager, self._regions_per_image)
         # Load a region of the image and break it up into small image chunks
-        result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+        result = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.float64)
         return result
 
     def _load_labels(self, text_line):
         """Use to generate real or fake label data for load_image_region"""
-        text_line = text_line.numpy().decode() # Convert from TF to string type
+        #text_line = text_line.numpy().decode() # Convert from TF to string type
+        text_line = tf.compat.as_str_any(text_line) # Convert from TF to string type
+        #print('Label: ' + text_line)
         parts = text_line.split(',')
         path  = parts[0].strip()
 
@@ -153,8 +197,8 @@ class ImageryDataset:
             if not os.path.exists(label_path):
                 raise Exception('Missing label file: ' + label_path)
 
-            label_image = basic_sources.SimpleTiff(label_path, self._cache_manager)
-            chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+            label_image = basic_sources.SimpleTiff(label_path, self._cache_manager, self._regions_per_image)
+            chunk_data = label_image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
             #num_chunks = chunk_data.shape[0]
             #labels = np.zeros(num_chunks, dtype=np.int32)
             center_pixel = int(self._chunk_size/2)
@@ -162,8 +206,8 @@ class ImageryDataset:
             return labels
         else:
             # No labels were provided
-            image = self.image_class()(path, self._cache_manager)
-            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+            image = self.image_class()(path, self._cache_manager, self._regions_per_image)
+            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
 
             # Make a fake label in the shape matching the input image
             num_chunks = chunk_data.shape[0]
@@ -172,13 +216,18 @@ class ImageryDataset:
             labels[10:20] = 2
             return labels
 
-    def _make_image_list(self, top_folder, label_folder, output_path, extensions):
+    def _make_image_list(self, top_folder, label_folder, output_path, extensions,
+                         just_one=False):
         '''Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
            If a label folder is provided, look for corresponding label files which
-           have the same relative path in that folder but ending with "_label.tif"
+           have the same relative path in that folder but ending with "_label.tif".
+           If just_one is set, only find one file!
         '''
         LABEL_POSTFIX = '_label.tif'
+
+        if not os.path.exists(top_folder):
+            raise Exception('No data found in folder: ' + top_folder)
 
         if label_folder:
             if not os.path.exists(label_folder):
@@ -194,7 +243,7 @@ class ImageryDataset:
                 for filename in filenames:
                     if os.path.splitext(filename)[1] in extensions:
                         path = os.path.join(root, filename)
-                        rois = self.image_class()(path, self._cache_manager).tiles()
+                        rois = self.image_class()(path, self._cache_manager, self._regions_per_image).tiles()
                         label_path = None
 
                         if label_folder: # Append label path to the end of the line
@@ -210,7 +259,11 @@ class ImageryDataset:
                                 line += ',' + label_path
                             f.write(line + '\n')
                             num_entries += 1
-                    num_images += 1
+                        num_images += 1
+
+                        if just_one:
+                            return num_entries, num_images
+
         return num_entries, num_images
 
     def dataset(self):
@@ -277,6 +330,70 @@ class AutoencoderDataset:
         # We duplicate the chunks twice because autoencoders 
         label_set = ds.map(generate_chunks, num_parallel_calls=1)
 
+
+
+#========================================================================================
+
+
+
+# Attempt at optimizing the dataset class to minimize python function use
+
+class ImageryDatasetTFRecord:
+    """Create dataset with all files as described in the provided config file.
+    """
+
+    def __init__(self, config_values, no_dataset=False):
+        """If no_dataset is True, just populate some dataset information and then finish
+           without setting up the actual TF dataset."""
+
+        # Record some of the config values
+        self._chunk_size    = config_values['ml']['chunk_size']
+        self._chunk_overlap = config_values['ml']['chunk_overlap']
+
+        # Use the image_class object to get the default image extensions
+        if config_values['input_dataset']['extension']:
+            input_extensions = [config_values['input_dataset']['extension']]
+        else:
+            input_extensions = ['.tfrecord']
+            print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
+
+        # TODO: Store somewhere else!
+        list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
+        label_list_path = os.path.join(config_values['cache']['cache_dir'], 'label_list.csv')
+        if not os.path.exists(config_values['cache']['cache_dir']):
+            os.mkdir(config_values['cache']['cache_dir'])
+
+        # Generate a text file list of all the input images, plus region indices.
+        data_folder  = config_values['input_dataset']['data_directory']
+        label_folder = config_values['input_dataset']['label_directory']
+        self._num_images = self._make_image_list(data_folder, label_folder,
+                                                 list_path, label_list_path, input_extensions,
+                                                 just_one=no_dataset)
+
+        # Load the first image to get tile dimensions for the input files.
+        # - All of the input tiles must have the same dimensions!
+        with open(list_path, 'r') as f:
+            line  = f.readline().strip()
+            self._num_bands, self._input_region_height, self._input_region_width = tfrecord_utils.get_record_info(line)
+
+        if no_dataset: # Quit early
+            return
+
+        # Tell TF to use the functions above to load our data.
+        num_parallel_calls = config_values['input_dataset']['num_input_threads']
+
+        # Go from the file path list to the TFRecord reader
+        ds_input = tf.data.TextLineDataset(list_path)
+        ds_input = tf.data.TFRecordDataset(ds_input)
+        chunk_set = ds_input.map(self._load_data, num_parallel_calls=num_parallel_calls)
+
+        if label_folder:
+            ds_label = tf.data.TextLineDataset(label_list_path)
+            ds_label = tf.data.TFRecordDataset(ds_label)
+            label_set = ds_label.map(self._load_labels, num_parallel_calls=num_parallel_calls)
+        else:
+            label_set = ds_input.map(self._load_fake_labels, num_parallel_calls=num_parallel_calls)
+
         # Break up the chunk sets to individual chunks
         # TODO: Does this improve things?
         chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
@@ -284,57 +401,181 @@ class AutoencoderDataset:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
-        # HACK: this is a bad solution.
-        self._steps_per_epoch = len(list(ds))
+# <<<<<<< HEAD
+#         # HACK: this is a bad solution.
+#         self._steps_per_epoch = len(list(ds))
+# 
+#         # Filter out all chunks with zero (nodata) values
+#         self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+# 
+#     def __del__(self):
+#         if self.__temp_path is not None:
+#             os.remove(self.__temp_path)
+# 
+#     def image_class(self):
+#         return IMAGE_CLASSES[self._image_type]
+# 
+#     def __load_data(self, text_line):
+#         text_line = text_line.numpy().decode() # Convert from TF to string type
+#         parts  = text_line.split(',')
+#         path   = parts[0].strip()
+#         roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+#                                   int(parts[3].strip()), int(parts[4].strip()))
+# 
+#         image = self.image_class()(path)
+#         return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
+# 
+#     def __make_image_list(self, top_folder, output_path, ext):
+#         '''Write a file listing all of the files in a (recursive) folder
+#            matching the provided extension.
+#         '''
+# 
+#         num_entries = 0
+#         num_images = 0
+#         with open(output_path, 'w') as f:
+#             for root, dummy_directories, filenames in os.walk(top_folder):
+#                 for filename in filenames:
+#                     if os.path.splitext(filename)[1] == ext:
+#                         path = os.path.join(root, filename)
+#                         rois = self.image_class()(path).tiles()
+#                         for r in rois:
+#                             f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
+#                             num_entries += 1
+#                     num_images += 1
+#         return num_entries, num_images
+# 
+#     def dataset(self):
+#         return self._ds
+# 
+#     def data_shape(self):
+#         return (self._chunk_size, self._chunk_size)
+# 
+#     def steps_per_epoch(self):
+#         return self._steps_per_epoch
+#     def num_images(self):
+#         return
+#     def total_num_regions(self):
+#         return self._num_regions
+# =======
 
         # Filter out all chunks with zero (nodata) values
-        self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
-
-    def __del__(self):
-        if self.__temp_path is not None:
-            os.remove(self.__temp_path)
-
-    def image_class(self):
-        return IMAGE_CLASSES[self._image_type]
-
-    def __load_data(self, text_line):
-        text_line = text_line.numpy().decode() # Convert from TF to string type
-        parts  = text_line.split(',')
-        path   = parts[0].strip()
-        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
-                                  int(parts[3].strip()), int(parts[4].strip()))
-
-        image = self.image_class()(path)
-        return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
-
-    def __make_image_list(self, top_folder, output_path, ext):
-        '''Write a file listing all of the files in a (recursive) folder
-           matching the provided extension.
-        '''
-
-        num_entries = 0
-        num_images = 0
-        with open(output_path, 'w') as f:
-            for root, dummy_directories, filenames in os.walk(top_folder):
-                for filename in filenames:
-                    if os.path.splitext(filename)[1] == ext:
-                        path = os.path.join(root, filename)
-                        rois = self.image_class()(path).tiles()
-                        for r in rois:
-                            f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
-                            num_entries += 1
-                    num_images += 1
-        return num_entries, num_images
+        #self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+        self._ds = ds
 
     def dataset(self):
+        """Return the underlying TensorFlow dataset object that this class creates"""
         return self._ds
 
-    def data_shape(self):
-        return (self._chunk_size, self._chunk_size)
+    def num_bands(self):
+        """Return the number of bands in each image of the data set"""
+        return self._num_bands
 
-    def steps_per_epoch(self):
-        return self._steps_per_epoch
+    def chunk_size(self):
+        return self._chunk_size
+
     def num_images(self):
-        return
-    def total_num_regions(self):
-        return self._num_regions
+        """Return the number of images in the data set"""
+        return self._num_images
+
+    def _chunk_tf_image(self, image, is_label):
+        """Split up a tensor image into tensor chunks"""
+
+        # We use the built-in TF chunking function
+        ksizes  = [1, self._chunk_size, self._chunk_size, 1]
+        strides = [1, self._chunk_size, self._chunk_size, 1]
+        rates   = [1, 1, 1, 1]
+        result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        #tf.print(result.shape, output_stream=sys.stderr)
+        if is_label:
+            result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, 1])
+        else:
+            result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
+        #tf.print(result.shape, output_stream=sys.stderr)
+        # TODO: Change the format we expect to match how the chunks come out?
+        result = tf.transpose(result, [0, 3, 1, 2]) # Get info format: [chunks, bands, x, y]
+        return result
+
+    def _load_data(self, example_proto):
+        """Load the next TFRecord image segment and split it into chunks"""
+
+        image = tfrecord_utils.load_tfrecord_data_element(example_proto, self._num_bands,
+                                                          self._input_region_height, self._input_region_width)
+        result = self._chunk_tf_image(image, is_label=False)
+        return result
+
+
+    def _load_fake_labels(self, example_proto):
+        """Load the next TFRecord image segment and split it into chunks"""
+
+        # Load the input image data normally just to get the size
+        chunk_data = self._load_data(example_proto)
+
+        # Make one fake label for each input chunk.
+        num_chunks = tf.to_int32(chunk_data.shape[0])
+        labels = tf.random_uniform(dtype=tf.int32, minval=0, maxval=10, shape=[num_chunks])
+        #tf.print('Loaded label!', output_stream=sys.stderr)
+        return labels
+
+
+    def _load_labels(self, example_proto):
+
+        # Load from the label image in the same way as the input image so we get the locations correct
+        NUM_LABEL_BANDS = 1 # This may change later!
+        image = tfrecord_utils.load_tfrecord_label_element(example_proto, NUM_LABEL_BANDS,
+                                                           self._input_region_height, self._input_region_width)
+
+        # TODO: Adjust the chunk call so that we only extract the pixels we want!
+        chunk_data = self._chunk_tf_image(image, is_label=True)
+
+        center_pixel = int(self._chunk_size/2)
+        labels = tf.to_int32(chunk_data[:, 0, center_pixel, center_pixel])
+        return labels
+
+
+    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path, #pylint: disable=R0201
+                         extensions, just_one=False):
+        '''Write a file listing all of the files in a (recursive) folder
+           matching the provided extension.
+           If a label folder is provided, look for corresponding label files which
+           have the same relative path in that folder but ending with "_label.tif".
+           If just_one is set, only find one file!
+        '''
+        LABEL_EXT = '.tfrecordlabel'
+
+        if label_folder:
+            if not os.path.exists(label_folder):
+                raise Exception('Supplied label folder does not exist: ' + label_folder)
+            print('Using image labels from folder: ' + label_folder)
+        else:
+            print('Using fake label data!')
+
+        num_images  = 0
+        f_input = open(input_list_path, 'w')
+        f_label = open(label_list_path, 'w')
+
+        for root, dummy_directories, filenames in os.walk(top_folder):
+            for filename in filenames:
+                if os.path.splitext(filename)[1] in extensions:
+                    path = os.path.join(root, filename.strip())
+
+                    f_input.write(path + '\n')
+
+                    if label_folder: # Label file should have the same name but different extension
+                        rel_path   = os.path.relpath(path, top_folder)
+                        label_path = os.path.join(label_folder, rel_path)
+                        label_path = os.path.splitext(label_path)[0] + LABEL_EXT
+                        # If labels are provided then we need a label file for every image in the data set!
+                        if not os.path.exists(label_path):
+                            raise Exception('Error: Expected label file to exist at path: ' + label_path)
+                        f_label.write(label_path + '\n')
+
+                    num_images += 1
+
+                    if just_one:
+                        f_input.close()
+                        f_label.close()
+                        return num_images
+
+        f_input.close()
+        f_label.close()
+        return num_images

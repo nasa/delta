@@ -60,8 +60,6 @@ def main(args):
 
     parser.add_argument("--data-folder", dest="data_folder", required=False,
                         help="Specify data folder instead of supplying config file.")
-    parser.add_argument("--image-type", dest="image_type", required=False,
-                        help="Specify image type along with the data folder. (landsat, landsat-simple, worldview, or rgba)")
     parser.add_argument("--label-folder", dest="label_folder", required=False,
                         help="Specify label folder instead of supplying config file.")
 
@@ -76,13 +74,12 @@ def main(args):
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    if not options.config_file and not (options.data_folder and options.image_type):
+    if (not options.config_file) and (not options.data_folder):
         parser.print_help(sys.stderr)
-        print('Must specify either --config-file or --data-folder and --image-type')
+        print('Must specify either --config-file or --data-folder')
         sys.exit(1)
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config_values = config.parse_config_file(options.config_file, options.data_folder)
     if options.label_folder:
         config_values['input_dataset']['label_directory'] = options.label_folder
     batch_size = config_values['ml']['batch_size']
@@ -94,13 +91,13 @@ def main(args):
 
         # Use wrapper class to create a Tensorflow Dataset object.
         # - The dataset will provide image chunks and corresponding labels.
-        ids = imagery_dataset.ImageryDataset(config_values)
+        ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
         ds = ids.dataset()
 
         #print("Num regions = " + str(ids.total_num_regions()))
-        if ids.total_num_regions() < batch_size:
-            raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
-                            % (batch_size, ids.total_num_regions()))
+        #if ids.total_num_regions() < batch_size:
+        #    raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
+        #                    % (batch_size, ids.total_num_regions()))
         ds = ds.batch(batch_size)
 
         #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
@@ -126,8 +123,9 @@ def main(args):
 
     # Get these values without initializing the dataset (v1.12)
     #model = init_network(ids.num_bands(), ids.chunk_size())
-    ds_info = imagery_dataset.ImageryDataset(config_values, no_dataset=True)
+    ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values, no_dataset=False)
     model = init_network(ds_info.num_bands(), config_values['ml']['chunk_size'])
+    print('num images = ', ds_info.num_images())
 
     #unused_history = model.fit(ds, epochs=num_epochs,
     #                           steps_per_epoch=num_entries//batch_size)

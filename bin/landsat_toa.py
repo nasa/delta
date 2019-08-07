@@ -141,6 +141,68 @@ def apply_toa_reflectance(data, factor, constant, sun_elevation):
     return np.where(data>0, ((data*factor)+constant)/math.sin(sun_elevation), OUTPUT_NODATA)
 
 
+def do_work(mtl_path, output_folder, tile_size=(256, 256), calc_reflectance=False, num_processes=1):
+    """Function where all of the work happens"""
+
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+
+    # Get all of the TOA coefficients and input file names
+    data = landsat.parse_mtl_file(mtl_path)
+    #print(data)
+
+    pool = multiprocessing.Pool(num_processes)
+    task_handles = []
+
+    # Loop through the input files (each band is processed separately)
+    input_folder = os.path.dirname(mtl_path)
+    num_bands    = len(data['FILE_NAME'])
+    for band in range(0, num_bands):
+    #for band in [5]:
+
+        fname = data['FILE_NAME'][band]
+
+        input_path  = os.path.join(input_folder,  fname)
+        output_path = os.path.join(output_folder, fname)
+
+        #print(input_path)
+        #print(output_path)
+
+        rad_mult = data['RADIANCE_MULT'   ][band]
+        rad_add  = data['RADIANCE_ADD'    ][band]
+        ref_mult = data['REFLECTANCE_MULT'][band]
+        ref_add  = data['REFLECTANCE_ADD' ][band]
+        k1_const = data['K1_CONSTANT'     ][band]
+        k2_const = data['K2_CONSTANT'     ][band]
+
+        if calc_reflectance:
+            if k1_const is None:
+                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult,
+                                                  constant=ref_add,
+                                                  sun_elevation=math.radians(data['SUN_ELEVATION']))
+            else:
+                #print(k1_const)
+                #print(k2_const)
+                user_function = functools.partial(apply_toa_temperature, factor=rad_mult,
+                                                  constant=rad_add, k1=k1_const, k2=k2_const)
+        else:
+            user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
+
+        task_handles.append(pool.apply_async( \
+            try_catch_and_call, (input_path, output_path, user_function, tile_size)))
+        #try_catch_and_call(input_path, output_path, user_function, tile_size)
+
+        #raise Exception('DEBUG')
+
+    # Wait for all the tasks to complete
+    print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+
+    # All tasks should be finished, clean up the processing pool
+    utilities.stop_task_pool(pool)
+    print('Jobs finished.')
+
+
 def main(argsIn):
 
     try:
@@ -171,63 +233,8 @@ def main(argsIn):
         print(usage)
         return -1
 
-    if not os.path.exists(options.output_folder):
-        os.mkdir(options.output_folder)
-
-    # Get all of the TOA coefficients and input file names
-    data = landsat.parse_mtl_file(options.mtl_path)
-    #print(data)
-
-    pool = multiprocessing.Pool(options.num_processes)
-    task_handles = []
-
-    # Loop through the input files
-    input_folder = os.path.dirname(options.mtl_path)
-    num_bands    = len(data['FILE_NAME'])
-    for band in range(0, num_bands):
-    #for band in [5]:
-
-        fname = data['FILE_NAME'][band]
-
-        input_path  = os.path.join(input_folder,  fname)
-        output_path = os.path.join(options.output_folder, fname)
-
-        #print(input_path)
-        #print(output_path)
-
-        rad_mult = data['RADIANCE_MULT'   ][band]
-        rad_add  = data['RADIANCE_ADD'    ][band]
-        ref_mult = data['REFLECTANCE_MULT'][band]
-        ref_add  = data['REFLECTANCE_ADD' ][band]
-        k1_const = data['K1_CONSTANT'][band]
-        k2_const = data['K2_CONSTANT'][band]
-
-        if options.calc_reflectance:
-            if k1_const is None:
-                user_function = functools.partial(apply_toa_reflectance, factor=ref_mult,
-                                                  constant=ref_add,
-                                                  sun_elevation=math.radians(data['SUN_ELEVATION']))
-            else:
-                print(k1_const)
-                print(k2_const)
-                user_function = functools.partial(apply_toa_temperature, factor=rad_mult,
-                                                  constant=rad_add, k1=k1_const, k2=k2_const)
-        else:
-            user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
-
-        task_handles.append(pool.apply_async( \
-            try_catch_and_call, (input_path, output_path, user_function, options.tile_size)))
-        #try_catch_and_call(input_path, output_path, user_function, options.tile_size)
-
-        #raise Exception('DEBUG')
-
-    # Wait for all the tasks to complete
-    print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
-
-    # All tasks should be finished, clean up the processing pool
-    utilities.stop_task_pool(pool)
-    print('Jobs finished.')
+    do_work(options.mtl_path, options.output_folder, options.tile_size,
+            options.calc_reflectance, options.num_processes)
 
     print('Landsat TOA conversion is finished.')
     return 0
