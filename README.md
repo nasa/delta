@@ -33,3 +33,9 @@ conda install 'tensorflow=*=mkl*'    <--- CPU version!
 conda install -c conda-forge mlflow
 pip install psutil
 
+
+# Bugs and fixes
+
+# 01-08-2019
+
+- Was getting error "was expecting input of shape (8, 17, 17) but instead got (None, 8, 17, 17)".  This was because I was giving the wrong input size to the autoencoder.  This is because the imagery dataset was reporting the wrong image size, just giving the height and width, not the number of channels.  This was masked by the fact that the number of steps per epoch was set to be the same as the number of channels"

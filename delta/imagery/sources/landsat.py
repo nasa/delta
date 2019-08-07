@@ -184,4 +184,4 @@ class LandsatImage(basic_sources.TiffImage):
     DEFAULT_EXTENSIONS = ['.gz']
 
     def prep(self):
-        return landsat_utils.prep_landsat_image(self.path, self.cache_manager)
+        return prep_landsat_image(self.path, self.cache_manager)
