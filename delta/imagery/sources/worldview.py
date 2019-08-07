@@ -88,7 +88,6 @@ def get_files_from_unpack_folder(folder):
     """Return the image and header file paths from the given unpack folder.
        Returns (None, None) if the files were not found.
     """
-
     vendor_folder = os.path.join(folder, 'vendor_metadata')
     if not os.path.exists(folder) or not os.path.exists(vendor_folder):
         return (None, None)

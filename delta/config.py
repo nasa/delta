@@ -16,12 +16,14 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
        The values are generally not checked for correctness.
     """
 
-    REQUIRED_ENTRIES = ['data_directory', 'image_type'] # Everything else has a default value
+    REQUIRED_ENTRIES = ['data_directory'] # Everything else has a default value
 
     # Specify all of variables that we accept and their default values
     # - Some input_dataset values are not handled in this list because they are more complicated.
     DEFAULT_CONFIG_VALUES = {'input_dataset':{'extension':None,
+                                              'image_type':'tfrecord',
                                               'label_directory':None,
+                                              'num_input_threads':1,
                                               'num_regions':None # Default is in the image type classes
                                              },
                              'cache':{'cache_dir':disk_folder_cache.DEFAULT_CACHE_DIR,

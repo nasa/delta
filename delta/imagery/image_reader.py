@@ -48,6 +48,11 @@ class TiffReader:
         band_handle = self._handle.GetRasterBand(band)
         return band_handle.GetNoDataValue()
 
+    def data_type(self, band=1):
+        """Returns the GDAL data type of the image"""
+        band_handle = self._handle.GetRasterBand(band)
+        return band_handle.DataType
+
     def get_bytes_per_pixel(self, band=1):
         band_handle = self._handle.GetRasterBand(band)
         return utilities.get_num_bytes_from_gdal_type(band_handle.DataType)
@@ -149,6 +154,9 @@ class MultiTiffFileReader():
     # TODO: Error checking!
     def image_size(self):
         return self._image_handles[0].image_size()
+
+    def data_type(self):
+        return self._image_handles[0].data_type()
 
     def num_bands(self):
         """Get the total number of bands across all input images"""

@@ -1,5 +1,4 @@
 # A sample config file for sc_process_test.py.
-# These are comments!
 
 
 # Parameters describing input data.
@@ -8,35 +7,17 @@
 # The folder where the input files are located (required)
 data_directory=/home/smcmich1/data/delta/damage/input_files
 
-# The type of images in the folder.
-# Can be "landsat", "landsat-simple", "worldview", or "rgba".
-image_type=rgba
-
-# Extension of the images in the input folder
-extension=.tif
+# Extension of the images in the input folder, usually .tfrecord
+extension=.tfrecord
 
 # A folder containing label files for the input images.  The folder
 # must be a mirror of the input image folder with the input images
-# replaced with label images with the same name with "_label.tif" appended.
+# replaced with label images with the same name but with the ".tfrecordlabel" extension.
 label_directory=/home/smcmich1/data/delta/damage/fake_labels
 
-# Split the image up into this many sections when loading data for training.
-# More regions will require some more overhead but will require less RAM for
-# storing image chunks.  If you have a high chunk overlay you may need to
-# increase this number.
-num_regions=8
-
-# Parameters that govern temporary images on disk.
-[cache]
-
-# Folder to put temporary image files in.
-cache_dir=/home/smcmich1/data/delta/damage/cache
-
-# The maximum number of items to be kept on disk in the cache folder.
-# A higher number will use more disk space but will help avoid re-processing input images.
-cache_limit=8
-
-
+# The number of parallel threads to use for loading input data.
+# The actual number is twice this, half for input and half for labels.
+num_input_threads=1
 
 # Machine learning parameters.
 [ml]

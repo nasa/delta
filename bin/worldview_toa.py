@@ -174,6 +174,30 @@ def apply_toa_reflectance(data, band, factor, width, sun_elevation,
     return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
 
 
+def do_work(image_path, meta_path, output_path, tile_size=(256, 256), calc_reflectance=False):
+    """Do all the the work past command line interpretation"""
+
+    # Get all of the TOA coefficients and input file names
+    data = worldview.parse_meta_file(meta_path)
+    #print(data)
+
+    scale  = data['ABSCALFACTOR']
+    bwidth = data['EFFECTIVEBANDWIDTH']
+
+    ds = get_earth_sun_distance() # TODO: Implement this function!
+
+    if calc_reflectance:
+        user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
+                                          sun_elevation=math.radians(data['MEANSUNEL']),
+                                          satellite=data['SATID'],
+                                          earth_sun_distance=ds)
+    else:
+        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
+
+    try_catch_and_call(image_path, output_path, user_function, tile_size)
+
+
+
 def main(argsIn):
 
     try:
@@ -210,24 +234,7 @@ def main(argsIn):
         print(usage)
         return -1
 
-    # Get all of the TOA coefficients and input file names
-    data = worldview.parse_meta_file(options.meta_path)
-    print(data)
-
-    scale  = data['ABSCALFACTOR']
-    bwidth = data['EFFECTIVEBANDWIDTH']
-
-    ds = get_earth_sun_distance() # TODO: Implement this function!
-
-    if options.calc_reflectance:
-        user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
-                                          sun_elevation=math.radians(data['MEANSUNEL']),
-                                          satellite=data['SATID'],
-                                          earth_sun_distance=ds)
-    else:
-        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
-
-    try_catch_and_call(options.image_path, options.output_path, user_function, options.tile_size)
+    do_work(options.image_path, options.meta_path, options.output_path, options.tile_size, options.calc_reflectance)
 
     print('WorldView TOA conversion is finished.')
     return 0
