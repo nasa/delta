@@ -91,6 +91,7 @@ def convert_file_worldview(input_path, output_path, work_folder, tile_size):
 
     # Apply TOA conversion
 
+    # TODO: Any benefit to passing in the tile size here?
     print('TOA conversion...')
     worldview_toa.do_work(tif_path, meta_path, toa_path, calc_reflectance=False) # TODO get reflectance working!
     if not os.path.exists(toa_path):
@@ -196,9 +197,9 @@ def main(argsIn):
             continue
 
         # Add the command to the task pool
-        #task_handles.append(pool.apply_async(convert_file_function, (f, output_path, work_folder, options.tile_size)))
-        convert_file_function(f, output_path, work_folder, options.tile_size)
-        break # DEBUG
+        task_handles.append(pool.apply_async(convert_file_function, (f, output_path, work_folder, options.tile_size)))
+        #convert_file_function(f, output_path, work_folder, options.tile_size)
+        #break # DEBUG
 
     # Wait for all the tasks to complete
     print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')

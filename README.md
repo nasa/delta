@@ -38,7 +38,8 @@ The older tool sc_process_test.py is deprecated.
 -- miniconda3 installation instructions (tensorflow CPU v1.12):
 -- (for Scott's use only)
 
-conda install python=3.6
+conda create --name tf_112_cpu python=3.6
+conda activate tf_112_cpu
 conda install numpy
 conda install gdal
 conda install matplotlib
