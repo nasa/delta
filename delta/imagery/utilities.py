@@ -56,7 +56,7 @@ def numpy_dtype_to_gdal_type(dtype):
         return gdal.GDT_Float32
     if dtype == np.float64:
         return gdal.GDT_Float64
-    raise Exception('Unrecognized numpy data type: ' + dtype)
+    raise Exception('Unrecognized numpy data type: ' + str(dtype))
 
 def gdal_dtype_to_numpy_type(dtype):
 
@@ -70,7 +70,7 @@ def gdal_dtype_to_numpy_type(dtype):
         return np.float32
     if dtype == gdal.GDT_Float64:
         return np.float64
-    raise Exception('Unrecognized numpy data type: ' + dtype)
+    raise Exception('Unrecognized gdal data type: ' + str(dtype))
 
 
 def get_pbs_node_list():

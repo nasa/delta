@@ -23,9 +23,18 @@ import tfrecord_convert_image #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
+
+def convert_file_tif(input_path, output_path, work_folder, tile_size): #pylint: disable=W0613
+    """Convert one input tif image"""
+    print(input_path)
+    # This is for simple images so the only thing to do is TFRecord conversion
+    tfrecord_convert_image.tiff_to_tf_record([input_path], output_path, tile_size)
+
+    print('Finished converting file ', input_path)
+
+
 def convert_file_landsat(input_path, output_path, work_folder, tile_size):
-    """Prep and split one input file.
-       The output folders must be unique for each input file!"""
+    """Convert one input Landsat file (containing multiple tif tiles)"""
 
     # Create the folders
     if not os.path.exists(work_folder):
@@ -56,13 +65,12 @@ def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     tfrecord_convert_image.tiff_to_tf_record(toa_paths, output_path, tile_size)
 
     # Remove all of the temporary files
-    #os.system('rm -rf ' + work_folder)
+    os.system('rm -rf ' + work_folder)
     print('Finished converting file ', input_path)
 
 
 def convert_file_worldview(input_path, output_path, work_folder, tile_size):
-    """Prep and split one input file.
-       The output folders must be unique for each input file!"""
+    """Convert one input WorldView file"""
 
     # Create the folders
     if not os.path.exists(work_folder):
@@ -122,7 +130,7 @@ def main(argsIn):
                             help="Number of parallel processes to use.")
 
         parser.add_argument("--image-type", dest="image_type", required=True,
-                            help="Specify the input image type [worldview, landsat].")
+                            help="Specify the input image type [worldview, landsat, tif].")
 
         #parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
         #                    help="Number of threads to use per process.")
@@ -151,9 +159,10 @@ def main(argsIn):
     if options.labels:
         output_extension = '.tfrecordlabel'
 
-    INPUT_EXTENSIONS  = {'worldview':'.zip', 'landsat':'.gz'}
+    INPUT_EXTENSIONS  = {'worldview':'.zip', 'landsat':'.gz', 'tif':'.tif'}
     CONVERT_FUNCTIONS = {'worldview':convert_file_worldview,
-                         'landsat':convert_file_landsat}
+                         'landsat':convert_file_landsat,
+                         'tif':convert_file_tif}
 
     if options.image_type not in INPUT_EXTENSIONS:
         print('Unrecognized image type: ' + options.image_type)
@@ -198,7 +207,7 @@ def main(argsIn):
 
         # Add the command to the task pool
         task_handles.append(pool.apply_async(convert_file_function, (f, output_path, work_folder, options.tile_size)))
-        #convert_file_function(f, output_path, work_folder, options.tile_size)
+        #convert_file_function(f, output_path, work_folder, options.tile_size) # DEBUG
         #break # DEBUG
 
     # Wait for all the tasks to complete
