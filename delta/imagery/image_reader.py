@@ -192,7 +192,7 @@ class MultiTiffFileReader():
         mb_needed = self.estimate_memory_usage(roi)
         mb_free   = 0
         while mb_free < mb_needed:
-            mb_free = psutil.virtual_memory().free / utilities.BYTES_PER_MB
+            mb_free = psutil.virtual_memory().available / utilities.BYTES_PER_MB
             if mb_free < mb_needed:
                 print('Need %d MB to load the next ROI, but only have %d MB free. Sleep for %d seconds...'
                       % (mb_needed, mb_free, WAIT_TIME_SECS))
