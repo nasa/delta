@@ -4,7 +4,6 @@ Tools for loading input images into the TensorFlow Dataset class.
 import functools
 import os
 #import sys
-#import os.path
 import math
 import psutil
 
@@ -322,12 +321,12 @@ class ImageryDatasetTFRecord:
 
         # Go from the file path list to the TFRecord reader
         ds_input = tf.data.TextLineDataset(list_path)
-        ds_input = tf.data.TFRecordDataset(ds_input)
+        ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
         chunk_set = ds_input.map(self._load_data, num_parallel_calls=num_parallel_calls)
 
         if label_folder:
             ds_label = tf.data.TextLineDataset(label_list_path)
-            ds_label = tf.data.TFRecordDataset(ds_label)
+            ds_label = tf.data.TFRecordDataset(ds_label, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
             label_set = ds_label.map(self._load_labels, num_parallel_calls=num_parallel_calls)
         else:
             label_set = ds_input.map(self._load_fake_labels, num_parallel_calls=num_parallel_calls)
@@ -363,18 +362,37 @@ class ImageryDatasetTFRecord:
         """Split up a tensor image into tensor chunks"""
 
         # We use the built-in TF chunking function
-        ksizes  = [1, self._chunk_size, self._chunk_size, 1]
-        strides = [1, self._chunk_size, self._chunk_size, 1]
-        rates   = [1, 1, 1, 1]
+        stride = self._chunk_size - self._chunk_overlap
+        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
+        strides = [1, stride, stride, 1] # SPacing between chunk starts
+        rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
         result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
-        #tf.print(result.shape, output_stream=sys.stderr)
         if is_label:
             result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, 1])
         else:
             result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
-        #tf.print(result.shape, output_stream=sys.stderr)
         # TODO: Change the format we expect to match how the chunks come out?
         result = tf.transpose(result, [0, 3, 1, 2]) # Get info format: [chunks, bands, x, y]
+        return result
+
+    def _chunk_label_image(self, image):
+        """Split up a tensor label image into tensor chunks.
+           This seems like it should be faster, but maybe it isn't!"""
+
+        # Set up parameters for the TF chunking function to extract the chunk centers
+        stride = self._chunk_size - self._chunk_overlap
+        ksizes  = [1, 1, 1, 1] # Size of the chunks
+        strides = [1, stride, stride, 1] # Spacing between chunk starts
+        rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
+
+        # Operate on a cropped input image so we get the same centers as with the full patch case
+        offset = int(self._chunk_size / 2)
+        height = image.shape[1] - 2*offset
+        width  = image.shape[2] - 2*offset
+        cropped_image = tf.image.crop_to_bounding_box(image, offset, offset, height, width)
+
+        result = tf.image.extract_image_patches(cropped_image, ksizes, strides, rates, padding='VALID')
+        result = tf.reshape(result, [-1, 1, 1, 1])
         return result
 
     def _load_data(self, example_proto):
@@ -406,11 +424,14 @@ class ImageryDatasetTFRecord:
         image = tfrecord_utils.load_tfrecord_label_element(example_proto, NUM_LABEL_BANDS,
                                                            self._input_region_height, self._input_region_width)
 
-        # TODO: Adjust the chunk call so that we only extract the pixels we want!
-        chunk_data = self._chunk_tf_image(image, is_label=True)
-
+        chunk_data = self._chunk_tf_image(image, is_label=True) # First method of getting center pixels
         center_pixel = int(self._chunk_size/2)
         labels = tf.to_int32(chunk_data[:, 0, center_pixel, center_pixel])
+
+        #label_data = self._chunk_label_image(image) # Second method, why is it slower?
+        #labels = tf.to_int32(label_data[:,0,0,0])
+        #diff = tf.math.subtract(labels, label_data) # Error checking
+        #tf.print(tf.count_nonzero(diff), output_stream=sys.stderr)
         return labels
 
 

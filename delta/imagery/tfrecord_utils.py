@@ -16,14 +16,21 @@ import tensorflow as tf #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
-# Helper-function for wrapping an integer so it can be saved to the TFRecords file.
+
 def wrap_int64(value):
+    """Helper-function for wrapping an integer so it can be saved to the TFRecords file"""
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-# Helper-function for wrapping raw bytes so they can be saved to the TFRecords file.
 def wrap_bytes(value):
+    """Helper-function for wrapping raw bytes so they can be saved to the TFRecords file"""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
+def make_tfrecord_writer(output_path):
+    """Set up a TFRecord writer with the correct options"""
+    options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+    return tf.python_io.TFRecordWriter(output_path, options)
+
+TFRECORD_COMPRESSION_TYPE = 'GZIP' # Needs to be synchronized with the function above
 
 def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_bands):
     """Pack an image stored as a 3D numpy array and write it to an open TFRecord file"""
@@ -97,7 +104,7 @@ def get_record_info(record_path):
     if not os.path.exists(record_path):
         raise Exception('Missing file: ' + record_path)
 
-    raw_image_dataset = tf.data.TFRecordDataset(record_path)
+    raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
 
     parsed_image_dataset = raw_image_dataset.map(load_tfrecord_raw)
 

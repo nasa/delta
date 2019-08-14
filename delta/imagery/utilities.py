@@ -122,7 +122,7 @@ def nonBlockingRawInput(prompt='', timeout=20):
     return ''
 
 def waitForTaskCompletionOrKeypress(taskHandles, logger = None, interactive=True,
-                                    quitKey='q', sleepTime=20):
+                                    quitKey='q', sleepTime=5):
     '''Block in this function until the user presses a key or all tasks complete'''
 
     # Wait for all the tasks to complete
@@ -399,3 +399,23 @@ class Rectangle:
         '''Returns true if there is any overlap between this and another rectangle'''
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
+
+    def make_tile_rois(self, tile_width, tile_height, include_partials=True):
+        '''Return a list of tiles encompassing the entire area of this Rectangle'''
+
+        num_tiles = (int(math.ceil(self.width()  / tile_width )),
+                     int(math.ceil(self.height() / tile_height)))
+        output_tiles = []
+        for r in range(0, num_tiles[1]):
+            for c in range(0, num_tiles[0]):
+
+                tile = Rectangle(self.min_x + c*tile_width, self.min_y + r*tile_height,
+                                 width=tile_width, height=tile_height)
+
+                if include_partials: # Crop the tile to the valid area and use it
+                    tile = tile.get_intersection(self)
+                    output_tiles.append(tile)
+                else: # Only use it if the uncropped tile fits entirely in this Rectangle
+                    if self.contains_rect(tile):
+                        output_tiles.append(tile)
+        return output_tiles

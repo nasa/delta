@@ -246,7 +246,7 @@ class MultiTiffFileReader():
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
         num_elements = num_chunks * self.num_bands() * chunk_size * chunk_size
         num_bytes    = num_elements*sys.getsizeof(data_type(0))
-        bytes_free   = psutil.virtual_memory().free
+        bytes_free   = psutil.virtual_memory().available
         #print('num_bytes GB = ', num_bytes/utilities.BYTES_PER_GB)
         #print('bytes_free GB = ', bytes_free/utilities.BYTES_PER_GB)
         if num_bytes > bytes_free:

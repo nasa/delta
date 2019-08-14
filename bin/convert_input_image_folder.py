@@ -7,6 +7,7 @@ import sys
 import argparse
 import zipfile
 import multiprocessing
+import traceback
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -31,6 +32,7 @@ def convert_file_tif(input_path, output_path, work_folder, tile_size): #pylint: 
     tfrecord_convert_image.tiff_to_tf_record([input_path], output_path, tile_size)
 
     print('Finished converting file ', input_path)
+    return 0
 
 
 def convert_file_landsat(input_path, output_path, work_folder, tile_size):
@@ -67,6 +69,7 @@ def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     # Remove all of the temporary files
     os.system('rm -rf ' + work_folder)
     print('Finished converting file ', input_path)
+    return 0
 
 
 def convert_file_worldview(input_path, output_path, work_folder, tile_size):
@@ -112,6 +115,20 @@ def convert_file_worldview(input_path, output_path, work_folder, tile_size):
     # Remove all of the temporary files
     os.system('rm -rf ' + work_folder)
     print('Finished converting file ', input_path)
+    return 0
+
+
+# Cleaner ways to do this don't work with multiprocessing!
+def try_catch_and_call(func, input_path, output_path, work_folder, tile_size):
+    """Wrap the provided function in a try/catch statement"""
+    try:
+        return func(input_path, output_path, work_folder, tile_size)
+    except Exception:  #pylint: disable=W0703
+        print('ERROR: Failed to process input file: ' + input_path)
+        traceback.print_exc()
+        sys.stdout.flush()
+        return -1
+
 
 def main(argsIn):
 
@@ -206,8 +223,9 @@ def main(argsIn):
             continue
 
         # Add the command to the task pool
-        task_handles.append(pool.apply_async(convert_file_function, (f, output_path, work_folder, options.tile_size)))
-        #convert_file_function(f, output_path, work_folder, options.tile_size) # DEBUG
+        task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
+                                                                 output_path, work_folder, options.tile_size)))
+        #try_catch_and_call(convert_file_function, f, output_path, work_folder, options.tile_size) # DEBUG
         #break # DEBUG
 
     # Wait for all the tasks to complete
@@ -217,8 +235,12 @@ def main(argsIn):
     # All tasks should be finished, clean up the processing pool
     utilities.stop_task_pool(pool)
 
+    num_succeeded = 0
+    for h in task_handles:
+        if h.get() == 0:
+            num_succeeded += 1
 
-    print('Folder conversion is finished.')
+    print('Successfully converted ', num_succeeded, ' out of ', len(task_handles), ' input files.')
     return 0
 
 if __name__ == "__main__":

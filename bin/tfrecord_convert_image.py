@@ -4,7 +4,6 @@ Convert .tif image(s) into a single TFrecord file consisting of multiple tiles.
 import os
 import sys
 import argparse
-import math
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -34,34 +33,14 @@ def tiff_to_tf_record(input_paths, record_path, tile_size):
     data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
     print('Using output data type: ' + str(data_type))
 
+    # Make a list of output ROIs, only keeping whole ROIs because TF requires them
+    # all to be the same size.
     input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
-
-
-    X = 0 # Make indices easier to read
-    Y = 1
-
-    # Make a list of output ROIs
-    # TODO: Smart calculation of the tile size so no tiny tiles!
-    num_blocks_out = (int(math.ceil(num_cols / tile_size[X])),
-                      int(math.ceil(num_rows / tile_size[Y])))
-
-
-    # Setting up output ROIs
-    output_rois = []
-    for r in range(0,num_blocks_out[Y]):
-        for c in range(0,num_blocks_out[X]):
-
-            # Get the ROI for the block
-            roi = utilities.Rectangle(c*tile_size[X], r*tile_size[Y],
-                                      width=tile_size[X], height=tile_size[Y])
-            # Only keep whole ROIs, TF requires that all input tiles be the exact same dimensions!
-            if input_bounds.contains_rect(roi):
-                output_rois.append(roi)
-    #print('Made ' + str(len(output_rois))+ ' output ROIs.')
+    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials=False)
 
 
     # Set up the output file, it will contain all the tiles from this input image.
-    writer = tf.python_io.TFRecordWriter(record_path)
+    writer = tfrecord_utils.make_tfrecord_writer(record_path)
 
     def callback_function(output_roi, read_roi, data_vec):
         """Callback function to write the first channel to the output file."""
