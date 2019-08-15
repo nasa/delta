@@ -141,7 +141,7 @@ def main(argsIn):
     model = make_model(ids.data_shape(), encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 #     experiment.train(model, ds, steps_per_epoch=ids.steps_per_epoch())
-    experiment.train(model, ds, steps_per_epoch=578)
+    experiment.train(model, ds, steps_per_epoch=578,log_model=True)
 
     print('Saving Model')
     if options.model_dest_name is not None:
