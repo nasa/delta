@@ -21,9 +21,10 @@ from delta.imagery import tfrecord_utils #pylint: disable=C0413
 #------------------------------------------------------------------------------
 
 
-def tiff_to_tf_record(input_paths, record_path, tile_size):
+def tiff_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
     """Convert a .tif file into a TFRecord file split into multiple tiles so
-       that it is very easy to read using TensorFlow."""
+       that it is very easy to read using TensorFlow.
+       All bands are used unless bands_to_use is set to a list of one-indexed band indices."""
 
     # Open the input image and get information about it
     input_reader = MultiTiffFileReader()
@@ -42,6 +43,9 @@ def tiff_to_tf_record(input_paths, record_path, tile_size):
     # Set up the output file, it will contain all the tiles from this input image.
     writer = tfrecord_utils.make_tfrecord_writer(record_path)
 
+    if not bands_to_use:
+        bands_to_use = range(1,num_bands+1)
+
     def callback_function(output_roi, read_roi, data_vec):
         """Callback function to write the first channel to the output file."""
 
@@ -53,10 +57,10 @@ def tiff_to_tf_record(input_paths, record_path, tile_size):
 
         # Pack all bands into a numpy array in the shape TF will expect later.
         array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
-        for band in range(0,num_bands):
-            band_data = data_vec[band]
+        for band in bands_to_use:
+            band_data = data_vec[band-1]
             #print(band_data.shape)
-            array[:,:, band] = band_data[y0:y1, x0:x1] # Crop the correct region
+            array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
 
         # DEBUG: Write the image segments to disk!
         #debug_path = os.path.join('/home/smcmich1/data/delta/test/WV02N42_939570W073_2520792013040400000000MS00/work/dup/', #pylint: disable=C0301

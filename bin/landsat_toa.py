@@ -149,24 +149,20 @@ def do_work(mtl_path, output_folder, tile_size=(256, 256), calc_reflectance=Fals
 
     # Get all of the TOA coefficients and input file names
     data = landsat.parse_mtl_file(mtl_path)
-    #print(data)
 
-    pool = multiprocessing.Pool(num_processes)
-    task_handles = []
+    if num_processes > 1:
+        pool = multiprocessing.Pool(num_processes)
+        task_handles = []
 
     # Loop through the input files (each band is processed separately)
     input_folder = os.path.dirname(mtl_path)
     num_bands    = len(data['FILE_NAME'])
     for band in range(0, num_bands):
-    #for band in [5]:
 
         fname = data['FILE_NAME'][band]
 
         input_path  = os.path.join(input_folder,  fname)
         output_path = os.path.join(output_folder, fname)
-
-        #print(input_path)
-        #print(output_path)
 
         rad_mult = data['RADIANCE_MULT'   ][band]
         rad_add  = data['RADIANCE_ADD'    ][band]
@@ -181,26 +177,27 @@ def do_work(mtl_path, output_folder, tile_size=(256, 256), calc_reflectance=Fals
                                                   constant=ref_add,
                                                   sun_elevation=math.radians(data['SUN_ELEVATION']))
             else:
-                #print(k1_const)
-                #print(k2_const)
                 user_function = functools.partial(apply_toa_temperature, factor=rad_mult,
                                                   constant=rad_add, k1=k1_const, k2=k2_const)
         else:
             user_function = functools.partial(apply_toa_radiance, factor=rad_mult, constant=rad_add)
 
-        task_handles.append(pool.apply_async( \
-            try_catch_and_call, (input_path, output_path, user_function, tile_size)))
-        #try_catch_and_call(input_path, output_path, user_function, tile_size)
+        if num_processes > 1:
+            task_handles.append(pool.apply_async( \
+                try_catch_and_call, (input_path, output_path, user_function, tile_size)))
+        else: # Direct call
+            try_catch_and_call(input_path, output_path, user_function, tile_size)
 
         #raise Exception('DEBUG')
 
-    # Wait for all the tasks to complete
-    print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+    if num_processes > 1:
+        # Wait for all the tasks to complete
+        print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+        utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
 
-    # All tasks should be finished, clean up the processing pool
-    utilities.stop_task_pool(pool)
-    print('Jobs finished.')
+        # All tasks should be finished, clean up the processing pool
+        utilities.stop_task_pool(pool)
+        print('Jobs finished.')
 
 
 def main(argsIn):

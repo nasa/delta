@@ -17,6 +17,8 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery.sources import landsat #pylint: disable=C0413
+from delta.imagery.sources import worldview #pylint: disable=C0413
 import landsat_toa #pylint: disable=C0413
 import worldview_toa #pylint: disable=C0413
 import tfrecord_convert_image #pylint: disable=C0413
@@ -35,6 +37,7 @@ def convert_file_tif(input_path, output_path, work_folder, tile_size): #pylint: 
     return 0
 
 
+#TODO: Can move some of this out of /bin, but need to move the TOA stuff first.
 def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     """Convert one input Landsat file (containing multiple tif tiles)"""
 
@@ -46,23 +49,22 @@ def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     print('Untar file: ', input_path)
     utilities.unpack_to_folder(input_path, work_folder)
 
-    file_list = os.listdir(work_folder)
-    meta_files = [f for f in file_list if 'MTL.txt' in f]
-    if len(meta_files) != 1:
-        raise Exception('Error processing ', input_path, ', meta list: ', str(file_list))
-    meta_path = os.path.join(work_folder, meta_files[0])
+    meta_path  = landsat.find_mtl_file(work_folder)
+    meta_data  = landsat.parse_mtl_file(meta_path)
+    scene_info = landsat.get_scene_info(input_path)
+    bands_to_use = landsat.get_landsat_bands_to_use(scene_info['sensor'])
 
     # Apply TOA conversion
     print('TOA conversion...')
     toa_folder = os.path.join(work_folder, 'toa_output')
-    landsat_toa.do_work(meta_path, toa_folder, calc_reflectance=True)
-    if not os.path.exists(toa_folder):
+    landsat_toa.do_work(meta_path, toa_folder, calc_reflectance=True, num_processes=1)
+
+    if not landsat.check_if_files_present(meta_data, toa_folder):
         raise Exception('TOA conversion failed for: ', input_path)
     print('TOA conversion finished')
 
-    # Get the TOA output files (one per band)
-    file_list = os.listdir(toa_folder)
-    toa_paths = [os.path.join(toa_folder, f) for f in file_list if '.TIF' in f]
+    toa_paths = landsat.get_band_paths(meta_data, toa_folder, bands_to_use)
+
     # Convert the image into a multi-part binary TFRecord file that can be easily read in by TensorFlow.
     tfrecord_convert_image.tiff_to_tf_record(toa_paths, output_path, tile_size)
 
@@ -72,6 +74,7 @@ def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     return 0
 
 
+#TODO: Can move some of this out of /bin, but need to move the TOA stuff first.
 def convert_file_worldview(input_path, output_path, work_folder, tile_size):
     """Convert one input WorldView file"""
 
@@ -80,25 +83,14 @@ def convert_file_worldview(input_path, output_path, work_folder, tile_size):
         os.mkdir(work_folder)
 
     toa_path = os.path.join(work_folder, 'toa.tif')
+    scene_info = worldview.get_scene_info(input_path)
 
     # Unzip the input file
     print('Unzip file: ', input_path)
     with zipfile.ZipFile(input_path, 'r') as zip_ref:
         zip_ref.extractall(work_folder)
 
-    file_list = os.listdir(work_folder)
-    tif_files = [f for f in file_list if (os.path.splitext(f)[1] == '.tif' and f != 'toa.tif')]
-    if len(tif_files) != 1:
-        raise Exception('Error processing ', input_path, ', file list: ', str(file_list))
-
-    vendor_folder = os.path.join(work_folder, 'vendor_metadata')
-    file_list = os.listdir(vendor_folder)
-    meta_files = [f for f in file_list if os.path.splitext(f)[1] == '.IMD']
-    if len(meta_files) != 1:
-        raise Exception('Error processing ', input_path, ', meta list: ', str(file_list))
-
-    tif_path  = os.path.join(work_folder,   tif_files[0])
-    meta_path = os.path.join(vendor_folder, meta_files[0])
+    (tif_path, meta_path) = worldview.get_files_from_unpack_folder(work_folder)
 
     # Apply TOA conversion
 
@@ -110,7 +102,8 @@ def convert_file_worldview(input_path, output_path, work_folder, tile_size):
     print('TOA conversion finished')
 
     # Convert the image into a multi-part binary TFRecord file that can be easily read in by TensorFlow.
-    tfrecord_convert_image.tiff_to_tf_record([toa_path], output_path, tile_size)
+    bands_to_use = worldview.get_worldview_bands_to_use(scene_info['sensor'])
+    tfrecord_convert_image.tiff_to_tf_record([toa_path], output_path, tile_size, bands_to_use)
 
     # Remove all of the temporary files
     os.system('rm -rf ' + work_folder)
