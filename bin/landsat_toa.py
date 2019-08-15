@@ -18,113 +18,23 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery import large_image_tools #pylint: disable=C0413
 from delta.imagery.sources import landsat #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
-from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
 
 #------------------------------------------------------------------------------
 
 OUTPUT_NODATA = 0.0
 
-def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,0)):
-    """Apply the given function to the entire input image and write the
-       result into the output path.  The function is applied to each tile of data.
-    """
-
-    print('Starting function for: ' + input_path)
-
-    # Open the input image and get information about it
-    input_paths = [input_path]
-    input_reader = MultiTiffFileReader()
-    input_reader.load_images(input_paths)
-    (num_cols, num_rows) = input_reader.image_size()
-    #nodata_val = input_reader.nodata_value() # Not provided for Landsat.
-    nodata_val = OUTPUT_NODATA
-    (block_size_in, dummy_num_blocks_in) = input_reader.get_block_info(band=1)
-    input_metadata = input_reader.get_all_metadata()
-
-    input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
-    sys.stdout.flush()
-
-    X = 0 # Make indices easier to read
-    Y = 1
-
-    # Use the input tile size unless the user specified one.
-    block_size_out = block_size_in
-    if tile_size[X] > 0:
-        block_size_out[X] = int(tile_size[X])
-    if tile_size[Y] > 0:
-        block_size_out[Y] = int(tile_size[Y])
-
-    #print('Using output tile size: ' + str(block_size_out))
-
-    # Make a list of output ROIs
-    num_blocks_out = (int(math.ceil(num_cols / block_size_out[X])),
-                      int(math.ceil(num_rows / block_size_out[Y])))
-
-    # Set up the output image
-    writer = TiffWriter()
-    writer.init_output_geotiff(output_path, num_rows, num_cols, nodata_val,
-                               tile_width=block_size_out[X],
-                               tile_height=block_size_out[Y],
-                               metadata=input_metadata,
-                               data_type=utilities.get_gdal_data_type('float'),
-                               num_bands=1)
-
-    # Setting up output ROIs
-    output_rois = []
-    for r in range(0,num_blocks_out[Y]):
-        for c in range(0,num_blocks_out[X]):
-
-            # Get the ROI for the block, cropped to fit the image size.
-            roi = utilities.Rectangle(c*block_size_out[X], r*block_size_out[Y],
-                                      width=block_size_out[X], height=block_size_out[Y])
-            roi = roi.get_intersection(input_bounds)
-            output_rois.append(roi)
-    #print('Made ' + str(len(output_rois))+ ' output ROIs.')
-
-    def callback_function(output_roi, read_roi, data_vec):
-        """Callback function to write the first channel to the output file."""
-
-        # Figure out the output block
-        col = output_roi.min_x / block_size_out[X]
-        row = output_roi.min_y / block_size_out[Y]
-
-        data = data_vec[0] # TODO: Handle muliple channels?
-
-        # Figure out where the desired output data falls in read_roi
-        x0 = output_roi.min_x - read_roi.min_x
-        y0 = output_roi.min_y - read_roi.min_y
-        x1 = x0 + output_roi.width()
-        y1 = y0 + output_roi.height()
-
-        # Crop the desired data portion and apply the user function.
-        output_data = user_function(data[y0:y1, x0:x1])
-
-        # Write out the result
-        writer.write_geotiff_block(output_data, col, row)
-
-    print('Writing TIFF blocks...')
-    input_reader.process_rois(output_rois, callback_function)
-
-    writer.finish_writing_geotiff()
-
-    time.sleep(2)
-    writer.cleanup()
-
-    print('Done writing: ' + output_path)
-
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(*args, **kwargs):
     """Wrap the previous function in a try/catch statement"""
     try:
-        return apply_function_to_file(*args, **kwargs)
+        return large_image_tools.apply_function_to_file(*args, **kwargs)
     except Exception:  #pylint: disable=W0703
         traceback.print_exc()
         sys.stdout.flush()
         return -1
-
 
 # The np.where clause handles input nodata values.
 
@@ -184,9 +94,9 @@ def do_work(mtl_path, output_folder, tile_size=(256, 256), calc_reflectance=Fals
 
         if num_processes > 1:
             task_handles.append(pool.apply_async( \
-                try_catch_and_call, (input_path, output_path, user_function, tile_size)))
+                try_catch_and_call, (input_path, output_path, user_function, tile_size, OUTPUT_NODATA)))
         else: # Direct call
-            try_catch_and_call(input_path, output_path, user_function, tile_size)
+            try_catch_and_call(input_path, output_path, user_function, tile_size, OUTPUT_NODATA)
 
         #raise Exception('DEBUG')
 

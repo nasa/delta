@@ -279,7 +279,6 @@ class MultiTiffFileReader():
         pool.join()
         return data_store
 
-
     def process_rois(self, requested_rois, callback_function):
         """Process the given region broken up into blocks using the callback function.
            Each block will get the image data from each input image passed into the function.
@@ -350,3 +349,43 @@ class MultiTiffFileReader():
             #print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
 
         print('Finished processing tiles!')
+
+def get_block_and_roi(output_roi, read_roi, block_size):
+    """Helper function to use with MultiTiffFileReader process_roi callback functions.
+        Returns ((block_col, block_row), (x0, y0, x1, y1))
+        where the block row and column are based on output_roi in an image using blocks of size block_size,
+        and n0,n1 are the start and end positions to read from read_roi to get the data for output_roi.
+    """
+    block_col = output_roi.min_x / block_size[0]
+    block_row = output_roi.min_y / block_size[1]
+
+    # Figure out where the desired output data falls in read_roi
+    x0 = output_roi.min_x - read_roi.min_x
+    y0 = output_roi.min_y - read_roi.min_y
+    x1 = x0 + output_roi.width()
+    y1 = y0 + output_roi.height()
+
+    return ((block_col, block_row), (x0, y0, x1, y1))
+
+def load_image_and_get_info(input_path):
+    """Helper function to set up an image reader and get information about it"""
+    input_paths  = [input_path]
+    input_reader = MultiTiffFileReader()
+    input_reader.load_images(input_paths)
+    (num_cols, num_rows) = input_reader.image_size()
+    num_bands  = input_reader.num_bands()
+    nodata_val = input_reader.nodata_value()
+    (block_size, num_blocks) = input_reader.get_block_info(band=1)
+    input_metadata = input_reader.get_all_metadata()
+
+    return (input_reader, num_cols, num_rows, num_bands, nodata_val, block_size, num_blocks, input_metadata)
+
+def get_output_block_size(block_size_in, specified_block_size):
+    """Helper function to use the input block size as a default value"""
+    X, Y = (0, 1)
+    block_size_out = block_size_in
+    if specified_block_size[X] > 0:
+        block_size_out[X] = int(specified_block_size[X])
+    if specified_block_size[Y] > 0:
+        block_size_out[Y] = int(specified_block_size[Y])
+    return block_size_out

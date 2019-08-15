@@ -182,6 +182,16 @@ def unpack_to_folder(compressed_path, unpack_folder):
     print(cmd)
     os.system(cmd)
 
+def get_files_with_extension(folder, extension):
+    """Return paths of all the files in a directory matching an extension (recursive)"""
+
+    input_files = []
+    for root, dummy_directories, filenames in os.walk(folder):
+        for filename in filenames:
+            if os.path.splitext(filename)[1] == extension:
+                path = os.path.join(root, filename)
+                input_files.append(path)
+    return input_files
 
 #======================================================================================
 # Functions for working with image chunks.

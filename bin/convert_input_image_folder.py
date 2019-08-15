@@ -122,7 +122,6 @@ def try_catch_and_call(func, input_path, output_path, work_folder, tile_size):
         sys.stdout.flush()
         return -1
 
-
 def main(argsIn):
 
     try:
@@ -135,9 +134,6 @@ def main(argsIn):
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Where to write the converted output images.")
-
-        parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
-                            help="Number of parallel processes to use.")
 
         parser.add_argument("--image-type", dest="image_type", required=True,
                             help="Specify the input image type [worldview, landsat, tif].")
@@ -154,6 +150,12 @@ def main(argsIn):
 
         parser.add_argument("--labels", action="store_true", dest="labels", default=False,
                             help="Set this when the input files are label files.")
+
+        parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
+                            help="Number of parallel processes to use.")
+
+        parser.add_argument("--limit", dest="limit", type=int, default=1,
+                            help="Only try to convert this many files before stopping.")
 
         options = parser.parse_args(argsIn)
 
@@ -181,22 +183,20 @@ def main(argsIn):
 
     convert_file_function = CONVERT_FUNCTIONS[options.image_type]
 
-    # Get the list of zip files in the input folder
+    # Find all of the input files to process with full paths
     input_extension = INPUT_EXTENSIONS[options.image_type]
-    input_files = []
-    for root, dummy_directories, filenames in os.walk(options.input_folder):
-        for filename in filenames:
-            if os.path.splitext(filename)[1] == input_extension:
-                path = os.path.join(root, filename)
-                input_files.append(path)
+    input_files = utilities.get_files_with_extension(options.input_folder, input_extension)
     print('Found ', len(input_files), ' input files to convert')
 
     # Set up processing pool
-    print('Starting processing pool with ' + str(options.num_processes) +' processes.')
-    pool = multiprocessing.Pool(options.num_processes)
-    task_handles = []
+    if options.num_processes > 1:
+        print('Starting processing pool with ' + str(options.num_processes) +' processes.')
+        pool = multiprocessing.Pool(options.num_processes)
+        task_handles = []
 
     # Assign input files to the pool
+    count = 0
+    num_succeeded = 0
     for f in input_files:
 
         # Recreate the subfolders in the output folder
@@ -215,25 +215,34 @@ def main(argsIn):
         if os.path.exists(output_path) and not options.redo:
             continue
 
-        # Add the command to the task pool
-        task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
-                                                                 output_path, work_folder, options.tile_size)))
-        #try_catch_and_call(convert_file_function, f, output_path, work_folder, options.tile_size) # DEBUG
+        if options.num_processes > 1:# Add the command to the task pool
+            task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
+                                                                     output_path, work_folder, options.tile_size)))
+        else:
+            result = try_catch_and_call(convert_file_function, f, output_path, work_folder, options.tile_size)
+            if result == 0:
+                num_succeeded += 1
         #break # DEBUG
 
-    # Wait for all the tasks to complete
-    print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+        count += 1
+        if options.limit and (count >= options.limit):
+            print('Limiting processing to ', options.limit, ' files.')
+            break
 
-    # All tasks should be finished, clean up the processing pool
-    utilities.stop_task_pool(pool)
+    if options.num_processes > 1:
+        # Wait for all the tasks to complete
+        print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+        utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
 
-    num_succeeded = 0
-    for h in task_handles:
-        if h.get() == 0:
-            num_succeeded += 1
+        # All tasks should be finished, clean up the processing pool
+        utilities.stop_task_pool(pool)
 
-    print('Successfully converted ', num_succeeded, ' out of ', len(task_handles), ' input files.')
+        num_succeeded = 0
+        for h in task_handles:
+            if h.get() == 0:
+                num_succeeded += 1
+
+    print('Successfully converted ', num_succeeded, ' out of ', count, ' input files.')
     return 0
 
 if __name__ == "__main__":

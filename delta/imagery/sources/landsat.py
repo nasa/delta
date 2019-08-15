@@ -8,13 +8,6 @@ from delta.imagery import utilities
 from . import basic_sources
 
 
-def get_date_from_filename(name):
-    """Extract the image capture date from a Landsat filename"""
-    s     = os.path.basename(name)
-    parts = s.split('_')
-    date  = parts[3]
-    return date
-
 def allocate_bands_for_spacecraft(landsat_number):
     """Set up value storage for parse_mtl_file()"""
 
