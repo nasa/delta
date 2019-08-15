@@ -11,6 +11,7 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
+from delta.imagery import rectangle #pylint: disable=C0413
 from delta.imagery import utilities #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
@@ -39,7 +40,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
                                utilities.get_gdal_data_type('float'),
                                num_bands)
 
-    input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
+    input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(block_size_out[0], block_size_out[1], include_partials=True)
 
     def callback_function(output_roi, read_roi, data_vec):

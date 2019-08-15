@@ -13,6 +13,7 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 import tensorflow as tf #pylint: disable=C0413
+from delta.imagery import rectangle #pylint: disable=C0413
 from delta.imagery import utilities #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery import tfrecord_utils #pylint: disable=C0413
@@ -36,7 +37,7 @@ def tiff_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them
     # all to be the same size.
-    input_bounds = utilities.Rectangle(0, 0, width=num_cols, height=num_rows)
+    input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials=False)
 
 

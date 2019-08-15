@@ -13,6 +13,7 @@ import psutil
 from osgeo import gdal
 import numpy as np
 
+from delta.imagery import rectangle
 from delta.imagery import utilities
 
 #------------------------------------------------------------------------------
@@ -82,7 +83,7 @@ class TiffReader:
            to get the requested data region while respecting block boundaries.
         """
         size = self.image_size()
-        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(size))
@@ -101,9 +102,9 @@ class TiffReader:
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
-        ans    = utilities.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        ans    = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
         size   = self.image_size()
-        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         return ans.get_intersection(bounds)
 
     def read_pixels(self, roi, band):
@@ -221,7 +222,7 @@ class MultiTiffFileReader():
 
         # Throw out any partial chunks.
         image_size = self.image_size()
-        whole_image_roi = utilities.Rectangle(0,0,width=image_size[0],height=image_size[1])
+        whole_image_roi = rectangle.Rectangle(0,0,width=image_size[0],height=image_size[1])
         (chunk_center_list, chunk_roi) = \
                 utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size, whole_image_roi)
 
@@ -297,7 +298,7 @@ class MultiTiffFileReader():
         print('Ready to process ' + str(len(requested_rois)) +' tiles.')
 
         image_size = self.image_size()
-        whole_bounds = utilities.Rectangle(0, 0, width=image_size[0], height=image_size[1])
+        whole_bounds = rectangle.Rectangle(0, 0, width=image_size[0], height=image_size[1])
         for roi in block_rois:
             if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi))

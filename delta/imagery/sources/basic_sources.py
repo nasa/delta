@@ -11,7 +11,7 @@ import os
 import numpy as np
 
 from delta.imagery import image_reader
-from delta.imagery import utilities
+from delta.imagery import rectangle
 
 # TODO: Not currently used, but could be if the TF method of filtering chunks is inefficient.
 def parallel_filter_chunks(data, num_threads):
@@ -73,7 +73,7 @@ def horizontal_split(image_size, region, num_splits):
     min_y = math.floor(band_height*region)
     max_y = math.floor(band_height*(region+1.0))
 
-    return utilities.Rectangle(min_x, min_y, max_x, max_y)
+    return rectangle.Rectangle(min_x, min_y, max_x, max_y)
 
 def tile_split(image_size, region, num_splits):
     """Return the ROI of an image to load given the region.
@@ -97,7 +97,7 @@ def tile_split(image_size, region, num_splits):
     min_y = math.floor(tile_height * tile_row)
     max_y = math.floor(tile_height * (tile_row+1.0))
 
-    return utilities.Rectangle(min_x, min_y, max_x, max_y)
+    return rectangle.Rectangle(min_x, min_y, max_x, max_y)
 
 
 class DeltaImage(ABC):

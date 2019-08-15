@@ -22,7 +22,7 @@ if sys.version_info < (3, 0, 0):
 
 from delta.imagery.sources import landsat #pylint: disable=C0413
 from delta.imagery import image_reader #pylint: disable=C0413
-from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery import rectangle #pylint: disable=C0413
 from delta.ml.train import train #pylint: disable=C0413
 
 
@@ -115,7 +115,7 @@ def main(argsIn): # pylint:disable=R0914
     (num_cols, num_rows) = input_reader.image_size()
 
     # Process the entire input image(s) into chunks at once.
-    roi = utilities.Rectangle(0,0,width=num_cols,height=num_rows)
+    roi = rectangle.Rectangle(0,0,width=num_cols,height=num_rows)
     chunk_data = input_reader.parallel_load_chunks(roi, options.chunk_size,
                                                    options.chunk_overlap, options.num_threads)
     if options.label_path:

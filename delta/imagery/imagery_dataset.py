@@ -10,6 +10,7 @@ import psutil
 import numpy as np
 import tensorflow as tf
 
+from delta.imagery import rectangle
 from delta.imagery import utilities
 from delta.imagery import tfrecord_utils
 from delta.imagery import disk_folder_cache
@@ -170,7 +171,7 @@ class ImageryDataset:
         parts  = text_line.split(',')
         path   = parts[0].strip()
 
-        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+        roi = rectangle.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
                                   int(parts[3].strip()), int(parts[4].strip()))
 
         # Create a new image class instance to handle this input path
@@ -187,7 +188,7 @@ class ImageryDataset:
         parts = text_line.split(',')
         path  = parts[0].strip()
 
-        roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
+        roi = rectangle.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
                                   int(parts[3].strip()), int(parts[4].strip()))
 
         if len(parts) > 5: # pylint:disable=R1705
