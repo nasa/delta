@@ -306,6 +306,11 @@ class ImageryDatasetTFRecord:
             input_extensions = ['.tfrecord']
             print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
 
+        if config_values['label_dataset']['extension']:
+            self._label_ext = config_values['label_dataset']['extension']
+        else:
+            self._label_ext = '.tfrecordlabel'
+
         # TODO: Store somewhere else!
         list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
         label_list_path = os.path.join(config_values['cache']['cache_dir'], 'label_list.csv')
@@ -442,7 +447,8 @@ class ImageryDatasetTFRecord:
            have the same relative path in that folder but ending with "_label.tif".
            If just_one is set, only find one file!
         '''
-        LABEL_EXT = '.tfrecordlabel'
+#         LABEL_EXT = '.tfrecordlabel'
+        LABEL_EXT = self._label_ext
 
         if label_folder:
             if not os.path.exists(label_folder):
@@ -483,19 +489,25 @@ class ImageryDatasetTFRecord:
         return num_images
 
 class AutoencoderDataset(ImageryDatasetTFRecord):
-    # Don't need an explicit init because of the superclass (?)
+
+    def __init__(self, config_values, no_dataset=False):
+        # Want to make sure that the input is the same as the output.
+        if 'label_dataset' not in config_values:
+            config_values['label_dataset'] = {}
+        ### end if
+        config_values['label_dataset']['extension'] = config_values['input_dataset']['extension']
+        super(AutoencoderDataset, self).__init__(config_values,no_dataset=no_dataset)
+
 
     def _load_labels(self, example_proto):
 
         # Load from the label image in the same way as the input image so we get the locations correct
-        NUM_LABEL_BANDS = 1 # This may change later!
-        image = tfrecord_utils.load_tfrecord_label_element(example_proto, NUM_LABEL_BANDS,
-                                                           self._input_region_height, self._input_region_width)
+        image = tfrecord_utils.load_tfrecord_label_element(example_proto, self._num_bands,
+                                                           self._input_region_height, 
+                                                           self._input_region_width)
 
         # TODO: Adjust the chunk call so that we only extract the pixels we want!
-        chunk_data = self._chunk_tf_image(image, is_label=True)
+        chunk_data = self._chunk_tf_image(image, is_label=False)
 
-#         center_pixel = int(self._chunk_size/2)
-#         labels = tf.to_int32(chunk_data[:, 0, center_pixel, center_pixel])
         labels = tf.to_int32(chunk_data)
         return labels
