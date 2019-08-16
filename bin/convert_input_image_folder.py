@@ -19,8 +19,8 @@ if sys.version_info < (3, 0, 0):
 from delta.imagery import utilities #pylint: disable=C0413
 from delta.imagery.sources import landsat #pylint: disable=C0413
 from delta.imagery.sources import worldview #pylint: disable=C0413
-import landsat_toa #pylint: disable=C0413
-import worldview_toa #pylint: disable=C0413
+from delta.imagery.sources import landsat_toa #pylint: disable=C0413
+from delta.imagery.sources import worldview_toa #pylint: disable=C0413
 import tfrecord_convert_image #pylint: disable=C0413
 
 
@@ -57,7 +57,7 @@ def convert_file_landsat(input_path, output_path, work_folder, tile_size):
     # Apply TOA conversion
     print('TOA conversion...')
     toa_folder = os.path.join(work_folder, 'toa_output')
-    landsat_toa.do_work(meta_path, toa_folder, calc_reflectance=True, num_processes=1)
+    landsat_toa.do_landsat_toa_conversion(meta_path, toa_folder, calc_reflectance=True, num_processes=1)
 
     if not landsat.check_if_files_present(meta_data, toa_folder):
         raise Exception('TOA conversion failed for: ', input_path)
@@ -96,7 +96,8 @@ def convert_file_worldview(input_path, output_path, work_folder, tile_size):
 
     # TODO: Any benefit to passing in the tile size here?
     print('TOA conversion...')
-    worldview_toa.do_work(tif_path, meta_path, toa_path, calc_reflectance=False) # TODO get reflectance working!
+    # TODO get reflectance working!
+    worldview_toa.do_worldview_toa_conversion(tif_path, meta_path, toa_path, calc_reflectance=False)
     if not os.path.exists(toa_path):
         raise Exception('TOA conversion failed for: ', input_path)
     print('TOA conversion finished')
