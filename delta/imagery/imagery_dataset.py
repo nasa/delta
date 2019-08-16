@@ -15,8 +15,8 @@ from delta.imagery import utilities
 from delta.imagery import tfrecord_utils
 from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
-from delta.imagery.sources import landsat
-from delta.imagery.sources import worldview
+from delta.imagery.sources import landsat # TODO: Remove this dependency!
+from delta.imagery.sources import worldview # TODO: Remove this dependency!
 
 
 # Map text strings to the Image wrapper classes defined above

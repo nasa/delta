@@ -131,8 +131,11 @@ class MultiTiffFileReader():
 
     """
 
-    def __init__(self):
+    def __init__(self, image_path_list=None):
         self._image_handles = []
+
+        if image_path_list:
+            self.load_images(image_path_list)
 
     def __del__(self):
         self.close()
@@ -367,26 +370,3 @@ def get_block_and_roi(output_roi, read_roi, block_size):
     y1 = y0 + output_roi.height()
 
     return ((block_col, block_row), (x0, y0, x1, y1))
-
-def load_image_and_get_info(input_path):
-    """Helper function to set up an image reader and get information about it"""
-    input_paths  = [input_path]
-    input_reader = MultiTiffFileReader()
-    input_reader.load_images(input_paths)
-    (num_cols, num_rows) = input_reader.image_size()
-    num_bands  = input_reader.num_bands()
-    nodata_val = input_reader.nodata_value()
-    (block_size, num_blocks) = input_reader.get_block_info(band=1)
-    input_metadata = input_reader.get_all_metadata()
-
-    return (input_reader, num_cols, num_rows, num_bands, nodata_val, block_size, num_blocks, input_metadata)
-
-def get_output_block_size(block_size_in, specified_block_size):
-    """Helper function to use the input block size as a default value"""
-    X, Y = (0, 1)
-    block_size_out = block_size_in
-    if specified_block_size[X] > 0:
-        block_size_out[X] = int(specified_block_size[X])
-    if specified_block_size[Y] > 0:
-        block_size_out[Y] = int(specified_block_size[Y])
-    return block_size_out
