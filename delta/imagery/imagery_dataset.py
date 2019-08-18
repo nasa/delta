@@ -30,25 +30,7 @@ IMAGE_CLASSES = {
 
 #========================================================================================
 
-def chunk_tf_image(chunk_size, num_bands, image, is_label):
-    """Split up a tensor image into tensor chunks"""
-    if (is_label):
-        assert(num_bands == 1)
-
-    # We use the built-in TF chunking function
-    ksizes  = [1, chunk_size, chunk_size, 1]
-    strides = [1, chunk_size, chunk_size, 1]
-    rates   = [1, 1, 1, 1]
-    result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
-    #tf.print(result.shape, output_stream=sys.stderr)
-    result = tf.reshape(result, [-1, chunk_size, chunk_size, num_bands])
-    #tf.print(result.shape, output_stream=sys.stderr)
-    # TODO: Change the format we expect to match how the chunks come out?
-    result = tf.transpose(result, [0, 3, 1, 2]) # Get info format: [chunks, bands, x, y]
-    return result
-### end chunk_tf_image
-
-class DeltaDataset:
+class ImageryDataset:
     '''
     Interface for loading files for the DELTA project.  We are assuming that 
     the input is going to be rectangular image data with some number of 
@@ -259,31 +241,7 @@ class DeltaDataset:
 
         return num_entries, num_images
 
-
-# TODO: Delete these functions!
-    def _load_data(self, example_proto):
-        '''
-        Load the next TFRecord image segment and split it into chunks
-        @param example_proto - 
- 
-        @return TODO a TF Record dataset?
-        '''
-        raise NotImplementedError('Need to subclass DeltaDataset to implement a _load_data function')
-    ### end _load_data
-
-    def _load_labels(self, example_proto):
-        '''
-        Load the next TFRecord image segment and split it into chunks
-
-        @param example_prodo - TODO
-
-        @return TODO a TF Record dataset?
-        '''
-
-        raise NotImplementedError('Need to subclass DeltaDataset to implement a _load_labels function')
-    ### end _load_labels
-
-### end class DeltaDataset
+### end class ImageryDataset
 
 # Attempt at optimizing the dataset class to minimize python function use
 
@@ -305,11 +263,6 @@ class ImageryDatasetTFRecord:
         else:
             input_extensions = ['.tfrecord']
             print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
-
-        if config_values['label_dataset']['extension']:
-            self._label_ext = config_values['label_dataset']['extension']
-        else:
-            self._label_ext = '.tfrecordlabel'
 
         # TODO: Store somewhere else!
         list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
@@ -439,16 +392,29 @@ class ImageryDatasetTFRecord:
         return labels
 
 
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder):
+        """Returns the path to the expected label for for the given input image file"""
+
+        LABEL_EXT = '.tfrecordlabel'
+
+        # Label file should have the same name but different extension in the label folder
+        rel_path   = os.path.relpath(input_path, top_folder)
+        label_path = os.path.join(label_folder, rel_path)
+        label_path = os.path.splitext(label_path)[0] + LABEL_EXT
+        # If labels are provided then we need a label file for every image in the data set!
+        if not os.path.exists(label_path):
+            raise Exception('Error: Expected label file to exist at path: ' + label_path)
+        return label_path
+
+
     def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path, #pylint: disable=R0201
                          extensions, just_one=False):
-        '''Write a file listing all of the files in a (recursive) folder
+        """Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
            If a label folder is provided, look for corresponding label files which
            have the same relative path in that folder but ending with "_label.tif".
            If just_one is set, only find one file!
-        '''
-#         LABEL_EXT = '.tfrecordlabel'
-        LABEL_EXT = self._label_ext
+        """
 
         if label_folder:
             if not os.path.exists(label_folder):
@@ -468,13 +434,8 @@ class ImageryDatasetTFRecord:
 
                     f_input.write(path + '\n')
 
-                    if label_folder: # Label file should have the same name but different extension
-                        rel_path   = os.path.relpath(path, top_folder)
-                        label_path = os.path.join(label_folder, rel_path)
-                        label_path = os.path.splitext(label_path)[0] + LABEL_EXT
-                        # If labels are provided then we need a label file for every image in the data set!
-                        if not os.path.exists(label_path):
-                            raise Exception('Error: Expected label file to exist at path: ' + label_path)
+                    if label_folder:
+                        label_path = self._get_label_for_input_image(path, top_folder, label_folder)
                         f_label.write(label_path + '\n')
 
                     num_images += 1
@@ -488,26 +449,18 @@ class ImageryDatasetTFRecord:
         f_label.close()
         return num_images
 
-class AutoencoderDataset(ImageryDatasetTFRecord):
 
-    def __init__(self, config_values, no_dataset=False):
-        # Want to make sure that the input is the same as the output.
-        if 'label_dataset' not in config_values:
-            config_values['label_dataset'] = {}
-        ### end if
-        config_values['label_dataset']['extension'] = config_values['input_dataset']['extension']
-        super(AutoencoderDataset, self).__init__(config_values,no_dataset=no_dataset)
+class AutoencoderDataset(ImageryDatasetTFRecord):
+    """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
+
+#    def __init__(self, config_values, no_dataset=False):
+#        # Want to make sure that the input is the same as the output.
+#        super(AutoencoderDataset, self).__init__(config_values,no_dataset=no_dataset)
+
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder):
+        # For the autoencoder, the label is the same as the input data!
+        return input_path
 
 
     def _load_labels(self, example_proto):
-
-        # Load from the label image in the same way as the input image so we get the locations correct
-        image = tfrecord_utils.load_tfrecord_label_element(example_proto, self._num_bands,
-                                                           self._input_region_height, 
-                                                           self._input_region_width)
-
-        # TODO: Adjust the chunk call so that we only extract the pixels we want!
-        chunk_data = self._chunk_tf_image(image, is_label=False)
-
-        labels = tf.to_int32(chunk_data)
-        return labels
+        return tf.to_int32(self._load_data(example_proto))

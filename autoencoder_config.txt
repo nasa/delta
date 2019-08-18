@@ -7,6 +7,9 @@
 # The folder where the input files are located (required)
 data_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records
 
+# In train_autoencoder.py, this is only used for logging names
+image_type=worldview
+
 # Extension of the images in the input folder, usually .tfrecord
 extension=.tfrecord
 
@@ -14,16 +17,10 @@ extension=.tfrecord
 # must be a mirror of the input image folder with the input images
 # replaced with label images with the same name but with the ".tfrecordlabel" extension.
 label_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records
+
 # The number of parallel threads to use for loading input data.
 # The actual number is twice this, half for input and half for labels.
 num_input_threads=1
-
-# Parameters describing label data.
-[label_dataset]
-
-# Extension of the images in the input folder, usually .tfrecord
-extension=.tfrecord
-
 
 # Machine learning parameters.
 [ml]
