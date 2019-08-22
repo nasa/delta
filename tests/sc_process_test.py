@@ -2,7 +2,7 @@ import argparse
 import os
 import sys
 
-os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
 import tensorflow as tf #pylint: disable=C0413
 from tensorflow import keras #pylint: disable=C0413
