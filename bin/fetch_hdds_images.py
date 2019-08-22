@@ -24,6 +24,7 @@ import os
 import sys
 import argparse
 import pickle
+import json
 
 # WARNING: In order for this script to work, the api.py file in this module
 #          must be modified so it uses the download URL:
@@ -226,6 +227,17 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
             #print(scene)
 
+            fail = False
+            REQUIRED_PARTS = ['displayId', 'summary']
+            for p in REQUIRED_PARTS:
+                if (p not in scene) or (not scene[p]):
+                     print('scene object is missing element: ' + p)
+                     print(scene)
+                     fail = True
+            if fail:
+                continue
+
+
             # Figure out the downloaded file path for this image
             file_name   = scene['displayId'] + '.zip'
             output_path = os.path.join(dataset_folder, file_name)
@@ -255,7 +267,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
             PLATFORM_BAND_COUNTS = {'worldview':8, 'TODO':1}
             min_num_bands = PLATFORM_BAND_COUNTS[platform]
             num_bands = None
-            meta = api.metadata(dataset, CATALOG, scene['entityId'])
+            try:
+                meta = api.metadata(dataset, CATALOG, scene['entityId'])
+            except json.decoder.JSONDecodeError:
+                print('Error fetching metadata for dataset = ' + dataset +
+                      ', entity = ' + scene['entityId'])
+                continue
             try:
                 for m in meta['data'][0]['metadataFields']:
                     if m['fieldName'] == 'Number of bands':
