@@ -5,7 +5,7 @@ import os
 import time
 import math
 import signal
-import gdal
+from osgeo import gdal
 import psutil
 import numpy as np
 
