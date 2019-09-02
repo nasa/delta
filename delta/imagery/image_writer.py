@@ -121,7 +121,7 @@ class TiffWriter:
                 blockCounter += 1
             except Exception as e: #pylint: disable=W0703
                 print(str(e))
-                print('Caught exception writing: ' + str(parts[1] +', '+ str(parts[2])))
+                print('Caught exception writing: ' + str(parts[1]) +', '+ str(parts[2]))
 
         print('Write thread ended after writing ' + str(blockCounter) +' blocks.')
 

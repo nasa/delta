@@ -8,13 +8,6 @@ from delta.imagery import utilities
 from . import basic_sources
 
 
-def get_date_from_filename(name):
-    """Extract the image capture date from a Landsat filename"""
-    s     = os.path.basename(name)
-    parts = s.split('_')
-    date  = parts[3]
-    return date
-
 def allocate_bands_for_spacecraft(landsat_number):
     """Set up value storage for parse_mtl_file()"""
 
@@ -71,7 +64,7 @@ def parse_mtl_file(mtl_path):
                     name  = parts[0].strip()
                     value = parts[1].strip()
                     try:
-                        # Landsat 7 has two thermal readings from the same wavelength bad
+                        # Landsat 7 has two thermal readings from the same wavelength band
                         # bit with different gain settings.  Just treat the second file
                         # as another band (9).
                         name = name.replace('BAND_6_VCID_1', 'BAND_6')
@@ -88,6 +81,17 @@ def parse_mtl_file(mtl_path):
     return data
 
 
+def get_scene_info(path):
+    """Extract information about the landsat scene from the file name"""
+    fname  = os.path.basename(path)
+    parts  = fname.split('_')
+    output = {}
+    output['sensor'] = parts[0]
+    output['lpath' ] = parts[2][0:3]
+    output['lrow'  ] = parts[2][3:6]
+    output['date'  ] = parts[3]
+    return output
+
 def get_landsat_bands_to_use(sensor_name):
     """Return the list of one-based band indices that we are currently
        using to process the given landsat sensor.
@@ -95,7 +99,7 @@ def get_landsat_bands_to_use(sensor_name):
 
     # For now just the 30 meter bands, in original order.
     LS5_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
-    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
+    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7] # Don't forget the extra thermal band!
     LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
 
     if '5' in sensor_name:
@@ -110,14 +114,40 @@ def get_landsat_bands_to_use(sensor_name):
                 raise Exception('Unknown landsat type: ' + sensor_name)
     return bands
 
-def check_if_files_present(mtl_data, folder):
+def get_band_paths(mtl_data, folder, bands_to_use=None):
+    """Return full paths to all band files that should be in the folder.
+       Optionally specify a list of bands to use, otherwise all are used"""
+
+    paths = []
+    if not bands_to_use: # Default is to use all bands
+        bands_to_use = range(1,len(mtl_data['FILE_NAME'])+1)
+    for b in bands_to_use:
+        filename = mtl_data['FILE_NAME'][b-1]
+        band_path = os.path.join(folder, filename)
+        paths.append(band_path)
+    return paths
+
+def check_if_files_present(mtl_data, folder, bands_to_use=None):
     """Return True if all the files associated with the MTL data are present."""
 
-    for b in mtl_data['FILE_NAME']:
-        band_path = os.path.join(folder, b)
-        if not os.path.exists(band_path): # TODO: Verify integrity!
+    band_paths = get_band_paths(mtl_data, folder, bands_to_use)
+    for b in band_paths:
+        if not utilities.file_is_good(b):
             return False
     return True
+
+def find_mtl_file(folder):
+    """Returns the path to the MTL file in a folder.
+       Returns None if there is no MTL file.
+       Raises an Exception if there are multiple MTL files."""
+
+    file_list = os.listdir(folder)
+    meta_files = [f for f in file_list if '_MTL.txt' in f]
+    if len(meta_files) > 1:
+        raise Exception('Error: Too many MTL files in ', folder, ', file list: ', str(file_list))
+    if not meta_files:
+        return None
+    return os.path.join(folder, meta_files[0])
 
 def prep_landsat_image(path, cache_manager):
     """Prepares a Landsat file from the archive for processing.
@@ -127,29 +157,19 @@ def prep_landsat_image(path, cache_manager):
        TODO: Apply TOA conversion!
     """
 
-    # Get info out of the filename
-    fname  = os.path.basename(path)
-    parts  = fname.split('_')
-    sensor = parts[0]
-    lpath  = parts[2][0:3]
-    lrow   = parts[2][3:6]
-    date   = parts[3]
+    scene_info = get_scene_info(path)
 
     # Get the folder where this will be stored from the cache manager
-    name = '_'.join([sensor, lpath, lrow, date])
+    name = '_'.join([scene_info['sensor'], scene_info['lpath'], scene_info['lrow'], scene_info['date']])
     untar_folder = cache_manager.register_item(name)
 
     # Check if we already unpacked this data
     all_files_present = False
     if os.path.exists(untar_folder):
-        existing_files = os.listdir(untar_folder)
-        for f in existing_files:
-            if '_MTL.txt' in f:
-                mtl_path = os.path.join(untar_folder, f)
-                mtl_data = parse_mtl_file(mtl_path)
-
-                all_files_present = check_if_files_present(mtl_data, untar_folder)
-                break
+        mtl_path = find_mtl_file(untar_folder)
+        if mtl_path:
+            mtl_data = parse_mtl_file(mtl_path)
+            all_files_present = check_if_files_present(mtl_data, untar_folder)
 
     if all_files_present:
         print('Already have unpacked files in ' + untar_folder)
@@ -157,17 +177,12 @@ def prep_landsat_image(path, cache_manager):
         print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
         utilities.unpack_to_folder(path, untar_folder)
 
-    # Get the files we are interested in
-    new_path = os.path.join(untar_folder, fname)
+    bands_to_use = get_landsat_bands_to_use(scene_info['sensor'])
 
-    bands = get_landsat_bands_to_use(sensor)
-
-    # Generate all the band file names
-    mtl_path     = new_path.replace('.tar.gz', '_MTL.txt')
-    output_paths = []#[mtl_path] # TODO: Return the MTL path?
-    for band in bands:
-        band_path = new_path.replace('.tar.gz', '_B'+str(band)+'.TIF')
-        output_paths.append(band_path)
+    # Generate all the band file names (the MTL file is not returned)
+    mtl_path = find_mtl_file(untar_folder)
+    mtl_data = parse_mtl_file(mtl_path)
+    output_paths = get_band_paths(mtl_data, untar_folder, bands_to_use)
 
     # Check that the files exist
     for p in output_paths:

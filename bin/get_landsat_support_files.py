@@ -212,9 +212,6 @@ def main(argsIn):
     if output_folder and not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    # Extract information about the landsat file
-    #date = landsat.get_date_from_filename(options.landsat_path)
-    #date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
 

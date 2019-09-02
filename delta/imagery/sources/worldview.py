@@ -108,6 +108,16 @@ def get_files_from_unpack_folder(folder):
             break
     return (tif_path, imd_path)
 
+def get_scene_info(path):
+    """Extract information about the landsat scene from the file name"""
+    # ex: WV02N42_939570W073_2520792013040400000000MS00_GU004003002.zip
+    fname  = os.path.basename(path)
+    parts  = fname.split('_')
+    output = {}
+    output['sensor'] = parts[0][0:4]
+    output['date'  ] = parts[2][6:14]
+    return output
+
 # This function is currently set up for the HDDS archived WV data, files from other
 #  locations will need to be handled differently.
 def prep_worldview_image(path, cache_manager):
@@ -116,15 +126,10 @@ def prep_worldview_image(path, cache_manager):
        TODO: Apply TOA conversion!
     """
 
-    # Get info out of the filename
-    # ex: WV02N42_939570W073_2520792013040400000000MS00_GU004003002.zip
-    fname  = os.path.basename(path)
-    parts  = fname.split('_')
-    sensor = parts[0][0:4]
-    date   = parts[2][6:14]
+    scene_info = get_scene_info(path)
 
     # Get the folder where this will be stored from the cache manager
-    name = '_'.join([sensor, date])
+    name = '_'.join([scene_info['sensor'], scene_info['date']])
     unpack_folder = cache_manager.register_item(name)
 
     # Check if we already unpacked this data

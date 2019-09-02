@@ -9,6 +9,7 @@ import math
 # TODO: Clean this up
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'delta')))
 
+from delta.imagery import rectangle #pylint: disable=C0413
 from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
 
@@ -65,7 +66,7 @@ def main(argsIn):
     noData = input_reader.nodata_value()
     (bSize, (numBlocksX, numBlocksY)) = input_reader.get_block_info(band)
 
-    input_bounds = utilities.Rectangle(0, 0, width=nCols, height=nRows)
+    input_bounds = rectangle.Rectangle(0, 0, width=nCols, height=nRows)
 
     input_metadata = input_reader.get_all_metadata()
     #print('Read metadata: ' + str(input_metadata))
@@ -114,7 +115,7 @@ def main(argsIn):
         for c in range(0,numBlocksX):
 
             # Get the ROI for the block, cropped to fit the image size.
-            roi = utilities.Rectangle(c*output_tile_width, r*output_tile_height,
+            roi = rectangle.Rectangle(c*output_tile_width, r*output_tile_height,
                                       width=output_tile_width, height=output_tile_height)
             roi = roi.get_intersection(input_bounds)
 

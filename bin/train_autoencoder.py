@@ -4,7 +4,7 @@ Script test out the image chunk generation calls.
 import sys
 import os
 import argparse
-import random
+#import random
 import numpy as np
 
 ### Tensorflow includes
@@ -22,10 +22,10 @@ if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
 
-from delta.imagery.sources import landsat #pylint: disable=C0413
-from delta.imagery.sources import worldview #pylint: disable=C0413,W0611
+from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
-from delta.ml.train import Experiment
+from delta.ml.train import Experiment  #pylint: disable=C0413
+
 
 #------------------------------------------------------------------------------
 def make_model(in_shape, encoding_size=32):
@@ -52,37 +52,15 @@ def main(argsIn):
     usage  = "usage: train_autoencoder [options]"
     parser = argparse.ArgumentParser(usage=usage)
 
-    parser.add_argument("--input-folder", dest="input_folder", required=True,
-                        help="A folder with images for training the autoencoder.")
+    parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
-    parser.add_argument("--image-type", dest="image_type", required=True,
-                        help="The image type (landsat, worldview, etc.).")
-
-    parser.add_argument("--output-folder", dest="output_folder", required=True,
-                        help="Write output chunk files to this folder.")
-
-    parser.add_argument("--output-band", dest="output_band", type=int, default=0,
-                        help="Only chunks from this band are written to disk.")
-
-    parser.add_argument("--num-threads", dest="num_threads", type=int, default=1,
-                        help="Number of threads to use for parallel image loading.")
-
-    # Note: changed the default chunk size to 28.  Smaller chunks work better for
-    # the toy network defined above.
-    parser.add_argument("--chunk-size", dest="chunk_size", type=int, default=28,
-                        help="The length of each side of the output image chunks.")
-
-    parser.add_argument("--chunk-overlap", dest="chunk_overlap", type=int, default=0,
-                        help="The amount of overlap of the image chunks.")
-
-    parser.add_argument("--num-epochs", dest="num_epochs", type=int, default=70,
-                        help="The number of epochs to train for")
-
-    parser.add_argument("--num-hidden", dest="num_hidden", type=int, default=32,
-                        help="The number of hidden elements in the autoencoder")
-
-    parser.add_argument("--model-dest-name", dest="model_dest_name", type=str, default='autoencoder_model.keras.tf',
-                        help="The name of the file where autoencoder is stored")
+    parser.add_argument("--config-file", dest="config_file", required=False,
+                        help="Dataset configuration file.")
+    parser.add_argument("--data-folder", dest="data_folder", required=False,
+                        help="Specify data folder instead of supplying config file.")
+    parser.add_argument("--image-type", dest="image_type", required=False,
+                        help="Specify image type along with the data folder."
+                        +"(landsat, landsat-simple, worldview, or rgba)")
 
     try:
         options = parser.parse_args(argsIn)
@@ -90,53 +68,51 @@ def main(argsIn):
         print(usage)
         return -1
 
-    if not os.path.exists(options.output_folder):
-        os.mkdir(options.output_folder)
+    config_values = config.parse_config_file(options.config_file,
+                                             options.data_folder, options.image_type)
 
-    if options.image_type == 'landsat':
-        num_bands = len(landsat.get_landsat_bands_to_use('LS8'))
-    elif options.image_type == 'worldview':
-        num_bands = len(worldview.get_worldview_bands_to_use('WV02'))
-    elif options.image_type == 'rgba':
-        num_bands = 3
-    else:
-        print('Unsupported image type %s.' % (options.image_type))
-    ### end if
+    batch_size = config_values['ml']['batch_size']
+    #num_epochs = config_values['ml']['num_epochs']
 
-    print('loading data from ' + options.input_folder)
-    ids = imagery_dataset.AutoencoderDataset(options.image_type, image_folder=options.input_folder, chunk_size=options.chunk_size)
-    ds = ids.dataset()
 
-    BATCH_SIZE = 2
-    num_entries = ids.total_num_regions()
-    if num_entries < BATCH_SIZE:
-        raise Exception('BATCH_SIZE (%d) is too large for the number of input regions (%d)!' 
-                % (BATCH_SIZE, num_entries))
-    ### end if
-    ds = ds.batch(BATCH_SIZE)
+    output_folder = config_values['ml']['output_folder']
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+
+    print('loading data from ' + config_values['input_dataset']['data_directory'])
+    aeds = imagery_dataset.AutoencoderDataset(config_values)
+    ds = aeds.dataset()
+    #num_bands = aeds.num_bands()
+
+    ds = ds.batch(batch_size)
     ds = ds.repeat()
 
     # TF additions
     # If the mlfow directory doesn't exist, create it.
-    mlflow_tracking_dir = os.path.join(options.output_folder,'mlruns')
+    mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
     ### end if
 
     print('Creating experiment')
-    experiment = Experiment(mlflow_tracking_dir, 'autoencoder_%s'%(options.image_type,), output_dir=options.output_folder)
-    mlflow.log_param('image type', options.image_type)
-    mlflow.log_param('image folder', options.input_folder)
-    mlflow.log_param('chunk size', options.chunk_size)
+    experiment = Experiment(mlflow_tracking_dir,
+                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
+                            output_dir=output_folder)
+    mlflow.log_param('image type',   options.image_type)
+    mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
+    mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
-    model = make_model(ids.data_shape(), encoding_size=options.num_hidden)
+    data_shape = (aeds.num_bands(), aeds.chunk_size(), aeds.chunk_size())
+    model = make_model(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
-    experiment.train(model, ds, steps_per_epoch=ids.steps_per_epoch(), batch_size=BATCH_SIZE)
+
+#     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
+    experiment.train(model, ds, steps_per_epoch=1000,log_model=False)
 
     print('Saving Model')
-    if options.model_dest_name is not None:
-        out_filename = os.path.join(options.output_folder,options.model_dest_name)
-        tf.keras.models.save_model(model,out_filename,overwrite=True,include_optimizer=True)
+    if config_values['ml']['model_dest_name'] is not None:
+        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
     return 0

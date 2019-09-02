@@ -13,6 +13,7 @@ import psutil
 from osgeo import gdal
 import numpy as np
 
+from delta.imagery import rectangle
 from delta.imagery import utilities
 
 #------------------------------------------------------------------------------
@@ -82,7 +83,7 @@ class TiffReader:
            to get the requested data region while respecting block boundaries.
         """
         size = self.image_size()
-        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(size))
@@ -101,9 +102,9 @@ class TiffReader:
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
-        ans    = utilities.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        ans    = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
         size   = self.image_size()
-        bounds = utilities.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         return ans.get_intersection(bounds)
 
     def read_pixels(self, roi, band):
@@ -130,8 +131,11 @@ class MultiTiffFileReader():
 
     """
 
-    def __init__(self):
+    def __init__(self, image_path_list=None):
         self._image_handles = []
+
+        if image_path_list:
+            self.load_images(image_path_list)
 
     def __del__(self):
         self.close()
@@ -192,7 +196,7 @@ class MultiTiffFileReader():
         mb_needed = self.estimate_memory_usage(roi)
         mb_free   = 0
         while mb_free < mb_needed:
-            mb_free = psutil.virtual_memory().free / utilities.BYTES_PER_MB
+            mb_free = psutil.virtual_memory().available / utilities.BYTES_PER_MB
             if mb_free < mb_needed:
                 print('Need %d MB to load the next ROI, but only have %d MB free. Sleep for %d seconds...'
                       % (mb_needed, mb_free, WAIT_TIME_SECS))
@@ -221,7 +225,7 @@ class MultiTiffFileReader():
 
         # Throw out any partial chunks.
         image_size = self.image_size()
-        whole_image_roi = utilities.Rectangle(0,0,width=image_size[0],height=image_size[1])
+        whole_image_roi = rectangle.Rectangle(0,0,width=image_size[0],height=image_size[1])
         (chunk_center_list, chunk_roi) = \
                 utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size, whole_image_roi)
 
@@ -246,7 +250,7 @@ class MultiTiffFileReader():
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
         num_elements = num_chunks * self.num_bands() * chunk_size * chunk_size
         num_bytes    = num_elements*sys.getsizeof(data_type(0))
-        bytes_free   = psutil.virtual_memory().free
+        bytes_free   = psutil.virtual_memory().available
         #print('num_bytes GB = ', num_bytes/utilities.BYTES_PER_GB)
         #print('bytes_free GB = ', bytes_free/utilities.BYTES_PER_GB)
         if num_bytes > bytes_free:
@@ -279,7 +283,6 @@ class MultiTiffFileReader():
         pool.join()
         return data_store
 
-
     def process_rois(self, requested_rois, callback_function):
         """Process the given region broken up into blocks using the callback function.
            Each block will get the image data from each input image passed into the function.
@@ -298,7 +301,7 @@ class MultiTiffFileReader():
         print('Ready to process ' + str(len(requested_rois)) +' tiles.')
 
         image_size = self.image_size()
-        whole_bounds = utilities.Rectangle(0, 0, width=image_size[0], height=image_size[1])
+        whole_bounds = rectangle.Rectangle(0, 0, width=image_size[0], height=image_size[1])
         for roi in block_rois:
             if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi))
@@ -350,3 +353,20 @@ class MultiTiffFileReader():
             #print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
 
         print('Finished processing tiles!')
+
+def get_block_and_roi(output_roi, read_roi, block_size):
+    """Helper function to use with MultiTiffFileReader process_roi callback functions.
+        Returns ((block_col, block_row), (x0, y0, x1, y1))
+        where the block row and column are based on output_roi in an image using blocks of size block_size,
+        and n0,n1 are the start and end positions to read from read_roi to get the data for output_roi.
+    """
+    block_col = output_roi.min_x / block_size[0]
+    block_row = output_roi.min_y / block_size[1]
+
+    # Figure out where the desired output data falls in read_roi
+    x0 = output_roi.min_x - read_roi.min_x
+    y0 = output_roi.min_y - read_roi.min_y
+    x1 = x0 + output_roi.width()
+    y1 = y0 + output_roi.height()
+
+    return ((block_col, block_row), (x0, y0, x1, y1))

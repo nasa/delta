@@ -6,24 +6,28 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
 import tensorflow as tf #pylint: disable=C0413
-
+from delta.imagery import rectangle #pylint: disable=C0413
+from delta.imagery import utilities #pylint: disable=C0413
+from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
 
 #------------------------------------------------------------------------------
 
-# Helper-function for wrapping an integer so it can be saved to the TFRecords file.
+
 def wrap_int64(value):
+    """Helper-function for wrapping an integer so it can be saved to the TFRecords file"""
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
-# Helper-function for wrapping raw bytes so they can be saved to the TFRecords file.
 def wrap_bytes(value):
+    """Helper-function for wrapping raw bytes so they can be saved to the TFRecords file"""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
+def make_tfrecord_writer(output_path):
+    """Set up a TFRecord writer with the correct options"""
+    options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
+    return tf.python_io.TFRecordWriter(output_path, options)
+
+TFRECORD_COMPRESSION_TYPE = 'GZIP' # Needs to be synchronized with the function above
 
 def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_bands):
     """Pack an image stored as a 3D numpy array and write it to an open TFRecord file"""
@@ -97,7 +101,7 @@ def get_record_info(record_path):
     if not os.path.exists(record_path):
         raise Exception('Missing file: ' + record_path)
 
-    raw_image_dataset = tf.data.TFRecordDataset(record_path)
+    raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
 
     parsed_image_dataset = raw_image_dataset.map(load_tfrecord_raw)
 
@@ -111,3 +115,60 @@ def get_record_info(record_path):
         height = int(value['height'])
         width  = int(value['width'])
         return (num_bands, height, width)
+
+
+def tiffs_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
+    """Convert a image consisting of one or more .tif files into a TFRecord file
+       split into multiple tiles so that it is easy to read using TensorFlow.
+       All bands are used unless bands_to_use is set to a list of one-indexed band indices,
+       in which case there should only be one input path."""
+
+    # Open the input image and get information about it
+    input_reader = MultiTiffFileReader(input_paths)
+    (num_cols, num_rows) = input_reader.image_size()
+    num_bands = input_reader.num_bands()
+    data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
+    #print('Using output data type: ' + str(data_type))
+
+    # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
+    input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
+    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials=False)
+
+    # Set up the output file, it will contain all the tiles from this input image.
+    writer = make_tfrecord_writer(record_path)
+
+    if not bands_to_use:
+        bands_to_use = range(1,num_bands+1)
+
+    def callback_function(output_roi, read_roi, data_vec):
+        """Callback function to write the first channel to the output file."""
+
+        # Figure out where the desired output data falls in read_roi
+        ((col, row), (x0, y0, x1, y1)) = get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
+
+        # Pack all bands into a numpy array in the shape TF will expect later.
+        array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
+        for band in bands_to_use:
+            band_data = data_vec[band-1]
+            array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
+
+        # DEBUG: Write the image segments to disk!
+        #debug_path = os.path.join('/home/smcmich1/data/delta/test/WV02N42_939570W073_2520792013040400000000MS00/work/dup/', #pylint: disable=C0301
+        #                          str(output_roi.min_y)+'_'+str(output_roi.min_x)+'.tif')
+        #write_multiband_image(debug_path, array, data_type=gdal.GDT_UInt16)
+
+
+        #back = np.fromstring(array_bytes, dtype=data_type)
+        #back2 = back.reshape(num_bands, output_roi.height(), output_roi.width())
+        #print(back.shape)
+        #print(back2.shape)
+
+        #raise Exception('DEBUG')
+
+        write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
+                             output_roi.width(), output_roi.height(), num_bands)
+
+    print('Writing TFRecord data...')
+    # Each of the ROIs will be written out in order
+    input_reader.process_rois(output_rois, callback_function)
+    print('Done writing: ' + record_path)
