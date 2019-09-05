@@ -22,6 +22,37 @@ from delta.imagery import tfrecord_conversions #pylint: disable=C0413
 
 #------------------------------------------------------------------------------
 
+def get_input_files(options):
+    """Return the list of input files from the specified source"""
+
+    if (not options.input_folder) and (not options.input_file_list):
+        print('ERROR: must provide either --input-folder or --input-file-list')
+        return []
+
+    if options.input_folder:
+        # Figure out the input extension to use
+        DEFAULT_EXTENSIONS = {'worldview':'.zip', 'landsat':'.gz', 'tif':'.tif', 'rgba':'.tif'}
+        if options.input_extension:
+            input_extension = options.input_extension
+        else:
+            try:
+                input_extension = DEFAULT_EXTENSIONS[options.image_type]
+                print('Using the default input extension: ', input_extension)
+            except KeyError:
+                print('Unrecognized image type: ' + options.image_type)
+                return []
+
+        # Find all of the input files to process with full paths
+        input_files = utilities.get_files_with_extension(options.input_folder, input_extension)
+
+    else: # input_file_list
+        input_files = []
+        with open(options.input_file_list, 'r') as f:
+            for line in f:
+                input_files.append(line.strip())
+    return input_files
+
+
 # Cleaner ways to do this don't work with multiprocessing!
 def try_catch_and_call(func, input_path, output_path, work_folder):
     """Wrap the provided function in a try/catch statement"""
@@ -42,8 +73,11 @@ def main(argsIn):
         usage  = "usage: convert_input_image_folder.py [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
-        parser.add_argument("--input-folder", dest="input_folder", required=True,
+        parser.add_argument("--input-folder", dest="input_folder", default=None,
                             help="Path to the folder containing compressed images.")
+
+        parser.add_argument("--input-file-list", dest="input_file_list", default=None,
+                            help="Path to file listing all of the compressed image paths.")
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Where to write the converted output images.")
@@ -84,21 +118,10 @@ def main(argsIn):
     if options.labels:
         output_extension = '.tfrecordlabel'
 
-    # Figure out the input extension to use
-    DEFAULT_EXTENSIONS = {'worldview':'.zip', 'landsat':'.gz', 'tif':'.tif', 'rgba':'.tif'}
-    if options.input_extension:
-        input_extension = options.input_extension
-    else:
-        try:
-            input_extension = DEFAULT_EXTENSIONS[options.image_type]
-            print('Using the default input extension: ', input_extension)
-        except KeyError:
-            print('Unrecognized image type: ' + options.image_type)
-            return -1
-
-    # Find all of the input files to process with full paths
-    input_files = utilities.get_files_with_extension(options.input_folder, input_extension)
+    input_files = get_input_files(options)
     print('Found ', len(input_files), ' input files to convert')
+    if not input_files:
+        return -1
 
     # Prepopulate some conversion function arguments
     convert_file_function = \
