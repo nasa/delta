@@ -4,7 +4,6 @@ Apply convert_input_image_folder.py using multiple PBS nodes to divide up the wo
 import os
 import sys
 import argparse
-import multiprocessing
 import traceback
 import subprocess
 import getpass
@@ -19,8 +18,7 @@ if sys.version_info < (3, 0, 0):
 
 from delta import pbs_functions #pylint: disable=C0413
 from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery import tfrecord_conversions #pylint: disable=C0413
-import convert_input_image_folder
+import convert_input_image_folder #pylint: disable=C0413
 
 #=========================================================================
 # Parameters
@@ -51,7 +49,7 @@ def getParallelParams(nodeType):
     if nodeType == 'bro': return (28, 900, 2)
     if nodeType == 'wes': return (12, 400, 2)
 
-    raise Exception('No params defined for node type ' + nodeType + ', task = ' + task)
+    raise Exception('No params defined for node type ' + nodeType)
 
 #=========================================================================
 
@@ -111,7 +109,7 @@ def submitBatchJobs(list_files, options, pass_along_args):
     cmd = ['which', 'python3']
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          universal_newlines=True)
-    out, err = p.communicate()
+    out, err = p.communicate() #pylint: disable=W0612
     python_path = out
 
     index  = 0
@@ -124,6 +122,7 @@ def submitBatchJobs(list_files, options, pass_along_args):
         # Specify the range of lines in the file we want this node to execute
         args = ('--input-file-list %s  --num-processes %d' % \
                 (list_file, numProcesses))
+        args += pass_along_args
 
         print('Submitting summary regen job: ' + scriptPath + ' ' + args)
 
@@ -134,16 +133,13 @@ def submitBatchJobs(list_files, options, pass_along_args):
                                         options.node_type, python_path,
                                         scriptPath + ' ' + args, log_prefix,
                                         priority=None,
-                                        pythonPath='/home/smcmich1/anaconda3/envs/tf_112_cpu/lib/python3.6/site-packages/')
+                                        pythonPath=options.python_site_path)
 
         jobIDs.append(jobID)
         index += 1
 
     # Waiting on these jobs happens outside this function
     return jobIDs
-
-
-
 
 
 def main(argsIn):
@@ -170,6 +166,10 @@ def main(argsIn):
         parser.add_argument("--node-type",  dest="node_type", default='san',
                             help="Node type to use (wes[mfe], san, ivy, has, bro)")
 
+        parser.add_argument("--python-site-path", dest="python_site_path",
+                            default='/home/smcmich1/anaconda3/envs/tf_112_cpu/lib/python3.6/site-packages/', #pylint: disable=C0301
+                            help="Path to python site-packages folder")
+
         # Debug option
         parser.add_argument('--minutes-in-devel-queue', dest='minutesInDevelQueue', type=int,
                             default=0,
@@ -183,6 +183,7 @@ def main(argsIn):
     if not utilities.checkIfToolExists('convert_input_image_folder.py'):
         print("ERROR: Cannot run on PBS if the desired tool is not on $PATH")
         return -1
+    user_name = getpass.getuser()
 
     # Get together all the CLI args that needs to be passed to each node
     pass_along_args = unknown
@@ -214,27 +215,26 @@ def main(argsIn):
     try:
 
         # Call multi_process_command_runner.py through PBS for each chunk.
-        (baseName, jobIDs) = submitBatchJobs(job_inputs_file_list, options, pass_along_args)
+        jobIDs = submitBatchJobs(job_inputs_file_list, options, pass_along_args)
 
         # Wait for everything to finish.
-        pbs_functions.waitForJobCompletion(jobIDs, baseName)
+        pbs_functions.waitForJobCompletion(jobIDs, user_name)
 
         resultText = 'All jobs are finished.'
 
-    except Exception as e:
+    except Exception as e: #pylint: disable=W0703
         resultText = 'Caught exception: ' + str(e) + '\n' + traceback.format_exc()
     print('Result = ' + resultText)
 
     # Send a summary email.
-    user_name = getpass.getuser()
     emailAddress = getEmailAddress(user_name)
     print("Sending email to: " + emailAddress)
     pbs_functions.send_email(emailAddress, 'PBS convert script finished!', resultText)
 
     print('Done with PBS batch convert script!')
+    return 0
 
 
 # Run main function if file used from shell
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

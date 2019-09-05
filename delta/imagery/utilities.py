@@ -2,13 +2,14 @@
 Miscellaneous utility classes/functions.
 """
 import os
+import sys
 import time
 import math
 import signal
-from osgeo import gdal
-import psutil
 import traceback
 import subprocess
+from osgeo import gdal
+import psutil
 import numpy as np
 
 from delta.imagery.rectangle import Rectangle
@@ -214,14 +215,13 @@ def checkIfToolExists(toolName):
     cmd = ['which', toolName]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                          universal_newlines=True)
-    translateOut, err = p.communicate()
+    translateOut, err = p.communicate() #pylint: disable=W0612
 
     # Check if that command failed to find the file
     failString = 'no ' + toolName + ' in ('
     if translateOut.find(failString) >= 0:
         raise Exception('Missing required executable "' + toolName + '", please add it to your PATH.')
-    else:
-        return True
+    return True
 
 #======================================================================================
 # Functions for working with image chunks.

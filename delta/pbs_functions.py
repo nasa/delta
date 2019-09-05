@@ -1,7 +1,9 @@
 '''Contains functions for working with the PBS job system on the Pleiades supercomputer'''
 
 import os
+import time
 import subprocess
+import re
 
 # Constants
 MAX_PBS_NAME_LENGTH = 15
@@ -13,11 +15,10 @@ def cleanJobID(jobID):
     '''Remove the part after the dot, when the input looks like 149691.pbspl233b.'''
 
     jobID = jobID.strip()
-    m = re.match('^(.*?)\.', jobID)
+    m = re.match('^(.*?)\.', jobID) #pylint: disable=W1401
     if m:
         return m.group(1)
-    else:
-        return jobID
+    return jobID
 
 def execute_command(cmd):
     """Simple replacement for the ASP command run function"""
@@ -36,7 +37,7 @@ def send_email(address, subject, body):
         cmd = 'mail -s "' + subject + '" ' + address + ' <<< "' + body + '"'
         #print(cmd) # too verbose to print
         os.system(cmd)
-    except Exception as e:
+    except Exception: #pylint: disable=W0703
         print("Could not send mail.")
 
 def getActiveJobs(user):
@@ -45,7 +46,7 @@ def getActiveJobs(user):
     # Run qstat command to get a list of all active jobs by this user
     cmd = ['qstat', '-u', user]
 
-    (textOutput, err, status) = execute_command(cmd)
+    (textOutput, err, status) = execute_command(cmd) #pylint: disable=W0612
 
     lines = textOutput.split('\n')
 
@@ -87,7 +88,7 @@ def getNumCores(nodeType):
 
 
 # This is a less-capable version of the same function in ASP
-def submitJob(jobName, queueName, maxHours, minutesInDevelQueue,
+def submitJob(jobName, queueName, maxHours, minutesInDevelQueue, #pylint: disable=R0913,R0914
               groupId, nodeType, commandPath, args, logPrefix, priority,
               pythonPath):
     '''Submits a job to the PBS system.'''
@@ -112,12 +113,10 @@ def submitJob(jobName, queueName, maxHours, minutesInDevelQueue,
 
     workDir = os.getcwd()
 
-    numAttempts = 1000
-
     # For debugging
     if minutesInDevelQueue > 0:
-      queueName = 'devel'
-      hourString = '00:' + str(minutesInDevelQueue).zfill(2) + ':00'
+        queueName = 'devel'
+        hourString = '00:' + str(minutesInDevelQueue).zfill(2) + ':00'
 
     # The "-m eb" option sends the user an email when the process begins and when it ends.
     # The -r n ensures the job does not restart if it runs out of memory.
@@ -127,14 +126,14 @@ def submitJob(jobName, queueName, maxHours, minutesInDevelQueue,
     #  logger.info("env is " + v + '=' + str(os.environ[v]))
 
     # We empty PYTHONSTARTUP and LD_LIBRARY_PATH so that python can function
-    # properly on the nodes. 
+    # properly on the nodes.
     priorityString = ''
     if priority:
         priorityString = ' -p ' + str(priority) + ' '
 
     # Generate the shell command
     shellCommand = ( "%s %s > %s 2> %s\n" % (commandPath, args,
-                                                 verboseOutputPath, verboseErrorsPath) )
+                                             verboseOutputPath, verboseErrorsPath) )
     with open(shellScriptPath, 'w') as f:
         f.write("#!/bin/bash\n")
         f.write(shellCommand)
@@ -142,12 +141,13 @@ def submitJob(jobName, queueName, maxHours, minutesInDevelQueue,
     os.system("chmod a+rx " + shellScriptPath)
 
     # Run it
-    pbsCommand = ('qsub -r y -q %s -N %s %s -l walltime=%s -W group_list=%s -j oe -e %s -o %s -S /bin/bash -V -C %s -l select=1:ncpus=%d:model=%s  -- /usr/bin/env OIB_WORK_DIR=%s PYTHONPATH=%s PYTHONSTARTUP="" LD_LIBRARY_PATH="" %s' % 
-               (queueName, jobName, priorityString, hourString, groupId, errorsPath, outputPath, workDir, numCpus, nodeType, workDir, pythonPath, shellScriptPath))
+    pbsCommand = ('qsub -r y -q %s -N %s %s -l walltime=%s -W group_list=%s -j oe -e %s -o %s -S /bin/bash -V -C %s -l select=1:ncpus=%d:model=%s  -- /usr/bin/env OIB_WORK_DIR=%s PYTHONPATH=%s PYTHONSTARTUP="" LD_LIBRARY_PATH="" %s' % #pylint: disable=C0301
+                  (queueName, jobName, priorityString, hourString, groupId,
+                   errorsPath, outputPath, workDir, numCpus, nodeType,
+                   workDir, pythonPath, shellScriptPath))
 
     print(pbsCommand)
-    raise Exception('DEBUG')
-    (out, err, status) = execute_command(cmd)
+    (out, err, status) = execute_command(pbsCommand)
 
     if status != 0:
         print(out)
@@ -162,34 +162,30 @@ def submitJob(jobName, queueName, maxHours, minutesInDevelQueue,
     return jobID
 
 
-    print(pbsCommand)
+def waitForJobCompletion(jobIDs, user):
+    '''Sleep until all of the submitted jobs containing the provided job prefix have completed'''
 
-def waitForJobCompletion(jobIDs):
-  '''Sleep until all of the submitted jobs containing the provided job prefix have completed'''
+    print("Began waiting on " + str(len(jobIDs)) + " job(s)")
 
-  print("Began waiting on " + str(len(jobIDs)) + " job(s)")
+    jobsRunning = []
+    stillWorking = True
+    while stillWorking:
 
-  jobsRunning = []
-  user = icebridge_common.getUser()
-  stillWorking = True
-  while stillWorking:
+        time.sleep(SLEEP_TIME)
+        stillWorking = False
 
-    time.sleep(SLEEP_TIME)
-    stillWorking = False
+        # Look through the list for jobs with the run's date in the name
+        allJobs = getActiveJobs(user)
 
-    # Look through the list for jobs with the run's date in the name        
-    allJobs = getActiveJobs(user)
+        numActiveJobs = 0
+        for (jobID, jobName, status) in allJobs:
+            if jobID in jobIDs:
+                numActiveJobs += 1
+                # Matching job found so we keep waiting
+                stillWorking = True
+                # Print a message if this is the first time we saw the job as running
+                if (status == 'R') and (jobID not in jobsRunning):
+                    jobsRunning.append(jobID)
+                    print('Started running job named ' + str(jobName) + ' with id ' + str(jobID))
 
-    numActiveJobs = 0
-    for (jobID, jobName, status) in allJobs:
-      if jobID in jobIDs:
-        numActiveJobs += 1
-        # Matching job found so we keep waiting
-        stillWorking = True
-        # Print a message if this is the first time we saw the job as running
-        if (status == 'R') and (jobID not in jobsRunning):
-          jobsRunning.append(jobID)
-          print('Started running job named ' + str(jobName) + ' with id ' + str(jobID))
-
-    print("Waiting on " + str(numActiveJobs) + " jobs")
-
+        print("Waiting on " + str(numActiveJobs) + " jobs")
