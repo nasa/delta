@@ -196,12 +196,17 @@ def main(argsIn): #pylint: disable=R0914,R0912
         #if counter == 1:
         #    continue
 
-        print('--> Search scenes for: ' + full_name)
-
         dataset_folder  = os.path.join(options.output_folder, full_name)
         scene_list_path = os.path.join(dataset_folder, 'scene_list.dat')
+        done_flag_path  = os.path.join(dataset_folder, 'done.flag')
         if not os.path.exists(dataset_folder):
             os.mkdir(dataset_folder)
+
+        if os.path.exists(done_flag_path) and not options.refetch_scenes:
+            print('Skipping completed dataset ' + full_name)
+            continue
+
+        print('--> Search scenes for: ' + full_name)
 
         if not os.path.exists(scene_list_path) or options.refetch_scenes:
             # Request the scene list from USGS
@@ -288,7 +293,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 print(meta)
 
             # Make sure we know which file option to download
-            types = api.download_options(dataset, CATALOG, scene['entityId'])
+            try:
+                types = api.download_options(dataset, CATALOG, scene['entityId'])
+            except json.decoder.JSONDecodeError:
+                print('Error decoding download options!')
+                continue
+
             if not types['data'] or not types['data'][0]:
                 raise Exception('Need to handle types: ' + str(types))
             ready = False
@@ -318,6 +328,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             #raise Exception('DEBUG')
 
         print('Finished processing dataset: ' + full_name)
+        os.system('touch ' + done_flag_path) # Mark this dataset as finished
         #raise Exception('DEBUG')
 
         #if not os.path.exists(output_path):
