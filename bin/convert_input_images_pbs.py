@@ -43,11 +43,11 @@ PFE_NODES = ['san', 'ivy', 'has', 'bro']
 def getParallelParams(nodeType):
     '''Return (numProcesses, tasksPerJob, maxHours) for running a certain task on a certain node type'''
 
-    if nodeType == 'san': return (16, 600, 2)
-    if nodeType == 'ivy': return (20, 700, 2)
-    if nodeType == 'has': return (24, 800, 2)
-    if nodeType == 'bro': return (28, 900, 2)
-    if nodeType == 'wes': return (12, 400, 2)
+    if nodeType == 'san': return ( 8, 200, 2)
+    if nodeType == 'ivy': return (10, 300, 2)
+    if nodeType == 'has': return (12, 400, 2)
+    if nodeType == 'bro': return (14, 500, 2)
+    if nodeType == 'wes': return ( 6, 200, 2)
 
     raise Exception('No params defined for node type ' + nodeType)
 
@@ -103,14 +103,12 @@ def submitBatchJobs(list_files, options, pass_along_args):
     numBatches = len(list_files)
     print( ("Num batches: %d, tasks per job: %d" % (numBatches, tasksPerJob) ) )
 
-    scriptPath = 'convert_input_image_folder.py'
+    this_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath
+    scriptPath  = os.path.join(this_folder, 'convert_input_image_folder.py')
 
-    # Get the path to the python3 executable currently in use
-    cmd = ['which', 'python3']
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                         universal_newlines=True)
-    out, err = p.communicate() #pylint: disable=W0612
-    python_path = out
+    # TODO: How to get this information?
+    setup_commands = ['source /home1/smcmich1/software_build_dir/miniconda3/bin/activate',
+                      'conda activate tf_112_cpu']
 
     index  = 0
     jobIDs = []
@@ -120,9 +118,9 @@ def submitBatchJobs(list_files, options, pass_along_args):
         log_prefix = os.path.join(options.output_folder, job_name)
 
         # Specify the range of lines in the file we want this node to execute
-        args = ('--input-file-list %s  --num-processes %d' % \
+        args = ('--input-file-list %s  --num-processes %d ' % \
                 (list_file, numProcesses))
-        args += pass_along_args
+        args += ' '.join(pass_along_args)
 
         print('Submitting summary regen job: ' + scriptPath + ' ' + args)
 
@@ -130,10 +128,10 @@ def submitBatchJobs(list_files, options, pass_along_args):
         jobID = pbs_functions.submitJob(job_name, BATCH_PBS_QUEUE, maxHours,
                                         options.minutesInDevelQueue,
                                         GROUP_ID,
-                                        options.node_type, python_path,
+                                        options.node_type, 'python3',
                                         scriptPath + ' ' + args, log_prefix,
                                         priority=None,
-                                        pythonPath=options.python_site_path)
+                                        setup_commands=setup_commands)
 
         jobIDs.append(jobID)
         index += 1
@@ -166,10 +164,6 @@ def main(argsIn):
         parser.add_argument("--node-type",  dest="node_type", default='san',
                             help="Node type to use (wes[mfe], san, ivy, has, bro)")
 
-        parser.add_argument("--python-site-path", dest="python_site_path",
-                            default='/home/smcmich1/anaconda3/envs/tf_112_cpu/lib/python3.6/site-packages/', #pylint: disable=C0301
-                            help="Path to python site-packages folder")
-
         # Debug option
         parser.add_argument('--minutes-in-devel-queue', dest='minutesInDevelQueue', type=int,
                             default=0,
@@ -180,19 +174,20 @@ def main(argsIn):
     except argparse.ArgumentError as msg:
         parser.error(msg)
 
-    if not utilities.checkIfToolExists('convert_input_image_folder.py'):
-        print("ERROR: Cannot run on PBS if the desired tool is not on $PATH")
-        return -1
+#    if not utilities.checkIfToolExists('convert_input_image_folder.py'):
+#        print("ERROR: Cannot run on PBS if the desired tool is not on $PATH")
+#        return -1
     user_name = getpass.getuser()
+
+    # Make sure our paths will work when called from PBS
+    options.input_folder  = os.path.abspath(options.input_folder)
+    options.output_folder = os.path.abspath(options.output_folder)
 
     # Get together all the CLI args that needs to be passed to each node
     pass_along_args = unknown
-    pass_along_args += ['--image_type', options.image_type, '--output-folder', options.output_folder]
-
-    # Make sure our paths will work when called from PBS
-    options.input_folder = os.path.abspath(options.input_folder)
-    options.output_folder = os.path.abspath(options.output_folder)
-
+    pass_along_args += ['--input-folder', options.input_folder,
+                        '--image-type', options.image_type,
+                        '--output-folder', options.output_folder]
 
     input_file_list = convert_input_image_folder.get_input_files(options)
     print('Found ', len(input_file_list), ' input files to convert')

@@ -4,12 +4,30 @@ import os
 import time
 import subprocess
 import re
+import shlex
 
 # Constants
 MAX_PBS_NAME_LENGTH = 15
 
 # Wait this many seconds between checking for job completion
 SLEEP_TIME = 60
+
+# The following functions are useful for going between string and list
+#  representations of command line arguments
+def isNotString(a):
+    """Returns true if the object is not a string"""
+
+    # Python 2/3 compatibilty
+    try:
+        basestring
+    except NameError:
+        basestring = str
+
+    return (not isinstance(a, basestring))
+
+def stringToArgList(string):
+    """Converts a single argument string into a list of arguments"""
+    return shlex.split(string)
 
 def cleanJobID(jobID):
     '''Remove the part after the dot, when the input looks like 149691.pbspl233b.'''
@@ -22,6 +40,10 @@ def cleanJobID(jobID):
 
 def execute_command(cmd):
     """Simple replacement for the ASP command run function"""
+
+    if not isNotString(cmd):
+        cmd = stringToArgList(cmd)
+
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=True)
     out, err = p.communicate()
@@ -89,8 +111,7 @@ def getNumCores(nodeType):
 
 # This is a less-capable version of the same function in ASP
 def submitJob(jobName, queueName, maxHours, minutesInDevelQueue, #pylint: disable=R0913,R0914
-              groupId, nodeType, commandPath, args, logPrefix, priority,
-              pythonPath):
+              groupId, nodeType, commandPath, args, logPrefix, priority, setup_commands=[]):
     '''Submits a job to the PBS system.'''
 
     if len(queueName) > MAX_PBS_NAME_LENGTH:
@@ -136,17 +157,24 @@ def submitJob(jobName, queueName, maxHours, minutesInDevelQueue, #pylint: disabl
                                              verboseOutputPath, verboseErrorsPath) )
     with open(shellScriptPath, 'w') as f:
         f.write("#!/bin/bash\n")
+        for c in setup_commands:
+            f.write(c + "\n")
         f.write(shellCommand)
     # Make it executable
     os.system("chmod a+rx " + shellScriptPath)
 
     # Run it
-    pbsCommand = ('qsub -r y -q %s -N %s %s -l walltime=%s -W group_list=%s -j oe -e %s -o %s -S /bin/bash -V -C %s -l select=1:ncpus=%d:model=%s  -- /usr/bin/env OIB_WORK_DIR=%s PYTHONPATH=%s PYTHONSTARTUP="" LD_LIBRARY_PATH="" %s' % #pylint: disable=C0301
+#    pbsCommand = ('qsub -r y -q %s -N %s %s -l walltime=%s -W group_list=%s -j oe -e %s -o %s -S /bin/bash -V -C %s -l select=1:ncpus=%d:model=%s  -- /usr/bin/env PYTHONPATH=%s PYTHONSTARTUP="" LD_LIBRARY_PATH="" %s' % #pylint: disable=C0301
+#                  (queueName, jobName, priorityString, hourString, groupId,
+#                   errorsPath, outputPath, workDir, numCpus, nodeType,
+#                    pythonPath, shellScriptPath))
+    pbsCommand = ('qsub -r y -q %s -N %s %s -l walltime=%s -W group_list=%s -j oe -e %s -o %s -S /bin/bash -V -C %s -l select=1:ncpus=%d:model=%s  -- /usr/bin/env  %s' % #pylint: disable=C0301
                   (queueName, jobName, priorityString, hourString, groupId,
-                   errorsPath, outputPath, workDir, numCpus, nodeType,
-                   workDir, pythonPath, shellScriptPath))
+                   errorsPath, outputPath, workDir, numCpus, nodeType, shellScriptPath))
+
 
     print(pbsCommand)
+#    raise Exception('DEBUG')
     (out, err, status) = execute_command(pbsCommand)
 
     if status != 0:

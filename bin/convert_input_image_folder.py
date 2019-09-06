@@ -29,7 +29,13 @@ def get_input_files(options):
         print('ERROR: must provide either --input-folder or --input-file-list')
         return []
 
-    if options.input_folder:
+    if options.input_file_list:
+        input_files = []
+        with open(options.input_file_list, 'r') as f:
+            for line in f:
+                input_files.append(line.strip())
+
+    else: # Use the input folder
         # Figure out the input extension to use
         DEFAULT_EXTENSIONS = {'worldview':'.zip', 'landsat':'.gz', 'tif':'.tif', 'rgba':'.tif'}
         if options.input_extension:
@@ -45,11 +51,6 @@ def get_input_files(options):
         # Find all of the input files to process with full paths
         input_files = utilities.get_files_with_extension(options.input_folder, input_extension)
 
-    else: # input_file_list
-        input_files = []
-        with open(options.input_file_list, 'r') as f:
-            for line in f:
-                input_files.append(line.strip())
     return input_files
 
 
@@ -73,8 +74,9 @@ def main(argsIn):
         usage  = "usage: convert_input_image_folder.py [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
-        parser.add_argument("--input-folder", dest="input_folder", default=None,
-                            help="Path to the folder containing compressed images.")
+        parser.add_argument("--input-folder", dest="input_folder", required=True,
+                            help="Path to the folder containing compressed images, output files will."
+                                 + " be written in the relative arrangement to this folder.")
 
         parser.add_argument("--input-file-list", dest="input_file_list", default=None,
                             help="Path to file listing all of the compressed image paths.")
@@ -101,7 +103,7 @@ def main(argsIn):
         parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
                             help="Number of parallel processes to use.")
 
-        parser.add_argument("--limit", dest="limit", type=int, default=1,
+        parser.add_argument("--limit", dest="limit", type=int, default=None,
                             help="Only try to convert this many files before stopping.")
 
         options = parser.parse_args(argsIn)
@@ -160,6 +162,7 @@ def main(argsIn):
                                                                      output_path, work_folder)))
         else:
             result = try_catch_and_call(convert_file_function, f, output_path, work_folder)
+            #result = convert_file_function(f, output_path, work_folder)
             if result == 0:
                 num_succeeded += 1
         #break # DEBUG
