@@ -24,7 +24,6 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment  #pylint: disable=C0413
 
 
@@ -73,8 +72,6 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
     print('Num images loaded: train=', amount_train, ' test=', amount_test)
     train_images = np.reshape(train_images, (amount_train, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
     test_images  = np.reshape(test_images,  (amount_test,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
-
-    #class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle Boot']
 
     # Return the selected dataset
     # - Since it is the autoencoder test, the labels are the same as the input images
@@ -170,4 +167,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-
