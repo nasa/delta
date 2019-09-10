@@ -4,10 +4,12 @@ import os
 from delta.imagery import disk_folder_cache
 
 
-def parse_config_file(config_path, data_directory=None, image_type=None):
+def parse_config_file(config_path, data_directory=None, image_type=None,
+                      no_required=False):
     """Reads a config file on disk and substitutes in default values.
        Alternately, data_directory and image_type can be specified and the rest of
        the config data will be set to defaults.
+       If no_required is set, no items will be treated as mandatory.
 
        Returns a dictionary containing all possible config values filled with either
        the values in the file or the default values.  The exception are the
@@ -62,10 +64,10 @@ def parse_config_file(config_path, data_directory=None, image_type=None):
         # Convert to a dictionary
         config_data = {s:dict(config_reader.items(s)) for s in config_reader.sections()}
 
-    # Check for required entries
-    for entry in REQUIRED_ENTRIES:
-        if entry not in config_data['input_dataset']:
-            raise Exception('Missing required value "input_dataset:%s"' % (entry))
+    if not no_required:  # Check for required entries
+        for entry in REQUIRED_ENTRIES:
+            if entry not in config_data['input_dataset']:
+                raise Exception('Missing required value "input_dataset:%s"' % (entry))
 
     # Make sure all sections are there
     for section, items in DEFAULT_CONFIG_VALUES.items():

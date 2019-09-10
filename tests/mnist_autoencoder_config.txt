@@ -1,0 +1,50 @@
+# A sample config file for sc_process_test.py.
+
+
+# Parameters describing input data.
+[input_dataset]
+
+# The folder where the input files are located (required)
+data_directory=None
+
+# In train_autoencoder.py, this is only used for logging names
+image_type=None
+
+# Extension of the images in the input folder, usually .tfrecord
+extension=None
+
+# A folder containing label files for the input images.  The folder
+# must be a mirror of the input image folder with the input images
+# replaced with label images with the same name but with the ".tfrecordlabel" extension.
+label_directory=None
+
+# The number of parallel threads to use for loading input data.
+# The actual number is twice this, half for input and half for labels.
+num_input_threads=1
+
+# Machine learning parameters.
+[ml]
+
+# The height/width of the sub-images (chunks) that the input images are split in to.
+chunk_size=28
+
+# The overlap amount in pixels of adjacent image chunks.
+chunk_overlap=10
+
+# The number of times each input image is fed through the training network.
+num_epochs=40
+
+# The number of input images used in each training iteration
+batch_size=100
+
+# The number of hidden layers in an autoencoder
+num_hidden=32
+
+# The name to store the final model in.
+model_dest_name=mnist_autoencoder_model.keras.tf
+
+# The folder to store extraneous ouput
+output_folder=/home/smcmich1/data/delta/mnist_auto_out
+
+# If specified, this folder is used to store model checkpoints.
+model_folder=/home/smcmich1/data/delta/mnist_auto_model

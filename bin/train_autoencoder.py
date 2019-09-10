@@ -75,15 +75,15 @@ def main(argsIn):
 
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
-    parser.add_argument("--config-file", dest="config_file", required=False,
+    parser.add_argument("--config-file", dest="config_file", default=None,
                         help="Dataset configuration file.")
-    parser.add_argument("--data-folder", dest="data_folder", required=False,
+    parser.add_argument("--data-folder", dest="data_folder", default=None,
                         help="Specify data folder instead of supplying config file.")
-    parser.add_argument("--image-type", dest="image_type", required=False,
+    parser.add_argument("--image-type", dest="image_type", default=None,
                         help="Specify image type along with the data folder."
                         +"(landsat, landsat-simple, worldview, or rgba)")
 
-    parser.add_argument("--num-gpus", dest="num_gpus", required=False, default=0, type=int,
+    parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
 
     try:
@@ -102,6 +102,8 @@ def main(argsIn):
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
+
+    #with tf.contrib.tfprof.ProfileContext('/home/smcmich1/data/delta/train_dir') as pctx:
 
     print('loading data from ' + config_values['input_dataset']['data_directory'])
     aeds = imagery_dataset.AutoencoderDataset(config_values)
@@ -136,8 +138,9 @@ def main(argsIn):
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values, batch_size, num_epochs)
-    experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000, log_model=False,
-                               num_gpus=options.num_gpus)
+    test_fn = None
+    experiment.train_estimator(model, dataset_fn, test_fn, steps_per_epoch=1000,
+                                log_model=False, num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -145,6 +148,7 @@ def main(argsIn):
         tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
+    
     return 0
 
 
