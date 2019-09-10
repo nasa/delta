@@ -26,6 +26,7 @@ def parse_config_file(config_path, data_directory=None, image_type=None,
                                               'image_type':'tfrecord',
                                               'label_directory':None,
                                               'num_input_threads':1,
+                                              'shuffle_buffer_size':2000,
                                               'num_regions':None # Default is in the image type classes
                                              },
                              'cache':{'cache_dir':disk_folder_cache.DEFAULT_CACHE_DIR,

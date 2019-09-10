@@ -22,6 +22,8 @@ label_directory=None
 # The actual number is twice this, half for input and half for labels.
 num_input_threads=1
 
+shuffle_buffer_size=4000
+
 # Machine learning parameters.
 [ml]
 

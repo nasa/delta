@@ -100,9 +100,6 @@ def main(argsIn):
     parser.add_argument("--use-fraction", dest="use_fraction", default=1.0, type=float,
                         help="Only use this fraction of the MNIST data, to reduce processing time.")
 
-    parser.add_argument("--shuffle-buffer-size", dest="shuffle_buffer_size", default=2000, type=int,
-                        help="Size of the input shuffle buffer.")
-
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
 
@@ -125,11 +122,11 @@ def main(argsIn):
 
 
     # Get the MNIST train and test datasets to pass to the estimator
-    dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size,
-                                         num_epochs, options.shuffle_buffer_size,
+    dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs, 
+                                         config_values['input_dataset']['shuffle_buffer_size'],
                                          options.use_fraction, get_test=False)
-    dataset_test_fn  = functools.partial(assemble_mnist_dataset, batch_size,
-                                         num_epochs, options.shuffle_buffer_size,
+    dataset_test_fn  = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
+                                         config_values['input_dataset']['shuffle_buffer_size'],
                                          options.use_fraction, get_test=True)
 
 

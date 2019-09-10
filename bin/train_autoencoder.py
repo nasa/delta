@@ -54,7 +54,7 @@ def make_model(in_shape, encoding_size=32):
 def assemble_dataset(config_values, batch_size, num_epochs):
 
     # TODO: Parameter!
-#    buffer_size = 
+#    buffer_size =
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
@@ -140,7 +140,7 @@ def main(argsIn):
     dataset_fn = functools.partial(assemble_dataset, config_values, batch_size, num_epochs)
     test_fn = None
     experiment.train_estimator(model, dataset_fn, test_fn, steps_per_epoch=1000,
-                                log_model=False, num_gpus=options.num_gpus)
+                               log_model=False, num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -148,10 +148,9 @@ def main(argsIn):
         tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
-    
+
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-
