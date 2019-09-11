@@ -32,61 +32,109 @@ IMAGE_CLASSES = {
 
 class ImageryDataset:
     '''
-    Interface for loading files for the DELTA project.  We are assuming that 
-    the input is going to be rectangular image data with some number of 
+    Interface for loading files for the DELTA project.  We are assuming that
+    the input is going to be rectangular image data with some number of
     channels > 0.
     '''
-    def __init__(self, config_values):
+    def __init__(self, config_values, no_dataset=False):
         '''
         '''
         # Record some of the config values
         self._chunk_size    = config_values['ml']['chunk_size']
         self._chunk_overlap = config_values['ml']['chunk_overlap']
         self._ds = None
-        self._num_bands = None
+        self._num_bands  = None
         self._num_images = None
+
+        # Create an instance of the image class type
+        try:
+            image_type = config_values['input_dataset']['image_type']
+            self._image_class = IMAGE_CLASSES[image_type]
+        except IndexError:
+            raise Exception('Did not recognize input_dataset:image_type: ' + image_type)
 
         # Use the image_class object to get the default image extensions
         if config_values['input_dataset']['extension']:
             input_extensions = [config_values['input_dataset']['extension']]
         else:
-            input_extensions = ['.tfrecord']
-            print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
+            input_extensions = self._image_class.DEFAULT_EXTENSIONS
+            print('"input_dataset:extension" value not found in config file, using default value of '
+                  + str(self._image_class.DEFAULT_EXTENSIONS))
 
-        # TODO: Store somewhere else!
-        list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
-        label_list_path = os.path.join(config_values['cache']['cache_dir'], 'label_list.csv')
-        if not os.path.exists(config_values['cache']['cache_dir']):
-            os.mkdir(config_values['cache']['cache_dir'])
+        if config_values['input_dataset']['num_regions']:
+            self._regions_per_image = config_values['input_dataset']['num_regions']
+        else:
+            self._regions_per_image = self._image_class.DEFAULT_NUM_REGIONS
+            print('"input_dataset:num_regions" value not found in config file, using default value of '
+                  + str(self._image_class.DEFAULT_NUM_REGIONS))
 
-        # Generate a text file list of all the input images, plus region indices.
+
+        list_path    = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
         data_folder  = config_values['input_dataset']['data_directory']
         label_folder = config_values['input_dataset']['label_directory']
-        self._num_images = self._make_image_list(data_folder, label_folder,
-                                                 list_path, label_list_path, 
-                                                 input_extensions)
 
-        # Load the first image to get tile dimensions for the input files.
-        # - All of the input tiles must have the same dimensions!
+        self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
+                                                          config_values['cache']['cache_limit'])
+
+        # Generate a text file list of all the input images, plus region indices.
+        self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                    list_path, input_extensions,
+                                                                    just_one=no_dataset)
+
+
+        # Load the first image just to figure out the number of bands
+        # - This is the only way to be sure of the number in all cases.
         with open(list_path, 'r') as f:
-            line  = f.readline().strip()
-            if line == '':
-                # Quit early, no data.
-                return
-            ### end if
-            self._num_bands, self._input_region_height, self._input_region_width = tfrecord_utils.get_record_info(line)
+            line  = f.readline()
+            parts = line.split(',')
+            image = self.image_class()(parts[0], self._cache_manager, self._regions_per_image)
+
+            self._num_bands = image.get_num_bands()
+
+            # Automatically adjust the number of image regions if memory is too low
+            bytes_needed = image.estimate_memory_usage(self._chunk_size, self._chunk_overlap,
+                                                       num_bands = self._num_bands)
+            bytes_free   = psutil.virtual_memory().free
+            if bytes_needed > bytes_free:
+                MEM_EXPAND_FACTOR = 2.0
+                ratio = bytes_needed / bytes_free
+                new_num_regions = math.floor(ratio * self._regions_per_image * MEM_EXPAND_FACTOR)
+                if not no_dataset: # Don't double print this
+                    print('Estimated input image region memory usage is ', bytes_needed/utilities.BYTES_PER_GB,
+                          ' GB, but only ', bytes_free/utilities.BYTES_PER_GB, ' GB is available. ',
+                          'Adjusting number of regions per image from ', self._regions_per_image, ' to ',
+                          new_num_regions, ' in order to stay within memory limits.')
+                self._regions_per_image = new_num_regions
+
+                # Regenerate the list file with the new number of regions
+                self._num_regions, self._num_images = self._make_image_list(data_folder, label_folder,
+                                                                            list_path, input_extensions,
+                                                                            just_one=no_dataset)
+        assert self._num_regions > 0
+
+        if no_dataset: # Quit early
+            return
+
+        # This dataset returns the lines from the text file as entries.
+        ds = tf.data.TextLineDataset(list_path)
+
+        # This function generates real or fake label info for loaded data.
+        label_gen_function = functools.partial(self._load_labels)
+
+        # TODO: Handle data types more carefully!
+        def generate_chunks(lines):
+            y = tf.py_func(self._load_data, [lines], [tf.float64])
+            y[0].set_shape((0, self._num_bands, self._chunk_size, self._chunk_size))
+            return y
+
+        def generate_labels(lines):
+            y = tf.py_func(label_gen_function, [lines], [tf.int32])
+            y[0].set_shape((0, 1))
+            return y
 
         # Tell TF to use the functions above to load our data.
-        num_parallel_calls = config_values['input_dataset']['num_input_threads']
-
-        # Go from the file path list to the TFRecord reader
-        ds_input = tf.data.TextLineDataset(list_path)
-        ds_input = tf.data.TFRecordDataset(ds_input)
-        chunk_set = ds_input.map(self._load_data, num_parallel_calls=num_parallel_calls)
-
-        ds_label = tf.data.TextLineDataset(label_list_path)
-        ds_label = tf.data.TFRecordDataset(ds_label)
-        label_set = ds_label.map(self._load_labels, num_parallel_calls=num_parallel_calls)
+        chunk_set = ds.map(generate_chunks, num_parallel_calls=1)
+        label_set = ds.map(generate_labels, num_parallel_calls=1)
 
         # Break up the chunk sets to individual chunks
         # TODO: Does this improve things?
@@ -95,44 +143,36 @@ class ImageryDataset:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
-        self._ds = self._dataset_filter(ds)
 
-        pass
+        # Filter out all chunks with zero (nodata) values
+        self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
     ### end __init__
 
-    def _make_image_list(self, data_folder, label_folder, list_path, label_list_path, input_extensions):
-        return 0
-
-    def _dataset_filter(self,ds):
-        return ds
+    def image_class(self):
+        """Return the image handling class for the data type"""
+        return self._image_class
 
     def dataset(self):
         """Return the underlying TensorFlow dataset object that this class creates"""
         if self._ds is None:
             raise RuntimeError('The TensorFlow dataset is None. Has the dataset been constructed?')
-        ### end if
         return self._ds
-    ### end dataset
 
     def num_bands(self):
         """Return the number of bands in each image of the data set"""
         if self._num_bands is None:
             raise RuntimeError('The number of frequency bands is None. Data has not been loaded?')
-        ### end if
         return self._num_bands
-    ### end num_bands 
 
     def chunk_size(self):
         return self._chunk_size
-    ### end chunk_size 
 
     def num_images(self):
         """Return the number of images in the data set"""
         if self._num_images is None:
             raise RuntimeError('The number of images None. Has the data been specified?')
-        ### end if
         return self._num_images
-    ### end num_images 
 
     def total_num_regions(self):
         """Return the number of image/region pairs in the data set"""
@@ -429,6 +469,21 @@ class ImageryDatasetTFRecord:
 #         result = chunk_tf_image(self._chunk_size, self._num_bands, image, is_label=False)
         return result
 
+    # TODO: Try concatenating the label on to the image, then splitting post-chunk operation!
+    # https://stackoverflow.com/questions/54105110/generate-image-patches-with-tf-extract-image-patches-for-a-pair-of-images-effici
+
+    def _load_fake_labels(self, example_proto):
+        """Load the next TFRecord image segment and split it into chunks"""
+
+        # Load the input image data normally just to get the size
+        chunk_data = self._load_data(example_proto)
+
+        # Make one fake label for each input chunk.
+        num_chunks = tf.to_int32(chunk_data.shape[0])
+        labels = tf.random_uniform(dtype=tf.int32, minval=0, maxval=10, shape=[num_chunks])
+        #tf.print('Loaded label!', output_stream=sys.stderr)
+        return labels
+
     def _load_labels(self, example_proto):
 
         # Load from the label image in the same way as the input image so we get the locations correct
@@ -447,7 +502,7 @@ class ImageryDatasetTFRecord:
         return labels
 
 
-    def _get_label_for_input_image(self, input_path, top_folder, label_folder):
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder): #pylint: disable=R0201
         """Returns the path to the expected label for for the given input image file"""
 
         LABEL_EXT = '.tfrecordlabel'

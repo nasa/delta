@@ -4,6 +4,7 @@ Script test out the image chunk generation calls.
 import sys
 import os
 import argparse
+import functools
 #import random
 import numpy as np
 
@@ -47,6 +48,24 @@ def make_model(in_shape, encoding_size=32):
 ### end make_model
 
 
+
+# With TF 1.12, the dataset needs to be constructed inside a function passed in to
+# the estimator "train_and_evaluate" function to avoid getting a graph error!
+def assemble_dataset(config_values):
+
+    # TODO: Parameter!
+#    buffer_size = 
+
+    # Use wrapper class to create a Tensorflow Dataset object.
+    # - The dataset will provide image chunks and corresponding labels.
+    ids = imagery_dataset.AutoencoderDataset(config_values)
+    ds = ids.dataset()
+    ds = ds.repeat(config_values['ml']['num_epochs']).batch(config_values['ml']['batch_size'])
+    ds = ds.prefetch(None)
+
+    return ds
+
+
 def main(argsIn):
 
     usage  = "usage: train_autoencoder [options]"
@@ -62,6 +81,9 @@ def main(argsIn):
                         help="Specify image type along with the data folder."
                         +"(landsat, landsat-simple, worldview, or rgba)")
 
+    parser.add_argument("--num-gpus", dest="num_gpus", required=False, default=0, type=int,
+                        help="Try to use this many GPUs.")
+
     try:
         options = parser.parse_args(argsIn)
     except argparse.ArgumentError:
@@ -72,7 +94,7 @@ def main(argsIn):
                                              options.data_folder, options.image_type)
 
     batch_size = config_values['ml']['batch_size']
-    #num_epochs = config_values['ml']['num_epochs']
+    num_epochs = config_values['ml']['num_epochs']
 
 
     output_folder = config_values['ml']['output_folder']
@@ -107,7 +129,13 @@ def main(argsIn):
     print('Training')
 
 #     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
-    experiment.train(model, ds, steps_per_epoch=1000,log_model=False)
+    #experiment.train(model, ds, steps_per_epoch=1000,log_model=False)
+
+    # Estimator interface requires the dataset to be constructed within a function.
+    tf.logging.set_verbosity(tf.logging.INFO)
+    dataset_fn = functools.partial(assemble_dataset, config_values)
+    experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000, log_model=False,
+                               num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -120,3 +148,4 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
+

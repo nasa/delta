@@ -1,5 +1,6 @@
 import mlflow
 import mlflow.tensorflow
+import tensorflow as tf
 import os.path
 import tensorflow as tf
 
@@ -55,6 +56,62 @@ class Experiment(object):
         ### end log_model
 
         return history
+    ### end train
+
+    def train_estimator(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024, validation_data=None, log_model=False,
+                        num_gpus=1):
+        """Alternate call that uses the TF Estimator interface to run on multiple GPUs"""
+        assert(model is not None)
+        assert(train_dataset_fn is not None)
+
+        mlflow.log_param('num_epochs', num_epochs)
+        mlflow.log_param('model summary', model.summary())
+
+        #model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
+        model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+
+        assert(model is not None)
+        from tensorflow.python.client import device_lib
+        devs = [d.name for d in device_lib.list_local_devices() if d.device_type == 'GPU']
+
+        # Set up multi-GPU strategy
+        tf_config = tf.estimator.RunConfig(
+            experimental_distribute=tf.contrib.distribute.DistributeConfig(
+                    train_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
+#                        devices=devs,
+                         num_gpus_per_worker=num_gpus,
+                        ),
+                    eval_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
+#                        devices=devs,
+                         num_gpus_per_worker=num_gpus,
+                        )))
+        #tf_config = tf.estimator.RunConfig() # DEBUG: Force single GPU
+
+        # Convert from Keras to Estimator
+        keras_estimator = tf.keras.estimator.model_to_estimator(
+            keras_model=model, config=tf_config)#, model_dir=config_values['ml']['model_folder'])
+
+
+        # TODO: Use separate validate dataset!
+        result = tf.estimator.train_and_evaluate(
+            keras_estimator,
+            train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
+            eval_spec=tf.estimator.EvalSpec(input_fn=train_dataset_fn))
+
+        return None # In v1.12 the result is undefined for distributed training!
+        # TODO: Record the output from the Estimator!
+
+        #for i in range(num_epochs):
+        #    mlflow.log_metric('loss', history.history['loss'][i])
+        #    mlflow.log_metric('acc',  history.history['acc' ][i])
+        #### end for
+        #if log_model:
+        #    model.save('model.h5')
+        #    mlflow.log_artifact('model.h5')
+        ### end log_model
+        #return history
     ### end train
 
     def test(self, model, test_data, test_labels):
