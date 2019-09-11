@@ -61,7 +61,9 @@ def main(args):
     parser.add_argument("--data-folder", dest="data_folder", required=False,
                         help="Specify data folder instead of supplying config file.")
     parser.add_argument("--image-type", dest="image_type", required=False,
-                        help="Specify image type along with the data folder. (landsat, landsat-simple, worldview, or rgba)")
+                        help=("Specify image type along with the data folder. "
+                              "(landsat, landsat-simple, worldview, or rgba)")
+                        )
     parser.add_argument("--label-folder", dest="label_folder", required=False,
                         help="Specify label folder instead of supplying config file.")
 

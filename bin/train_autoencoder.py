@@ -54,7 +54,7 @@ def make_model(in_shape, encoding_size=32):
 def assemble_dataset(config_values):
 
     # TODO: Parameter!
-#    buffer_size = 
+#    buffer_size =
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
@@ -94,7 +94,7 @@ def main(argsIn):
                                              options.data_folder, options.image_type)
 
     batch_size = config_values['ml']['batch_size']
-    num_epochs = config_values['ml']['num_epochs']
+#     num_epochs = config_values['ml']['num_epochs']
 
 
     output_folder = config_values['ml']['output_folder']
@@ -148,4 +148,3 @@ def main(argsIn):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
-

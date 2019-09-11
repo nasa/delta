@@ -17,6 +17,7 @@
 #  limitations under the License.
 # __END_LICENSE__
 
+#pylint: disable=R0915,R0914,R0912
 """
 Script to fetch all of the flood images from the USGS HDDS website.
 """
@@ -231,9 +232,9 @@ def main(argsIn): #pylint: disable=R0914,R0912
             REQUIRED_PARTS = ['displayId', 'summary']
             for p in REQUIRED_PARTS:
                 if (p not in scene) or (not scene[p]):
-                     print('scene object is missing element: ' + p)
-                     print(scene)
-                     fail = True
+                    print('scene object is missing element: ' + p)
+                    print(scene)
+                    fail = True
             if fail:
                 continue
 

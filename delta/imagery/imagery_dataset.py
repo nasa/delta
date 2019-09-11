@@ -143,9 +143,11 @@ class ImageryDataset:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
+        ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+        ds = ds.prefetch(None)
 
         # Filter out all chunks with zero (nodata) values
-        self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+        self._ds = ds
 
     ### end __init__
 
@@ -347,65 +349,7 @@ class ImageryDatasetTFRecord:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
-# <<<<<<< HEAD
-#         # HACK: this is a bad solution.
-#         self._steps_per_epoch = len(list(ds))
-# 
-#         # Filter out all chunks with zero (nodata) values
-#         self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
-# 
-#     def __del__(self):
-#         if self.__temp_path is not None:
-#             os.remove(self.__temp_path)
-# 
-#     def image_class(self):
-#         return IMAGE_CLASSES[self._image_type]
-# 
-#     def __load_data(self, text_line):
-#         text_line = text_line.numpy().decode() # Convert from TF to string type
-#         parts  = text_line.split(',')
-#         path   = parts[0].strip()
-#         roi = utilities.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
-#                                   int(parts[3].strip()), int(parts[4].strip()))
-# 
-#         image = self.image_class()(path)
-#         return image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap)
-# 
-#     def __make_image_list(self, top_folder, output_path, ext):
-#         '''Write a file listing all of the files in a (recursive) folder
-#            matching the provided extension.
-#         '''
-# 
-#         num_entries = 0
-#         num_images = 0
-#         with open(output_path, 'w') as f:
-#             for root, dummy_directories, filenames in os.walk(top_folder):
-#                 for filename in filenames:
-#                     if os.path.splitext(filename)[1] == ext:
-#                         path = os.path.join(root, filename)
-#                         rois = self.image_class()(path).tiles()
-#                         for r in rois:
-#                             f.write('%s,%d,%d,%d,%d\n' % (path, r.min_x, r.min_y, r.max_x, r.max_y))
-#                             num_entries += 1
-#                     num_images += 1
-#         return num_entries, num_images
-# 
-#     def dataset(self):
-#         return self._ds
-# 
-#     def data_shape(self):
-#         return (self._chunk_size, self._chunk_size)
-# 
-#     def steps_per_epoch(self):
-#         return self._steps_per_epoch
-#     def num_images(self):
-#         return
-#     def total_num_regions(self):
-#         return self._num_regions
-# =======
 
-        # Filter out all chunks with zero (nodata) values
-        #self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
         self._ds = ds
 
     def dataset(self):
@@ -563,9 +507,8 @@ class ImageryDatasetTFRecord:
 class AutoencoderDataset(ImageryDatasetTFRecord):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
+#    constructor provided by supercass
 #    def __init__(self, config_values, no_dataset=False):
-#        # Want to make sure that the input is the same as the output.
-#        super(AutoencoderDataset, self).__init__(config_values,no_dataset=no_dataset)
 
     def _get_label_for_input_image(self, input_path, top_folder, label_folder):
         # For the autoencoder, the label is the same as the input data!
