@@ -5,7 +5,7 @@
 [input_dataset]
 
 # The folder where the input files are located (required)
-data_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records
+data_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records_compressed
 
 # Extension of the images in the input folder, usually .tfrecord
 extension=.tfrecord
@@ -13,7 +13,7 @@ extension=.tfrecord
 # A folder containing label files for the input images.  The folder
 # must be a mirror of the input image folder with the input images
 # replaced with label images with the same name but with the ".tfrecordlabel" extension.
-label_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records
+label_directory=/usr/local/home/pfurlong/projects/delta/delta/data/in/usgs_wv_label/input_records_compressed
 # The number of parallel threads to use for loading input data.
 # The actual number is twice this, half for input and half for labels.
 num_input_threads=1
