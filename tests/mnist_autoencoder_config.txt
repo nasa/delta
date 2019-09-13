@@ -28,13 +28,13 @@ shuffle_buffer_size=4000
 [ml]
 
 # The height/width of the sub-images (chunks) that the input images are split in to.
-chunk_size=28
+chunk_size=None
 
 # The overlap amount in pixels of adjacent image chunks.
-chunk_overlap=10
+chunk_overlap=None
 
 # The number of times each input image is fed through the training network.
-num_epochs=40
+num_epochs=80
 
 # The number of input images used in each training iteration
 batch_size=100

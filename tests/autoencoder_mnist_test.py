@@ -6,6 +6,7 @@ import os
 import argparse
 import functools
 #import random
+import matplotlib.pyplot
 import numpy as np
 
 ### Tensorflow includes
@@ -89,6 +90,22 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
 
     return ds
 
+def assemble_mnist_dataset2(batch_size, test_count):
+
+    fashion_mnist = keras.datasets.fashion_mnist
+    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+    test_images  = test_images[:test_count]   / MNIST_MAX
+    test_labels  = test_labels[:test_count]
+    test_images  = np.reshape(test_images,  (test_count,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+
+    ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
+                              tf.data.Dataset.from_tensor_slices(test_images)))
+
+    ds = ds.batch(batch_size)
+
+    return ds
+
+
 def main(argsIn):
 
     usage  = "usage: train_autoencoder [options]"
@@ -101,6 +118,10 @@ def main(argsIn):
 
     parser.add_argument("--use-fraction", dest="use_fraction", default=1.0, type=float,
                         help="Only use this fraction of the MNIST data, to reduce processing time.")
+
+    parser.add_argument("--num-debug-images", dest="num_debug_images", default=0, type=int,
+                        help="Run this many images through the AE after training and write the "
+                        "input/output pairs to disk.")
 
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
@@ -131,7 +152,6 @@ def main(argsIn):
                                          config_values['input_dataset']['shuffle_buffer_size'],
                                          options.use_fraction, get_test=True)
 
-
     # If the mlfow directory doesn't exist, create it.
     mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
@@ -150,7 +170,7 @@ def main(argsIn):
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
+    estimator = experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
                                steps_per_epoch=1000, log_model=False,
                                num_gpus=options.num_gpus)
 
@@ -160,6 +180,20 @@ def main(argsIn):
         tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
+
+    # Write input/output image pairs to the current working folder.
+    print('Recording ', str(options.num_debug_images), ' demo images.')
+
+    output_ds1 = functools.partial(assemble_mnist_dataset2, batch_size, options.num_debug_images)
+    (train_images, train_labels), (test_images, test_labels) = keras.datasets.fashion_mnist.load_data()
+    result = estimator.predict(output_ds1)
+
+    for i in range(0, options.num_debug_images):
+        matplotlib.pyplot.imsave('input'+str(i)+'.png', test_images[i])
+
+        element = next(result)
+        pic = (element['reshape'][0,:,:] * MNIST_MAX).astype(np.uint8)
+        matplotlib.pyplot.imsave('output'+str(i)+'.png', pic)
 
     return 0
 
