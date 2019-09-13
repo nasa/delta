@@ -330,13 +330,16 @@ class ImageryDatasetTFRecord:
         # Tell TF to use the functions above to load our data.
         num_parallel_calls = config_values['input_dataset']['num_input_threads']
 
+        # Randomize the input image order in Python to simplify working with TF
+        shuffle_list, shuffle_label_list = self._load_shuffle_file_lists(list_path, label_list_path)
+
         # Go from the file path list to the TFRecord reader
-        ds_input = tf.data.TextLineDataset(list_path)
+        ds_input = tf.data.Dataset.from_tensor_slices(shuffle_list)
         ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
         chunk_set = ds_input.map(self._load_data, num_parallel_calls=num_parallel_calls)
 
         if label_folder:
-            ds_label = tf.data.TextLineDataset(label_list_path)
+            ds_label = tf.data.Dataset.from_tensor_slices(shuffle_label_list)
             ds_label = tf.data.TFRecordDataset(ds_label, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
             label_set = ds_label.map(self._load_labels, num_parallel_calls=num_parallel_calls)
         else:
@@ -349,8 +352,13 @@ class ImageryDatasetTFRecord:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
+        #tf.print(tf.shape(ds), output_stream=sys.stderr)
 
-        self._ds = ds
+
+        # Filter out all chunks with zero (nodata) values
+        #self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+
+        self._ds = ds.shuffle(buffer_size=config_values['input_dataset']['shuffle_buffer_size'])
 
     def dataset(self):
         """Return the underlying TensorFlow dataset object that this class creates"""
@@ -502,6 +510,25 @@ class ImageryDatasetTFRecord:
         f_input.close()
         f_label.close()
         return num_images
+
+    def _load_shuffle_file_lists(self, image_list, label_list):
+        """Applies the same shuffle to the lists of image and label files and returns as vectors"""
+
+        images = []
+        labels = []
+        with open(image_list, 'r') as f:
+            for line in f:
+                images.append(line.strip())
+        with open(label_list, 'r') as f:
+            for line in f:
+                labels.append(line.strip())
+
+        indices = np.arange(self.num_images())
+        np.random.shuffle(indices)
+
+        shuffle_images = np.array(images)[indices]
+        shuffle_labels = np.array(labels)[indices]
+        return (shuffle_images, shuffle_labels)
 
 
 class AutoencoderDataset(ImageryDatasetTFRecord):

@@ -24,11 +24,18 @@ if sys.version_info < (3, 0, 0):
     sys.exit(1)
 
 from delta import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment  #pylint: disable=C0413
 
 
+MNIST_WIDTH = 28 # The images are 28x28 pixels, single channel
+MNIST_BANDS = 1
+MNIST_MAX = 255.0 # Input images are 0-255
+
+
 #------------------------------------------------------------------------------
+
+# TODO: Move this function to a shared location!!!
+# Use the same model creation function as our tool
 def make_model(in_shape, encoding_size=32):
 
     mlflow.log_param('input_size',str(in_shape))
@@ -48,23 +55,39 @@ def make_model(in_shape, encoding_size=32):
 ### end make_model
 
 
-
 # With TF 1.12, the dataset needs to be constructed inside a function passed in to
 # the estimator "train_and_evaluate" function to avoid getting a graph error!
-def assemble_dataset(config_values):
+def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
+                           use_fraction=1.0, get_test=False):
 
-    # TODO: Parameter!
-#    buffer_size =
+#     print("Loading Fashion-MNIST")
+#     fashion_mnist = keras.datasets.fashion_mnist
+    print("Loading MNIST Digits")
+    mnist = keras.datasets.mnist
+    (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+    amount_train = int(train_images.shape[0] * use_fraction)
+    amount_test  = int(test_images.shape[0]  * use_fraction)
+    train_images = train_images[:amount_train] / MNIST_MAX
+    test_images  = test_images[:amount_test]   / MNIST_MAX
+    train_labels = train_labels[:amount_train]
+    test_labels  = test_labels[:amount_test]
+    print('Num images loaded: train=', amount_train, ' test=', amount_test)
+    train_images = np.reshape(train_images, (amount_train, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    test_images  = np.reshape(test_images,  (amount_test,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
-    # Use wrapper class to create a Tensorflow Dataset object.
-    # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.AutoencoderDataset(config_values)
-    ds = ids.dataset()
-    ds = ds.repeat(config_values['ml']['num_epochs']).batch(config_values['ml']['batch_size'])
-    ds = ds.prefetch(None)
+    # Return the selected dataset
+    # - Since it is the autoencoder test, the labels are the same as the input images
+    if get_test:
+        ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
+                                  tf.data.Dataset.from_tensor_slices(test_images)))
+    else:
+        ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(train_images),
+                                  tf.data.Dataset.from_tensor_slices(train_images)))
+
+    # TODO: Check this!
+    ds = ds.shuffle(shuffle_buffer_size).repeat(num_epochs).batch(batch_size)
 
     return ds
-
 
 def main(argsIn):
 
@@ -73,13 +96,11 @@ def main(argsIn):
 
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
-    parser.add_argument("--config-file", dest="config_file", default=None,
+    parser.add_argument("--config-file", dest="config_file", required=True,
                         help="Dataset configuration file.")
-    parser.add_argument("--data-folder", dest="data_folder", default=None,
-                        help="Specify data folder instead of supplying config file.")
-    parser.add_argument("--image-type", dest="image_type", default=None,
-                        help="Specify image type along with the data folder."
-                        +"(landsat, landsat-simple, worldview, or rgba)")
+
+    parser.add_argument("--use-fraction", dest="use_fraction", default=1.0, type=float,
+                        help="Only use this fraction of the MNIST data, to reduce processing time.")
 
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
@@ -90,28 +111,27 @@ def main(argsIn):
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config_values = config.parse_config_file(options.config_file, None, None, no_required=False)
 
     batch_size = config_values['ml']['batch_size']
-#     num_epochs = config_values['ml']['num_epochs']
+    num_epochs = config_values['ml']['num_epochs']
 
+    config_values['ml']['chunk_size'] = MNIST_WIDTH
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    #with tf.contrib.tfprof.ProfileContext('/home/smcmich1/data/delta/train_dir') as pctx:
 
-    print('loading data from ' + config_values['input_dataset']['data_directory'])
-    aeds = imagery_dataset.AutoencoderDataset(config_values)
-    ds = aeds.dataset()
-    #num_bands = aeds.num_bands()
+    # Get the MNIST train and test datasets to pass to the estimator
+    dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
+                                         config_values['input_dataset']['shuffle_buffer_size'],
+                                         options.use_fraction, get_test=False)
+    dataset_test_fn  = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
+                                         config_values['input_dataset']['shuffle_buffer_size'],
+                                         options.use_fraction, get_test=True)
 
-    ds = ds.batch(batch_size)
-    ds = ds.repeat()
 
-    # TF additions
     # If the mlfow directory doesn't exist, create it.
     mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
@@ -119,14 +139,9 @@ def main(argsIn):
     ### end if
 
     print('Creating experiment')
-    experiment = Experiment(mlflow_tracking_dir,
-                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
-                            output_dir=output_folder)
-    mlflow.log_param('image type',   options.image_type)
-    mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
-    mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
+    experiment = Experiment(mlflow_tracking_dir, 'autoencoder_MNIST', output_dir=output_folder)
     print('Creating model')
-    data_shape = (aeds.num_bands(), aeds.chunk_size(), aeds.chunk_size())
+    data_shape = (MNIST_BANDS, MNIST_WIDTH, MNIST_WIDTH)
     model = make_model(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
@@ -135,8 +150,8 @@ def main(argsIn):
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    dataset_fn = functools.partial(assemble_dataset, config_values)
-    experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000, log_model=False,
+    experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
+                               steps_per_epoch=1000, log_model=False,
                                num_gpus=options.num_gpus)
 
     print('Saving Model')

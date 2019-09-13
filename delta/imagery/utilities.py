@@ -2,9 +2,12 @@
 Miscellaneous utility classes/functions.
 """
 import os
+import sys
 import time
 import math
 import signal
+import traceback
+import subprocess
 from osgeo import gdal
 import psutil
 import numpy as np
@@ -169,6 +172,16 @@ def stop_task_pool(pool):
     pool.join()
 
 
+def try_catch_and_call(function):
+    """Wrap the a function in a try/except statement.
+       Useful in conjunction with multiprocessing and functools.partial"""
+    try:
+        return function()
+    except Exception:  #pylint: disable=W0703
+        traceback.print_exc()
+        sys.stdout.flush()
+        return -1
+
 def unpack_to_folder(compressed_path, unpack_folder):
     """Unpack a file into the given folder"""
 
@@ -194,6 +207,21 @@ def get_files_with_extension(folder, extension):
                 path = os.path.join(root, filename)
                 input_files.append(path)
     return input_files
+
+def checkIfToolExists(toolName):
+    """Returns true if the system knows about the utility with this name (it is on the PATH)"""
+
+    # Look for the tool using the 'which' command
+    cmd = ['which', toolName]
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                         universal_newlines=True)
+    translateOut, err = p.communicate() #pylint: disable=W0612
+
+    # Check if that command failed to find the file
+    failString = 'no ' + toolName + ' in ('
+    if translateOut.find(failString) >= 0:
+        raise Exception('Missing required executable "' + toolName + '", please add it to your PATH.')
+    return True
 
 #======================================================================================
 # Functions for working with image chunks.

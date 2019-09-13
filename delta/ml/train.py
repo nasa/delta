@@ -1,5 +1,6 @@
 #pylint: disable=R0915,R0914,R0912,R0201,W0212,W0613
 
+#import sys
 import mlflow
 import mlflow.tensorflow
 import tensorflow as tf
@@ -61,7 +62,7 @@ class Experiment:
     ### end train
 
     def train_estimator(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
-                        validation_data=None, log_model=False, num_gpus=1):
+                        validation_data=None, log_model=False, num_gpus=1,test_dataset_fn=None):
         """Alternate call that uses the TF Estimator interface to run on multiple GPUs"""
         assert model is not None
         assert train_dataset_fn is not None
@@ -94,10 +95,21 @@ class Experiment:
 
         # TODO: Use separate validate dataset!
 #         result =
-        tf.estimator.train_and_evaluate(
+        if test_dataset_fn:
+            input_fn_test = test_dataset_fn
+        else: # Just eval on the training inputs
+            input_fn_test = train_dataset_fn
+        result = tf.estimator.train_and_evaluate( #pylint: disable=W0612
             keras_estimator,
             train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
-            eval_spec=tf.estimator.EvalSpec(input_fn=train_dataset_fn))
+            eval_spec=tf.estimator.EvalSpec(input_fn=input_fn_test))
+
+
+
+#         tf.estimator.train_and_evaluate(
+#             keras_estimator,
+#             train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
+#             eval_spec=tf.estimator.EvalSpec(input_fn=input_fn_test))
 
 #         return None # In v1.12 the result is undefined for distributed training!
         # TODO: Record the output from the Estimator!
@@ -123,29 +135,24 @@ class Experiment:
         return scores
     ### end def test
 
-    def load_model(self, src):
+    def load_model(self, src): #pylint: disable=R0201
         raise NotImplementedError('loading models is not yet implemented')
 
     def log_parameters(self, params):
-#         assert type(params) is dict
         assert isinstance(params, dict)
         for k in params.keys():
             mlflow.log_param(k,params[k])
         ### end for
     ### end log_parameters
 
-    def log_training_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
+    #def log_training_set(self, dataset): #pylint: disable=R0201
+    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
 
-    def log_testing_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
+    #def log_testing_set(self, dataset): #pylint: disable=R0201
+    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
 
-    def log_validation_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
+    #def log_validation_set(self, dataset): #pylint: disable=R0201
+    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
 
-    def log_dataset(self, prefix, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
+    #def log_dataset(self, prefix, dataset): #pylint: disable=R0201
+    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
