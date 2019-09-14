@@ -105,14 +105,7 @@ class Experiment:
             train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
             eval_spec=tf.estimator.EvalSpec(input_fn=input_fn_test))
 
-
-
-#         tf.estimator.train_and_evaluate(
-#             keras_estimator,
-#             train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
-#             eval_spec=tf.estimator.EvalSpec(input_fn=input_fn_test))
-
-#         return None # In v1.12 the result is undefined for distributed training!
+        return keras_estimator # In v1.12 the result is undefined for distributed training!
         # TODO: Record the output from the Estimator!
 
         #for i in range(num_epochs):
