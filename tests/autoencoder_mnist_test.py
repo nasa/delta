@@ -91,10 +91,10 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
 def assemble_mnist_dataset2(batch_size, test_count):
 
     fashion_mnist = keras.datasets.fashion_mnist
-    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data() #pylint: disable=W0612
     test_images  = test_images[:test_count]   / MNIST_MAX
     test_labels  = test_labels[:test_count]
-    test_images  = np.reshape(test_images,  (test_count,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    #test_images  = np.reshape(test_images,  (test_count,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
     ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
                               tf.data.Dataset.from_tensor_slices(test_images)))
@@ -104,7 +104,7 @@ def assemble_mnist_dataset2(batch_size, test_count):
     return ds
 
 
-def main(argsIn):
+def main(argsIn): #pylint: disable=R0914
 
     usage  = "usage: train_autoencoder [options]"
     parser = argparse.ArgumentParser(usage=usage)
@@ -159,7 +159,7 @@ def main(argsIn):
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir, 'autoencoder_MNIST', output_dir=output_folder)
     print('Creating model')
-    data_shape = (MNIST_BANDS, MNIST_WIDTH, MNIST_WIDTH)
+    data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model = make_model(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
@@ -169,8 +169,8 @@ def main(argsIn):
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     estimator = experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
-                               steps_per_epoch=1000, log_model=False,
-                               num_gpus=options.num_gpus)
+                                           steps_per_epoch=1000, log_model=False,
+                                           num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -183,14 +183,17 @@ def main(argsIn):
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
     output_ds1 = functools.partial(assemble_mnist_dataset2, batch_size, options.num_debug_images)
-    (train_images, train_labels), (test_images, test_labels) = keras.datasets.fashion_mnist.load_data()
+    temp = keras.datasets.fashion_mnist.load_data()
+    (train_images, train_labels), (test_images, test_labels) = temp #pylint: disable=W0612
     result = estimator.predict(output_ds1)
 
     for i in range(0, options.num_debug_images):
         matplotlib.pyplot.imsave('input'+str(i)+'.png', test_images[i])
 
         element = next(result)
-        pic = (element['reshape'][0,:,:] * MNIST_MAX).astype(np.uint8)
+        #print(element)
+        #print(element['reshape'].shape)
+        pic = (element['reshape'][:,:,0] * MNIST_MAX).astype(np.uint8)
         matplotlib.pyplot.imsave('output'+str(i)+'.png', pic)
 
     return 0
