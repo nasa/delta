@@ -62,10 +62,11 @@ class Experiment:
     ### end train
 
     def train_estimator(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
-                        validation_data=None, log_model=False, num_gpus=1,test_dataset_fn=None):
+                        validation_data=None, log_model=False, num_gpus=1):
         """Alternate call that uses the TF Estimator interface to run on multiple GPUs"""
         assert model is not None
         assert train_dataset_fn is not None
+        test_dataset_fn=None
 
         mlflow.log_param('num_epochs', num_epochs)
         mlflow.log_param('model summary', model.summary())
