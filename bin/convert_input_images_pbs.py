@@ -10,11 +10,6 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
 from delta import pbs_functions #pylint: disable=C0413
 # from delta.imagery import utilities #pylint: disable=C0413
 import convert_input_image_folder #pylint: disable=C0413
