@@ -8,6 +8,7 @@ import functools
 #import random
 import matplotlib.pyplot
 import numpy as np
+#pylint: disable=C0413
 
 ### Tensorflow includes
 
@@ -26,6 +27,7 @@ if sys.version_info < (3, 0, 0):
 
 from delta import config #pylint: disable=C0413
 from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta.ml.networks import make_autoencoder
 
 
 MNIST_WIDTH = 28 # The images are 28x28 pixels, single channel
@@ -34,26 +36,6 @@ MNIST_MAX = 255.0 # Input images are 0-255
 
 
 #------------------------------------------------------------------------------
-
-# TODO: Move this function to a shared location!!!
-# Use the same model creation function as our tool
-def make_model(in_shape, encoding_size=32):
-
-    mlflow.log_param('input_size',str(in_shape))
-    mlflow.log_param('encoding_size',encoding_size)
-
-
-    # Define network
-    model = keras.Sequential([
-        keras.layers.Flatten(input_shape=in_shape),
-        keras.layers.Dense(encoding_size, activation=tf.nn.relu),
-        keras.layers.Dense(np.prod(in_shape), activation=tf.nn.sigmoid),
-        keras.layers.Reshape(in_shape)
-        ])
-    print(model.summary())
-    return model
-
-### end make_model
 
 
 # With TF 1.12, the dataset needs to be constructed inside a function passed in to
@@ -93,7 +75,7 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
 def assemble_mnist_dataset2(batch_size, test_count):
 
     fashion_mnist = keras.datasets.fashion_mnist
-    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
+    (_, _), (test_images, test_labels) = fashion_mnist.load_data()
     test_images  = test_images[:test_count]   / MNIST_MAX
     test_labels  = test_labels[:test_count]
     test_images  = np.reshape(test_images,  (test_count,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
@@ -162,7 +144,7 @@ def main(argsIn):
     experiment = Experiment(mlflow_tracking_dir, 'autoencoder_MNIST', output_dir=output_folder)
     print('Creating model')
     data_shape = (MNIST_BANDS, MNIST_WIDTH, MNIST_WIDTH)
-    model = make_model(data_shape, encoding_size=config_values['ml']['num_hidden'])
+    model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
 #     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
@@ -171,8 +153,8 @@ def main(argsIn):
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     estimator = experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
-                               steps_per_epoch=1000, log_model=False,
-                               num_gpus=options.num_gpus)
+                                           steps_per_epoch=1000, log_model=False,
+                                           num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -185,7 +167,8 @@ def main(argsIn):
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
     output_ds1 = functools.partial(assemble_mnist_dataset2, batch_size, options.num_debug_images)
-    (train_images, train_labels), (test_images, test_labels) = keras.datasets.fashion_mnist.load_data()
+#     (train_images, train_labels), (test_images, test_labels) = keras.datasets.fashion_mnist.load_data()
+    (_, _), (test_images, _) = keras.datasets.mnist.load_data()
     result = estimator.predict(output_ds1)
 
     for i in range(0, options.num_debug_images):

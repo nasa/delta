@@ -1,52 +1,49 @@
 """
 Script test out the image chunk generation calls.
 """
+#pylint: disable=C0413
 import sys
 import os
 import argparse
 import functools
 #import random
-import numpy as np
+# import numpy as np
 
 ### Tensorflow includes
 
 import mlflow
 
 import tensorflow as tf
-from tensorflow import keras
+# from tensorflow import keras
 #import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
 from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta.ml.networks import make_autoencoder
 
 
 #------------------------------------------------------------------------------
-def make_model(in_shape, encoding_size=32):
-
-    mlflow.log_param('input_size',str(in_shape))
-    mlflow.log_param('encoding_size',encoding_size)
-
-
-    # Define network
-    model = keras.Sequential([
-        keras.layers.Flatten(input_shape=in_shape),
-        keras.layers.Dense(encoding_size, activation=tf.nn.relu),
-        keras.layers.Dense(np.prod(in_shape), activation=tf.nn.sigmoid),
-        keras.layers.Reshape(in_shape)
-        ])
-    print(model.summary())
-    return model
-
-### end make_model
-
+# def make_model(in_shape, encoding_size=32):
+#
+#     mlflow.log_param('input_size',str(in_shape))
+#     mlflow.log_param('encoding_size',encoding_size)
+#
+#
+#     # Define network
+#     model = keras.Sequential([
+#         keras.layers.Flatten(input_shape=in_shape),
+#         keras.layers.Dense(encoding_size, activation=tf.nn.relu),
+#         keras.layers.Dense(np.prod(in_shape), activation=tf.nn.sigmoid),
+#         keras.layers.Reshape(in_shape)
+#         ])
+#     print(model.summary())
+#     return model
+#
+# ### end make_model
+#
 
 
 # With TF 1.12, the dataset needs to be constructed inside a function passed in to
@@ -127,7 +124,7 @@ def main(argsIn):
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
     data_shape = (aeds.num_bands(), aeds.chunk_size(), aeds.chunk_size())
-    model = make_model(data_shape, encoding_size=config_values['ml']['num_hidden'])
+    model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
 #     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
