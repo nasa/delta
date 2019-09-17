@@ -172,7 +172,8 @@ def main(argsIn): # pylint:disable=R0914
 
     # Remove one band for the labels
     model = make_model(NUM_TRAIN_BANDS, options.chunk_size)
-#     history = experiment.train(model, train_data, train_labels, options.num_epochs, validation_data=(test_data, test_labels))
+#     history = experiment.train(model, train_data, train_labels, options.num_epochs,
+#                                validation_data=(test_data, test_labels))
 #     assert history is not None
     experiment.train(model, train_data, train_labels, options.num_epochs,
                      validation_data=(test_data, test_labels))
