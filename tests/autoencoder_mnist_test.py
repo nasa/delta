@@ -143,7 +143,9 @@ def main(args_in): #pylint: disable=R0914
     ### end if
 
     print('Creating experiment')
-    experiment = Experiment(mlflow_tracking_dir, 'autoencoder_Fashion_MNIST', output_dir=output_folder)
+    experiment = Experiment(mlflow_tracking_dir,
+                            'autoencoder_Fashion_MNIST',
+                            output_dir=output_folder)
     print('Creating model')
     data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
@@ -191,14 +193,6 @@ def main(args_in): #pylint: disable=R0914
 
         mlflow.log_artifact(debug_image_filename)
 
-#        plt.imsave(os.path.join(output_folder, 'input'+str(i)+'.png'), test_images[i])
-#
-#        element = next(result)
-#        #print(element)
-#        #print(element['reshape'].shape)
-#        pic = (element['reshape'][:, :, 0] * MNIST_MAX).astype(np.uint8)
-#        plt.imsave(os.path.join(output_folder, 'output'+str(i)+'.png'), pic)
-#
     return 0
 
 
