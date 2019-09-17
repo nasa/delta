@@ -3,10 +3,11 @@ Script test out the image chunk generation calls.
 """
 import sys
 import os
+import os.path
 import argparse
 import functools
 #import random
-import matplotlib.pyplot
+import matplotlib.pyplot as plt
 import numpy as np
 #pylint: disable=C0413
 
@@ -37,55 +38,61 @@ MNIST_MAX = 255.0 # Input images are 0-255
 # the estimator "train_and_evaluate" function to avoid getting a graph error!
 def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
                            use_fraction=1.0, get_test=False):
+    '''
+    Loads the mnist handwritten digits dataset.
+    '''
 
-#     print("Loading Fashion-MNIST")
-#     fashion_mnist = keras.datasets.fashion_mnist
-    print("Loading MNIST Digits")
-    mnist = keras.datasets.mnist
-    (train_images, train_labels), (test_images, test_labels) = mnist.load_data()
+    print("Loading Fashion-MNIST")
+    fashion_mnist = keras.datasets.fashion_mnist
+    (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
     amount_train = int(train_images.shape[0] * use_fraction)
-    amount_test  = int(test_images.shape[0]  * use_fraction)
+    amount_test = int(test_images.shape[0]  * use_fraction)
     train_images = train_images[:amount_train] / MNIST_MAX
-    test_images  = test_images[:amount_test]   / MNIST_MAX
+    test_images = test_images[:amount_test]   / MNIST_MAX
     train_labels = train_labels[:amount_train]
-    test_labels  = test_labels[:amount_test]
+    test_labels = test_labels[:amount_test]
     print('Num images loaded: train=', amount_train, ' test=', amount_test)
     train_images = np.reshape(train_images, (amount_train, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
-    test_images  = np.reshape(test_images,  (amount_test,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    test_images = np.reshape(test_images, (amount_test, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
     # Return the selected dataset
     # - Since it is the autoencoder test, the labels are the same as the input images
     if get_test:
-        ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
-                                  tf.data.Dataset.from_tensor_slices(test_images)))
+        d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
+                                   tf.data.Dataset.from_tensor_slices(test_images)))
     else:
-        ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(train_images),
-                                  tf.data.Dataset.from_tensor_slices(train_images)))
+        d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(train_images),
+                                   tf.data.Dataset.from_tensor_slices(train_images)))
 
-    # TODO: Check this!
-    ds = ds.shuffle(shuffle_buffer_size).repeat(num_epochs).batch(batch_size)
+    d_s = d_s.shuffle(shuffle_buffer_size).repeat(num_epochs).batch(batch_size)
 
-    return ds
+    return d_s
 
 def assemble_mnist_dataset2(batch_size, test_count):
+    '''
+    Loads the mnist fashion dataset
+    '''
 
     fashion_mnist = keras.datasets.fashion_mnist
     (_, _), (test_images, test_labels) = fashion_mnist.load_data()
-    test_images  = test_images[:test_count]   / MNIST_MAX
-    test_labels  = test_labels[:test_count]
-    test_images  = np.reshape(test_images,  (test_count,  MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    test_images = test_images[:test_count]   / MNIST_MAX
+    test_labels = test_labels[:test_count]
+    #test_images = np.reshape(test_images, (test_count, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
-    ds = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
-                              tf.data.Dataset.from_tensor_slices(test_images)))
+    d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
+                               tf.data.Dataset.from_tensor_slices(test_images)))
 
-    ds = ds.batch(batch_size)
+    d_s = d_s.batch(batch_size)
 
-    return ds
+    return d_s
 
 
-def main(argsIn):
+def main(args_in): #pylint: disable=R0914
+    '''
+    Main function for executing MNIST training test.
+    '''
 
-    usage  = "usage: train_autoencoder [options]"
+    usage = "usage: train_autoencoder [options]"
     parser = argparse.ArgumentParser(usage=usage)
 
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
@@ -104,7 +111,7 @@ def main(argsIn):
                         help="Try to use this many GPUs.")
 
     try:
-        options = parser.parse_args(argsIn)
+        options = parser.parse_args(args_in)
     except argparse.ArgumentError:
         print(usage)
         return -1
@@ -125,20 +132,20 @@ def main(argsIn):
     dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
                                          config_values['input_dataset']['shuffle_buffer_size'],
                                          options.use_fraction, get_test=False)
-    dataset_test_fn  = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
-                                         config_values['input_dataset']['shuffle_buffer_size'],
-                                         options.use_fraction, get_test=True)
+    dataset_test_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
+                                        config_values['input_dataset']['shuffle_buffer_size'],
+                                        options.use_fraction, get_test=True)
 
     # If the mlfow directory doesn't exist, create it.
-    mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
+    mlflow_tracking_dir = os.path.join(output_folder, 'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
     ### end if
 
     print('Creating experiment')
-    experiment = Experiment(mlflow_tracking_dir, 'autoencoder_MNIST', output_dir=output_folder)
+    experiment = Experiment(mlflow_tracking_dir, 'autoencoder_Fashion_MNIST', output_dir=output_folder)
     print('Creating model')
-    data_shape = (MNIST_BANDS, MNIST_WIDTH, MNIST_WIDTH)
+    data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
@@ -162,17 +169,36 @@ def main(argsIn):
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
     output_ds1 = functools.partial(assemble_mnist_dataset2, batch_size, options.num_debug_images)
-#     (train_images, train_labels), (test_images, test_labels) = keras.datasets.fashion_mnist.load_data()
-    (_, _), (test_images, _) = keras.datasets.mnist.load_data()
+    (_, _), (test_images, _) = keras.datasets.fashion_mnist.load_data()
     result = estimator.predict(output_ds1)
 
     for i in range(0, options.num_debug_images):
-        matplotlib.pyplot.imsave('input'+str(i)+'.png', test_images[i])
 
         element = next(result)
-        pic = (element['reshape'][0,:,:] * MNIST_MAX).astype(np.uint8)
-        matplotlib.pyplot.imsave('output'+str(i)+'.png', pic)
+        pic = (element['reshape'][:, :, 0] * MNIST_MAX).astype(np.uint8)
 
+        plt.subplot(1,2,1)
+        plt.imshow(test_images[i])
+        plt.title('Input image %03d' % (i, ))
+
+        plt.subplot(1,2,2)
+        plt.imshow(pic)
+        plt.title('Output image %03d' % (i, ))
+
+        debug_image_filename = os.path.join(output_folder,
+                                            'Fashion_MNIST_input_output_%03d.png' % (i, ))
+        plt.savefig(debug_image_filename)
+
+        mlflow.log_artifact(debug_image_filename)
+
+#        plt.imsave(os.path.join(output_folder, 'input'+str(i)+'.png'), test_images[i])
+#
+#        element = next(result)
+#        #print(element)
+#        #print(element['reshape'].shape)
+#        pic = (element['reshape'][:, :, 0] * MNIST_MAX).astype(np.uint8)
+#        plt.imsave(os.path.join(output_folder, 'output'+str(i)+'.png'), pic)
+#
     return 0
 
 
