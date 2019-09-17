@@ -1,0 +1,25 @@
+
+DELTA is still under development but it offers several useful tools.
+
+
+---=== Machine learning tools ===---
+
+convert_input_image_folder.py - Convert input images into a .tfrecord format that other DELTA tools will read.  Converts all images in a folder to the output folder.  Sample call:
+
+> python bin/convert_input_image_folder.py --input-folder data/delta/worldview/  --output-folder data/delta/worldview_tfrecord  --image-type worldview  --num-processes 2
+
+
+train_autoencoder.py - Train an autoencoder network from tfrecord inputs.  All of the inputs to this are defined in a configuration file, see the sample config file for details.  Sample call:
+
+> python bin/train_autoencoder.py --config-file sample_config.txt
+
+
+---=== Data fetching tools ===---
+
+fetch_hdds_images.py - Use to programmatically fetch WorldView images from the USGS HDDS dataset.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
+
+
+get_landsat_dswe_labels.py  - Use to programmatically fetch DSWE from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
+
+
+get_landsat_support_files.py - Use to programmatically fetch SRTM files from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer AND URS login.
