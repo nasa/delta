@@ -4,6 +4,8 @@ Utilities for writing and reading images to TFRecord files.
 
 import sys
 import os
+import random
+import portalocker
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import tensorflow as tf #pylint: disable=C0413
@@ -22,8 +24,10 @@ def wrap_bytes(value):
     """Helper-function for wrapping raw bytes so they can be saved to the TFRecords file"""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
-def make_tfrecord_writer(output_path):
+def make_tfrecord_writer(output_path, compress=True):
     """Set up a TFRecord writer with the correct options"""
+    if not compress:
+        return tf.python_io.TFRecordWriter(output_path)
     options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
     return tf.python_io.TFRecordWriter(output_path, options)
 
@@ -95,13 +99,16 @@ def load_tfrecord_label_element(example_proto, num_bands, height, width):
 
 
 
-def get_record_info(record_path):
+def get_record_info(record_path, compressed=True):
     """Queries a record file and returns (num_bands, height, width) of the contained tiles"""
 
     if not os.path.exists(record_path):
         raise Exception('Missing file: ' + record_path)
 
-    raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
+    if compressed:
+        raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
+    else:
+        raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='')
 
     parsed_image_dataset = raw_image_dataset.map(load_tfrecord_raw)
 
@@ -117,11 +124,12 @@ def get_record_info(record_path):
         return (num_bands, height, width)
 
 
-def tiffs_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
+def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
     """Convert a image consisting of one or more .tif files into a TFRecord file
        split into multiple tiles so that it is easy to read using TensorFlow.
        All bands are used unless bands_to_use is set to a list of one-indexed band indices,
-       in which case there should only be one input path."""
+       in which case there should only be one input path.
+       If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
     input_reader = MultiTiffFileReader(input_paths)
@@ -134,8 +142,10 @@ def tiffs_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
     input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials=False)
 
-    # Set up the output file, it will contain all the tiles from this input image.
-    writer = make_tfrecord_writer(record_path)
+    write_compressed = (len(record_paths) == 1) or (isinstance(record_paths, str))
+    if write_compressed:
+        # Set up the output file, it will contain all the tiles from this input image.
+        writer = make_tfrecord_writer(record_paths, compress=True)
 
     if not bands_to_use:
         bands_to_use = range(1,num_bands+1)
@@ -152,23 +162,29 @@ def tiffs_to_tf_record(input_paths, record_path, tile_size, bands_to_use=None):
             band_data = data_vec[band-1]
             array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
 
-        # DEBUG: Write the image segments to disk!
-        #debug_path = os.path.join('/home/smcmich1/data/delta/test/WV02N42_939570W073_2520792013040400000000MS00/work/dup/', #pylint: disable=C0301
-        #                          str(output_roi.min_y)+'_'+str(output_roi.min_x)+'.tif')
-        #write_multiband_image(debug_path, array, data_type=gdal.GDT_UInt16)
 
-
-        #back = np.fromstring(array_bytes, dtype=data_type)
-        #back2 = back.reshape(num_bands, output_roi.height(), output_roi.width())
-        #print(back.shape)
-        #print(back2.shape)
-
-        #raise Exception('DEBUG')
-
-        write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
-                             output_roi.width(), output_roi.height(), num_bands)
+        if write_compressed: # Single output file
+            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
+                                 output_roi.width(), output_roi.height(), num_bands)
+        else: # Choose a random output file
+            this_record_path = random.choice(record_paths)
+            if not os.path.exists(this_record_path):
+                os.system('touch ' + this_record_path) # Should be safe multithreaded
+            # We need to write a new uncompressed tfrecord file,
+            # concatenate them together, and then delete the temporary file.
+            with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
+                temp_path = this_record_path + '_temp.tfrecord'
+                this_writer = make_tfrecord_writer(temp_path, compress=False)
+                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y,
+                                     output_roi.width(), output_roi.height(), num_bands)
+                this_writer = None # Make sure the writer is finished
+                os.system('cat %s >> %s' % (temp_path, this_record_path))
+                os.remove(temp_path)
 
     print('Writing TFRecord data...')
     # Each of the ROIs will be written out in order
     input_reader.process_rois(output_rois, callback_function)
-    print('Done writing: ' + record_path)
+    if write_compressed:
+        print('Done writing: ' + input_paths)
+    else:
+        print('Done writing: ' + input_paths[0])

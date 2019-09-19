@@ -14,12 +14,17 @@ from delta import pbs_functions #pylint: disable=C0413
 # from delta.imagery import utilities #pylint: disable=C0413
 import convert_input_image_folder #pylint: disable=C0413
 
+bin_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath
+
+# Prepend to Python path
+sys.path.insert(0, bin_folder)
+
 #=========================================================================
 # Parameters
 
 # Constants used in this file
 
-PBS_QUEUE   = 'normal'
+PBS_QUEUE = 'normal'
 
 GROUP_ID = 's2022'
 
@@ -111,9 +116,15 @@ def submitBatchJobs(list_files, options, pass_along_args):
         job_name = ('%s%05d' % ('DELTA_CI', index) )
         log_prefix = os.path.join(options.output_folder, job_name)
 
+        if options.mix_outputs:
+            # For mixed outputs, each job needs to write to a different folder to avoid name clashes.
+            this_output_folder = os.path.join(options.output_folder, 'batch_'+str(index))
+        else:
+            this_output_folder = options.output_folder
+
         # Specify the range of lines in the file we want this node to execute
-        args = ('--input-file-list %s  --num-processes %d ' % \
-                (list_file, numProcesses))
+        args = ('--input-file-list %s  --num-processes %d --output-folder %s' % \
+                (list_file, numProcesses, this_output_folder))
         args += ' '.join(pass_along_args)
 
         print('Submitting summary regen job: ' + scriptPath + ' ' + args)
@@ -155,6 +166,9 @@ def main(argsIn):
         parser.add_argument("--extension", dest="input_extension", default=None,
                             help="Manually specify the input extension instead of using the default.")
 
+        parser.add_argument("--mix-outputs", action="store_true", dest="mix_outputs", default=False,
+                            help="Instead of copying input folder structure, mix up the output tiles in one folder.")
+
         parser.add_argument("--node-type",  dest="node_type", default='san',
                             help="Node type to use (wes[mfe], san, ivy, has, bro)")
 
@@ -180,8 +194,8 @@ def main(argsIn):
     # Get together all the CLI args that needs to be passed to each node
     pass_along_args = unknown
     pass_along_args += ['--input-folder', options.input_folder,
-                        '--image-type', options.image_type,
-                        '--output-folder', options.output_folder]
+                        '--image-type',   options.image_type,
+                        '--mix-outputs',  str(options.mix_outputs)]
 
     input_file_list = convert_input_image_folder.get_input_files(options)
     print('Found ', len(input_file_list), ' input files to convert')
