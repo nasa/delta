@@ -49,7 +49,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True):
                                                               input_region_height, input_region_width)
             pic = image[0,:,:,0] # Just take the first channel for now
             pic = tf.reshape(pic, ( input_region_height, input_region_width, 1))
-            pic = tf.cast(pic, tf.uint8)
+            pic = tf.cast(pic, tf.uint8) # TODO: May need to scale here
 
             # Assemble the pictures horizontally
             if concat is not None:

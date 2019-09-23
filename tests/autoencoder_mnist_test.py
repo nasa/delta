@@ -38,9 +38,7 @@ MNIST_MAX = 255.0 # Input images are 0-255
 # the estimator "train_and_evaluate" function to avoid getting a graph error!
 def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
                            use_fraction=1.0, get_test=False):
-    '''
-    Loads the mnist handwritten digits dataset.
-    '''
+    """Loads the mnist handwritten digits dataset"""
 
     print("Loading Fashion-MNIST")
     fashion_mnist = keras.datasets.fashion_mnist
@@ -68,29 +66,23 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
 
     return d_s
 
-def assemble_mnist_dataset2(batch_size, test_count):
-    '''
-    Loads the mnist fashion dataset
-    '''
+def assemble_mnist_dataset_for_predict(test_count):
+    """Loads the mnist fashion dataset just for prediction"""
 
     fashion_mnist = keras.datasets.fashion_mnist
-    (_, _), (test_images, test_labels) = fashion_mnist.load_data()
+    (_, _), (test_images, _) = fashion_mnist.load_data()
     test_images = test_images[:test_count]   / MNIST_MAX
-    test_labels = test_labels[:test_count]
-    #test_images = np.reshape(test_images, (test_count, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    # Not sure why this reshape has to be different!
+    test_images = np.reshape(test_images, (test_count, 1, MNIST_WIDTH, MNIST_WIDTH))
 
     d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
                                tf.data.Dataset.from_tensor_slices(test_images)))
-
-    d_s = d_s.batch(batch_size)
 
     return d_s
 
 
 def main(args_in): #pylint: disable=R0914
-    '''
-    Main function for executing MNIST training test.
-    '''
+    """Main function for executing MNIST training test"""
 
     usage = "usage: train_autoencoder [options]"
     parser = argparse.ArgumentParser(usage=usage)
@@ -170,17 +162,28 @@ def main(args_in): #pylint: disable=R0914
     # Write input/output image pairs to the current working folder.
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
-    output_ds1 = functools.partial(assemble_mnist_dataset2, batch_size, options.num_debug_images)
-    (_, _), (test_images, _) = keras.datasets.fashion_mnist.load_data()
-    result = estimator.predict(output_ds1)
+    # Make a non-shuffled dataset with a simple iterator
+    ds = assemble_mnist_dataset_for_predict(options.num_debug_images)
+    iterator = ds.make_one_shot_iterator()
+    next_element = iterator.get_next()
+    sess = tf.Session()
 
     for i in range(0, options.num_debug_images):
 
+        # Get the next image pair, then make a function to return it
+        value = sess.run(next_element)
+        def temp_fn():
+            return value #pylint: disable=W0640
+        # Get a generator from the predictor and get the only value from it
+        result = estimator.predict(temp_fn)
         element = next(result)
+
+        # Get the output value out of its weird format, then convert for image output
         pic = (element['reshape'][:, :, 0] * MNIST_MAX).astype(np.uint8)
 
         plt.subplot(1,2,1)
-        plt.imshow(test_images[i])
+        #plt.imshow(test_images[i])
+        plt.imshow(value[0][0,:,:])
         plt.title('Input image %03d' % (i, ))
 
         plt.subplot(1,2,2)
