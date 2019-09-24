@@ -47,7 +47,7 @@ num_hidden=32
 model_dest_name=autoencoder_model.keras.tf
 
 # The folder to store extraneous ouput
-output_folder=/usr/local/home/pfurlong/projects/delta/delta/data/out
+output_folder=/usr/local/home/pfurlong/projects/delta/delta/data/out/autoencoder_world_view
 
 # If specified, this folder is used to store model checkpoints.
-model_folder=/usr/local/home/pfurlong/projects/delta/delta/data/out
+model_folder=/usr/local/home/pfurlong/projects/delta/delta/data/out/
