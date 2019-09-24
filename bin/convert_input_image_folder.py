@@ -8,6 +8,7 @@ import argparse
 import multiprocessing
 import traceback
 import functools
+import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -16,6 +17,58 @@ from delta.imagery import tfrecord_conversions #pylint: disable=C0413
 
 
 #------------------------------------------------------------------------------
+
+
+def compress_and_delete(input_path, output_path, keep):
+    """Convert the TFRecord file and then delete the input file"""
+    result = tfrecord_conversions.compress_tfrecord_file(input_path, output_path)
+    if (result > 0) and not keep: #Always keep on failure
+        os.remove(input_path)
+    return result
+
+def parallel_compress_tfrecords(input_paths, output_paths, num_processes, redo=False, keep=False):
+    """Use multiple processes to compress a list of TFrecord files"""
+
+    # Set up processing pool
+    if num_processes > 1:
+        print('Starting processing pool with ' + str(num_processes) +' processes.')
+        pool = multiprocessing.Pool(num_processes)
+        task_handles = []
+
+    # Assign input files to the pool
+    count = 0
+    num_succeeded = 0
+    for input_path, output_path in zip(input_paths, output_paths):
+
+        # Skip existing output files
+        if os.path.exists(output_path) and not redo:
+            continue
+
+        if num_processes > 1: # Add the command to the task pool
+            task_handles.append(pool.apply_async(compress_and_delete, (input_path, output_path, keep)))
+        else:
+            result = compress_and_delete(input_path, output_path, keep)
+            if result > 0:
+                num_succeeded += 1
+
+        count += 1
+
+    if num_processes > 1:
+        # Wait for all the tasks to complete
+        print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+        utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+
+        # All tasks should be finished, clean up the processing pool
+        utilities.stop_task_pool(pool)
+
+        num_succeeded = 0
+        for h in task_handles:
+            if h.get() > 0:
+                num_succeeded += 1
+
+    print('Successfully compressed ', num_succeeded, ' out of ', count, ' input files.')
+
+
 
 def get_input_files(options):
     """Return the list of input files from the specified source"""
@@ -50,10 +103,10 @@ def get_input_files(options):
 
 
 # Cleaner ways to do this don't work with multiprocessing!
-def try_catch_and_call(func, input_path, output_path, work_folder):
+def try_catch_and_call(func, input_path, output_paths, work_folder):
     """Wrap the provided function in a try/catch statement"""
     try:
-        func(input_path, output_path, work_folder)
+        func(input_path, output_paths, work_folder)
         print('Finished converting file ', input_path)
         return 0
     except Exception:  #pylint: disable=W0703
@@ -62,10 +115,9 @@ def try_catch_and_call(func, input_path, output_path, work_folder):
         sys.stdout.flush()
         return -1
 
-def main(argsIn):
+def main(argsIn): #pylint: disable=R0914,R0912
 
     try:
-
         usage  = "usage: convert_input_image_folder.py [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
@@ -78,6 +130,15 @@ def main(argsIn):
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
                             help="Where to write the converted output images.")
+
+        parser.add_argument("--mix-outputs", action="store_true", dest="mix_outputs", default=False,
+                            help="Instead of copying input folder structure, mix up the output tiles in one folder.")
+
+        parser.add_argument("--compress-only", action="store_true", dest="compress_only", default=False,
+                            help="Skip straight to compressing uncompressed TFRecord files.")
+
+        parser.add_argument("--keep", action="store_true", dest="keep", default=False,
+                            help="Don't delete the uncompressed TFRecord files.")
 
         parser.add_argument("--image-type", dest="image_type", required=True,
                             help="Specify the input image type [worldview, landsat, tif, rgba].")
@@ -115,7 +176,7 @@ def main(argsIn):
     if options.labels:
         output_extension = '.tfrecordlabel'
 
-    input_files = get_input_files(options)
+    input_files = get_input_files(options) # DEBUG
     print('Found ', len(input_files), ' input files to convert')
     if not input_files:
         return -1
@@ -125,62 +186,89 @@ def main(argsIn):
       functools.partial(tfrecord_conversions.convert_image_to_tfrecord,
                         tile_size=options.tile_size, image_type=options.image_type)
 
-    # Set up processing pool
-    if options.num_processes > 1:
-        print('Starting processing pool with ' + str(options.num_processes) +' processes.')
-        pool = multiprocessing.Pool(options.num_processes)
-        task_handles = []
+    mix_paths = []
+    output_prefix = os.path.join(options.output_folder, 'mix_file_uncompressed_')
+    for i in range(0, len(input_files)):
+        this_path = ('%s%08d%s' % (output_prefix, i, output_extension))
+        mix_paths.append(this_path)
 
-    # Assign input files to the pool
-    count = 0
-    num_succeeded = 0
-    for f in input_files:
+    if not options.compress_only:
 
-        # Recreate the subfolders in the output folder
-        rel_path    = os.path.relpath(f, options.input_folder)
-        output_path = os.path.join(options.output_folder, rel_path)
-        output_path = os.path.splitext(output_path)[0] + output_extension
-        subfolder   = os.path.dirname(output_path)
-        name        = os.path.basename(output_path)
-        name        = os.path.splitext(name)[0]
-        work_folder = os.path.join(options.output_folder, name + '_work')
+        # Set up processing pool
+        if options.num_processes > 1:
+            print('Starting processing pool with ' + str(options.num_processes) +' processes.')
+            pool = multiprocessing.Pool(options.num_processes)
+            task_handles = []
 
-        if not os.path.exists(subfolder):
-            os.mkdir(subfolder)
-
-        # Skip existing output files
-        if os.path.exists(output_path) and not options.redo:
-            continue
-
-        if options.num_processes > 1:# Add the command to the task pool
-            task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
-                                                                     output_path, work_folder)))
-        else:
-            result = try_catch_and_call(convert_file_function, f, output_path, work_folder)
-            #result = convert_file_function(f, output_path, work_folder)
-            if result == 0:
-                num_succeeded += 1
-        #break # DEBUG
-
-        count += 1
-        if options.limit and (count >= options.limit):
-            print('Limiting processing to ', options.limit, ' files.')
-            break
-
-    if options.num_processes > 1:
-        # Wait for all the tasks to complete
-        print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-        utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
-
-        # All tasks should be finished, clean up the processing pool
-        utilities.stop_task_pool(pool)
-
+        # Assign input files to the pool
+        count = 0
         num_succeeded = 0
-        for h in task_handles:
-            if h.get() == 0:
-                num_succeeded += 1
+        for f in input_files:
 
-    print('Successfully converted ', num_succeeded, ' out of ', count, ' input files.')
+            if options.mix_outputs: # Use flat folder with mixed files
+                output_paths = mix_paths
+                work_folder =  tempfile.mkdtemp()
+            else:
+                # Recreate the subfolders in the output folder
+                rel_path    = os.path.relpath(f, options.input_folder)
+                output_path = os.path.join(options.output_folder, rel_path)
+                output_path = os.path.splitext(output_path)[0] + output_extension
+                subfolder   = os.path.dirname(output_path)
+                name        = os.path.basename(output_path)
+                name        = os.path.splitext(name)[0]
+                work_folder = os.path.join(options.output_folder, name + '_work')
+                output_paths = output_path
+
+                if not os.path.exists(subfolder):
+                    os.mkdir(subfolder)
+
+                # Skip existing output files
+                if os.path.exists(output_path) and not options.redo:
+                    continue
+
+            if options.num_processes > 1:# Add the command to the task pool
+                task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
+                                                                         output_paths, work_folder)))
+            else:
+                result = try_catch_and_call(convert_file_function, f, output_paths, work_folder)
+                #result = convert_file_function(f, output_paths, work_folder)
+                if result == 0:
+                    num_succeeded += 1
+            #break # DEBUG
+
+            count += 1
+            if options.limit and (count >= options.limit):
+                print('Limiting processing to ', options.limit, ' files.')
+                break
+
+        if options.num_processes > 1:
+            # Wait for all the tasks to complete
+            print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
+            utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+
+            # All tasks should be finished, clean up the processing pool
+            utilities.stop_task_pool(pool)
+
+            num_succeeded = 0
+            for h in task_handles:
+                if h.get() == 0:
+                    num_succeeded += 1
+
+        print('Successfully converted ', num_succeeded, ' out of ', count, ' input files.')
+
+    if not options.mix_outputs:
+        return 0 # Finished!
+
+    print('Now need to compress the mix files...')
+
+    compressed_paths = []
+    for p in mix_paths:
+        new_path = p.replace('uncompressed_', '')
+        compressed_paths.append(new_path)
+
+    parallel_compress_tfrecords(mix_paths, compressed_paths,
+                                options.num_processes, options.redo, options.keep)
+
     return 0
 
 if __name__ == "__main__":

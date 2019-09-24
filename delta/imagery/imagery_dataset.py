@@ -346,17 +346,21 @@ class ImageryDatasetTFRecord:
             label_set = ds_input.map(self._load_fake_labels, num_parallel_calls=num_parallel_calls)
 
         # Break up the chunk sets to individual chunks
-        # TODO: Does this improve things?
         chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
         label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
+        self.ds_chunks = chunk_set
+
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
-        #tf.print(tf.shape(ds), output_stream=sys.stderr)
 
+        def is_chunk_non_zero(data, label): #pylint: disable=W0613
+            """Return True if the chunk has no zeros"""
+            return tf.math.equal(tf.math.zero_fraction(data), 0)
 
         # Filter out all chunks with zero (nodata) values
-        #self._ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
+        ds = ds.filter(is_chunk_non_zero)
+        #tf.print(tf.shape(ds), output_stream=sys.stderr)
 
         self._ds = ds.shuffle(buffer_size=config_values['input_dataset']['shuffle_buffer_size'])
 
@@ -379,16 +383,17 @@ class ImageryDatasetTFRecord:
         """Split up a tensor image into tensor chunks"""
 
         # We use the built-in TF chunking function
-        stride = self._chunk_size - self._chunk_overlap
+        stride  = self._chunk_size - self._chunk_overlap
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, stride, stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
         result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        # Output is [1, M, N, chunk*chunk*bands]
         if is_label:
             result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, 1])
         else:
             result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
-        # TODO: Change the format we expect to match how the chunks come out?
+        # TODO: Change the format we use to match how the chunks come out?
         result = tf.transpose(result, [0, 3, 1, 2]) # Get info format: [chunks, bands, x, y]
         return result
 
