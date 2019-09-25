@@ -167,9 +167,9 @@ def main(argsIn): #pylint: disable=R0914
     sess = tf.Session()
 
     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
-    scale = 1.0 # TODO: Select based on image_type
+    scale = aeds.scale_factor()
     for i in range(0, options.num_debug_images):
-        print(i)
+        print('Preparing debug image ' + str(i))
         # Get the next image pair, then make a function to return it
         value = sess.run(next_element)
         def temp_fn():
@@ -188,15 +188,25 @@ def main(argsIn): #pylint: disable=R0914
         #pic = (result[0, debug_bands, :, :] * scale).astype(np.uint8)
         #pic = np.moveaxis(pic, 0, -1)
 
+        #print(pic)
         plt.subplot(1,2,1)
         in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
         in_pic = np.moveaxis(in_pic, 0, -1)
+        #print('data')
+        #print(in_pic.shape)
+        #print(in_pic)
         plt.imshow(in_pic)
         plt.title('Input image %03d' % (i, ))
 
         plt.subplot(1,2,2)
         plt.imshow(pic)
         plt.title('Output image %03d' % (i, ))
+
+        #in_pic2 = (value[1][0,debug_bands,:,:] * scale).astype(np.uint8)
+        #in_pic2 = np.moveaxis(in_pic2, 0, -1)
+        #print('label')
+        #print(in_pic2.shape)
+        #print(in_pic2)
 
         debug_image_filename = os.path.join(output_folder,
                                             'Autoencoder_input_output_%03d.png' % (i, ))

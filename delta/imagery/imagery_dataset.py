@@ -28,6 +28,16 @@ IMAGE_CLASSES = {
         'tif' : basic_sources.SimpleTiff
 }
 
+# TODO: Where is a good place for this?
+# After preprocessing, these are the rough maximum values for the data.
+# - This is used to scale input datasets into the 0-1 range
+# - Everything over this will probably saturate the TF network but that is fine for outliers.
+# - For WorldView and Landsat this means post TOA processing.
+PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
+                               'landsat'  : 120.0, # TODO
+                               'tif'      : 255.0,
+                               'rgba'     : 255.0}
+
 #========================================================================================
 
 class ImageryDataset:
@@ -298,6 +308,14 @@ class ImageryDatasetTFRecord:
         self._chunk_size    = config_values['ml']['chunk_size']
         self._chunk_overlap = config_values['ml']['chunk_overlap']
 
+        try:
+            image_type = config_values['input_dataset']['image_type']
+            self._data_scale_factor = PREPROCESS_APPROX_MAX_VALUE[image_type]
+        except KeyError:
+            print('WARNING: No data scale factor defined for image type: ' + image_type
+                  + ', defaulting to 1.0 (no scaling)')
+            self._data_scale_factor = 1.0
+
         # Use the image_class object to get the default image extensions
         if config_values['input_dataset']['extension']:
             input_extensions = [config_values['input_dataset']['extension']]
@@ -379,6 +397,9 @@ class ImageryDatasetTFRecord:
         """Return the number of images in the data set"""
         return self._num_images
 
+    def scale_factor(self):
+        return self._data_scale_factor
+
     def _chunk_tf_image(self, image, is_label):
         """Split up a tensor image into tensor chunks"""
 
@@ -424,6 +445,7 @@ class ImageryDatasetTFRecord:
                                                           self._input_region_height, self._input_region_width)
         result = self._chunk_tf_image(image, is_label=False)
 #         result = chunk_tf_image(self._chunk_size, self._num_bands, image, is_label=False)
+        result = tf.math.divide(result, self._data_scale_factor) # Get into 0-1 range
         return result
 
     # TODO: Try concatenating the label on to the image, then splitting post-chunk operation!
@@ -548,4 +570,5 @@ class AutoencoderDataset(ImageryDatasetTFRecord):
 
 
     def _load_labels(self, example_proto):
-        return tf.to_int32(self._load_data(example_proto))
+        #return tf.to_int32(self._load_data(example_proto))
+        return self._load_data(example_proto)
