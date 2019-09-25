@@ -29,7 +29,7 @@ class Experiment:
         mlflow.end_run()
     ### end __del__
 
-
+    # TODO: What is this function now?
     def train(self, model, train_dataset, num_epochs=70, steps_per_epoch=2024, validation_data=None, log_model=False):
         assert model is not None
         assert train_dataset is not None
@@ -63,7 +63,7 @@ class Experiment:
 
     def train_estimator(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
                         validation_data=None, log_model=False, num_gpus=1):
-        """Alternate call that uses the TF Estimator interface to run on multiple GPUs"""
+        """Train call that uses the TF Estimator interface to run on multiple GPUs"""
         assert model is not None
         assert train_dataset_fn is not None
         test_dataset_fn=None
@@ -94,8 +94,6 @@ class Experiment:
             keras_model=model, config=tf_config)#, model_dir=config_values['ml']['model_folder'])
 
 
-        # TODO: Use separate validate dataset!
-#         result =
         if test_dataset_fn:
             input_fn_test = test_dataset_fn
         else: # Just eval on the training inputs
@@ -118,6 +116,36 @@ class Experiment:
         ### end log_model
         #return history
     ### end train
+
+
+    def train_keras(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
+                            validation_data=None, log_model=False, num_gpus=1):
+        """Call that uses the Keras interface, only works on a single GPU"""
+        assert model is not None
+        assert train_dataset_fn is not None
+
+        mlflow.log_param('num_epochs', num_epochs)
+        mlflow.log_param('model summary', model.summary())
+
+        model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+
+        assert model is not None
+
+        history = model.fit(train_dataset_fn(), epochs=num_epochs,
+                            steps_per_epoch=steps_per_epoch,
+                            validation_data=validation_data)
+
+        for i in range(num_epochs):
+            mlflow.log_metric('loss', history.history['loss'][i])
+            mlflow.log_metric('acc',  history.history['acc' ][i])
+        ### end for
+        if log_model:
+            model.save('model.h5')
+            mlflow.log_artifact('model.h5')
+        ## end log_model
+
+        return model
+        ### end train
 
     def test(self, model, test_data, test_labels):
         assert model is not None
