@@ -134,15 +134,15 @@ def main(argsIn): #pylint: disable=R0914
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
-    data_shape = (aeds.num_bands(), aeds.chunk_size(), aeds.chunk_size())
+    data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
     model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-                                           log_model=False, num_gpus=options.num_gpus)
+    estimator = experiment.train(model, dataset_fn, steps_per_epoch=1000,
+                                 log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, dataset_fn,
     #                               num_epochs=config_values['ml']['num_epochs'],
     #                               steps_per_epoch=150,
