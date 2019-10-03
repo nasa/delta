@@ -142,6 +142,8 @@ class ImageryDataset:
         label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
         # Pair the data and labels in our dataset
+        # TODO: This makes assumptions about the dataset that is not necessarily valid for
+        # all datasets. Make data filtering a configurable thing?
         ds = tf.data.Dataset.zip((chunk_set, label_set))
         ds = ds.filter(lambda chunk, label: tf.math.equal(tf.math.zero_fraction(chunk), 0))
         ds = ds.prefetch(None)
@@ -452,10 +454,6 @@ class ImageryDatasetTFRecord:
         center_pixel = int(self._chunk_size/2)
         labels = tf.to_int32(chunk_data[:, 0, center_pixel, center_pixel])
 
-        #label_data = self._chunk_label_image(image) # Second method, why is it slower?
-        #labels = tf.to_int32(label_data[:,0,0,0])
-        #diff = tf.math.subtract(labels, label_data) # Error checking
-        #tf.print(tf.count_nonzero(diff), output_stream=sys.stderr)
         return labels
 
 
