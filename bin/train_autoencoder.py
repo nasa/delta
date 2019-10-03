@@ -26,25 +26,6 @@ from delta.ml.train import Experiment  #pylint: disable=C0413
 from delta.ml.networks import make_autoencoder
 
 
-#------------------------------------------------------------------------------
-# def make_model(in_shape, encoding_size=32):
-#
-#     mlflow.log_param('input_size',str(in_shape))
-#     mlflow.log_param('encoding_size',encoding_size)
-#
-#
-#     # Define network
-#     model = keras.Sequential([
-#         keras.layers.Flatten(input_shape=in_shape),
-#         keras.layers.Dense(encoding_size, activation=tf.nn.relu),
-#         keras.layers.Dense(np.prod(in_shape), activation=tf.nn.sigmoid),
-#         keras.layers.Reshape(in_shape)
-#         ])
-#     print(model.summary())
-#     return model
-#
-# ### end make_model
-#
 
 # TODO: Move this function!
 def get_debug_bands(image_type):
@@ -92,7 +73,7 @@ def main(argsIn): #pylint: disable=R0914
                         help="Specify image type along with the data folder."
                         +"(landsat, landsat-simple, worldview, or rgba)")
 
-    parser.add_argument("--num-debug-images", dest="num_debug_images", default=0, type=int,
+    parser.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
 
@@ -131,9 +112,9 @@ def main(argsIn): #pylint: disable=R0914
 
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
-                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
+                            'autoencoder_relu_out_%s'%(config_values['input_dataset']['image_type'],),
                             output_dir=output_folder)
-    mlflow.log_param('image type',   options.image_type)
+    mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
@@ -168,8 +149,9 @@ def main(argsIn): #pylint: disable=R0914
     next_element = iterator.get_next()
     sess = tf.Session()
 
-    debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
+#     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
     scale = 1.0 # TODO: Select based on image_type
+    num_bands = data_shape[0]
     for i in range(0, options.num_debug_images):
         print(i)
         # Get the next image pair, then make a function to return it
@@ -181,18 +163,24 @@ def main(argsIn): #pylint: disable=R0914
         element = next(result)
 
         # Get the output value out of its weird format, then convert for image output
-        pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
+#         pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
+        pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
         pic = np.moveaxis(pic, 0, -1)
 
-        plt.subplot(1,2,1)
-        in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
+#             in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
+        in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
         in_pic = np.moveaxis(in_pic, 0, -1)
-        plt.imshow(in_pic)
-        plt.title('Input image %03d' % (i, ))
 
-        plt.subplot(1,2,2)
-        plt.imshow(pic)
-        plt.title('Output image %03d' % (i, ))
+        for band in range(num_bands):
+            plt.subplot(num_bands,2,2*band+1)
+            plt.imshow(in_pic[:,:,band])
+            if band == 0:
+                plt.title('Input image %03d' % (i, ))
+
+            plt.subplot(num_bands,2,2*band+2)
+            plt.imshow(pic[:,:,band])
+            if band == 0:
+                plt.title('Output image %03d' % (i, ))
 
         debug_image_filename = os.path.join(output_folder,
                                             'Autoencoder_input_output_%03d.png' % (i, ))
