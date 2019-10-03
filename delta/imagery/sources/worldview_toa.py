@@ -65,14 +65,14 @@ def do_worldview_toa_conversion(image_path, meta_path, output_path, tile_size=(2
 
     #ds = get_earth_sun_distance() # TODO: Implement this function!
 
-    if calc_reflectance: #pylint: disable=R1720
+    if not calc_reflectance:
+        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
+    else:
         raise Exception('TODO: WV reflectance calculation is not fully implemented!')
 
         #user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
         #                                  sun_elevation=math.radians(data['MEANSUNEL']),
         #                                  satellite=data['SATID'],
         #                                  earth_sun_distance=ds)
-    else:
-        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
 
     large_image_tools.apply_function_to_file(image_path, output_path, user_function, tile_size, OUTPUT_NODATA)

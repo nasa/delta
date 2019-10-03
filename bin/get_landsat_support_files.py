@@ -104,7 +104,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
     if options.force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
         dummy_result = api.login(options.user_ee, options.password_ee,
-                                 save=True, catalogId=CATALOG) #pylint: disable=W0612
+                                 save=True, catalogId=CATALOG)
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')

@@ -1,6 +1,4 @@
-#pylint: disable=R0915,R0914,R0912,R0201,W0212,W0613
-
-#import sys
+#pylint: disable=no-self-use,unused-argument
 import mlflow
 import mlflow.tensorflow
 import tensorflow as tf
@@ -126,7 +124,7 @@ class Experiment:
         return scores
     ### end def test
 
-    def load_model(self, src): #pylint: disable=R0201
+    def load_model(self, src):
         raise NotImplementedError('loading models is not yet implemented')
 
     def log_parameters(self, params):
@@ -135,15 +133,3 @@ class Experiment:
             mlflow.log_param(k,params[k])
         ### end for
     ### end log_parameters
-
-    #def log_training_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_testing_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_validation_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_dataset(self, prefix, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))

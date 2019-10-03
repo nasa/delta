@@ -112,7 +112,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
     # Only log in if our session expired (ugly function use to check!)
     if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        dummy_result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
+        dummy_result = api.login(user, password, save=True, catalogId=CATALOG)
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')

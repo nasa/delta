@@ -218,7 +218,7 @@ class ImageryDataset:
         roi = rectangle.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
                                   int(parts[3].strip()), int(parts[4].strip()))
 
-        if len(parts) > 5: # pylint:disable=R1705
+        if len(parts) > 5:
             # A label folder was provided
             label_path = parts[5].strip()
             if not os.path.exists(label_path):
@@ -231,17 +231,16 @@ class ImageryDataset:
             center_pixel = int(self._chunk_size/2)
             labels = chunk_data[:, 0, center_pixel, center_pixel]
             return labels
-        else:
-            # No labels were provided
-            image = self.image_class()(path, self._cache_manager, self._regions_per_image)
-            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
+        # No labels were provided
+        image = self.image_class()(path, self._cache_manager, self._regions_per_image)
+        chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
 
-            # Make a fake label in the shape matching the input image
-            num_chunks = chunk_data.shape[0]
-            labels = np.zeros(num_chunks, dtype=np.int32)
-            labels[ 0:10] = 1 # Junk labels
-            labels[10:20] = 2
-            return labels
+        # Make a fake label in the shape matching the input image
+        num_chunks = chunk_data.shape[0]
+        labels = np.zeros(num_chunks, dtype=np.int32)
+        labels[ 0:10] = 1 # Junk labels
+        labels[10:20] = 2
+        return labels
 
     def _make_image_list(self, top_folder, label_folder, output_path, extensions,
                          just_one=False):
@@ -366,7 +365,7 @@ class ImageryDatasetTFRecord:
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
 
-        def is_chunk_non_zero(data, label): #pylint: disable=W0613
+        def is_chunk_non_zero(data, _):
             """Return True if the chunk has no zeros"""
             return tf.math.equal(tf.math.zero_fraction(data), 0)
 
@@ -449,7 +448,7 @@ class ImageryDatasetTFRecord:
         return labels
 
 
-    def _get_label_for_input_image(self, input_path, top_folder, label_folder): #pylint: disable=R0201
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder): # pylint: disable=no-self-use
         """Returns the path to the expected label for for the given input image file"""
 
         LABEL_EXT = '.tfrecordlabel'
@@ -464,7 +463,7 @@ class ImageryDatasetTFRecord:
         return label_path
 
 
-    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path, #pylint: disable=R0201
+    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path,
                          extensions):
         """Write a file listing all of the files in a (recursive) folder
            matching the provided extension.
