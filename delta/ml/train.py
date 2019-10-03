@@ -61,7 +61,7 @@ class Experiment:
 #         return None
     ### end train
 
-    def train_estimator(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
+    def train_estimator(self, model, train_dataset_fn, num_epochs=2, steps_per_epoch=2024,
                         validation_data=None, log_model=False, num_gpus=1):
         """Alternate call that uses the TF Estimator interface to run on multiple GPUs"""
         assert model is not None
@@ -69,12 +69,18 @@ class Experiment:
         test_dataset_fn=None
 
         mlflow.log_param('num_epochs', num_epochs)
+        mlflow.log_param('steps_per_epoch',steps_per_epoch)
         mlflow.log_param('model summary', model.summary())
 
         #model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
-        model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+        loss_fn = 'mean_squared_error'
+        lr = 0.001
+        mlflow.log_param('loss fn',loss_fn)
+        mlflow.log_param('learning rate', lr)
+
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr) # TODO
+        model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
 
         assert model is not None
 
@@ -100,10 +106,15 @@ class Experiment:
             input_fn_test = test_dataset_fn
         else: # Just eval on the training inputs
             input_fn_test = train_dataset_fn
+        ### end if
         result = tf.estimator.train_and_evaluate( #pylint: disable=W0612
             keras_estimator,
             train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
             eval_spec=tf.estimator.EvalSpec(input_fn=input_fn_test))
+
+        print(result)
+        mlflow.log_metric('accuracy',result[0]['accuracy'])
+        mlflow.log_metric('loss',result[0]['loss'])
 
         return keras_estimator # In v1.12 the result is undefined for distributed training!
         # TODO: Record the output from the Estimator!
