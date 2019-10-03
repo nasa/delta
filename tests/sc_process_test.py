@@ -1,17 +1,13 @@
 import argparse
-import os
 import sys
 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
-import tensorflow as tf #pylint: disable=C0413
-from tensorflow import keras #pylint: disable=C0413
+import tensorflow as tf
+from tensorflow import keras
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
+from delta import config
+from delta.imagery import imagery_dataset
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.

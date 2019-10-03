@@ -11,11 +11,8 @@ import traceback
 import functools
 import tempfile
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery import tfrecord_conversions #pylint: disable=C0413
-
+from delta.imagery import utilities
+from delta.imagery import tfrecord_conversions
 
 #------------------------------------------------------------------------------
 

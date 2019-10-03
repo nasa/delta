@@ -3,20 +3,12 @@
 Take an input folder of image files and
 convert them to a Tensorflow friendly format in the output folder.
 """
-import os
 import sys
 import argparse
-import tensorflow as tf #pylint: disable=C0413
-from tensorflow.python.framework.errors_impl import OutOfRangeError #pylint: disable=E0611
+import tensorflow as tf
+from tensorflow.python.framework.errors_impl import OutOfRangeError
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
-from delta.imagery import tfrecord_utils #pylint: disable=C0413
+from delta.imagery import tfrecord_utils
 
 #------------------------------------------------------------------------------
 

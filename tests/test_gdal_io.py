@@ -2,16 +2,13 @@
 Test for GDAL I/O classes.
 """
 import sys
-import os
 import argparse
 import math
+import time
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'delta')))
-
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
-from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import rectangle
+from delta.imagery.image_reader import MultiTiffFileReader
+from delta.imagery.image_writer import TiffWriter
 
 #------------------------------------------------------------------------------
 

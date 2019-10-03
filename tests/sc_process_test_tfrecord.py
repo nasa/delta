@@ -7,9 +7,6 @@ os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 import tensorflow as tf #pylint: disable=C0413
 from tensorflow import keras #pylint: disable=C0413
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 

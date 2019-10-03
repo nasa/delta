@@ -2,13 +2,10 @@
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """
-import os
 import sys
 import argparse
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta.imagery.sources import landsat_toa #pylint: disable=C0413
+from delta.imagery.sources import landsat_toa
 
 
 #------------------------------------------------------------------------------
