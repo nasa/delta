@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Apply convert_input_image_folder.py using multiple PBS nodes to divide up the work.
 """

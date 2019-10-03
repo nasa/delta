@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script to fetch DSWE (label) images from USGS corresponding to a given Landsat image.
 """

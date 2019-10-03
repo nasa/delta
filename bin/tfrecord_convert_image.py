@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Convert .tif image(s) into a single TFrecord file consisting of multiple tiles.
 """

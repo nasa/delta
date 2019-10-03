@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 """

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script test out the image chunk generation calls.
 """

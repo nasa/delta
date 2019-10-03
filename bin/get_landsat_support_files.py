@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script to fetch support images from USGS corresponding to a given Landsat image.
 """

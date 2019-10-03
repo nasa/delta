@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script to apply Top of Atmosphere correction to WorldView 2 and 3 files.
 """
