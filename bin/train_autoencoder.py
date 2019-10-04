@@ -9,10 +9,7 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 
-### Tensorflow includes
-
 import mlflow
-
 import tensorflow as tf
 
 from delta import config
@@ -119,13 +116,12 @@ def main(argsIn): #pylint: disable=R0914
     mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
-    ### end if
 
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
                             output_dir=output_folder)
-    mlflow.log_param('image type',   options.image_type)
+    mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')

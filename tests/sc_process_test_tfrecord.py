@@ -2,13 +2,16 @@ import argparse
 import os
 import sys
 
-os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
+import mlflow
 import tensorflow as tf #pylint: disable=C0413
 from tensorflow import keras #pylint: disable=C0413
 
 from delta import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
+from delta.ml.train import Experiment
+
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.
@@ -28,7 +31,7 @@ def make_model(channel, in_len):
 
     # Define network
     model = keras.Sequential([
-        keras.layers.Flatten(input_shape=(in_len, in_len, channel, channel)),
+        keras.layers.Flatten(input_shape=(in_len, in_len, channel)),
         # Note: use_bias is True by default, which is also the case in pytorch, which Robert used.
         keras.layers.Dense(fc2_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
@@ -81,6 +84,7 @@ def main(args):
         config_values['input_dataset']['label_directory'] = options.label_folder
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']
+    output_folder = config_values['ml']['output_folder']
 
     # With TF 1.12, the dataset needs to be constructed inside a function passed in to
     # the estimator "train_and_evaluate" function to avoid getting a graph error!
@@ -105,53 +109,35 @@ def main(args):
 
         return ds
 
-    # TODO: Set this up to help with parallelization
-    #dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
-
-#    num_entries = ids.total_num_regions()
-#    if options.test_limit:
-#        num_entries = ids.total_num_regions()
-#        if num_entries > options.test_limit:
-#            num_entries = options.test_limit
-
-    ## Start a CPU-only session
-    #config = tf.ConfigProto(device_count = {'GPU': 0})
-    #sess   = tf.InteractiveSession(config=config)
+    print('Creating experiment')
+    mlflow_tracking_dir = os.path.join(output_folder, 'mlruns')
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+    if not os.path.exists(mlflow_tracking_dir):
+        os.mkdir(mlflow_tracking_dir)
+    experiment = Experiment(mlflow_tracking_dir,
+                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
+                            output_dir=output_folder)
+    mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
+    mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
+    mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
 
     # Get these values without initializing the dataset (v1.12)
-    #model = init_network(ids.num_bands(), ids.chunk_size())
     ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values)
-    model = init_network(ds_info.num_bands(), config_values['ml']['chunk_size'])
+    model = make_model(ds_info.num_bands(), config_values['ml']['chunk_size'])
     print('num images = ', ds_info.num_images())
 
-    #unused_history = model.fit(ds, epochs=num_epochs,
-    #                           steps_per_epoch=num_entries//batch_size)
+    # Estimator interface requires the dataset to be constructed within a function.
+    tf.logging.set_verbosity(tf.logging.INFO)
+    estimator = experiment.train(model, assemble_dataset, steps_per_epoch=1000,
+                                 log_model=False, num_gpus=options.num_gpus)
+    #model = experiment.train_keras(model, assemble_dataset,
+    #                               num_epochs=config_values['ml']['num_epochs'],
+    #                               steps_per_epoch=150,
+    #                               log_model=False, num_gpus=options.num_gpus)
 
 
-    # Define DistributionStrategies and convert the Keras Model to an
-    # Estimator that utilizes these DistributionStrateges.
-    # Evaluator is a single worker, so using MirroredStrategy.
-    tf_config = tf.estimator.RunConfig(
-        experimental_distribute=tf.contrib.distribute.DistributeConfig(
-                train_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
-                    num_gpus_per_worker=options.num_gpus),
-                eval_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
-                    num_gpus_per_worker=options.num_gpus)))
-
-    keras_estimator = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=tf_config, model_dir=config_values['ml']['model_folder'])
-
-    # Train and evaluate the model. Evaluation will be skipped if there is not an
-    # "evaluator" job in the cluster.
-
-    result = tf.estimator.train_and_evaluate(
-        keras_estimator,
-        train_spec=tf.estimator.TrainSpec(input_fn=assemble_dataset),
-        eval_spec=tf.estimator.EvalSpec(input_fn=assemble_dataset))
-
-    print('Results: ' + str(result))
-
-    print('TF dataset test finished!')
+    print('sc_process_test finished!')
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

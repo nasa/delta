@@ -28,7 +28,6 @@ def train(model, train_dataset_fn, test_dataset_fn, num_gpus=1):
         keras_estimator,
         train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
         eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn))
-    #history = model.fit(train_dataset_fn(), steps_per_epoch=100)
 
     # keras_estimator.evaluate(input_fn=test_dataset_fn) # TODO Run this?
     return keras_estimator
