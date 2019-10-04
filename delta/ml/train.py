@@ -4,6 +4,8 @@ import mlflow.tensorflow
 import tensorflow as tf
 
 def train(model, train_dataset_fn, test_dataset_fn, num_gpus=1):
+    """Plain training function without mlflow stuff"""
+
     assert model is not None
     assert train_dataset_fn is not None
 
@@ -28,9 +30,11 @@ def train(model, train_dataset_fn, test_dataset_fn, num_gpus=1):
         eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn))
     #history = model.fit(train_dataset_fn(), steps_per_epoch=100)
 
-    return keras_estimator.evaluate(input_fn=test_dataset_fn)
+    # keras_estimator.evaluate(input_fn=test_dataset_fn) # TODO Run this?
+    return keras_estimator
 
 class Experiment:
+    """TODO"""
 
     def __init__(self, tracking_uri, experiment_name, output_dir='./'):
         self.experiment_name = experiment_name
@@ -69,7 +73,9 @@ class Experiment:
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
         model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
-        return train(model, train_dataset_fn, input_fn_test, num_gpus)
+        # Call the lower level estimator train function
+        estimator_model = train(model, train_dataset_fn, input_fn_test, num_gpus)
+        return estimator_model
 
         # TODO: Record the output from the Estimator!
 

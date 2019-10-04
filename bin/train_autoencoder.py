@@ -162,6 +162,7 @@ def main(argsIn): #pylint: disable=R0914
     sess = tf.Session()
 
     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
+    #print('debug_bands = ' + str(debug_bands))
     scale = aeds.scale_factor()
     for i in range(0, options.num_debug_images):
         print('Preparing debug image ' + str(i))
@@ -175,8 +176,10 @@ def main(argsIn): #pylint: disable=R0914
         element = next(result)
 
         # Get the output value out of its weird format, then convert for image output
-        pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
-        pic = np.moveaxis(pic, 0, -1)
+        #print(element['reshape'].shape)
+        pic = (element['reshape'][:, :, debug_bands] * scale).astype(np.uint8)
+        #pic = np.moveaxis(pic, 0, -1)
+        #print(pic.shape)
 
         # Code to test with Keras instead of Estimator
         #result = model.predict(value[0])
@@ -185,8 +188,9 @@ def main(argsIn): #pylint: disable=R0914
 
         #print(pic)
         plt.subplot(1,2,1)
-        in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1)
+        #print(value[0].shape)
+        in_pic = (value[0][0, :, :, debug_bands] * scale).astype(np.uint8)
+        in_pic = np.moveaxis(in_pic, 0, -1) # Not sure why this is needed
         #print('data')
         #print(in_pic.shape)
         #print(in_pic)
