@@ -129,8 +129,12 @@ def main(args):
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    estimator = experiment.train(model, assemble_dataset, steps_per_epoch=1000,
-                                 log_model=False, num_gpus=options.num_gpus)
+    train_fn = assemble_dataset
+    test_fn = None
+    experiment.train(model, train_fn, test_fn,
+                     model_folder=config_values['ml']['model_folder'],
+                     steps_per_epoch=1000,
+                     log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, assemble_dataset,
     #                               num_epochs=config_values['ml']['num_epochs'],
     #                               steps_per_epoch=150,
