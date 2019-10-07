@@ -112,5 +112,6 @@ def test_train(tfrecord_dataset): #pylint: disable=redefined-outer-name
         d = tfrecord_dataset.dataset(filter_zero=False)
         d = d.batch(100).repeat(5)
         return d
-    ret = train.train(model, create_dataset, create_dataset)
+    estimator = train.train(model, create_dataset, create_dataset)
+    ret = estimator.evaluate(input_fn=create_dataset)
     assert ret['binary_accuracy'] > 0.90
