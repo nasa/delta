@@ -132,7 +132,7 @@ def main(argsIn): #pylint: disable=R0914
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
     test_fn = None
-    estimator = experiment.train(model, dataset_fn, test_fn, 
+    estimator = experiment.train(model, dataset_fn, test_fn,
                                  model_folder=config_values['ml']['model_folder'],
                                  log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, dataset_fn,

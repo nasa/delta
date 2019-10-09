@@ -181,7 +181,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
                 os.remove(temp_path)
 
     print('Writing TFRecord data...')
-    
+
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
     input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
     if write_compressed:

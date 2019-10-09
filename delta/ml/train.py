@@ -69,7 +69,7 @@ class Experiment:
         mlflow.end_run()
     ### end __del__
 
-    def train(self, model, train_dataset_fn, test_dataset_fn=None, model_folder=None,
+    def train(self, model, train_dataset_fn, test_dataset_fn=None, model_folder=None, #pylint: disable=R0913
               num_epochs=70, steps_per_epoch=2024,
               validation_data=None, log_model=False, num_gpus=1):
         """Train call that uses the TF Estimator interface to run on multiple GPUs"""

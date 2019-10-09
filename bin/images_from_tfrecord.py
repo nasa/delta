@@ -44,7 +44,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
             # Read the next item from the TFRecord file
             if label:
                 image = tfrecord_utils.load_tfrecord_label_element(value, num_bands,
-                                                                  input_region_height, input_region_width)
+                                                                   input_region_height, input_region_width)
             else:
                 image = tfrecord_utils.load_tfrecord_data_element(value, num_bands,
                                                                   input_region_height, input_region_width)
