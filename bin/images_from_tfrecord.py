@@ -13,7 +13,7 @@ from delta.imagery import tfrecord_utils
 #------------------------------------------------------------------------------
 
 
-def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True):
+def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, label=False):
     """Extract entries from a tfrecord file and write them as plain image files"""
 
     # Get size information from the file
@@ -29,6 +29,10 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True):
     next_element = iterator.get_next()
     sess = tf.Session()
 
+    scaling = 1
+    if label: # Get labels into a good 255 range
+        scaling = 80
+
     # Read images until we hit an exception (end of file) then write out what we have
     total  = 0
     count  = 0
@@ -38,13 +42,19 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True):
             value = sess.run(next_element)
 
             # Read the next item from the TFRecord file
-            image = tfrecord_utils.load_tfrecord_data_element(value, num_bands,
-                                                              input_region_height, input_region_width)
+            if label:
+                image = tfrecord_utils.load_tfrecord_label_element(value, num_bands,
+                                                                  input_region_height, input_region_width)
+            else:
+                image = tfrecord_utils.load_tfrecord_data_element(value, num_bands,
+                                                                  input_region_height, input_region_width)
+            #print(str((input_region_height, input_region_width)))
+            #print(sess.run(image))
+            #continue
             pic = image[0,:,:,0] # Just take the first channel for now
             pic = tf.reshape(pic, ( input_region_height, input_region_width, 1))
-            #print(sess.run(pic))
-            #continue
-            pic = tf.cast(pic, tf.uint8) # TODO: May need to scale here
+
+            pic = tf.cast(pic*scaling, tf.uint8)
 
             # Assemble the pictures horizontally
             if concat is not None:
@@ -88,6 +98,9 @@ def main(argsIn):
         parser.add_argument("--uncompressed", action="store_true", dest="uncompressed", default=False,
                             help="Set if the input file is an uncompressed TFRecord file.")
 
+        parser.add_argument("--label", action="store_true", dest="label", default=False,
+                            help="The input file is a label file.")
+
         parser.add_argument("--width", dest="width", type=int, default=8,
                             help="Default number of tiles to put in each output file.")
 
@@ -102,7 +115,7 @@ def main(argsIn):
     #    os.mkdir(options.output_folder)
 
     images_from_tfrecord(options.input_path, options.output_prefix,
-                         options.width, not options.uncompressed)
+                         options.width, not options.uncompressed, options.label)
 
 
     print('Finished!')
