@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Apply convert_input_image_folder.py using multiple PBS nodes to divide up the work.
 """
@@ -8,11 +9,8 @@ import traceback
 import getpass
 import numpy as np
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import pbs_functions #pylint: disable=C0413
-# from delta.imagery import utilities #pylint: disable=C0413
-import convert_input_image_folder #pylint: disable=C0413
+from delta import pbs_functions
+import convert_input_image_folder
 
 bin_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath
 

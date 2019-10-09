@@ -1,6 +1,5 @@
 import os
 import random
-import sys
 import tempfile
 
 import pytest
@@ -8,11 +7,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta.imagery import tfrecord_utils #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
-from delta.ml import train #pylint: disable=C0413
+from delta.imagery import tfrecord_utils
+from delta.imagery import imagery_dataset
+from delta.ml import train
 
 def generate_tile(width=32, height=32, blocks=50):
     """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
@@ -115,5 +112,6 @@ def test_train(tfrecord_dataset): #pylint: disable=redefined-outer-name
         d = tfrecord_dataset.dataset(filter_zero=False)
         d = d.batch(100).repeat(5)
         return d
-    ret = train.train(model, create_dataset, create_dataset)
+    estimator = train.train(model, create_dataset, create_dataset)
+    ret = estimator.evaluate(input_fn=create_dataset)
     assert ret['binary_accuracy'] > 0.90

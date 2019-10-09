@@ -1,16 +1,23 @@
-#pylint: disable=R0915,R0914,R0912,R0201,W0212,W0613
-
-#import sys
+#pylint: disable=no-self-use,unused-argument
 import mlflow
 import mlflow.tensorflow
 import tensorflow as tf
 
-def train(model, train_dataset_fn, test_dataset_fn, num_gpus=1):
+def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_gpus=1):
+    """Plain training function without mlflow stuff"""
+
     assert model is not None
     assert train_dataset_fn is not None
 
+    # Save a checkpoint file every 10 minutes.
+    # - When restarting from a checkpoint, TF does not remember where we were in the
+    #   input dataset so it will not train "evenly" but hopefully if the randomization
+    #   is good enough and/or there are multiple epochs this won't matter.
+    CHECKPOINT_SPACING_SECONDS = 10 * 60
+
     # Set up multi-GPU strategy
     tf_config = tf.estimator.RunConfig(
+        save_checkpoints_secs=CHECKPOINT_SPACING_SECONDS,
         experimental_distribute=tf.contrib.distribute.DistributeConfig(
                 train_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
                     num_gpus_per_worker=num_gpus,
@@ -22,17 +29,23 @@ def train(model, train_dataset_fn, test_dataset_fn, num_gpus=1):
 
     # Convert from Keras to Estimator
     keras_estimator = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=tf_config)#, model_dir=config_values['ml']['model_folder'])
+        keras_model=model, config=tf_config, model_dir=model_folder)
 
+    if test_dataset_fn is None:
+        # It appears this is the only way to skip the evaluation step
+        eval_spec=tf.estimator.EvalSpec(input_fn=train_dataset_fn, steps=None)
+    else:
+        eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn)
     tf.estimator.train_and_evaluate( #pylint: disable=W0612
         keras_estimator,
         train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
-        eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn))
-    #history = model.fit(train_dataset_fn(), steps_per_epoch=100)
+        eval_spec=eval_spec)
 
-    return keras_estimator.evaluate(input_fn=test_dataset_fn)
+    # keras_estimator.evaluate(input_fn=test_dataset_fn) # TODO Run this?
+    return keras_estimator
 
 class Experiment:
+    """TODO"""
 
     def __init__(self, tracking_uri, experiment_name, output_dir='./'):
         self.experiment_name = experiment_name
@@ -56,14 +69,10 @@ class Experiment:
         mlflow.end_run()
     ### end __del__
 
-    def train(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
+    def train(self, model, train_dataset_fn, test_dataset_fn=None, model_folder=None, #pylint: disable=R0913
+              num_epochs=70, steps_per_epoch=2024,
               validation_data=None, log_model=False, num_gpus=1):
         """Train call that uses the TF Estimator interface to run on multiple GPUs"""
-        test_dataset_fn=None # TODO: make argument
-        if test_dataset_fn:
-            input_fn_test = test_dataset_fn
-        else: # Just eval on the training inputs
-            input_fn_test = train_dataset_fn
 
         mlflow.log_param('num_epochs', num_epochs)
         mlflow.log_param('model summary', model.summary())
@@ -71,7 +80,9 @@ class Experiment:
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
         model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
-        return train(model, train_dataset_fn, input_fn_test, num_gpus)
+        # Call the lower level estimator train function
+        estimator_model = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus)
+        return estimator_model
 
         # TODO: Record the output from the Estimator!
 
@@ -87,7 +98,8 @@ class Experiment:
     ### end train
 
 
-    def train_keras(self, model, train_dataset_fn, num_epochs=70, steps_per_epoch=2024,
+    def train_keras(self, model, train_dataset_fn,
+                    num_epochs=70, steps_per_epoch=2024,
                     validation_data=None, log_model=False, num_gpus=1):
         """Call that uses the Keras interface, only works on a single GPU"""
         assert model is not None
@@ -117,33 +129,25 @@ class Experiment:
         ### end train
 
     def test(self, model, test_data, test_labels):
+        """Evaluate the model on the input dataset"""
         assert model is not None
         assert test_data is not None
         assert test_labels is not None
         assert isinstance(test_data, type(test_labels))
 
+        # This probably won't work with multiple GPUs in 1.12
         scores = model.evaluate(test_data, test_labels)
         return scores
     ### end def test
 
-    def load_model(self, src): #pylint: disable=R0201
+    def load_model(self, src):
+        """TODO"""
         raise NotImplementedError('loading models is not yet implemented')
 
     def log_parameters(self, params):
+        """TODO"""
         assert isinstance(params, dict)
         for k in params.keys():
             mlflow.log_param(k,params[k])
         ### end for
     ### end log_parameters
-
-    #def log_training_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_testing_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_validation_set(self, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    #def log_dataset(self, prefix, dataset): #pylint: disable=R0201
-    #    raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))

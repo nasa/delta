@@ -108,7 +108,7 @@ def get_dataset_list(options):
 def get_dataset_fields(dataset_list):
     """Code to look through available fields for datasets"""
 
-    for (dataset, full_name) in dataset_list: #pylint: disable=W0612
+    for (dataset, _) in dataset_list: #pylint: disable=W0612
 
         # Get the available filters for this data set
         print('----->  For DS = ' + dataset)

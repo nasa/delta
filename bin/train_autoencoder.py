@@ -1,28 +1,20 @@
+#!/usr/bin/python
 """
 Script test out the image chunk generation calls.
 """
-#pylint: disable=C0413
 import sys
 import os
 import argparse
 import functools
-#import random
 import matplotlib.pyplot as plt
 import numpy as np
 
-### Tensorflow includes
-
 import mlflow
-
 import tensorflow as tf
-# from tensorflow import keras
-#import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
-from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta import config
+from delta.imagery import imagery_dataset
+from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
 
 
@@ -96,6 +88,9 @@ def main(argsIn): #pylint: disable=R0914
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
 
+    parser.add_argument("--num-eval", dest="num_eval", default=100, type=int,
+                        help="Use this many input pairs for evaluation instead of training.")
+
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
 
@@ -107,10 +102,6 @@ def main(argsIn): #pylint: disable=R0914
 
     config_values = config.parse_config_file(options.config_file,
                                              options.data_folder, options.image_type)
-
-    #batch_size = config_values['ml']['batch_size']
-    #num_epochs = config_values['ml']['num_epochs']
-
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
@@ -124,13 +115,12 @@ def main(argsIn): #pylint: disable=R0914
     mlflow_tracking_dir = os.path.join(output_folder,'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
-    ### end if
 
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
                             output_dir=output_folder)
-    mlflow.log_param('image type',   options.image_type)
+    mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
@@ -141,7 +131,9 @@ def main(argsIn): #pylint: disable=R0914
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train(model, dataset_fn, steps_per_epoch=1000,
+    test_fn = None
+    estimator = experiment.train(model, dataset_fn, test_fn,
+                                 model_folder=config_values['ml']['model_folder'],
                                  log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, dataset_fn,
     #                               num_epochs=config_values['ml']['num_epochs'],
@@ -167,6 +159,7 @@ def main(argsIn): #pylint: disable=R0914
     sess = tf.Session()
 
     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
+    #print('debug_bands = ' + str(debug_bands))
     scale = aeds.scale_factor()
     for i in range(0, options.num_debug_images):
         print('Preparing debug image ' + str(i))
@@ -180,8 +173,10 @@ def main(argsIn): #pylint: disable=R0914
         element = next(result)
 
         # Get the output value out of its weird format, then convert for image output
-        pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
-        pic = np.moveaxis(pic, 0, -1)
+        #print(element['reshape'].shape)
+        pic = (element['reshape'][:, :, debug_bands] * scale).astype(np.uint8)
+        #pic = np.moveaxis(pic, 0, -1)
+        #print(pic.shape)
 
         # Code to test with Keras instead of Estimator
         #result = model.predict(value[0])
@@ -190,8 +185,9 @@ def main(argsIn): #pylint: disable=R0914
 
         #print(pic)
         plt.subplot(1,2,1)
-        in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1)
+        #print(value[0].shape)
+        in_pic = (value[0][0, :, :, debug_bands] * scale).astype(np.uint8)
+        in_pic = np.moveaxis(in_pic, 0, -1) # Not sure why this is needed
         #print('data')
         #print(in_pic.shape)
         #print(in_pic)

@@ -2,16 +2,15 @@
 Utilities for writing and reading images to TFRecord files.
 """
 
-import sys
 import os
 import random
 import portalocker
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import numpy as np
 
-import tensorflow as tf #pylint: disable=C0413
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+import tensorflow as tf
+from delta.imagery import rectangle
+from delta.imagery import utilities
+from delta.imagery import image_reader
 
 #------------------------------------------------------------------------------
 
@@ -132,7 +131,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
        If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
-    input_reader = MultiTiffFileReader(input_paths)
+    input_reader = image_reader.MultiTiffFileReader(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
     num_bands = input_reader.num_bands()
     data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
@@ -155,14 +154,13 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
         """Callback function to write the first channel to the output file."""
 
         # Figure out where the desired output data falls in read_roi
-        ((col, row), (x0, y0, x1, y1)) = get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
+        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
 
         # Pack all bands into a numpy array in the shape TF will expect later.
         array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
         for band in bands_to_use:
             band_data = data_vec[band-1]
             array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
-
 
         if write_compressed: # Single output file
             write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
@@ -183,8 +181,9 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
                 os.remove(temp_path)
 
     print('Writing TFRecord data...')
-    # Each of the ROIs will be written out in order
-    input_reader.process_rois(output_rois, callback_function)
+
+    # If this is a single file the ROIs must be written out in order, otherwise we don't care.
+    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
     if write_compressed:
         print('Done writing: ' + str(input_paths))
     else:

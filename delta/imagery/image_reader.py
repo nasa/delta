@@ -283,13 +283,14 @@ class MultiTiffFileReader():
         pool.join()
         return data_store
 
-    def process_rois(self, requested_rois, callback_function):
+    def process_rois(self, requested_rois, callback_function, strict_order=False):
         """Process the given region broken up into blocks using the callback function.
            Each block will get the image data from each input image passed into the function.
            Function definition TBD!
            Blocks that go over the image boundary will be passed as partial image blocks.
            All data reading and function calling takes place in the current thread, to use
            multiple threads you need to hand off the work in the callback function.
+           If strict_order is passed in the ROIs will be processed in exactly the input order.
         """
 
         if not self._image_handles:
@@ -338,10 +339,14 @@ class MultiTiffFileReader():
                 if not read_roi.contains_rect(roi):
                     #print(read_roi + ' does not contain ' + )
                     index += 1
+                    if strict_order:
+                        break
                     continue
 
                 # We pass the read roi to the function rather than doing
                 # any kind of cropping here.
+
+                #print('Doing roi ' + str(roi))
 
                 # Execute the callback function with the data vector.
                 callback_function(roi, read_roi, data_vec)

@@ -6,25 +6,17 @@ import os
 import os.path
 import argparse
 import functools
-#import random
 import matplotlib.pyplot as plt
 import numpy as np
-#pylint: disable=C0413
-
-### Tensorflow includes
 
 import mlflow
 
 import tensorflow as tf
 from tensorflow import keras
-#import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import config #pylint: disable=C0413
-from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta import config
+from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
-
 
 MNIST_WIDTH = 28 # The images are 28x28 pixels, single channel
 MNIST_BANDS = 1

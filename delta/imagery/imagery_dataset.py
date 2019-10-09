@@ -3,7 +3,7 @@ Tools for loading input images into the TensorFlow Dataset class.
 """
 import functools
 import os
-#import sys
+import sys #pylint: disable=W0611
 import math
 import psutil
 
@@ -218,7 +218,7 @@ class ImageryDataset:
         roi = rectangle.Rectangle(int(parts[1].strip()), int(parts[2].strip()),
                                   int(parts[3].strip()), int(parts[4].strip()))
 
-        if len(parts) > 5: # pylint:disable=R1705
+        if len(parts) > 5:
             # A label folder was provided
             label_path = parts[5].strip()
             if not os.path.exists(label_path):
@@ -231,17 +231,16 @@ class ImageryDataset:
             center_pixel = int(self._chunk_size/2)
             labels = chunk_data[:, 0, center_pixel, center_pixel]
             return labels
-        else:
-            # No labels were provided
-            image = self.image_class()(path, self._cache_manager, self._regions_per_image)
-            chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
+        # No labels were provided
+        image = self.image_class()(path, self._cache_manager, self._regions_per_image)
+        chunk_data = image.chunk_image_region(roi, self._chunk_size, self._chunk_overlap, data_type=np.int32)
 
-            # Make a fake label in the shape matching the input image
-            num_chunks = chunk_data.shape[0]
-            labels = np.zeros(num_chunks, dtype=np.int32)
-            labels[ 0:10] = 1 # Junk labels
-            labels[10:20] = 2
-            return labels
+        # Make a fake label in the shape matching the input image
+        num_chunks = chunk_data.shape[0]
+        labels = np.zeros(num_chunks, dtype=np.int32)
+        labels[ 0:10] = 1 # Junk labels
+        labels[10:20] = 2
+        return labels
 
     def _make_image_list(self, top_folder, label_folder, output_path, extensions,
                          just_one=False):
@@ -341,10 +340,10 @@ class ImageryDatasetTFRecord:
             self._num_bands, self._input_region_height, self._input_region_width = tfrecord_utils.get_record_info(line)
 
         # Tell TF to use the functions above to load our data.
-        self._num_parallel_calls = config_values['input_dataset']['num_input_threads']
+        self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
         self._shuffle_buffer_size = config_values['input_dataset']['shuffle_buffer_size']
 
-    def dataset(self, filter_zero=True):
+    def dataset(self, filter_zero=True, shuffle=True, predict=False):
         """Return the underlying TensorFlow dataset object that this class creates"""
 
         # Randomize the input image order in Python to simplify working with TF
@@ -363,18 +362,25 @@ class ImageryDatasetTFRecord:
         chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
         label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
+        if predict:
+            return chunk_set
+
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((chunk_set, label_set))
 
-        def is_chunk_non_zero(data, label): #pylint: disable=W0613
-            """Return True if the chunk has no zeros"""
-            return tf.math.equal(tf.math.zero_fraction(data), 0)
+        def is_chunk_non_zero(data, label):
+            """Return True if the chunk has no zeros (nodata) in the data or label"""
+            return tf.math.logical_and(tf.math.equal(tf.math.zero_fraction(data ), 0),
+                                       tf.math.equal(tf.math.zero_fraction(label), 0))
 
         ## Filter out all chunks with zero (nodata) values
         if filter_zero:
             ds = ds.filter(is_chunk_non_zero)
 
-        return ds.shuffle(buffer_size=self._shuffle_buffer_size)
+        if shuffle:
+            ds = ds.shuffle(buffer_size=self._shuffle_buffer_size)
+
+        return ds
 
     def num_bands(self):
         """Return the number of bands in each image of the data set"""
@@ -399,6 +405,7 @@ class ImageryDatasetTFRecord:
         strides = [1, stride, stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
         result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        #tf.print(tf.shape(result), output_stream=sys.stderr)
         # Output is [1, M, N, chunk*chunk*bands]
         if is_label:
             result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, 1])
@@ -409,6 +416,9 @@ class ImageryDatasetTFRecord:
     def _chunk_label_image(self, image):
         """Split up a tensor label image into tensor chunks.
            This seems like it should be faster, but maybe it isn't!"""
+
+        # TODO: Try concatenating the label on to the image, then splitting post-chunk operation!
+        # https://stackoverflow.com/questions/54105110/generate-image-patches-with-tf-extract-image-patches-for-a-pair-of-images-effici
 
         # Set up parameters for the TF chunking function to extract the chunk centers
         stride = self._chunk_size - self._chunk_overlap
@@ -432,6 +442,7 @@ class ImageryDatasetTFRecord:
         image = tfrecord_utils.load_tfrecord_data_element(example_proto, self._num_bands,
                                                           self._input_region_height, self._input_region_width)
         result = self._chunk_tf_image(image, is_label=False)
+        #tf.print(tf.shape(result), output_stream=sys.stderr)
 #         result = chunk_tf_image(self._chunk_size, self._num_bands, image, is_label=False)
         result = tf.math.divide(result, self._data_scale_factor) # Get into 0-1 range
         return result
@@ -446,10 +457,14 @@ class ImageryDatasetTFRecord:
         center_pixel = int(self._chunk_size/2)
         # TODO: check if multi-valued, convert to one-hot labels
         labels = tf.to_int32(chunk_data[:, center_pixel, center_pixel, 0])
+
+        #label_data = self._chunk_label_image(image) # Second method, why is it slower?
+        #labels = tf.to_int32(label_data[:,0,0,0])
+
         return labels
 
 
-    def _get_label_for_input_image(self, input_path, top_folder, label_folder): #pylint: disable=R0201
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder): # pylint: disable=no-self-use
         """Returns the path to the expected label for for the given input image file"""
 
         LABEL_EXT = '.tfrecordlabel'
@@ -464,7 +479,7 @@ class ImageryDatasetTFRecord:
         return label_path
 
 
-    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path, #pylint: disable=R0201
+    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path,
                          extensions):
         """Write a file listing all of the files in a (recursive) folder
            matching the provided extension.

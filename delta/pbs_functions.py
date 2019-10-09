@@ -33,7 +33,7 @@ def cleanJobID(jobID):
     '''Remove the part after the dot, when the input looks like 149691.pbspl233b.'''
 
     jobID = jobID.strip()
-    m = re.match('^(.*?)\.', jobID) #pylint: disable=W1401
+    m = re.match(r'^(.*?)\.', jobID)
     if m:
         return m.group(1)
     return jobID
@@ -68,7 +68,7 @@ def getActiveJobs(user):
     # Run qstat command to get a list of all active jobs by this user
     cmd = ['qstat', '-u', user]
 
-    (textOutput, err, status) = execute_command(cmd) #pylint: disable=W0612
+    (textOutput, _, status) = execute_command(cmd)
 
     lines = textOutput.split('\n')
 

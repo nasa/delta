@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Script test out the image chunk generation calls.
 """
@@ -5,13 +6,11 @@ import os
 import sys
 import argparse
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery.sources import landsat #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
-from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import rectangle
+from delta.imagery import utilities
+from delta.imagery.sources import landsat
+from delta.imagery.image_reader import MultiTiffFileReader
+from delta.imagery.image_writer import write_simple_image
 
 #------------------------------------------------------------------------------
 
