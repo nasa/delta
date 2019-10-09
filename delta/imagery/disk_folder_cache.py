@@ -2,7 +2,6 @@
 Class to cap the number of unpacked images kept on disk at a fixed level.
 """
 import os
-from abc import ABC, abstractmethod
 
 
 #============================================================================
@@ -76,9 +75,6 @@ class DiskCache:
         for f in os.listdir(self._folder):
             # Skip text files
             # -> It is important that we don't delete the list file if the user puts it here!
-            try:
-                ext = os.path.splitext(f)[1]
-                if ext not in ['.csv', 'txt']:
-                    self._item_list.append(f)
-            except: # Track all items without an extension
+            ext = os.path.splitext(f)[1]
+            if ext not in ['.csv', 'txt']:
                 self._item_list.append(f)

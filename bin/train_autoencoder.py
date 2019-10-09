@@ -88,6 +88,9 @@ def main(argsIn): #pylint: disable=R0914
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
 
+    parser.add_argument("--num-eval", dest="num_eval", default=100, type=int,
+                        help="Use this many input pairs for evaluation instead of training.")
+
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
 
@@ -109,10 +112,6 @@ def main(argsIn): #pylint: disable=R0914
     if config_values['input_dataset']['image_type'] is None:
         print('Must specify an image type.', file=sys.stderr)
         sys.exit(0)
-
-    #batch_size = config_values['ml']['batch_size']
-    #num_epochs = config_values['ml']['num_epochs']
-
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
@@ -142,7 +141,9 @@ def main(argsIn): #pylint: disable=R0914
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train(model, dataset_fn, steps_per_epoch=1000,
+    test_fn = None
+    estimator = experiment.train(model, dataset_fn, test_fn,
+                                 model_folder=config_values['ml']['model_folder'],
                                  log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, dataset_fn,
     #                               num_epochs=config_values['ml']['num_epochs'],

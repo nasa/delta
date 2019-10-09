@@ -162,7 +162,6 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
             band_data = data_vec[band-1]
             array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
 
-
         if write_compressed: # Single output file
             write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
                                  output_roi.width(), output_roi.height(), num_bands)
@@ -182,8 +181,9 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
                 os.remove(temp_path)
 
     print('Writing TFRecord data...')
-    # Each of the ROIs will be written out in order
-    input_reader.process_rois(output_rois, callback_function)
+
+    # If this is a single file the ROIs must be written out in order, otherwise we don't care.
+    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
     if write_compressed:
         print('Done writing: ' + str(input_paths))
     else:

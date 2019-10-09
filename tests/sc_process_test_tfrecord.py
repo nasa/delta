@@ -1,8 +1,12 @@
 import argparse
 import os
 import sys
-
+import time
+import math
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
+
+import numpy as np
+import matplotlib.pyplot as plt
 
 import mlflow
 import tensorflow as tf #pylint: disable=C0413
@@ -52,7 +56,7 @@ def init_network(num_bands, chunk_size):
 
     return model
 
-def main(args):
+def main(args): #pylint: disable=R0914
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
     parser.add_argument("--config-file", dest="config_file", required=False,
@@ -67,6 +71,9 @@ def main(args):
                         help="Try to use this many GPUs.")
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
+
+    parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
+                        help="Run experimental code!")
 
     try:
         options = parser.parse_args(args[1:])
@@ -135,13 +142,106 @@ def main(args):
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    _ = experiment.train(model, assemble_dataset, steps_per_epoch=1000,
-                         log_model=False, num_gpus=options.num_gpus)
+    train_fn = assemble_dataset
+    test_fn = None
+    estimator = experiment.train(model, train_fn, test_fn,
+                                 model_folder=config_values['ml']['model_folder'],
+                                 #steps_per_epoch=100,
+                                 log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, assemble_dataset,
     #                               num_epochs=config_values['ml']['num_epochs'],
     #                               steps_per_epoch=150,
     #                               log_model=False, num_gpus=options.num_gpus)
 
+
+    if not options.experimental:
+        print('sc_process_test finished!')
+        return
+
+    # --> Code below here is to generate an output image!!!
+    # Needs to be fixed, then moved to a different tool!
+
+    # TODO: Load the model from disk instead of putting this at the end of training!
+
+    #config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1
+    #ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    #ds = ids.dataset(filter_zero=False, shuffle=False, predict=True)
+    #ds = ds.batch(500)
+    #ds = ds.repeat(1)
+
+    # Counting test
+    #iterator = ds.make_one_shot_iterator()
+    #next_element = iterator.get_next()
+    #sess = tf.Session()
+    #i = 0
+    #while True:
+    #    value = sess.run(next_element)
+    #    print('value ' + str(i) + ' ' + str(value.shape))
+    #    i += 1
+    #raise Exception('DEBUG')
+
+    # TODO: Read these from file!
+    height = 9216
+    width = 14400
+    tile_size = 256 # TODO: Where to get this?
+    num_tiles_x = int(math.floor(width/tile_size))
+    num_tiles_y = int(math.floor(height/tile_size))
+    num_tiles = num_tiles_x*num_tiles_y
+
+
+    # Make a non-shuffled dataset for only one image
+    def make_classify_ds():
+        config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1 # TODO
+        ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+        ds = ids.dataset(filter_zero=False, shuffle=False, predict=True)
+        ds = ds.batch(200)
+        return ds
+
+    print('Classifying the image...')
+    start = time.time()
+    output_data = []
+    for pred in estimator.predict(input_fn=make_classify_ds):
+        value = pred['dense_3'][0]
+        #print(value)
+        output_data.append(value)
+
+    stop = time.time()
+    print('Output count = ' + str(len(output_data)))
+    print('Elapsed time = ' + str(stop-start))
+
+    # TODO: When actually classifying do not crop off partial tiles!
+    #       May need to use the old imagery dataset class to do this!
+    num_patches = len(output_data)
+    patches_per_tile = int(num_patches / num_tiles)
+    print('patches_per_tile = ' + str(patches_per_tile))
+    patch_edge = int(math.sqrt(patches_per_tile))
+    print('patch_edge = ' + str(patch_edge))
+
+    # Convert the single vector of prediction values into the shape of the image
+    # TODO: Account for the overlap value!
+    i = 0
+    pic = np.zeros([num_tiles_y*patch_edge, num_tiles_x*patch_edge], dtype=np.uint8)
+    for ty in range(0,num_tiles_y):
+        print(ty)
+        for tx in range(0,num_tiles_x):
+            row = ty*patch_edge
+            for y in range(0,patch_edge): #pylint: disable=W0612
+                col = tx*patch_edge
+                for x in range(0,patch_edge): #pylint: disable=W0612
+                    pic[row, col] = output_data[i]*80
+                    i += 1
+                    col += 1
+                row += 1
+
+    # Write the output image to disk
+    plt.subplot(1,1,1)
+    plt.imshow(pic)
+    plt.savefig('/home/smcmich1/repo/delta/output.png')
+
+    #jpeg = tf.image.encode_jpeg(pic, quality=100, format='grayscale')
+    #output_path = '/home/smcmich1/repo/delta/output.jpg'
+    #writer = tf.write_file(output_path, jpeg)
+    #sess.run(writer)
 
     print('sc_process_test finished!')
 
