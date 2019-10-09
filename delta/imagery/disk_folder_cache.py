@@ -5,9 +5,6 @@ import os
 from abc import ABC, abstractmethod
 
 
-DEFAULT_CACHE_DIR = os.path.expanduser('~/.cache/delta')
-DEFAULT_CACHE_LIMIT = 8
-
 #============================================================================
 # Classes
 

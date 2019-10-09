@@ -79,10 +79,20 @@ def main(args):
         print('Must specify either --config-file or --data-folder and --image-type')
         sys.exit(1)
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
+    if options.data_folder:
+        config_values['input_dataset']['data_directory'] = options.data_folder
+    if options.image_type:
+        config_values['input_dataset']['image_type'] = options.image_type
     if options.label_folder:
         config_values['input_dataset']['label_directory'] = options.label_folder
+    if config_values['input_dataset']['data_directory'] is None:
+        print('Must specify a data_directory.', file=sys.stderr)
+        sys.exit(0)
+    if config_values['input_dataset']['image_type'] is None:
+        print('Must specify an image type.', file=sys.stderr)
+        sys.exit(0)
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']
 

@@ -100,7 +100,8 @@ def main(args_in): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file, None, None, no_required=False)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
 
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']

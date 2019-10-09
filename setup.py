@@ -32,10 +32,13 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow==1.12',
+        'tensorflow>=1.12<=1.13',
         'mlflow',
-        'portalocker'
+        'portalocker',
+        'appdirs'
     ],
     scripts=scripts,
+    include_package_data = True,
+    package_data = {'' : ['*.cfg']},
     python_requires='>=3.5',
 )
