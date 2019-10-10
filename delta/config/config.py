@@ -72,7 +72,7 @@ DEFAULT_CONFIG_FILES = [pkg_resources.resource_filename('delta', 'config/delta.c
 def __load_initial_config():
     # only contains things not in default config file
     global __config_dict #pylint: disable=global-statement
-    __config_dict = {'cache' : {'cache_dir', __dirs.user_cache_dir}}
+    __config_dict = {'cache' : {'cache_dir' : __dirs.user_cache_dir}}
     load_config_file(DEFAULT_CONFIG_FILES[0])
     for filename in DEFAULT_CONFIG_FILES[1:]:
         if os.path.exists(filename):
