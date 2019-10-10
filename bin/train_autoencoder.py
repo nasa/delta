@@ -4,6 +4,9 @@ Script test out the image chunk generation calls.
 """
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'../')))
+print(sys.path)
+
 import argparse
 import functools
 import matplotlib.pyplot as plt
@@ -118,14 +121,14 @@ def main(argsIn): #pylint: disable=R0914
 
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
-                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
+                            'conv_autoencoder_%s'%(config_values['input_dataset']['image_type'],),
                             output_dir=output_folder)
     mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
     data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
-    model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
+    model = make_autoencoder(data_shape, encoding_size=int(config_values['ml']['num_hidden']))
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
