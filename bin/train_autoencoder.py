@@ -4,8 +4,6 @@ Script test out the image chunk generation calls.
 """
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'../')))
-print(sys.path)
 
 import argparse
 import functools
