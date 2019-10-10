@@ -75,11 +75,11 @@ class Experiment:
         """Train call that uses the TF Estimator interface to run on multiple GPUs"""
 
         mlflow.log_param('num_epochs', num_epochs)
-        mlflow.log_param('model summary', model.summary())
 
         optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
         model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
+        mlflow.log_param('model summary', model.summary())
         # Call the lower level estimator train function
         estimator_model = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus)
         return estimator_model
