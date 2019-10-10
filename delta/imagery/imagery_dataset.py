@@ -343,6 +343,16 @@ class ImageryDatasetTFRecord:
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
         self._shuffle_buffer_size = config_values['input_dataset']['shuffle_buffer_size']
 
+    def __del__(self):
+        try:
+            os.remove(self._list_path)
+        except FileNotFoundError:
+            pass
+        try:
+            os.remove(self._label_list_path)
+        except FileNotFoundError:
+            pass
+
     def dataset(self, filter_zero=True, shuffle=True, predict=False):
         """Return the underlying TensorFlow dataset object that this class creates"""
 
