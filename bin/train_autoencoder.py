@@ -103,8 +103,18 @@ def main(argsIn): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
+    if options.data_folder:
+        config_values['input_dataset']['data_directory'] = options.data_folder
+    if options.image_type:
+        config_values['input_dataset']['image_type'] = options.image_type
+    if config_values['input_dataset']['data_directory'] is None:
+        print('Must specify a data_directory.', file=sys.stderr)
+        sys.exit(0)
+    if config_values['input_dataset']['image_type'] is None:
+        print('Must specify an image type.', file=sys.stderr)
+        sys.exit(0)
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
