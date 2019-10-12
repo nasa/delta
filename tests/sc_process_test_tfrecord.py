@@ -72,6 +72,9 @@ def main(args): #pylint: disable=R0914
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
 
+    parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
+                        help="Don't train the network but do load a checkpoint if available.")
+
     parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
                         help="Run experimental code!")
 
@@ -147,7 +150,8 @@ def main(args): #pylint: disable=R0914
     estimator = experiment.train(model, train_fn, test_fn,
                                  model_folder=config_values['ml']['model_folder'],
                                  #steps_per_epoch=100,
-                                 log_model=False, num_gpus=options.num_gpus)
+                                 log_model=False, num_gpus=options.num_gpus,
+                                 skip_training=options.skip_training)
     #model = experiment.train_keras(model, assemble_dataset,
     #                               num_epochs=config_values['ml']['num_epochs'],
     #                               steps_per_epoch=150,
