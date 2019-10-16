@@ -321,50 +321,27 @@ class ImageryDatasetTFRecord:
             input_extensions = ['.tfrecord']
             print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
 
-        # TODO: Store somewhere else!
-        self._list_path = os.path.join(config_values['cache']['cache_dir'], 'input_list.csv')
-        self._label_list_path = os.path.join(config_values['cache']['cache_dir'], 'label_list.csv')
-        if not os.path.exists(config_values['cache']['cache_dir']):
-            os.mkdir(config_values['cache']['cache_dir'])
-
         # Generate a text file list of all the input images, plus region indices.
         data_folder  = config_values['input_dataset']['data_directory']
         label_folder = config_values['input_dataset']['label_directory']
-        self._num_images = self._make_image_list(data_folder, label_folder,
-                                                 self._list_path, self._label_list_path, input_extensions)
+        (self._image_files, self._label_files) = self._find_images(data_folder, label_folder, input_extensions)
 
-        # Load the first image to get tile dimensions for the input files.
-        # - All of the input tiles must have the same dimensions!
-        with open(self._list_path, 'r') as f:
-            line  = f.readline().strip()
-            self._num_bands, self._input_region_height, self._input_region_width = tfrecord_utils.get_record_info(line)
+        # Load the first image to get the number of bands for the input files.
+        self._num_bands, _, _ = tfrecord_utils.get_record_info(self._image_files[0])
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
         self._shuffle_buffer_size = config_values['input_dataset']['shuffle_buffer_size']
 
-    def __del__(self):
-        try:
-            os.remove(self._list_path)
-        except FileNotFoundError:
-            pass
-        try:
-            os.remove(self._label_list_path)
-        except FileNotFoundError:
-            pass
-
     def dataset(self, filter_zero=True, shuffle=True, predict=False):
         """Return the underlying TensorFlow dataset object that this class creates"""
 
-        # Randomize the input image order in Python to simplify working with TF
-        shuffle_list, shuffle_label_list = self._load_shuffle_file_lists(self._list_path, self._label_list_path)
-
         # Go from the file path list to the TFRecord reader
-        ds_input = tf.data.Dataset.from_tensor_slices(shuffle_list)
+        ds_input = tf.data.Dataset.from_tensor_slices(self._image_files)
         ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
         chunk_set = ds_input.map(self._load_data, num_parallel_calls=self._num_parallel_calls)
 
-        ds_label = tf.data.Dataset.from_tensor_slices(shuffle_label_list)
+        ds_label = tf.data.Dataset.from_tensor_slices(self._label_files)
         ds_label = tf.data.TFRecordDataset(ds_label, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
         label_set = ds_label.map(self._load_labels, num_parallel_calls=self._num_parallel_calls)
 
@@ -401,7 +378,7 @@ class ImageryDatasetTFRecord:
 
     def num_images(self):
         """Return the number of images in the data set"""
-        return self._num_images
+        return len(self._image_files)
 
     def scale_factor(self):
         return self._data_scale_factor
@@ -415,12 +392,9 @@ class ImageryDatasetTFRecord:
         strides = [1, stride, stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
         result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
-        #tf.print(tf.shape(result), output_stream=sys.stderr)
         # Output is [1, M, N, chunk*chunk*bands]
-        if is_label:
-            result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, 1])
-        else:
-            result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
+        num_bands = 1 if is_label else self._num_bands
+        result = tf.reshape(result, tf.stack([-1, self._chunk_size, self._chunk_size, num_bands]))
         return result
 
     def _chunk_label_image(self, image):
@@ -449,19 +423,14 @@ class ImageryDatasetTFRecord:
     def _load_data(self, example_proto):
         """Load the next TFRecord image segment and split it into chunks"""
 
-        image = tfrecord_utils.load_tfrecord_data_element(example_proto, self._num_bands,
-                                                          self._input_region_height, self._input_region_width)
+        image = tfrecord_utils.load_tfrecord_element(example_proto, self._num_bands)
         result = self._chunk_tf_image(image, is_label=False)
-        #tf.print(tf.shape(result), output_stream=sys.stderr)
-#         result = chunk_tf_image(self._chunk_size, self._num_bands, image, is_label=False)
         result = tf.math.divide(result, self._data_scale_factor) # Get into 0-1 range
         return result
 
     def _load_labels(self, example_proto):
         # Load from the label image in the same way as the input image so we get the locations correct
-        NUM_LABEL_BANDS = 1 # This may change later!
-        image = tfrecord_utils.load_tfrecord_label_element(example_proto, NUM_LABEL_BANDS,
-                                                           self._input_region_height, self._input_region_width)
+        image = tfrecord_utils.load_tfrecord_element(example_proto, 1, data_type=tf.uint8)
 
         chunk_data = self._chunk_tf_image(image, is_label=True) # First method of getting center pixels
         center_pixel = int(self._chunk_size/2)
@@ -489,12 +458,11 @@ class ImageryDatasetTFRecord:
         return label_path
 
 
-    def _make_image_list(self, top_folder, label_folder, input_list_path, label_list_path,
-                         extensions):
-        """Write a file listing all of the files in a (recursive) folder
-           matching the provided extension.
+    def _find_images(self, top_folder, label_folder, extensions):
+        """List all of the files in a (recursive) folder matching the provided extension.
            If a label folder is provided, look for corresponding label files which
            have the same relative path in that folder but ending with "_label.tif".
+           Returns (image_files, label_files)
         """
 
         if label_folder:
@@ -504,46 +472,27 @@ class ImageryDatasetTFRecord:
         else:
             print('Using fake label data!')
 
-        num_images  = 0
-        f_input = open(input_list_path, 'w')
-        f_label = open(label_list_path, 'w')
+        image_files = []
+        label_files = []
 
         for root, dummy_directories, filenames in os.walk(top_folder):
             for filename in filenames:
                 if os.path.splitext(filename)[1] in extensions:
                     path = os.path.join(root, filename.strip())
-
-                    f_input.write(path + '\n')
+                    image_files.append(path)
 
                     if label_folder:
                         label_path = self._get_label_for_input_image(path, top_folder, label_folder)
-                        f_label.write(label_path + '\n')
+                        label_files.append(label_path)
 
-                    num_images += 1
-
-        f_input.close()
-        f_label.close()
-        return num_images
-
-    def _load_shuffle_file_lists(self, image_list, label_list):
-        """Applies the same shuffle to the lists of image and label files and returns as vectors"""
-
-        images = []
-        labels = []
-        with open(image_list, 'r') as f:
-            for line in f:
-                images.append(line.strip())
-        with open(label_list, 'r') as f:
-            for line in f:
-                labels.append(line.strip())
-
-        indices = np.arange(self.num_images())
+        image_files = np.array(image_files)
+        label_files = np.array(label_files)
+        indices = np.arange(len(image_files))
         np.random.shuffle(indices)
 
-        shuffle_images = np.array(images)[indices]
-        shuffle_labels = np.array(labels)[indices]
+        shuffle_images = image_files[indices]
+        shuffle_labels = label_files[indices]
         return (shuffle_images, shuffle_labels)
-
 
 class AutoencoderDataset(ImageryDatasetTFRecord):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
