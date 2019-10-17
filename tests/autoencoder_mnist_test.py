@@ -6,25 +6,17 @@ import os
 import os.path
 import argparse
 import functools
-#import random
 import matplotlib.pyplot as plt
 import numpy as np
-#pylint: disable=C0413
-
-### Tensorflow includes
 
 import mlflow
 
 import tensorflow as tf
 from tensorflow import keras
-#import matplotlib.pyplot as plt
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import config #pylint: disable=C0413
-from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta import config
+from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
-
 
 MNIST_WIDTH = 28 # The images are 28x28 pixels, single channel
 MNIST_BANDS = 1
@@ -108,7 +100,8 @@ def main(args_in): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file, None, None, no_required=False)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
 
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']

@@ -13,13 +13,10 @@ import mlflow
 import tensorflow as tf
 from tensorflow import keras
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta.imagery.sources import landsat #pylint: disable=C0413
-from delta.imagery import image_reader #pylint: disable=C0413
-# from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.ml.train import Experiment #pylint: disable=C0413
+from delta.imagery.sources import landsat
+from delta.imagery import image_reader
+from delta.imagery import rectangle
+from delta.ml.train import Experiment
 
 
 #------------------------------------------------------------------------------

@@ -2,14 +2,9 @@
 Higher level functions for dealing with large images.
 """
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import time
 
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
-from delta.imagery.image_writer import * #pylint: disable=W0614,W0401,C0413
+from delta.imagery import image_reader, image_writer, rectangle, utilities
 
 
 def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,0), nodata_out=0):
@@ -20,10 +15,10 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     """
 
     # Set up an image reader and get information from it
-    input_reader = MultiTiffFileReader([input_path])
+    input_reader = image_reader.MultiTiffFileReader([input_path])
     (num_cols, num_rows) = input_reader.image_size()
     num_bands  = input_reader.num_bands()
-    (block_size_in, num_blocks) = input_reader.get_block_info(band=1) #pylint: disable=W0612
+    (block_size_in, _) = input_reader.get_block_info(band=1)
     input_metadata = input_reader.get_all_metadata()
 
     # Use the input tile size for the block size unless the user specified one.
@@ -35,7 +30,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         block_size_out[Y] = int(tile_size[Y])
 
     # Set up the output image
-    writer = TiffWriter()
+    writer = image_writer.TiffWriter()
     writer.init_output_geotiff(output_path, num_rows, num_cols, nodata_out,
                                block_size_out[X], block_size_out[Y],
                                input_metadata,
@@ -49,7 +44,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         """Callback function to write the first channel to the output file."""
 
         # Figure out some ROI positioning values
-        ((col, row), (x0, y0, x1, y1)) = get_block_and_roi(output_roi, read_roi, block_size_out)
+        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, block_size_out)
 
         # Loop on bands
         for band in range(0,num_bands):

@@ -7,8 +7,10 @@ It is currently under active development.
 ## Installation
 
 1. Run ./scripts/setup.sh to install DELTA's dependencies in Ubuntu.
+2. From the top directory, run `pip install --user -e .` to install for your user in
+editable mode (linking to this directory). This will also install all dependencies with pip.
 
-Note that DELTA uses python3.
+Note that DELTA requires python3.
 
 ## Running Example Programs
 

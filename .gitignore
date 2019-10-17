@@ -1,4 +1,5 @@
 *.swp
 *.pyc
 *.o
+delta.egg-info
 data/

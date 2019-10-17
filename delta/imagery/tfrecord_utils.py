@@ -2,16 +2,15 @@
 Utilities for writing and reading images to TFRecord files.
 """
 
-import sys
 import os
 import random
 import portalocker
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import numpy as np
 
-import tensorflow as tf #pylint: disable=C0413
-from delta.imagery import rectangle #pylint: disable=C0413
-from delta.imagery import utilities #pylint: disable=C0413
-from delta.imagery.image_reader import * #pylint: disable=W0614,W0401,C0413
+import tensorflow as tf
+from delta.imagery import rectangle
+from delta.imagery import utilities
+from delta.imagery import image_reader
 
 #------------------------------------------------------------------------------
 
@@ -68,36 +67,17 @@ def load_tfrecord_raw(example_proto):
     """Just get the handle to the tfrecord element"""
     return tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
 
-def load_tfrecord_data_element(example_proto, num_bands, height, width):
+def load_tfrecord_element(example_proto, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
-       Unfortunately we can't dynamically choose the size of the output images in TF so
-       they have to be "constant" input arguments.  This means that each tile must be
-       the same size!
        The image is returned in format [1, channels, height, width]"""
 
     value = tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
-    #height = tf.cast(value['height'], tf.int32)
-    #width = tf.cast(value['width'], tf.int32)
-    #num_bands = tf.cast(value['num_bands'], tf.int32)
-    array = tf.decode_raw(value['image_raw'], tf.float32)
-    shape = tf.stack([1, height, width, num_bands])
-    #tf.print(array.shape, output_stream=sys.stderr)
-    #tf.print(shape, output_stream=sys.stderr)
+    array = tf.decode_raw(value['image_raw'], data_type)
+    # num_bands must be static in graph, width and height will not matter after patching
+    shape = tf.stack([1, value['height'], value['width'], num_bands])
     array2 = tf.reshape(array, shape)
 
     return array2
-
-def load_tfrecord_label_element(example_proto, num_bands, height, width):
-    """Unpacks a single label image section from a TFRecord file we created.
-       Very similar to the previous function, but uses a different data type."""
-
-    value = tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
-    array = tf.decode_raw(value['image_raw'], tf.uint8)
-    shape = tf.stack([1, height, width, num_bands])
-    array2 = tf.reshape(array, shape)
-    return array2
-
-
 
 def get_record_info(record_path, compressed=True):
     """Queries a record file and returns (num_bands, height, width) of the contained tiles"""
@@ -105,6 +85,7 @@ def get_record_info(record_path, compressed=True):
     if not os.path.exists(record_path):
         raise Exception('Missing file: ' + record_path)
 
+    record_path = tf.convert_to_tensor(record_path)
     if compressed:
         raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
     else:
@@ -132,7 +113,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
        If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
-    input_reader = MultiTiffFileReader(input_paths)
+    input_reader = image_reader.MultiTiffFileReader(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
     num_bands = input_reader.num_bands()
     data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
@@ -155,14 +136,13 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
         """Callback function to write the first channel to the output file."""
 
         # Figure out where the desired output data falls in read_roi
-        ((col, row), (x0, y0, x1, y1)) = get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
+        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
 
         # Pack all bands into a numpy array in the shape TF will expect later.
         array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
         for band in bands_to_use:
             band_data = data_vec[band-1]
             array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
-
 
         if write_compressed: # Single output file
             write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
@@ -183,8 +163,9 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
                 os.remove(temp_path)
 
     print('Writing TFRecord data...')
-    # Each of the ROIs will be written out in order
-    input_reader.process_rois(output_rois, callback_function)
+
+    # If this is a single file the ROIs must be written out in order, otherwise we don't care.
+    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
     if write_compressed:
         print('Done writing: ' + str(input_paths))
     else:

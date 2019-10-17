@@ -1,17 +1,13 @@
 import argparse
-import os
 import sys
 
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
-import tensorflow as tf #pylint: disable=C0413
-from tensorflow import keras #pylint: disable=C0413
+import tensorflow as tf
+from tensorflow import keras
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from delta import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
+from delta import config
+from delta.imagery import imagery_dataset
 
 # Test out importing tarred Landsat images into a dataset which is passed
 # to a training function.
@@ -83,10 +79,20 @@ def main(args):
         print('Must specify either --config-file or --data-folder and --image-type')
         sys.exit(1)
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
+    if options.data_folder:
+        config_values['input_dataset']['data_directory'] = options.data_folder
+    if options.image_type:
+        config_values['input_dataset']['image_type'] = options.image_type
     if options.label_folder:
         config_values['input_dataset']['label_directory'] = options.label_folder
+    if config_values['input_dataset']['data_directory'] is None:
+        print('Must specify a data_directory.', file=sys.stderr)
+        sys.exit(0)
+    if config_values['input_dataset']['image_type'] is None:
+        print('Must specify an image type.', file=sys.stderr)
+        sys.exit(0)
     batch_size = config_values['ml']['batch_size']
     num_epochs = config_values['ml']['num_epochs']
 
