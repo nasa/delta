@@ -31,7 +31,7 @@ def make_model(channel, in_len):
 
     # Define network
     model = keras.Sequential([
-        keras.layers.Flatten(input_shape=(channel, in_len, in_len)),
+        keras.layers.Flatten(input_shape=(in_len, in_len, channel, channel)),
         # Note: use_bias is True by default, which is also the case in pytorch, which Robert used.
         keras.layers.Dense(fc2_size, activation=tf.nn.relu),
         keras.layers.Dropout(rate=dropout_rate),
@@ -123,7 +123,7 @@ def main(args):
 
     # Get these values without initializing the dataset (v1.12)
     #model = init_network(ids.num_bands(), ids.chunk_size())
-    ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values, no_dataset=False)
+    ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values)
     model = init_network(ds_info.num_bands(), config_values['ml']['chunk_size'])
     print('num images = ', ds_info.num_images())
 

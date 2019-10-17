@@ -99,9 +99,6 @@ def main(argsIn): #pylint: disable=R0914
 
     print('loading data from ' + config_values['input_dataset']['data_directory'])
     aeds = imagery_dataset.AutoencoderDataset(config_values)
-    #ds = aeds.dataset()
-    #num_bands = aeds.num_bands()
-    #ds = ds.batch(batch_size).repeat()
 
     # TF additions
     # If the mlfow directory doesn't exist, create it.
@@ -118,18 +115,19 @@ def main(argsIn): #pylint: disable=R0914
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
-    data_shape = (aeds.num_bands(), aeds.chunk_size(), aeds.chunk_size())
+    data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
     model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
-
-#     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
-    #experiment.train(model, ds, steps_per_epoch=1000,log_model=False)
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-                                           log_model=False, num_gpus=options.num_gpus)
+    estimator = experiment.train(model, dataset_fn, steps_per_epoch=1000,
+                                 log_model=False, num_gpus=options.num_gpus)
+    #model = experiment.train_keras(model, dataset_fn,
+    #                               num_epochs=config_values['ml']['num_epochs'],
+    #                               steps_per_epoch=150,
+    #                               log_model=False, num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -149,15 +147,16 @@ def main(argsIn): #pylint: disable=R0914
     next_element = iterator.get_next()
     sess = tf.Session()
 
-#     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
-    scale = 1.0 # TODO: Select based on image_type
+    scale = aeds.scale_factor()
     num_bands = data_shape[0]
+#     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
     for i in range(0, options.num_debug_images):
-        print(i)
+        print('Preparing debug image ' + str(i))
         # Get the next image pair, then make a function to return it
         value = sess.run(next_element)
         def temp_fn():
             return value #pylint: disable=W0640
+
         # Get a generator from the predictor and get the only value from it
         result = estimator.predict(temp_fn)
         element = next(result)
@@ -165,11 +164,10 @@ def main(argsIn): #pylint: disable=R0914
         # Get the output value out of its weird format, then convert for image output
 #         pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
         pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
-        pic = np.moveaxis(pic, 0, -1)
+        pic = np.moveaxis(pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
 
-#             in_pic = (value[0][0,debug_bands,:,:] * scale).astype(np.uint8)
         in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1)
+        in_pic = np.moveaxis(in_pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
 
         for band in range(num_bands):
             plt.subplot(num_bands,2,2*band+1)

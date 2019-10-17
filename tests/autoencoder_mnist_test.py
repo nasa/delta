@@ -148,9 +148,9 @@ def main(args_in): #pylint: disable=R0914
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    estimator = experiment.train_estimator(model, dataset_train_fn, dataset_test_fn,
-                                           steps_per_epoch=1000, log_model=False,
-                                           num_gpus=options.num_gpus)
+    estimator = experiment.train(model, dataset_train_fn, dataset_test_fn,
+                                 steps_per_epoch=1000, log_model=False,
+                                 num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:

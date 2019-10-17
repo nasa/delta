@@ -136,6 +136,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
     (num_cols, num_rows) = input_reader.image_size()
     num_bands = input_reader.num_bands()
     data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
+    #print('Input data type: ' + str(input_reader.data_type()))
     #print('Using output data type: ' + str(data_type))
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
@@ -185,6 +186,6 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
     # Each of the ROIs will be written out in order
     input_reader.process_rois(output_rois, callback_function)
     if write_compressed:
-        print('Done writing: ' + input_paths)
+        print('Done writing: ' + str(input_paths))
     else:
         print('Done writing: ' + input_paths[0])

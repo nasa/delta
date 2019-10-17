@@ -18,6 +18,7 @@ pip3 install --user -q tensorflow || { echo >&2 "ERROR. Failed to install tensor
 # pip3 install --user -q tensorflow-gpu || { echo >&2 "ERROR. Failed to install tensorflow."; exit 1; }
 
 pip3 install --user -q mlflow || { echo >&2 "ERROR. Failed to install mlflow."; exit 1; }
+pip3 install --user -q portalocker || { echo >&2 "ERROR. Failed to install mlflow."; exit 1; }
 
 
 #command -v pip3>/dev/null 2>&1 || { echo >&2 "ERROR. Please install pip3."; exit 1; }
