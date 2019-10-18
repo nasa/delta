@@ -85,12 +85,8 @@ def main(argsIn): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
-
-    #batch_size = config_values['ml']['batch_size']
-    #num_epochs = config_values['ml']['num_epochs']
-
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
@@ -122,8 +118,9 @@ def main(argsIn): #pylint: disable=R0914
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-                                           log_model=False, num_gpus=options.num_gpus)
+#     estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
+#                                            log_model=False, num_gpus=options.num_gpus)
+    estimator = experiment.train(model, dataset_fn,  num_gpus=options.num_gpus)
 
     print(estimator) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
