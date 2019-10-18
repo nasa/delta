@@ -143,7 +143,7 @@ def main(argsIn): #pylint: disable=R0914
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
     test_fn = None
-    estimator = experiment.train(model, dataset_fn, test_fn,
+    estimator, distribution_scope = experiment.train(model, dataset_fn, test_fn,
                                  model_folder=config_values['ml']['model_folder'],
                                  log_model=False, num_gpus=options.num_gpus)
     #model = experiment.train_keras(model, dataset_fn,
@@ -154,8 +154,9 @@ def main(argsIn): #pylint: disable=R0914
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
         out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
-        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
-        mlflow.log_artifact(out_filename)
+        with distribution_scope: 
+            tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
+            mlflow.log_artifact(out_filename)
     ### end if
 
 

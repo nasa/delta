@@ -42,7 +42,7 @@ def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_
         eval_spec=eval_spec)
 
     # keras_estimator.evaluate(input_fn=test_dataset_fn) # TODO Run this?
-    return keras_estimator
+    return keras_estimator, tf_config.eval_distribute.scope()
 
 class Experiment:
     """TODO"""
@@ -81,8 +81,8 @@ class Experiment:
 
         mlflow.log_param('model summary', model.summary())
         # Call the lower level estimator train function
-        estimator_model = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus)
-        return estimator_model
+        estimator_model, distribution_scope = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus)
+        return estimator_model, distribution_scope
 
         # TODO: Record the output from the Estimator!
 
