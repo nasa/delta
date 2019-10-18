@@ -32,7 +32,7 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow>=1.12<=1.13',
+        'tensorflow',
         'mlflow',
         'portalocker',
         'appdirs'
