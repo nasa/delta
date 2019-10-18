@@ -67,36 +67,17 @@ def load_tfrecord_raw(example_proto):
     """Just get the handle to the tfrecord element"""
     return tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
 
-def load_tfrecord_data_element(example_proto, num_bands, height, width):
+def load_tfrecord_element(example_proto, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
-       Unfortunately we can't dynamically choose the size of the output images in TF so
-       they have to be "constant" input arguments.  This means that each tile must be
-       the same size!
        The image is returned in format [1, channels, height, width]"""
 
     value = tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
-    #height = tf.cast(value['height'], tf.int32)
-    #width = tf.cast(value['width'], tf.int32)
-    #num_bands = tf.cast(value['num_bands'], tf.int32)
-    array = tf.decode_raw(value['image_raw'], tf.float32)
-    shape = tf.stack([1, height, width, num_bands])
-    #tf.print(array.shape, output_stream=sys.stderr)
-    #tf.print(shape, output_stream=sys.stderr)
+    array = tf.decode_raw(value['image_raw'], data_type)
+    # num_bands must be static in graph, width and height will not matter after patching
+    shape = tf.stack([1, value['height'], value['width'], num_bands])
     array2 = tf.reshape(array, shape)
 
     return array2
-
-def load_tfrecord_label_element(example_proto, num_bands, height, width):
-    """Unpacks a single label image section from a TFRecord file we created.
-       Very similar to the previous function, but uses a different data type."""
-
-    value = tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
-    array = tf.decode_raw(value['image_raw'], tf.uint8)
-    shape = tf.stack([1, height, width, num_bands])
-    array2 = tf.reshape(array, shape)
-    return array2
-
-
 
 def get_record_info(record_path, compressed=True):
     """Queries a record file and returns (num_bands, height, width) of the contained tiles"""
@@ -104,6 +85,7 @@ def get_record_info(record_path, compressed=True):
     if not os.path.exists(record_path):
         raise Exception('Missing file: ' + record_path)
 
+    record_path = tf.convert_to_tensor(record_path)
     if compressed:
         raw_image_dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
     else:

@@ -3,8 +3,12 @@ import mlflow
 import mlflow.tensorflow
 import tensorflow as tf
 
-def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_gpus=1):
-    """Plain training function without mlflow stuff"""
+def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_gpus=1,
+          skip_train=False):
+    """Plain training function without mlflow stuff.
+       Converts from the input Keras model to an Estimator model.
+       If skip_train is set then it will convert but not do any training.
+    """
 
     assert model is not None
     assert train_dataset_fn is not None
@@ -28,14 +32,18 @@ def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_
     #tf_config = tf.estimator.RunConfig() # DEBUG: Force single GPU
 
     # Convert from Keras to Estimator
+    print('Calling model_to_estimator...')
     keras_estimator = tf.keras.estimator.model_to_estimator(
         keras_model=model, config=tf_config, model_dir=model_folder)
+    if skip_train:
+        return keras_estimator
 
     if test_dataset_fn is None:
         # It appears this is the only way to skip the evaluation step
         eval_spec=tf.estimator.EvalSpec(input_fn=train_dataset_fn, steps=None)
     else:
         eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn)
+    print('Calling train_and_evaluate...')
     tf.estimator.train_and_evaluate( #pylint: disable=W0612
         keras_estimator,
         train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
@@ -71,8 +79,9 @@ class Experiment:
 
     def train(self, model, train_dataset_fn, test_dataset_fn=None, model_folder=None, #pylint: disable=R0913
               num_epochs=70, steps_per_epoch=2024,
-              validation_data=None, log_model=False, num_gpus=1):
-        """Train call that uses the TF Estimator interface to run on multiple GPUs"""
+              validation_data=None, log_model=False, num_gpus=1, skip_training=False):
+        """Train call that uses the TF Estimator interface to run on multiple GPUs.
+           If skip_training is set then it will only convert to an Estimator model."""
 
         mlflow.log_param('num_epochs', num_epochs)
 
@@ -81,7 +90,8 @@ class Experiment:
 
         mlflow.log_param('model summary', model.summary())
         # Call the lower level estimator train function
-        estimator_model, distribution_scope = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus)
+        estimator_model, distribution_scope = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus,
+                                skip_training)
         return estimator_model, distribution_scope
 
         # TODO: Record the output from the Estimator!

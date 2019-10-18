@@ -56,7 +56,7 @@ def init_network(num_bands, chunk_size):
 
     return model
 
-def main(args): #pylint: disable=R0914
+def main(args): #pylint: disable=R0914,R0912,R0915
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
     parser.add_argument("--config-file", dest="config_file", required=False,
@@ -71,6 +71,12 @@ def main(args): #pylint: disable=R0914
                         help="Try to use this many GPUs.")
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
+
+    parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
+                        help="Don't train the network but do load a checkpoint if available.")
+
+    parser.add_argument("--use-keras", action="store_true", dest="use_keras", default=False,
+                        help="Train in Keras instead of as Estimator.")
 
     parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
                         help="Run experimental code!")
@@ -143,16 +149,21 @@ def main(args): #pylint: disable=R0914
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     train_fn = assemble_dataset
-    test_fn = None
-    estimator = experiment.train(model, train_fn, test_fn,
-                                 model_folder=config_values['ml']['model_folder'],
-                                 #steps_per_epoch=100,
-                                 log_model=False, num_gpus=options.num_gpus)
-    #model = experiment.train_keras(model, assemble_dataset,
-    #                               num_epochs=config_values['ml']['num_epochs'],
-    #                               steps_per_epoch=150,
-    #                               log_model=False, num_gpus=options.num_gpus)
-
+    test_fn = assemble_dataset
+    if not options.use_keras:
+        estimator = experiment.train(model, train_fn, test_fn,
+                                     model_folder=config_values['ml']['model_folder'],
+                                     #steps_per_epoch=100,
+                                     log_model=False, num_gpus=options.num_gpus,
+                                     skip_training=options.skip_training)
+    else:
+        # TODO: How to set this?
+        steps_per_epoch = int(1000000/config_values['ml']['batch_size'])
+        model = experiment.train_keras(model, assemble_dataset,
+                                       num_epochs=config_values['ml']['num_epochs'],
+                                       steps_per_epoch=steps_per_epoch,
+                                       log_model=False, num_gpus=options.num_gpus)
+        #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
 
     if not options.experimental:
         print('sc_process_test finished!')
@@ -169,17 +180,6 @@ def main(args): #pylint: disable=R0914
     #ds = ds.batch(500)
     #ds = ds.repeat(1)
 
-    # Counting test
-    #iterator = ds.make_one_shot_iterator()
-    #next_element = iterator.get_next()
-    #sess = tf.Session()
-    #i = 0
-    #while True:
-    #    value = sess.run(next_element)
-    #    print('value ' + str(i) + ' ' + str(value.shape))
-    #    i += 1
-    #raise Exception('DEBUG')
-
     # TODO: Read these from file!
     height = 9216
     width = 14400
@@ -187,31 +187,54 @@ def main(args): #pylint: disable=R0914
     num_tiles_x = int(math.floor(width/tile_size))
     num_tiles_y = int(math.floor(height/tile_size))
     num_tiles = num_tiles_x*num_tiles_y
-
+    print('num_tiles_x = ' + str(num_tiles_x))
+    print('num_tiles_y = ' + str(num_tiles_y))
 
     # Make a non-shuffled dataset for only one image
+    predict_batch = 200
     def make_classify_ds():
         config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1 # TODO
         ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
-        ds = ids.dataset(filter_zero=False, shuffle=False, predict=True)
-        ds = ds.batch(200)
+        ds = ids.dataset(filter_zero=False, shuffle=False, predict=(not options.use_keras))
+        ds = ds.batch(predict_batch)
         return ds
+
 
     print('Classifying the image...')
     start = time.time()
-    output_data = []
-    for pred in estimator.predict(input_fn=make_classify_ds):
-        value = pred['dense_3'][0]
-        #print(value)
-        output_data.append(value)
+
+    if options.use_keras:
+        # Count the number of elements, needed for Keras!
+        iterator = make_classify_ds().make_one_shot_iterator()
+        next_element = iterator.get_next()
+        sess = tf.Session()
+        batch_count = 0
+        while True:
+            try:
+                value = sess.run(next_element)
+            except: #pylint: disable=W0702
+                break
+        #    print('value ' + str(i) + ' ' + str(value.shape))
+            batch_count += 1
+        print('batch_count = ' + str(batch_count))
+
+        predictions = model.predict(make_classify_ds(), steps=batch_count,
+                                    verbose=1)
+    else:
+
+        predictions = []
+        for pred in estimator.predict(input_fn=make_classify_ds):
+            value = pred['dense_3'][0]
+            #print(value)
+            predictions.append(value)
 
     stop = time.time()
-    print('Output count = ' + str(len(output_data)))
+    print('Output count = ' + str(len(predictions)))
     print('Elapsed time = ' + str(stop-start))
 
     # TODO: When actually classifying do not crop off partial tiles!
     #       May need to use the old imagery dataset class to do this!
-    num_patches = len(output_data)
+    num_patches = len(predictions)
     patches_per_tile = int(num_patches / num_tiles)
     print('patches_per_tile = ' + str(patches_per_tile))
     patch_edge = int(math.sqrt(patches_per_tile))
@@ -220,6 +243,8 @@ def main(args): #pylint: disable=R0914
     # Convert the single vector of prediction values into the shape of the image
     # TODO: Account for the overlap value!
     i = 0
+    #hist = []
+    label_scale = 255
     pic = np.zeros([num_tiles_y*patch_edge, num_tiles_x*patch_edge], dtype=np.uint8)
     for ty in range(0,num_tiles_y):
         print(ty)
@@ -228,20 +253,27 @@ def main(args): #pylint: disable=R0914
             for y in range(0,patch_edge): #pylint: disable=W0612
                 col = tx*patch_edge
                 for x in range(0,patch_edge): #pylint: disable=W0612
-                    pic[row, col] = output_data[i]*80
+                    val = predictions[i]
+                    #found = False
+                    #for p, pair in enumerate(hist):
+                    #    if pair[0] == val:
+                    #        hist[p][1] = pair[1] + 1
+                    #        found = True
+                    #        break
+                    #if not found:
+                    #    #print(val)
+                    #    hist.append([val, 1])
+                    pic[row, col] = val * label_scale
                     i += 1
                     col += 1
                 row += 1
+    #pic = pic * label_scale # Why does this not work?
+    #print('Histogram:')
+    #for v in hist:
+    #    print(str(v))
 
-    # Write the output image to disk
-    plt.subplot(1,1,1)
-    plt.imshow(pic)
-    plt.savefig('/home/smcmich1/repo/delta/output.png')
-
-    #jpeg = tf.image.encode_jpeg(pic, quality=100, format='grayscale')
-    #output_path = '/home/smcmich1/repo/delta/output.jpg'
-    #writer = tf.write_file(output_path, jpeg)
-    #sess.run(writer)
+    output_path = '/home/smcmich1/repo/delta/output2.png'
+    plt.imsave(output_path, pic)
 
     print('sc_process_test finished!')
 

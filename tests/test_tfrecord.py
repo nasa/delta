@@ -1,5 +1,6 @@
 import os
 import random
+import shutil
 import tempfile
 
 import pytest
@@ -52,7 +53,7 @@ def tfrecord_filenames():
     yield (image_path, label_path)
     os.remove(image_path)
     os.remove(label_path)
-    os.rmdir(tmpdir)
+    shutil.rmtree(tmpdir) # also remove input_list.csv
 
 @pytest.fixture(scope="function")
 def tfrecord_dataset(tfrecord_filenames): #pylint: disable=redefined-outer-name
@@ -68,10 +69,7 @@ def tfrecord_dataset(tfrecord_filenames): #pylint: disable=redefined-outer-name
     config_values['input_dataset']['shuffle_buffer_size'] = 2000
     config_values['cache']['cache_dir'] = os.path.dirname(image_path)
     dataset = imagery_dataset.ImageryDatasetTFRecord(config_values)
-    yield dataset
-    # TODO: delete these when object is deleted
-    os.remove(os.path.join(config_values['cache']['cache_dir'], 'input_list.csv'))
-    os.remove(os.path.join(config_values['cache']['cache_dir'], 'label_list.csv'))
+    return dataset
 
 def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer-name
     """Writes and reads from disks, then checks if what is read is valid according to the generation procedure."""

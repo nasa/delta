@@ -42,12 +42,8 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
             value = sess.run(next_element)
 
             # Read the next item from the TFRecord file
-            if label:
-                image = tfrecord_utils.load_tfrecord_label_element(value, num_bands,
-                                                                   input_region_height, input_region_width)
-            else:
-                image = tfrecord_utils.load_tfrecord_data_element(value, num_bands,
-                                                                  input_region_height, input_region_width)
+            data_type= tf.uint8 if label else tf.float32
+            image = tfrecord_utils.load_tfrecord_element(value, num_bands, data_type = data_type)
             #print(str((input_region_height, input_region_width)))
             #print(sess.run(image))
             #continue

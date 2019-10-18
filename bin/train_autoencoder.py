@@ -19,25 +19,6 @@ from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
 
 
-#------------------------------------------------------------------------------
-# def make_model(in_shape, encoding_size=32):
-#
-#     mlflow.log_param('input_size',str(in_shape))
-#     mlflow.log_param('encoding_size',encoding_size)
-#
-#
-#     # Define network
-#     model = keras.Sequential([
-#         keras.layers.Flatten(input_shape=in_shape),
-#         keras.layers.Dense(encoding_size, activation=tf.nn.relu),
-#         keras.layers.Dense(np.prod(in_shape), activation=tf.nn.sigmoid),
-#         keras.layers.Reshape(in_shape)
-#         ])
-#     print(model.summary())
-#     return model
-#
-# ### end make_model
-#
 
 # TODO: Move this function!
 def get_debug_bands(image_type):
@@ -85,7 +66,7 @@ def main(argsIn): #pylint: disable=R0914
                         help="Specify image type along with the data folder."
                         +"(landsat, landsat-simple, worldview, or rgba)")
 
-    parser.add_argument("--num-debug-images", dest="num_debug_images", default=0, type=int,
+    parser.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
 
@@ -170,9 +151,11 @@ def main(argsIn): #pylint: disable=R0914
     next_element = iterator.get_next()
     sess = tf.Session()
 
-    debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
-    #print('debug_bands = ' + str(debug_bands))
+
     scale = aeds.scale_factor()
+    num_bands = data_shape[0]
+#     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
+#     print('debug_bands = ' + str(debug_bands))
     for i in range(0, options.num_debug_images):
         print('Preparing debug image ' + str(i))
         # Get the next image pair, then make a function to return it
@@ -185,36 +168,23 @@ def main(argsIn): #pylint: disable=R0914
         element = next(result)
 
         # Get the output value out of its weird format, then convert for image output
-        #print(element['reshape'].shape)
-        pic = (element['reshape'][:, :, debug_bands] * scale).astype(np.uint8)
-        #pic = np.moveaxis(pic, 0, -1)
-        #print(pic.shape)
+#         pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
+        pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
+        pic = np.moveaxis(pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
 
-        # Code to test with Keras instead of Estimator
-        #result = model.predict(value[0])
-        #pic = (result[0, debug_bands, :, :] * scale).astype(np.uint8)
-        #pic = np.moveaxis(pic, 0, -1)
+        in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
+        in_pic = np.moveaxis(in_pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
 
-        #print(pic)
-        plt.subplot(1,2,1)
-        #print(value[0].shape)
-        in_pic = (value[0][0, :, :, debug_bands] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1) # Not sure why this is needed
-        #print('data')
-        #print(in_pic.shape)
-        #print(in_pic)
-        plt.imshow(in_pic)
-        plt.title('Input image %03d' % (i, ))
+        for band in range(num_bands):
+            plt.subplot(num_bands,2,2*band+1)
+            plt.imshow(in_pic[:,:,band])
+            if band == 0:
+                plt.title('Input image %03d' % (i, ))
 
-        plt.subplot(1,2,2)
-        plt.imshow(pic)
-        plt.title('Output image %03d' % (i, ))
-
-        #in_pic2 = (value[1][0,debug_bands,:,:] * scale).astype(np.uint8)
-        #in_pic2 = np.moveaxis(in_pic2, 0, -1)
-        #print('label')
-        #print(in_pic2.shape)
-        #print(in_pic2)
+            plt.subplot(num_bands,2,2*band+2)
+            plt.imshow(pic[:,:,band])
+            if band == 0:
+                plt.title('Output image %03d' % (i, ))
 
         debug_image_filename = os.path.join(output_folder,
                                             'Autoencoder_input_output_%03d.png' % (i, ))
