@@ -31,6 +31,9 @@ class Rectangle:
         return ('min_x: %f, max_x: %f, min_y: %f, max_y: %f' %
                 (self.min_x, self.max_x, self.min_y, self.max_y))
 
+    def __repr__(self):
+        return self.__str__()
+
 #    def indexGenerator(self):
 #        '''Generator function used to iterate over all integer indices.
 #           Only use this with integer boundaries!'''
