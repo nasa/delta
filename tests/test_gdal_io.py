@@ -1,165 +1,123 @@
 """
 Test for GDAL I/O classes.
 """
-import sys
-import argparse
-import math
-import time
+import pytest
+import numpy as np
+
+from delta.imagery import utilities
 
 from delta.imagery import rectangle
 from delta.imagery.image_reader import MultiTiffFileReader
 from delta.imagery.image_writer import TiffWriter
 
-#------------------------------------------------------------------------------
-
-# TODO: Make unit tests!
-
-def main(argsIn):
-
-    try:
-
-        # Use parser that ignores unknown options
-        usage  = "usage: image_reader [options]"
-        parser = argparse.ArgumentParser(usage=usage)
-
-        parser.add_argument('input_paths', metavar='N', type=str, nargs='+',
-                            help='Input files')
-
-        #parser.add_argument("--input-path", dest="inputPath", default=None,
-        #                                      help="Input path")
-
-        parser.add_argument("--output-path", dest="outputPath", default=None,
-                            help="Output path.")
-
-
-        parser.add_argument("--tile-size", nargs=2, metavar=('tile_width', 'tile_height'),
-                            dest='tile_size', default=[0,0], type=int,
-                            help="Specify the output tile size")
-
-        # This call handles all the parallel_mapproject specific options.
-        options = parser.parse_args(argsIn)
-
-        # Check the required positional arguments.
-
-    except argparse.ArgumentError:
-        print(usage)
-        return -1
-
-    #image = TiffReader()
-    #image.open_image(options.inputPath)
-
-    #band = 1
-    #(nCols, nRows) = image.image_size()
-    #(bSize, (numBlocksX, numBlocksY)) = image.get_block_info(band)
-    #noData = image.nodata_value()
-
-    #print('nBands = %d, nRows = %d, nCols = %d' % (nBands, nRows, nCols))
-    #print('noData = %s, dType = %d, bSize = %d, %d' % (str(noData), dType, bSize[0], bSize[1]))
-
-    band = 1
+def check_landsat_tiff(filename):
     input_reader = MultiTiffFileReader()
-    input_reader.load_images(options.input_paths)
-    (nCols, nRows) = input_reader.image_size()
-    noData = input_reader.nodata_value()
-    (bSize, (numBlocksX, numBlocksY)) = input_reader.get_block_info(band)
+    input_reader.load_images([filename])
+    assert input_reader.image_size() == (37, 37)
+    assert input_reader.num_bands() == 8
+    for i in range(1, input_reader.num_bands() + 1):
+        (bsize, (blocks_x, blocks_y)) = input_reader.get_block_info(i)
+        assert bsize == [37, 6]
+        assert blocks_x == 1
+        assert blocks_y == 7
+        assert utilities.gdal_dtype_to_numpy_type(input_reader.data_type(i)) == np.float32
+        assert input_reader.nodata_value(i) is None
 
-    input_bounds = rectangle.Rectangle(0, 0, width=nCols, height=nRows)
+    meta = input_reader.get_all_metadata()
+    geo = meta['geotransform']
+    assert geo[0] == pytest.approx(-122.3, abs=0.01)
+    assert geo[1] == pytest.approx(0.0,    abs=0.01)
+    assert geo[2] == pytest.approx(0.0,    abs=0.01)
+    assert geo[3] == pytest.approx(37.5,   abs=0.01)
+    assert geo[4] == pytest.approx(0.0,    abs=0.01)
+    assert geo[5] == pytest.approx(0.0,    abs=0.01)
+    assert 'gcps' in meta
+    assert 'gcpproj' in meta
+    assert 'projection' in meta
+    assert 'metadata' in meta
 
-    input_metadata = input_reader.get_all_metadata()
-    #print('Read metadata: ' + str(input_metadata))
+    r = rectangle.Rectangle(0, 0, width=input_reader.image_size()[0], height=input_reader.image_size()[0])
+    d1 = input_reader.parallel_load_chunks(r, 1, 0)
+    assert d1.shape == (input_reader.image_size()[0] * input_reader.image_size()[1], input_reader.num_bands(), 1, 1)
 
-    #print('Num blocks = %f, %f' % (numBlocksX, numBlocksY))
+def check_same(filename1, filename2):
+    in1 = MultiTiffFileReader()
+    in2 = MultiTiffFileReader()
+    in1.load_images([filename1])
+    in2.load_images([filename2])
+    assert in1.image_size() == in2.image_size()
+    assert in1.num_bands() == in2.num_bands()
+    for i in range(1, in1.num_bands() + 1):
+        assert in1.get_block_info(i) == in2.get_block_info(i)
+        assert in1.data_type(i) == in2.data_type(i)
+        assert in1.nodata_value(i) == in2.nodata_value(i)
 
-    # TODO: Will we be faster using this method? Or ReadAsArray? Or ReadRaster?
-    #data = band.ReadBlock(0,0) # Reads in as 'bytes' or raw data
-    #print(type(data))
-    #print('len(data) = ' + str(len(data)))
+    m1 = in1.get_all_metadata()
+    m2 = in2.get_all_metadata()
+    assert m1['geotransform'] == m2['geotransform']
+    assert m1['gcps'] == m2['gcps']
+    assert m1['gcpproj'] == m2['gcpproj']
+    assert m1['projection'] == m2['projection']
+    assert m1['metadata'] == m2['metadata']
 
-    #data = band.ReadAsArray(0, 0, bSize[0], bSize[1]) # Reads as numpy array
-    ##np.array()
-    #print(type(data))
-    ##print('len(data) = ' + str(len(data)))
-    #print('data.shape = ' + str(data.shape))
+    (width, height) = in1.image_size()
+    d1 = in1.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
+    d2 = in2.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
+    assert np.array_equal(d1, d2)
 
-    # Use the input tile size unless the user specified one.
-    output_tile_width  = bSize[0]
-    output_tile_height = bSize[1]
-    if options.tile_size[0] > 0:
-        output_tile_width = options.tile_size[0]
-    if options.tile_size[1] > 0:
-        output_tile_height = options.tile_size[1]
+def test_geotiff_read():
+    check_landsat_tiff('data/landsat.tiff')
 
-    print('Using output tile size ' + str(output_tile_width) + ' by ' + str(output_tile_height))
+def test_geotiff_write(tmpdir):
+    input_reader = MultiTiffFileReader()
+    input_reader.load_images(['data/landsat.tiff'])
+    new_tiff = tmpdir / 'test.tiff'
 
-    # Make a list of output ROIs
-    numBlocksX = int(math.ceil(nCols / output_tile_width))
-    numBlocksY = int(math.ceil(nRows / output_tile_height))
+    (block_size, (blocks_x, blocks_y)) = input_reader.get_block_info(1)
+    (cols, rows) = input_reader.image_size()
 
-    #stuff = dir(band)
-    #for s in stuff:
-    #    print(s)
-
-    print('Testing image duplication!')
     writer = TiffWriter()
-    writer.init_output_geotiff(options.outputPath, nRows, nCols, noData,
-                               tile_width=output_tile_width,
-                               tile_height=output_tile_height,
-                               metadata=input_metadata)
+    writer.init_output_geotiff(str(new_tiff), cols, rows, input_reader.nodata_value(1),
+                               tile_width=block_size[0],
+                               tile_height=block_size[1],
+                               metadata=input_reader.get_all_metadata(),
+                               num_bands=input_reader.num_bands(),
+                               data_type=input_reader.data_type(1))
 
-    # Setting up output ROIs
+    input_bounds = rectangle.Rectangle(0, 0, width=cols, height=rows)
     output_rois = []
-    for r in range(0,numBlocksY):
-        for c in range(0,numBlocksX):
+    for r in range(0, blocks_y):
+        for c in range(0, blocks_x):
 
             # Get the ROI for the block, cropped to fit the image size.
-            roi = rectangle.Rectangle(c*output_tile_width, r*output_tile_height,
-                                      width=output_tile_width, height=output_tile_height)
+            roi = rectangle.Rectangle(c * block_size[0], r * block_size[1],
+                                      width=block_size[0], height=block_size[1])
             roi = roi.get_intersection(input_bounds)
-
             output_rois.append(roi)
-            #print(roi)
-            #print(band)
-            #data = image.read_pixels(roi, band)
-            #writer.write_geotiff_block(data, c, r)
 
     def callback_function(output_roi, read_roi, data_vec):
         """Callback function to write the first channel to the output file."""
 
-        #print('For output roi: ' + str(output_roi) +' got read_roi ' + str(read_roi))
-        #print('Data shape = ' + str(data_vec[0].shape))
-
         # Figure out the output block
-        col = output_roi.min_x / output_tile_width
-        row = output_roi.min_y / output_tile_height
-
-        data = data_vec[0] # Just for testing
+        col = output_roi.min_x // block_size[0]
+        row = output_roi.min_y // block_size[1]
 
         # Figure out where the desired output data falls in read_roi
         x0 = output_roi.min_x - read_roi.min_x
         y0 = output_roi.min_y - read_roi.min_y
         x1 = x0 + output_roi.width()
         y1 = y0 + output_roi.height()
+        assert x0 == 0
+        assert y0 == 0
 
         # Crop the desired data portion and write it out.
-        output_data = data[y0:y1, x0:x1]
-        writer.write_geotiff_block(output_data, col, row)
+        for i in range(input_reader.num_bands()):
+            output_data = data_vec[i][y0:y1, x0:x1]
+            assert data_vec[i].shape == (y1 - y0, x1 - x0)
+            writer.write_geotiff_block(output_data, col, row, band=i)
 
-
-    print('Writing TIFF blocks...')
     input_reader.process_rois(output_rois, callback_function)
-
-
-
-    print('Done sending in blocks!')
     writer.finish_writing_geotiff()
-    print('Done duplicating the image!')
-
-    time.sleep(2)
-    print('Cleaning up the writer!')
     writer.cleanup()
 
-    print('Script is finished.')
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    check_same('data/landsat.tiff', str(new_tiff))

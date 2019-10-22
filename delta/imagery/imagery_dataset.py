@@ -15,8 +15,8 @@ from delta.imagery import utilities
 from delta.imagery import tfrecord_utils
 from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
-from delta.imagery.sources import landsat # TODO: Remove this dependency!
-from delta.imagery.sources import worldview # TODO: Remove this dependency!
+from delta.imagery.sources import landsat
+from delta.imagery.sources import worldview
 
 
 # Map text strings to the Image wrapper classes defined above
@@ -396,7 +396,7 @@ class ImageryDatasetTFRecord:
         result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
         num_bands = 1 if is_label else self._num_bands
-        result = tf.reshape(result, tf.stack([-1, self._chunk_size, self._chunk_size, num_bands]))
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
         return result
 
     def _chunk_label_image(self, image):
