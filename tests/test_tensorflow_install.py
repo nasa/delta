@@ -23,7 +23,7 @@ def test_mnist():
                   metrics=['accuracy'])
 
     model.fit(x_train, y_train, epochs=5, verbose=0)
-    (loss, accuracy) = model.evaluate(x_test, y_test, verbose=0)
+    (_, accuracy) = model.evaluate(x_test, y_test, verbose=0)
     assert accuracy > 0.96
 
 
