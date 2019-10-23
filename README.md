@@ -34,18 +34,29 @@ need to be specified again when running on the converted images.
 
 The older tool sc_process_test.py is deprecated.
 
-
 ## Scott's Old Install Directions (don't use)
 
--- miniconda3 installation instructions (tensorflow CPU v1.12):
+-- miniconda installation instructions (tensorflow CPU v1.12):
 -- (for Scott's use only)
 
 conda create --name tf_112_cpu python=3.6
 conda activate tf_112_cpu
-conda install numpy
-conda install gdal
-conda install matplotlib
-conda install tensorflow=1.12
+conda install numpy gdal matplotlib tensorflow=1.12
 conda install -c conda-forge mlflow
-pip install psutil
+pip install psutil appdirs portalocker
+pip install usgs (only needed for fetching USGS files)
+
+
+2.0 CPU
+conda create --name tf_200_cpu python=3.6
+conda activate tf_200_cpu
+conda install numpy gdal matplotlib scipy
+pip install tensorflow mlflow psutil appdirs portalocker
+pip install usgs (only needed for fetching USGS files)
+
+## Tips
+
+- If you get an out of memory error, try deleting everything in /tmp.
+  Tensorflow will fill this up after repeated tests.
+
 

@@ -106,10 +106,10 @@ class TiffWriter:
                 if self._shutdown:
                     print('Writing thread is shutting down')
                     break # Shutdown was commanded
-                else:
-                    #print('Writing thread is sleeping')
-                    time.sleep(SLEEP_TIME) # Wait
-                    continue
+
+                #print('Writing thread is sleeping')
+                time.sleep(SLEEP_TIME) # Wait
+                continue
 
             if not self._handle:
                 print('ERROR: Trying to write image block before initialization!')
@@ -158,9 +158,12 @@ class TiffWriter:
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        # TODO: Some tile sizes fail to write if copied from the input image!!
-        options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
-                    'BLOCKYSIZE='+str(self._tile_height)]
+        # One case where things fail is if we try to tile an image that is too small so
+        #  for those images don't use tiles.
+        MIN_SIZE_FOR_TILES = 100
+        if (num_cols > MIN_SIZE_FOR_TILES) or (num_rows > MIN_SIZE_FOR_TILES):
+            options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
+                        'BLOCKYSIZE='+str(self._tile_height)]
 
         print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
@@ -234,14 +237,14 @@ class TiffWriter:
             if numTiles == 0:
                 print('All tiles have been written!')
                 break
-            else:
-                if totalWait >= MAX_WAIT_TIME:
-                    print('Waited too long to finish, forcing shutdown!')
-                    break # Waited long enough, force shutdown.
-                else:
-                    print('Waiting on '+str(numTiles)+' writes to finish...')
-                    totalWait += SLEEP_TIME # Wait a bit longer
-                    time.sleep(SLEEP_TIME)
+
+            if totalWait >= MAX_WAIT_TIME:
+                print('Waited too long to finish, forcing shutdown!')
+                break # Waited long enough, force shutdown.
+
+            print('Waiting on '+str(numTiles)+' writes to finish...')
+            totalWait += SLEEP_TIME # Wait a bit longer
+            time.sleep(SLEEP_TIME)
 
         print('Clearing the write queue...')
 

@@ -65,7 +65,7 @@ def assemble_mnist_dataset_for_predict(test_count):
     (_, _), (test_images, _) = fashion_mnist.load_data()
     test_images = test_images[:test_count]   / MNIST_MAX
     # Not sure why this reshape has to be different!
-    test_images = np.reshape(test_images, (test_count, 1, MNIST_WIDTH, MNIST_WIDTH))
+    test_images = np.reshape(test_images, (test_count, MNIST_WIDTH, MNIST_WIDTH, 1))
 
     d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
                                tf.data.Dataset.from_tensor_slices(test_images)))
@@ -117,9 +117,9 @@ def main(args_in): #pylint: disable=R0914
     dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
                                          config_values['input_dataset']['shuffle_buffer_size'],
                                          options.use_fraction, get_test=False)
-    dataset_test_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
-                                        config_values['input_dataset']['shuffle_buffer_size'],
-                                        options.use_fraction, get_test=True)
+    #dataset_test_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
+    #                                    config_values['input_dataset']['shuffle_buffer_size'],
+    #                                    options.use_fraction, get_test=True)
 
     # If the mlfow directory doesn't exist, create it.
     mlflow_tracking_dir = os.path.join(output_folder, 'mlruns')
@@ -136,14 +136,11 @@ def main(args_in): #pylint: disable=R0914
     model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
     print('Training')
 
-#     experiment.train(model, ds, steps_per_epoch=1000, batch_size=batch_size)
-    #experiment.train(model, ds, steps_per_epoch=1000,log_model=False)
-
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.logging.set_verbosity(tf.logging.INFO)
-    estimator = experiment.train(model, dataset_train_fn, dataset_test_fn,
-                                 steps_per_epoch=1000, log_model=False,
-                                 num_gpus=options.num_gpus)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
+    model = experiment.train_keras(model, dataset_train_fn,
+                                   num_epochs=config_values['ml']['num_epochs'],
+                                   log_model=False, num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -156,27 +153,21 @@ def main(args_in): #pylint: disable=R0914
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
     # Make a non-shuffled dataset with a simple iterator
-    ds = assemble_mnist_dataset_for_predict(options.num_debug_images)
-    iterator = ds.make_one_shot_iterator()
-    next_element = iterator.get_next()
-    sess = tf.Session()
+    ds = assemble_mnist_dataset_for_predict(options.num_debug_images).batch(1)
+    iterator = iter(ds)
 
     for i in range(0, options.num_debug_images):
 
-        # Get the next image pair, then make a function to return it
-        value = sess.run(next_element)
-        def temp_fn():
-            return value #pylint: disable=W0640
-        # Get a generator from the predictor and get the only value from it
-        result = estimator.predict(temp_fn)
-        element = next(result)
+        # Get the next image pair and predict from it
+        value = next(iterator)
+        element = model.predict(value)
 
         # Get the output value out of its weird format, then convert for image output
-        pic = (element['reshape'][:, :, 0] * MNIST_MAX).astype(np.uint8)
+        pic = (element[0,:, :, 0] * MNIST_MAX).astype(np.uint8)
 
         plt.subplot(1,2,1)
         #plt.imshow(test_images[i])
-        plt.imshow(value[0][0,:,:])
+        plt.imshow(value[0][0,:,:,0])
         plt.title('Input image %03d' % (i, ))
 
         plt.subplot(1,2,2)

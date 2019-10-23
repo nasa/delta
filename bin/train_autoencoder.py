@@ -121,16 +121,11 @@ def main(argsIn): #pylint: disable=R0914
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.logging.set_verbosity(tf.logging.INFO)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    test_fn = None
-    estimator = experiment.train(model, dataset_fn, test_fn,
-                                 model_folder=config_values['ml']['model_folder'],
-                                 log_model=False, num_gpus=options.num_gpus)
-    #model = experiment.train_keras(model, dataset_fn,
-    #                               num_epochs=config_values['ml']['num_epochs'],
-    #                               steps_per_epoch=150,
-    #                               log_model=False, num_gpus=options.num_gpus)
+    model = experiment.train_keras(model, dataset_fn,
+                                   num_epochs=config_values['ml']['num_epochs'],
+                                   log_model=False, num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
@@ -146,10 +141,7 @@ def main(argsIn): #pylint: disable=R0914
 
     # Make a non-shuffled dataset with a simple iterator
     ds = assemble_dataset_for_predict(config_values)
-    iterator = ds.make_one_shot_iterator()
-    next_element = iterator.get_next()
-    sess = tf.Session()
-
+    iterator = iter(ds)
 
     scale = aeds.scale_factor()
     num_bands = data_shape[0]
@@ -157,22 +149,16 @@ def main(argsIn): #pylint: disable=R0914
 #     print('debug_bands = ' + str(debug_bands))
     for i in range(0, options.num_debug_images):
         print('Preparing debug image ' + str(i))
-        # Get the next image pair, then make a function to return it
-        value = sess.run(next_element)
-        def temp_fn():
-            return value #pylint: disable=W0640
 
-        # Get a generator from the predictor and get the only value from it
-        result = estimator.predict(temp_fn)
-        element = next(result)
+        value = next(iterator)
+        element = model.predict(value)
 
         # Get the output value out of its weird format, then convert for image output
-#         pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
         pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
-        pic = np.moveaxis(pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
+        pic = np.moveaxis(pic, 0, -1)
 
         in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
+        in_pic = np.moveaxis(in_pic, 0, -1)
 
         for band in range(num_bands):
             plt.subplot(num_bands,2,2*band+1)

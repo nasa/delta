@@ -47,14 +47,6 @@ def make_model(channel, in_len):
         ])
     return model
 
-def init_network(num_bands, chunk_size):
-    """Create a TF model to train"""
-
-    model = make_model(num_bands, chunk_size)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
-    model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
-
-    return model
 
 def main(args): #pylint: disable=R0914,R0912,R0915
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
@@ -74,9 +66,6 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
     parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
                         help="Don't train the network but do load a checkpoint if available.")
-
-    parser.add_argument("--use-keras", action="store_true", dest="use_keras", default=False,
-                        help="Train in Keras instead of as Estimator.")
 
     parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
                         help="Run experimental code!")
@@ -147,23 +136,11 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     print('num images = ', ds_info.num_images())
 
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.logging.set_verbosity(tf.logging.INFO)
-    train_fn = assemble_dataset
-    test_fn = assemble_dataset
-    if not options.use_keras:
-        estimator = experiment.train(model, train_fn, test_fn,
-                                     model_folder=config_values['ml']['model_folder'],
-                                     #steps_per_epoch=100,
-                                     log_model=False, num_gpus=options.num_gpus,
-                                     skip_training=options.skip_training)
-    else:
-        # TODO: How to set this?
-        steps_per_epoch = int(1000000/config_values['ml']['batch_size'])
-        model = experiment.train_keras(model, assemble_dataset,
-                                       num_epochs=config_values['ml']['num_epochs'],
-                                       steps_per_epoch=steps_per_epoch,
-                                       log_model=False, num_gpus=options.num_gpus)
-        #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
+    model = experiment.train_keras(model, assemble_dataset,
+                                   num_epochs=config_values['ml']['num_epochs'],
+                                   log_model=False, num_gpus=options.num_gpus)
+    #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
 
     if not options.experimental:
         print('sc_process_test finished!')
@@ -173,12 +150,6 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     # Needs to be fixed, then moved to a different tool!
 
     # TODO: Load the model from disk instead of putting this at the end of training!
-
-    #config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1
-    #ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
-    #ds = ids.dataset(filter_zero=False, shuffle=False, predict=True)
-    #ds = ds.batch(500)
-    #ds = ds.repeat(1)
 
     # TODO: Read these from file!
     height = 9216
@@ -203,30 +174,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     print('Classifying the image...')
     start = time.time()
 
-    if options.use_keras:
-        # Count the number of elements, needed for Keras!
-        iterator = make_classify_ds().make_one_shot_iterator()
-        next_element = iterator.get_next()
-        sess = tf.Session()
-        batch_count = 0
-        while True:
-            try:
-                value = sess.run(next_element)
-            except: #pylint: disable=W0702
-                break
-        #    print('value ' + str(i) + ' ' + str(value.shape))
-            batch_count += 1
-        print('batch_count = ' + str(batch_count))
-
-        predictions = model.predict(make_classify_ds(), steps=batch_count,
-                                    verbose=1)
-    else:
-
-        predictions = []
-        for pred in estimator.predict(input_fn=make_classify_ds):
-            value = pred['dense_3'][0]
-            #print(value)
-            predictions.append(value)
+    predictions = model.predict(make_classify_ds(), verbose=1)
 
     stop = time.time()
     print('Output count = ' + str(len(predictions)))

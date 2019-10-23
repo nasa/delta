@@ -25,9 +25,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
         reader = tf.data.TFRecordDataset(input_path, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
     else:
         reader = tf.data.TFRecordDataset(input_path, compression_type="")
-    iterator = reader.make_one_shot_iterator()
-    next_element = iterator.get_next()
-    sess = tf.Session()
+    iterator = iter(reader)
 
     scaling = 1
     if label: # Get labels into a good 255 range
@@ -39,10 +37,10 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
     concat = None
     while True:
         try:
-            value = sess.run(next_element)
+            value = next(iterator)
 
             # Read the next item from the TFRecord file
-            data_type= tf.uint8 if label else tf.float32
+            data_type = tf.uint8 if label else tf.float32
             image = tfrecord_utils.load_tfrecord_element(value, num_bands, data_type = data_type)
             #print(str((input_region_height, input_region_width)))
             #print(sess.run(image))
@@ -63,8 +61,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
             if count == width:
                 jpeg = tf.image.encode_jpeg(concat, quality=100, format='grayscale')
                 output_path = output_prefix + str(total) + '.jpg'
-                writer = tf.write_file(output_path, jpeg)
-                sess.run(writer)
+                tf.io.write_file(output_path, jpeg)
                 count  = 0
                 concat = None
             count += 1
@@ -73,8 +70,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
             if count > 0:
                 jpeg = tf.image.encode_jpeg(concat, quality=100, format='grayscale')
                 output_path = output_prefix + str(total) + '.jpg'
-                writer = tf.write_file(output_path, jpeg)
-                sess.run(writer)
+                tf.io.write_file(output_path, jpeg)
             break
 
 

@@ -85,10 +85,10 @@ class Experiment:
 
         mlflow.log_param('num_epochs', num_epochs)
 
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.001) # TODO
-        model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
+        model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
         mlflow.log_param('model summary', model.summary())
+
         # Call the lower level estimator train function
         estimator_model = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus,
                                 skip_training)
@@ -108,8 +108,7 @@ class Experiment:
     ### end train
 
 
-    def train_keras(self, model, train_dataset_fn,
-                    num_epochs=70, steps_per_epoch=2024,
+    def train_keras(self, model, train_dataset_fn, num_epochs=70,
                     validation_data=None, log_model=False, num_gpus=1):
         """Call that uses the Keras interface, only works on a single GPU"""
         assert model is not None
@@ -123,12 +122,11 @@ class Experiment:
         assert model is not None
 
         history = model.fit(train_dataset_fn(), epochs=num_epochs,
-                            steps_per_epoch=steps_per_epoch,
                             validation_data=validation_data)
 
         for i in range(num_epochs):
             mlflow.log_metric('loss', history.history['loss'][i])
-            mlflow.log_metric('acc',  history.history['acc' ][i])
+            mlflow.log_metric('acc',  history.history['accuracy'][i])
         ### end for
         if log_model:
             model.save('model.h5')

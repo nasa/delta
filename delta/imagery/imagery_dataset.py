@@ -393,7 +393,7 @@ class ImageryDatasetTFRecord:
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, stride, stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
-        result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        result  = tf.image.extract_patches(image, ksizes, strides, rates, padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
         num_bands = 1 if is_label else self._num_bands
         result = tf.reshape(result, tf.stack([-1, self._chunk_size, self._chunk_size, num_bands]))
@@ -418,7 +418,7 @@ class ImageryDatasetTFRecord:
         width  = image.shape[2] - 2*offset
         cropped_image = tf.image.crop_to_bounding_box(image, offset, offset, height, width)
 
-        result = tf.image.extract_image_patches(cropped_image, ksizes, strides, rates, padding='VALID')
+        result = tf.image.extract_patches(cropped_image, ksizes, strides, rates, padding='VALID')
         result = tf.reshape(result, [-1, 1, 1, 1])
         return result
 
@@ -437,10 +437,12 @@ class ImageryDatasetTFRecord:
         chunk_data = self._chunk_tf_image(image, is_label=True) # First method of getting center pixels
         center_pixel = int(self._chunk_size/2)
         # TODO: check if multi-valued, convert to one-hot labels
-        labels = tf.to_int32(chunk_data[:, center_pixel, center_pixel, 0])
+        labels = tf.cast(chunk_data[:, center_pixel, center_pixel, 0], tf.int32)
+        labels = tf.math.divide(labels, 2) # Get into 0-1 range
+        #tf.print(labels, output_stream=sys.stderr)
 
         #label_data = self._chunk_label_image(image) # Second method, why is it slower?
-        #labels = tf.to_int32(label_data[:,0,0,0])
+        #labels = tf.cast(label_data[:,0,0,0], tf.int32)
 
         return labels
 
@@ -505,5 +507,5 @@ class AutoencoderDataset(ImageryDatasetTFRecord):
 
 
     def _load_labels(self, example_proto):
-        #return tf.to_int32(self._load_data(example_proto))
+        #return tf.cast(self._load_data(example_proto, tf.int32))
         return self._load_data(example_proto)
