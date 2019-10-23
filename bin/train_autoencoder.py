@@ -131,7 +131,6 @@ def main(argsIn): #pylint: disable=R0914
 
     model, _ = experiment.train_keras(model_fn, dataset_fn,
                                       num_epochs=config_values['ml']['num_epochs'],
-                                      log_model=False,
                                       num_gpus=options.num_gpus)
 
     print('Saving Model')
