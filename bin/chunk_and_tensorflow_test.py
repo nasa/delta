@@ -2,6 +2,9 @@
 """
 Script test out the image chunk generation calls.
 """
+
+# pylint: disable=unsubscriptable-object
+
 import os
 import sys
 import argparse
@@ -24,9 +27,6 @@ from delta.ml.train import Experiment
 def make_model(channel, in_len):
     # assumes square chunks.
     fc1_size = channel * in_len ** 2
-#     fc2_size = fc1_size * 2
-#     fc3_size = fc2_size
-#     fc4_size = fc1_size
     # To be consistent with Robert's poster
     fc2_size = 253
     fc3_size = 253
@@ -168,12 +168,12 @@ def main(argsIn): # pylint:disable=R0914
     experiment.log_parameters(exp_parameters)
 
     # Remove one band for the labels
-    model = make_model(NUM_TRAIN_BANDS, options.chunk_size)
-#     history = experiment.train(model, train_data, train_labels, options.num_epochs,
-#                                validation_data=(test_data, test_labels))
-#     assert history is not None
-    experiment.train(model, train_data, train_labels, options.num_epochs,
-                     validation_data=(test_data, test_labels))
+    model_fn = functools.partial(make_model, NUM_TRAIN_BANDS, options.chunk_size)
+    model, _ = experiment.train_keras(model_fn, 
+                                      train_data, 
+                                      train_labels, 
+                                      options.num_epochs,
+                                      validation_data=(test_data, test_labels))
 
 #     mlflow.end_run()
     return 0
