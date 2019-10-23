@@ -3,6 +3,15 @@ import mlflow
 import mlflow.tensorflow
 import tensorflow as tf
 
+def get_devices(num_gpus):
+    if num_gpus < 1:
+        return [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
+    ### end if num_gpus < 1
+    devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
+    return devs[:num_gpus]
+### end get_devices
+
+
 def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_gpus=1,
           skip_train=False):
     """Plain training function without mlflow stuff.
@@ -55,19 +64,13 @@ def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_
 class Experiment:
     """TODO"""
 
-    def __init__(self, tracking_uri, experiment_name, output_dir='./'):
+    def __init__(self, tracking_uri, experiment_name, output_dir='./', loss_fn='mean_squared_error'):
         self.experiment_name = experiment_name
         self.output_dir = output_dir
+        self.loss_fn = loss_fn
 
         mlflow.set_tracking_uri(tracking_uri)
-#         client = mlflow.tracking.MlflowClient(tracking_uri)
-#         exp = client.get_experiment_by_name(experiment_name)
-#         experiment_id = None
-#         if exp is None:
-#             experiment_id = mlflow.create_experiment(experiment_name)
-#         else:
         mlflow.set_experiment(experiment_name)
-#         run = mlflow.start_run()
         mlflow.start_run()
         mlflow.log_param('output_dir', self.output_dir)
 
@@ -77,63 +80,25 @@ class Experiment:
         mlflow.end_run()
     ### end __del__
 
-    def train(self, model, train_dataset_fn, test_dataset_fn=None, model_folder=None, #pylint: disable=R0913
-              num_epochs=70, steps_per_epoch=2024,
-              validation_data=None, log_model=False, num_gpus=1, skip_training=False):
-        """Train call that uses the TF Estimator interface to run on multiple GPUs.
-           If skip_training is set then it will only convert to an Estimator model."""
-
-        mlflow.log_param('num_epochs', num_epochs)
-
-        model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
-
-        mlflow.log_param('model summary', model.summary())
-
-        # Call the lower level estimator train function
-        estimator_model = train(model, train_dataset_fn, test_dataset_fn, model_folder, num_gpus,
-                                skip_training)
-        return estimator_model
-
-        # TODO: Record the output from the Estimator!
-
-        #for i in range(num_epochs):
-        #    mlflow.log_metric('loss', history.history['loss'][i])
-        #    mlflow.log_metric('acc',  history.history['acc' ][i])
-        #### end for
-        #if log_model:
-        #    model.save('model.h5')
-        #    mlflow.log_artifact('model.h5')
-        ### end log_model
-        #return history
-    ### end train
-
-
-    def train_keras(self, model, train_dataset_fn, num_epochs=70,
+    def train_keras(self, model_fn, train_dataset_fn, num_epochs=70,
                     validation_data=None, log_model=False, num_gpus=1):
         """Call that uses the Keras interface, only works on a single GPU"""
-        assert model is not None
+        assert model_fn is not None
         assert train_dataset_fn is not None
 
-        mlflow.log_param('num_epochs', num_epochs)
-        mlflow.log_param('model summary', model.summary())
-
-        model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
-
-        assert model is not None
+        devs = get_devices(num_gpus)
+        if len(devs) == 1:
+            strategy = tf.distribute.OneDeviceStrategy(device=devs[0])
+        else:
+            strategy = tf.distribute.MirroredStrategy(devices=devs)
+        with strategy.scope():
+            model = model_fn()
+            model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
 
         history = model.fit(train_dataset_fn(), epochs=num_epochs,
                             validation_data=validation_data)
 
-        for i in range(num_epochs):
-            mlflow.log_metric('loss', history.history['loss'][i])
-            mlflow.log_metric('acc',  history.history['accuracy'][i])
-        ### end for
-        if log_model:
-            model.save('model.h5')
-            mlflow.log_artifact('model.h5')
-        ## end log_model
-
-        return model
+        return model, history
         ### end train
 
     def test(self, model, test_data, test_labels):

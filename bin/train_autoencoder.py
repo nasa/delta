@@ -117,15 +117,22 @@ def main(argsIn): #pylint: disable=R0914
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
     data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
-    model = make_autoencoder(data_shape, encoding_size=int(config_values['ml']['num_hidden']))
-    print('Training')
 
+    print('Training')
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
+#     tf.logging.set_verbosity(tf.logging.INFO) # TODO 2.0
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    model = experiment.train_keras(model, dataset_fn,
-                                   num_epochs=config_values['ml']['num_epochs'],
-                                   log_model=False, num_gpus=options.num_gpus)
+    # To do distribution of training with TF2/Keras, we need to create the model
+    # in the scope of the distribution strategy (occurrs in the training function)
+    model_fn = functools.partial(make_autoencoder,
+                                 data_shape,
+                                 encoding_size=int(config_values['ml']['num_hidden'])
+                                 )
+
+    model, _ = experiment.train_keras(model_fn, dataset_fn,
+                                      num_epochs=config_values['ml']['num_epochs'],
+                                      log_model=False,
+                                      num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
