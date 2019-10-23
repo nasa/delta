@@ -12,12 +12,15 @@ def get_devices(num_gpus):
     num_gpus -- Number of GPUs to use.  If zero, will use all CPUs available.
     '''
     assert num_gpus > -1, "Requested negative GPUs"
+    devs = None
     if num_gpus < 1:
-        return [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
+        devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
+    else:
+        devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
+        assert len(devs) >= num_gpus, "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
+        devs = devs[:num_gpus]
     ### end if num_gpus < 1
-    devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
-    assert len(devs) <= num_gpus, "Requested more GPUs than are available."
-    return devs[:num_gpus]
+    return devs
 ### end get_devices
 
 
