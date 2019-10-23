@@ -120,8 +120,6 @@ class Experiment:
 
         model.compile(optimizer='adam', loss='mean_squared_logarithmic_error', metrics=['accuracy'])
 
-        assert model is not None
-
         history = model.fit(train_dataset_fn(), epochs=num_epochs,
                             steps_per_epoch=steps_per_epoch,
                             validation_data=validation_data)

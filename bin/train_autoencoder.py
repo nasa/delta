@@ -117,29 +117,42 @@ def main(argsIn): #pylint: disable=R0914
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
     data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
-    model = make_autoencoder(data_shape, encoding_size=int(config_values['ml']['num_hidden']))
+    model = make_autoencoder(data_shape, encoding_size=int(config_values['ml']['num_hidden']), encoder_type='dense')
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
     test_fn = None
-    estimator, distribution_scope = experiment.train(model, dataset_fn, test_fn,
+    train_keras = True
+
+
+    out_filename = None
+    keras_model = None
+    if config_values['ml']['model_dest_name'] is not None:
+        print('Saving Model')
+        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+    if not train_keras:
+        estimator, distribution_scope = experiment.train(model, dataset_fn, test_fn,
                                  model_folder=config_values['ml']['model_folder'],
                                  log_model=False, num_gpus=options.num_gpus)
-    #model = experiment.train_keras(model, dataset_fn,
-    #                               num_epochs=config_values['ml']['num_epochs'],
-    #                               steps_per_epoch=150,
-    #                               log_model=False, num_gpus=options.num_gpus)
 
-    print('Saving Model')
-    if config_values['ml']['model_dest_name'] is not None:
-        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
-        with distribution_scope: 
-            tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
-            mlflow.log_artifact(out_filename)
+        if out_filename is not None:
+            with distribution_scope: 
+                tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
     ### end if
 
+
+    else: 
+        keras_model = experiment.train_keras(model, dataset_fn, 
+                                       num_epochs = config_values['ml']['num_epochs'],
+                                       steps_per_epoch = config_values['ml']['steps_per_epoch'],
+                                       log_model = False, num_gpus=options.num_gpus)
+        if out_filename is not None:
+            tf.keras.models.save_model(keras_model, out_filename, overwrite=True, 
+                                       include_optimizer = True)
+    ### end if
+    mlflow.log_artifact(out_filename)
 
     # Write input/output image pairs to the current working folder.
     print('Recording ', str(options.num_debug_images), ' demo images.')
@@ -153,7 +166,7 @@ def main(argsIn): #pylint: disable=R0914
 
 
     scale = aeds.scale_factor()
-    num_bands = data_shape[0]
+    num_bands = data_shape[-1]
 #     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
 #     print('debug_bands = ' + str(debug_bands))
     for i in range(0, options.num_debug_images):
@@ -164,16 +177,25 @@ def main(argsIn): #pylint: disable=R0914
             return value #pylint: disable=W0640
 
         # Get a generator from the predictor and get the only value from it
-        result = estimator.predict(temp_fn)
-        element = next(result)
+        if keras_model is not None:
+            result = keras_model.predict(value)
+            print(result.shape)
+            print(value[0].shape)
+            exit()
+            pic = (result[0,:,:,:]*scale).astype(np.uint8)
+            in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
+        else:
+            result = estimator.predict(temp_fn)
+            element = next(result)
 
         # Get the output value out of its weird format, then convert for image output
 #         pic = (element['reshape'][debug_bands, :, :] * scale).astype(np.uint8)
-        pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
-        pic = np.moveaxis(pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
+            pic = (element['reshape'][:, :, :] * scale).astype(np.uint8)
+            pic = np.moveaxis(pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
 
-        in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
-        in_pic = np.moveaxis(in_pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
+            in_pic = (value[0][0,:,:,:] * scale).astype(np.uint8)
+            in_pic = np.moveaxis(in_pic, 0, -1) #TODO: Do we still need this with Brian's channel change?
+        ### end for
 
         for band in range(num_bands):
             plt.subplot(num_bands,2,2*band+1)
