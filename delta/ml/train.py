@@ -4,62 +4,32 @@ import mlflow.tensorflow
 import tensorflow as tf
 
 def get_devices(num_gpus):
+    '''
+    Takes a number of GPUs and returns a list of TensorFlow LogicalDevices. 
+
+    Arguments
+
+    num_gpus -- Number of GPUs to use.  If zero, will use all CPUs available.
+    '''
+    assert num_gpus > -1, "Requested negative GPUs"
     if num_gpus < 1:
         return [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
     ### end if num_gpus < 1
     devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
+    assert len(devs) <= num_gpus, "Requested more GPUs than are available."
     return devs[:num_gpus]
 ### end get_devices
 
 
-def train(model, train_dataset_fn, test_dataset_fn=None, model_folder=None, num_gpus=1,
-          skip_train=False):
-    """Plain training function without mlflow stuff.
-       Converts from the input Keras model to an Estimator model.
-       If skip_train is set then it will convert but not do any training.
-    """
-
-    assert model is not None
-    assert train_dataset_fn is not None
-
-    # Save a checkpoint file every 10 minutes.
-    # - When restarting from a checkpoint, TF does not remember where we were in the
-    #   input dataset so it will not train "evenly" but hopefully if the randomization
-    #   is good enough and/or there are multiple epochs this won't matter.
-    CHECKPOINT_SPACING_SECONDS = 10 * 60
-
-    # Set up multi-GPU strategy
-    tf_config = tf.estimator.RunConfig(
-        save_checkpoints_secs=CHECKPOINT_SPACING_SECONDS,
-        experimental_distribute=tf.contrib.distribute.DistributeConfig(
-                train_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
-                    num_gpus_per_worker=num_gpus,
-                    ),
-                eval_distribute=tf.contrib.distribute.MirroredStrategy( #pylint: disable=C0330
-                    num_gpus_per_worker=num_gpus,
-                    )))
-    #tf_config = tf.estimator.RunConfig() # DEBUG: Force single GPU
-
-    # Convert from Keras to Estimator
-    print('Calling model_to_estimator...')
-    keras_estimator = tf.keras.estimator.model_to_estimator(
-        keras_model=model, config=tf_config, model_dir=model_folder)
-    if skip_train:
-        return keras_estimator
-
-    if test_dataset_fn is None:
-        # It appears this is the only way to skip the evaluation step
-        eval_spec=tf.estimator.EvalSpec(input_fn=train_dataset_fn, steps=None)
+def get_distribution_strategy(devices):
+    '''Given a list of TensorFlow Logical Devices, returns a distribution strategy.'''
+    strategy = None
+    if len(devices) == 1:
+        strategy = tf.distribute.OneDeviceStrategy(device=devices[0])
     else:
-        eval_spec=tf.estimator.EvalSpec(input_fn=test_dataset_fn)
-    print('Calling train_and_evaluate...')
-    tf.estimator.train_and_evaluate( #pylint: disable=W0612
-        keras_estimator,
-        train_spec=tf.estimator.TrainSpec(input_fn=train_dataset_fn),
-        eval_spec=eval_spec)
+        strategy = tf.distribute.MirroredStrategy(devices=devices)
+    return strategy
 
-    # keras_estimator.evaluate(input_fn=test_dataset_fn) # TODO Run this?
-    return keras_estimator
 
 class Experiment:
     """TODO"""
@@ -81,21 +51,33 @@ class Experiment:
     ### end __del__
 
     def train_keras(self, model_fn, train_dataset_fn, num_epochs=70,
-                    validation_data=None, log_model=False, num_gpus=1):
-        """Call that uses the Keras interface, only works on a single GPU"""
-        assert model_fn is not None
-        assert train_dataset_fn is not None
+                    validation_data=None, num_gpus=1):
+        """
+        Call that uses the Keras interface to train a network.
+
+        Arguments
+
+        model_fn -- A zero-argument function that constructs the neural network to be trained. model_fn() should return a Keras Model
+        train_dataset_fn -- A zero-argument function that constructs the dataset as a Tensorflow Dataset object.
+        num_epochs -- The number of epochs to train the network for.  Default value is 70
+        validation_data -- The data used to validate the network.  Default None.
+        num_gpus -- The number of GPUs used to train the network.  If GPU
+
+
+        """
+        assert model_fn is not None, "No model function supplied."
+        assert train_dataset_fn is not None, "No training dataset function supplied."
+        assert num_gpus > -1, "Number of GPUs is negative."
 
         devs = get_devices(num_gpus)
-        if len(devs) == 1:
-            strategy = tf.distribute.OneDeviceStrategy(device=devs[0])
-        else:
-            strategy = tf.distribute.MirroredStrategy(devices=devs)
+        strategy = get_distribution_strategy(devs)
         with strategy.scope():
             model = model_fn()
+            assert isinstance(model, tf.keras.models.Model), "Model is not a Tensorflow Keras model"
             model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
 
-        history = model.fit(train_dataset_fn(), epochs=num_epochs,
+        history = model.fit(train_dataset_fn(), 
+                            epochs=num_epochs,
                             validation_data=validation_data)
 
         return model, history
@@ -118,7 +100,9 @@ class Experiment:
         raise NotImplementedError('loading models is not yet implemented')
 
     def log_parameters(self, params):
-        """TODO"""
+        """
+        Takes a dictionary of parameters and logs each named parameter.
+        """
         assert isinstance(params, dict)
         for k in params.keys():
             mlflow.log_param(k,params[k])
