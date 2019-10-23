@@ -50,7 +50,6 @@ class TiffWriter:
         self._writeQueue     = []
         self._writeQueueLock = threading.Lock()
 
-        print('Launching write thread...')
         self._writerThread = threading.Thread(target=self._internal_writer)
 
         self._writerThread.start()
@@ -65,13 +64,11 @@ class TiffWriter:
         self.cleanup()
 
     def cleanup(self):
-        print('cleanup called.')
         self.finish_writing_geotiff()
 
         # Shut down the writing thread, giving it ten minutes to finish.
         TIMEOUT = 60*10
         self._shutdown = True
-        print('Terminating write thread...')
         self._writerThread.join(TIMEOUT)
 
     def get_size(self):
@@ -91,7 +88,6 @@ class TiffWriter:
         SLEEP_TIME = 0.2
 
         blockCounter = 0
-        print('Starting block writing loop')
         while True:
 
             # Check the write queue
@@ -104,10 +100,8 @@ class TiffWriter:
             # Wait until a tile is ready to be written
             if noTiles:
                 if self._shutdown:
-                    print('Writing thread is shutting down')
                     break # Shutdown was commanded
                 else:
-                    #print('Writing thread is sleeping')
                     time.sleep(SLEEP_TIME) # Wait
                     continue
 
@@ -121,7 +115,7 @@ class TiffWriter:
                 blockCounter += 1
             except Exception as e: #pylint: disable=W0703
                 print(str(e))
-                print('Caught exception writing: ' + str(parts[1]) +', '+ str(parts[2]))
+                print('Exception on: %s, %s, %s, %s', str(parts[0].shape), str(parts[1]), str(parts[2]), str(parts[3]))
 
         print('Write thread ended after writing ' + str(blockCounter) +' blocks.')
 
@@ -158,11 +152,13 @@ class TiffWriter:
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        # TODO: Some tile sizes fail to write if copied from the input image!!
-        options += ['TILED=YES', 'BLOCKXSIZE='+str(self._tile_width),
+        options += ['BLOCKXSIZE='+str(self._tile_width),
                     'BLOCKYSIZE='+str(self._tile_height)]
+        # TODO: Some tile sizes fail to write if copied from the input image!!
+        MIN_SIZE_FOR_TILES=100
+        if num_cols > MIN_SIZE_FOR_TILES or num_rows > MIN_SIZE_FOR_TILES:
+            options += ['TILED=YES']
 
-        print('Starting TIFF driver...')
         driver = gdal.GetDriverByName('GTiff')
         self._handle = driver.Create(path, num_cols, num_rows, num_bands, data_type, options)
         if not self._handle:
@@ -243,15 +239,11 @@ class TiffWriter:
                     totalWait += SLEEP_TIME # Wait a bit longer
                     time.sleep(SLEEP_TIME)
 
-        print('Clearing the write queue...')
-
         # Make sure that the write queue is empty.
         with self._writeQueueLock:
             self._writeQueue = []
 
         # Finish whatever we are writing, then close the handle.
-        print('Closing TIFF handle...')
         band = self._handle.GetRasterBand(1)
         band.FlushCache()
         self._handle = None
-        print('TIFF handle is gone.')

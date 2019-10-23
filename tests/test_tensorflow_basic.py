@@ -1,13 +1,7 @@
-"""
-file: test_tensorflow_install.py
-purpose: A file which tests running tensorflow on the MNIST dataset.
-date: 2019.03.18
-"""
-
 import tensorflow as tf
 
-def main():
-    """ tests the tensorflow library on the MNIST data set. """
+def test_mnist_train():
+    """ Tests the tensorflow library on the MNIST data set. """
     mnist = tf.keras.datasets.mnist
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x_train, x_test = x_train/255.0, x_test/255.0
@@ -23,9 +17,6 @@ def main():
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
 
-    model.fit(x_train, y_train, epochs=5)
-    model.evaluate(x_test, y_test)
-
-
-if __name__ == '__main__':
-    main()
+    model.fit(x_train, y_train, epochs=1)
+    result = model.evaluate(x_test, y_test)
+    assert result[1] > 0.9

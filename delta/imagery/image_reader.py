@@ -159,8 +159,8 @@ class MultiTiffFileReader():
     def image_size(self):
         return self._image_handles[0].image_size()
 
-    def data_type(self):
-        return self._image_handles[0].data_type()
+    def data_type(self, band=1):
+        return self._image_handles[0].data_type(band)
 
     def num_bands(self):
         """Get the total number of bands across all input images"""
@@ -220,8 +220,6 @@ class MultiTiffFileReader():
             utilities.get_chunk_center_list_in_region(roi, chunk_info[0], chunk_info[1], chunk_size)
         if not chunk_center_list:
             raise ValueError('Unable to load any chunks from this ROI!')
-            #print('Initial num chunks = ' + str(len(chunk_center_list)))
-        #print('Initial chunk ROI = ' + str(chunk_roi))
 
         # Throw out any partial chunks.
         image_size = self.image_size()
@@ -232,15 +230,9 @@ class MultiTiffFileReader():
         num_chunks = len(chunk_center_list)
         if not num_chunks:
             raise Exception('Failed to load any chunks from this ROI!')
-        #print('Computed chunks = ' + str(chunk_center_list))
-        #print('Final num chunks = ' + str(len(chunk_center_list)))
-        #print('Final chunk ROI = ' + str(chunk_roi))
 
         # Get the block-aligned read ROI (for the larger chunk containing ROI)
         read_roi = self._image_handles[0].get_block_aligned_read_roi(chunk_roi)
-        #print('Read ROI = ' + str(read_roi))
-
-        #raise Exception('DEBUG')
 
         # Adjust centers to be relative to the read ROI.
         offset_centers = [(c[0]-read_roi.min_x,c[1]-read_roi.min_y)
@@ -299,8 +291,6 @@ class MultiTiffFileReader():
 
         block_rois = copy.copy(requested_rois)
 
-        print('Ready to process ' + str(len(requested_rois)) +' tiles.')
-
         image_size = self.image_size()
         whole_bounds = rectangle.Rectangle(0, 0, width=image_size[0], height=image_size[1])
         for roi in block_rois:
@@ -312,9 +302,6 @@ class MultiTiffFileReader():
             # For the next (output) block, figure out the (input block) aligned
             # data read that we need to perform to get it.
             read_roi = first_image.get_block_aligned_read_roi(block_rois[0])
-            #print('Want to process ROI: ' + str(block_rois[0]))
-            #print('Reading input ROI: ' + str(read_roi))
-            #sys.stdout.flush()
 
             # If we don't have enough memory to load the ROI, wait here until we do.
             self.sleep_until_mem_free_for_roi(read_roi)
@@ -326,7 +313,6 @@ class MultiTiffFileReader():
             data_vec = []
             for image in self._image_handles:
                 for band in range(1,image.num_bands()+1):
-                    #print('Data read from image ' + str(image) + ', band ' + str(band))
                     data_vec.append(image.read_pixels(read_roi, band))
 
             # Loop through the remaining ROIs and apply the callback function to each
@@ -337,7 +323,6 @@ class MultiTiffFileReader():
 
                 roi = block_rois[index]
                 if not read_roi.contains_rect(roi):
-                    #print(read_roi + ' does not contain ' + )
                     index += 1
                     if strict_order:
                         break
@@ -346,18 +331,12 @@ class MultiTiffFileReader():
                 # We pass the read roi to the function rather than doing
                 # any kind of cropping here.
 
-                #print('Doing roi ' + str(roi))
-
                 # Execute the callback function with the data vector.
                 callback_function(roi, read_roi, data_vec)
 
                 # Instead of advancing the index, remove the current ROI from the list.
                 block_rois.pop(index)
                 num_processed += 1
-
-            #print('From the read ROI, was able to process ' + str(num_processed) +' tiles.')
-
-        print('Finished processing tiles!')
 
 def get_block_and_roi(output_roi, read_roi, block_size):
     """Helper function to use with MultiTiffFileReader process_roi callback functions.

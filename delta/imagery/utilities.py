@@ -278,12 +278,9 @@ def get_chunk_center_list_in_region(region_rect, chunk_start_offset,
 def rect_from_chunk_center(center, chunk_size):
     """Given a chunk center and size, get the bounding Rectangle"""
 
-    # Offset of the center coord from the top left coord.
-    chunk_center_offset = int(math.floor(chunk_size / 2))
-
     (x, y) = center
-    min_x = x+chunk_center_offset-chunk_size
-    min_y = y+chunk_center_offset-chunk_size
+    min_x = x - int(chunk_size / 2)
+    min_y = y - int(chunk_size / 2)
     return Rectangle(min_x, min_y, min_x+chunk_size, min_y+chunk_size)
 
 def restrict_chunk_list_to_roi(chunk_center_list, chunk_size, roi):
