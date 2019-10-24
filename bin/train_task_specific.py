@@ -112,21 +112,23 @@ def main(argsIn): #pylint: disable=R0914
     print('Creating model')
     in_data_shape = (ids.num_bands(), ids.chunk_size(), ids.chunk_size())
     out_data_shape = config_values['ml']['num_classes']
-    model = make_task_specific(in_data_shape, out_data_shape)
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
-    dataset_fn = functools.partial(assemble_dataset, config_values)
-#     estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-#                                            log_model=False, num_gpus=options.num_gpus)
-    estimator = experiment.train(model, dataset_fn,  num_gpus=options.num_gpus)
 
-    print(estimator) # Need to do something with the estimator to appease the lint gods
+    dataset_fn = functools.partial(assemble_dataset, config_values)
+    model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
+
+    model = experiment.train_keras(model_fn, dataset_fn,  num_gpus=options.num_gpus)
+
+    print(model) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
-        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
-        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
+        out_filename = os.path.join(output_folder, 
+                                    config_values['ml']['model_dest_name'])
+        tf.keras.models.save_model(model, out_filename, overwrite=True, 
+                                   include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
 

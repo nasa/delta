@@ -4,6 +4,14 @@ purpose: A file which tests running tensorflow on the MNIST dataset.
 date: 2019.03.18
 """
 import tensorflow as tf
+from delta.ml import train
+
+def test_find_cpus():
+    assert len(train.get_devices(0)) > 0, "Could not find any CPU Logical Devices"
+
+def test_find_gpus():
+    assert len(train.get_devices(1)) > 0, "Could not find any GPU Logical Devices" 
+
 
 def test_mnist():
     """ tests the tensorflow library on the MNIST data set. """
@@ -28,4 +36,6 @@ def test_mnist():
 
 
 if __name__ == '__main__':
+    test_find_cpus()
+    test_find_gpus()
     test_mnist()

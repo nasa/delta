@@ -58,19 +58,20 @@ def assemble_mnist_dataset(batch_size, num_epochs=1, shuffle_buffer_size=1000,
 
     return d_s
 
-def assemble_mnist_dataset_for_predict(test_count):
-    """Loads the mnist fashion dataset just for prediction"""
+def assemble_mnist_dataset_for_predict(test_count, no_labels=False):
+    """Loads the mnist fashion dataset just for prediction.
+       If no_labels is set only the input image portion of the dataset is used"""
 
     fashion_mnist = keras.datasets.fashion_mnist
     (_, _), (test_images, _) = fashion_mnist.load_data()
     test_images = test_images[:test_count]   / MNIST_MAX
-    # Not sure why this reshape has to be different!
-    test_images = np.reshape(test_images, (test_count, MNIST_WIDTH, MNIST_WIDTH, 1))
+    test_images = np.reshape(test_images, (test_count, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
-    d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
-                               tf.data.Dataset.from_tensor_slices(test_images)))
+    if no_labels:
+        return tf.data.Dataset.from_tensor_slices(test_images)
 
-    return d_s
+    return tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(test_images),
+                                tf.data.Dataset.from_tensor_slices(test_images)))
 
 
 def main(args_in): #pylint: disable=R0914
@@ -90,6 +91,9 @@ def main(args_in): #pylint: disable=R0914
     parser.add_argument("--num-debug-images", dest="num_debug_images", default=0, type=int,
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
+
+    parser.add_argument("--load-model", action="store_true", dest="load_model", default=False,
+                        help="Start with the model saved in the current output location.")
 
     parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
                         help="Try to use this many GPUs.")
@@ -131,21 +135,28 @@ def main(args_in): #pylint: disable=R0914
     experiment = Experiment(mlflow_tracking_dir,
                             'autoencoder_Fashion_MNIST',
                             output_dir=output_folder)
-    print('Creating model')
-    data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
-    model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
-    print('Training')
 
+    out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+    if options.load_model:
+        print('Loading model from ' + out_filename)
+        model_fn = functools.partial(tf.keras.models.load_model, out_filename)
+    else:
+        print('Creating model')
+        data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
+        #model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
+        model_fn = functools.partial(make_autoencoder, data_shape,
+                                     encoding_size=config_values['ml']['num_hidden'])
+
+    print('Training')
     # Estimator interface requires the dataset to be constructed within a function.
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
-    model = experiment.train_keras(model, dataset_train_fn,
-                                   num_epochs=config_values['ml']['num_epochs'],
-                                   log_model=False, num_gpus=options.num_gpus)
+    model, _ = experiment.train_keras(model_fn, dataset_train_fn,
+                                      num_epochs=config_values['ml']['num_epochs'],
+                                      num_gpus=options.num_gpus)
 
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
-        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
-        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
+        model.save(out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
 
@@ -153,8 +164,10 @@ def main(args_in): #pylint: disable=R0914
     print('Recording ', str(options.num_debug_images), ' demo images.')
 
     # Make a non-shuffled dataset with a simple iterator
-    ds = assemble_mnist_dataset_for_predict(options.num_debug_images).batch(1)
-    iterator = iter(ds)
+    # - For some reason we can't have the label part when loaded from disk
+    ds = assemble_mnist_dataset_for_predict(options.num_debug_images,
+                                            no_labels=options.load_model)
+    iterator = iter(ds.batch(1))
 
     for i in range(0, options.num_debug_images):
 
@@ -165,9 +178,14 @@ def main(args_in): #pylint: disable=R0914
         # Get the output value out of its weird format, then convert for image output
         pic = (element[0,:, :, 0] * MNIST_MAX).astype(np.uint8)
 
+        # For some reason the Keras model works differently if originally loaded from disk!
+        if options.load_model:
+            input_image = value[0,:,:,0]
+        else:
+            input_image = value[0][0,:,:,0]
+
         plt.subplot(1,2,1)
-        #plt.imshow(test_images[i])
-        plt.imshow(value[0][0,:,:,0])
+        plt.imshow(input_image)
         plt.title('Input image %03d' % (i, ))
 
         plt.subplot(1,2,2)

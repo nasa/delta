@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import math
+import functools
 #os.environ["CUDA_VISIBLE_DEVICES"]="-1" # DEBUG: Process only on the CPU!
 
 import numpy as np
@@ -64,8 +65,11 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
 
-    parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
-                        help="Don't train the network but do load a checkpoint if available.")
+    parser.add_argument("--load-model", action="store_true", dest="load_model", default=False,
+                        help="Start with the model saved in the current output location.")
+
+    #parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
+    #                    help="Don't train the network but do load a checkpoint if available.")
 
     parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
                         help="Run experimental code!")
@@ -132,15 +136,28 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
     # Get these values without initializing the dataset (v1.12)
     ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values)
-    model = make_model(ds_info.num_bands(), config_values['ml']['chunk_size'])
     print('num images = ', ds_info.num_images())
+
+    out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+    if options.load_model:
+        print('Loading model from ' + out_filename)
+        model_fn = functools.partial(tf.keras.models.load_model, out_filename)
+    else:
+        model_fn = functools.partial(make_model, ds_info.num_bands(),
+                                     config_values['ml']['chunk_size'])
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
-    model = experiment.train_keras(model, assemble_dataset,
-                                   num_epochs=config_values['ml']['num_epochs'],
-                                   log_model=False, num_gpus=options.num_gpus)
+    model, _ = experiment.train_keras(model_fn, assemble_dataset,
+                                      num_epochs=config_values['ml']['num_epochs'],
+                                      num_gpus=options.num_gpus)
     #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
+
+
+    print('Saving Model')
+    if config_values['ml']['model_dest_name'] is not None:
+        model.save(out_filename, overwrite=True, include_optimizer=True)
+        mlflow.log_artifact(out_filename)
 
     if not options.experimental:
         print('sc_process_test finished!')
@@ -166,7 +183,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     def make_classify_ds():
         config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1 # TODO
         ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
-        ds = ids.dataset(filter_zero=False, shuffle=False, predict=(not options.use_keras))
+        ds = ids.dataset(filter_zero=False, shuffle=False, predict=False)
         ds = ds.batch(predict_batch)
         return ds
 

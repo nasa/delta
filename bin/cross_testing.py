@@ -14,8 +14,6 @@ from tensorflow import keras
 
 print(tf.__version__)
 
-from sklearn.metrics import accuracy_score
-
 import matplotlib.pyplot as plt
 
 import os
