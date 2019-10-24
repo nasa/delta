@@ -1,7 +1,9 @@
 #pylint: disable=no-self-use,unused-argument
 import mlflow
 import mlflow.tensorflow
+import os.path
 import tensorflow as tf
+
 
 def get_devices(num_gpus):
     '''
@@ -37,10 +39,11 @@ def get_distribution_strategy(devices):
 class Experiment:
     """TODO"""
 
-    def __init__(self, tracking_uri, experiment_name, output_dir='./', loss_fn='mean_squared_error'):
+    def __init__(self, tracking_uri, experiment_name, output_dir='./', loss_fn='mean_squared_error', save_freq=100000):
         self.experiment_name = experiment_name
         self.output_dir = output_dir
         self.loss_fn = loss_fn
+        self.save_freq = save_freq # Checkpoint the model every save_freq samples.
 
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(experiment_name)
@@ -78,9 +81,24 @@ class Experiment:
             model = model_fn()
             assert isinstance(model, tf.keras.models.Model), "Model is not a Tensorflow Keras model"
             model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
+        ### end with
+
+        callbacks = [
+                tf.keras.callbacks.ModelCheckpoint(
+                    filepath=os.path.join(self.output_dir,'model_{batch}.h5'),
+                    monitor='val_loss',
+                    save_freq = self.save_freq,
+#                     save_best_only = True,
+                    verbose=0),
+                tf.keras.callbacks.TensorBoard(
+                    log_dir=os.path.join(self.output_dir,'tb_logs'),
+                    update_freq = self.save_freq,
+                    )
+        ]
 
         history = model.fit(train_dataset_fn(), 
                             epochs=num_epochs,
+                            callbacks=callbacks,
                             validation_data=validation_data)
 
         return model, history
