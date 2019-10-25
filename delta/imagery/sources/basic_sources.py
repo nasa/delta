@@ -12,6 +12,7 @@ import numpy as np
 
 from delta.imagery import image_reader
 from delta.imagery import rectangle
+from delta.imagery import tfrecord_utils
 
 # TODO: Not currently used, but could be if the TF method of filtering chunks is inefficient.
 def parallel_filter_chunks(data, num_threads):
@@ -125,6 +126,7 @@ class DeltaImage(ABC):
     def prep(self):
         """Prepare the file to be opened by other tools (unpack, etc)"""
 
+    # TODO: to num_bands
     @abstractmethod
     def get_num_bands(self):
         """Return the number of bands in the image"""
@@ -135,7 +137,6 @@ class DeltaImage(ABC):
         # TODO: add to config, replace with max buffer size?
         for i in range(self._num_regions):
             yield horizontal_split(s, i, self._num_regions)
-
 
     def estimate_memory_usage(self, chunk_size, chunk_overlap, data_type=np.float64,
                               num_bands=0):
@@ -151,6 +152,31 @@ class DeltaImage(ABC):
         chunk_area = chunk_size * chunk_size
         return num_chunks * chunk_area * num_bands * sys.getsizeof(data_type(0))
 
+class TFRecordImage(DeltaImage):
+    def __init__(self, path, _, num_regions):
+        super(TFRecordImage, self).__init__(num_regions)
+        self.path = path
+        self._num_bands = None
+        self._size = None
+
+    def prep(self):
+        pass
+    def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type=np.float64):
+        pass
+
+    def __get_bands_size(self):
+        self._num_bands, width, height = tfrecord_utils.get_record_info(self.path)
+        self._size = (width, height)
+
+    def get_num_bands(self):
+        if self._num_bands is None:
+            self.__get_bands_size()
+        return self._num_bands
+
+    def size(self):
+        if self._size is None:
+            self.__get_bands_size()
+        return self._size
 
 class TiffImage(DeltaImage):
     """For all versions of DeltaImage that can use our image_reader class"""

@@ -25,7 +25,8 @@ IMAGE_CLASSES = {
         'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
-        'tif' : basic_sources.SimpleTiff
+        'tif' : basic_sources.SimpleTiff,
+        'tfrecord' : basic_sources.TFRecordImage
 }
 
 # TODO: Where is a good place for this?
@@ -306,15 +307,22 @@ class ImageryDatasetTFRecord:
 
         # Record some of the config values
         self._chunk_size    = config_values['ml']['chunk_size']
-        self._chunk_overlap = config_values['ml']['chunk_overlap']
+        self._chunk_stride  = config_values['ml']['chunk_stride']
 
         try:
             image_type = config_values['input_dataset']['image_type']
+            # TODO: remove
             self._data_scale_factor = PREPROCESS_APPROX_MAX_VALUE[image_type]
         except KeyError:
             print('WARNING: No data scale factor defined for image type: ' + image_type
                   + ', defaulting to 1.0 (no scaling)')
             self._data_scale_factor = 1.0
+        try:
+            file_type = config_values['input_dataset']['file_type']
+            self._image_class = IMAGE_CLASSES[file_type]
+            self._use_tfrecord = self._image_class is basic_sources.TFRecordImage
+        except IndexError:
+            raise Exception('Did not recognize input_dataset:image_type: ' + image_type)
 
         # Use the image_class object to get the default image extensions
         if config_values['input_dataset']['extension']:
@@ -329,33 +337,81 @@ class ImageryDatasetTFRecord:
         (self._image_files, self._label_files) = self._find_images(data_folder, label_folder, input_extensions)
 
         # Load the first image to get the number of bands for the input files.
-        self._num_bands, _, _ = tfrecord_utils.get_record_info(self._image_files[0])
+        # TODO: remove cache manager and num_regions
+        self._num_bands = self._image_class(self._image_files[0], None, None).get_num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
         self._shuffle_buffer_size = config_values['input_dataset']['shuffle_buffer_size']
 
-    def dataset(self, filter_zero=True, shuffle=True, predict=False):
-        """Return the underlying TensorFlow dataset object that this class creates"""
+    def _load_tensor(self, num_bands, data_type, element):
+        """Loads a single image as a tensor."""
 
-        # Go from the file path list to the TFRecord reader
-        ds_input = tf.data.Dataset.from_tensor_slices(self._image_files)
-        ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
-        chunk_set = ds_input.map(self._load_data, num_parallel_calls=self._num_parallel_calls)
+        if self._use_tfrecord:
+            return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
+        raise NotImplementedError()
 
-        ds_label = tf.data.Dataset.from_tensor_slices(self._label_files)
-        ds_label = tf.data.TFRecordDataset(ds_label, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
-        label_set = ds_label.map(self._load_labels, num_parallel_calls=self._num_parallel_calls)
+    def _load_images(self, file_list, num_bands, data_type):
+        """Loads a list of images as tensors."""
+        if self._use_tfrecord:
+            ds_input = tf.data.Dataset.from_tensor_slices(file_list)
+            ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
+        else:
+            def tile_generator():
+                for f in file_list:
+                    for t in self._image_class(f, None, 1).tiles():
+                        yield (f, t.min_x, t.min_y, t.max_x, t.max_y)
+            ds_input = tf.data.Dataset.from_generator(tile_generator,
+                                                      (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
+        return ds_input.map(functools.partial(self._load_tensor, num_bands, data_type),
+                            num_parallel_calls=self._num_parallel_calls)
+
+    def _chunk_tf_image(self, num_bands, image):
+        """Split up a tensor image into tensor chunks"""
+
+        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
+        strides = [1, self._chunk_stride, self._chunk_stride, 1] # SPacing between chunk starts
+        rates   = [1, 1, 1, 1]
+        result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        # Output is [1, M, N, chunk*chunk*bands]
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
+        return result
+
+    def _chunk_images(self, tf_images):
+        """Chunk a tensor of images."""
+        return tf_images.map(functools.partial(self._chunk_tf_image, self._num_bands),
+                             num_parallel_calls=self._num_parallel_calls)
+
+    def _reshape_labels(self, labels):
+        """Reshape the labels to account for the chunking process."""
+        temp = self._chunk_tf_image(1, labels)
+        temp = temp[:, self._chunk_size // 2, self._chunk_size // 2]
+
+        w = self._chunk_size // 2
+        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[1] - 2 * w, tf.shape(labels)[2] - 2 * w)
+        labels = labels[0:self._chunk_stride:][0:self._chunk_stride:]
+        return tf.reshape(labels, [-1, 1])
+
+    def data(self):
+        chunk_set = self._chunk_images(self._load_images(self._image_files, self._num_bands, tf.float32))
+
+        # Scale data into 0-1 range
+        # TODO: remove this
+        chunk_set = chunk_set.map(lambda x: tf.math.divide(x, self._data_scale_factor))
 
         # Break up the chunk sets to individual chunks
-        chunk_set = chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
-        label_set = label_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        return chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
-        if predict:
-            return chunk_set
+    def labels(self):
+        label_set = self._load_images(self._label_files, 1, tf.uint8).map(self._reshape_labels)
+
+        return label_set.flat_map(tf.data.Dataset.from_tensor_slices)
+
+    def dataset(self, filter_zero=True, shuffle=True):
+        """Return the underlying TensorFlow dataset object that this class creates"""
 
         # Pair the data and labels in our dataset
-        ds = tf.data.Dataset.zip((chunk_set, label_set))
+        ds = tf.data.Dataset.zip((self.data(), self.labels()))
 
         def is_chunk_non_zero(data, label):
             """Return True if the chunk has no zeros (nodata) in the data or label"""
@@ -384,66 +440,6 @@ class ImageryDatasetTFRecord:
 
     def scale_factor(self):
         return self._data_scale_factor
-
-    def _chunk_tf_image(self, image, is_label):
-        """Split up a tensor image into tensor chunks"""
-
-        # We use the built-in TF chunking function
-        stride  = self._chunk_size - self._chunk_overlap
-        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
-        strides = [1, stride, stride, 1] # SPacing between chunk starts
-        rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
-        result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
-        # Output is [1, M, N, chunk*chunk*bands]
-        num_bands = 1 if is_label else self._num_bands
-        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
-        return result
-
-    def _chunk_label_image(self, image):
-        """Split up a tensor label image into tensor chunks.
-           This seems like it should be faster, but maybe it isn't!"""
-
-        # TODO: Try concatenating the label on to the image, then splitting post-chunk operation!
-        # https://stackoverflow.com/questions/54105110/generate-image-patches-with-tf-extract-image-patches-for-a-pair-of-images-effici
-
-        # Set up parameters for the TF chunking function to extract the chunk centers
-        stride = self._chunk_size - self._chunk_overlap
-        ksizes  = [1, 1, 1, 1] # Size of the chunks
-        strides = [1, stride, stride, 1] # Spacing between chunk starts
-        rates   = [1, 1, 1, 1] # Pixel sampling of the input images within the chunks
-
-        # Operate on a cropped input image so we get the same centers as with the full patch case
-        offset = int(self._chunk_size / 2)
-        height = image.shape[1] - 2*offset
-        width  = image.shape[2] - 2*offset
-        cropped_image = tf.image.crop_to_bounding_box(image, offset, offset, height, width)
-
-        result = tf.image.extract_image_patches(cropped_image, ksizes, strides, rates, padding='VALID')
-        result = tf.reshape(result, [-1, 1, 1, 1])
-        return result
-
-    def _load_data(self, example_proto):
-        """Load the next TFRecord image segment and split it into chunks"""
-
-        image = tfrecord_utils.load_tfrecord_element(example_proto, self._num_bands)
-        result = self._chunk_tf_image(image, is_label=False)
-        result = tf.math.divide(result, self._data_scale_factor) # Get into 0-1 range
-        return result
-
-    def _load_labels(self, example_proto):
-        # Load from the label image in the same way as the input image so we get the locations correct
-        image = tfrecord_utils.load_tfrecord_element(example_proto, 1, data_type=tf.uint8)
-
-        chunk_data = self._chunk_tf_image(image, is_label=True) # First method of getting center pixels
-        center_pixel = int(self._chunk_size/2)
-        # TODO: check if multi-valued, convert to one-hot labels
-        labels = tf.to_int32(chunk_data[:, center_pixel, center_pixel, 0])
-
-        #label_data = self._chunk_label_image(image) # Second method, why is it slower?
-        #labels = tf.to_int32(label_data[:,0,0,0])
-
-        return labels
-
 
     def _get_label_for_input_image(self, input_path, top_folder, label_folder): # pylint: disable=no-self-use
         """Returns the path to the expected label for for the given input image file"""
@@ -503,7 +499,5 @@ class AutoencoderDataset(ImageryDatasetTFRecord):
         # For the autoencoder, the label is the same as the input data!
         return input_path
 
-
-    def _load_labels(self, example_proto):
-        #return tf.to_int32(self._load_data(example_proto))
-        return self._load_data(example_proto)
+    def labels(self):
+        return self.data()
