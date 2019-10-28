@@ -308,6 +308,8 @@ class ImageryDatasetTFRecord:
         # Record some of the config values
         self._chunk_size    = config_values['ml']['chunk_size']
         self._chunk_stride  = config_values['ml']['chunk_stride']
+        self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
+                                                          config_values['cache']['cache_limit'])
 
         try:
             image_type = config_values['input_dataset']['image_type']
@@ -321,6 +323,14 @@ class ImageryDatasetTFRecord:
             file_type = config_values['input_dataset']['file_type']
             self._image_class = IMAGE_CLASSES[file_type]
             self._use_tfrecord = self._image_class is basic_sources.TFRecordImage
+            self._label_class = IMAGE_CLASSES[file_type]
+        except IndexError:
+            raise Exception('Did not recognize input_dataset:image_type: ' + image_type)
+
+        if self._use_tfrecord and config_values['input_dataset']['label_file_type'] != 'tfrecord':
+            raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
+        try:
+            self._label_class = IMAGE_CLASSES[config_values['input_dataset']['label_file_type']]
         except IndexError:
             raise Exception('Did not recognize input_dataset:image_type: ' + image_type)
 
@@ -334,37 +344,57 @@ class ImageryDatasetTFRecord:
         # Generate a text file list of all the input images, plus region indices.
         data_folder  = config_values['input_dataset']['data_directory']
         label_folder = config_values['input_dataset']['label_directory']
-        (self._image_files, self._label_files) = self._find_images(data_folder, label_folder, input_extensions)
+        (self._image_files, self._label_files) = self._find_images(data_folder, label_folder, input_extensions,
+                                                                   config_values['input_dataset']['label_extension'])
 
         # Load the first image to get the number of bands for the input files.
         # TODO: remove cache manager and num_regions
-        self._num_bands = self._image_class(self._image_files[0], None, None).get_num_bands()
+        self._num_bands = self._image_class(self._image_files[0], self._cache_manager, None).get_num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
         self._shuffle_buffer_size = config_values['input_dataset']['shuffle_buffer_size']
 
-    def _load_tensor(self, num_bands, data_type, element):
+    def _load_tensor_tfrecord(self, num_bands, data_type, element):
+        """Loads a single tfrecord image as a tensor."""
+
+        assert self._use_tfrecord
+        return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
+
+    def _load_tensor_imagery(self, data_type, image_class, filename, bbox):
         """Loads a single image as a tensor."""
+        assert not self._use_tfrecord
+        image = image_class(tf.compat.as_str_any(filename), self._cache_manager, 1)
+        rect = rectangle.Rectangle(bbox[0], bbox[1], bbox[2], bbox[3])
+        r = image.read(data_type.as_numpy_dtype(), rect)
+        return r
 
-        if self._use_tfrecord:
-            return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
-        raise NotImplementedError()
+    def _tf_tiles(self, file_list, label_list=None):
+        def tile_generator():
+            for (i, f) in enumerate(file_list):
+                for t in self._image_class(f, self._cache_manager, 1).tiles():
+                    yield (f if label_list is None else label_list[i], t.min_x, t.min_y, t.max_x, t.max_y)
+        return tf.data.Dataset.from_generator(tile_generator,
+                                              (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
 
-    def _load_images(self, file_list, num_bands, data_type):
-        """Loads a list of images as tensors."""
+    def _load_images(self, file_list, num_bands, data_type, label_list=None):
+        """
+        Loads a list of images as tensors.
+        If label_list is specified, load labels instead. The corresponding image files are still required however.
+        """
         if self._use_tfrecord:
-            ds_input = tf.data.Dataset.from_tensor_slices(file_list)
+            ds_input = tf.data.Dataset.from_tensor_slices(file_list if label_list is None else label_list)
             ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
-        else:
-            def tile_generator():
-                for f in file_list:
-                    for t in self._image_class(f, None, 1).tiles():
-                        yield (f, t.min_x, t.min_y, t.max_x, t.max_y)
-            ds_input = tf.data.Dataset.from_generator(tile_generator,
-                                                      (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
-        return ds_input.map(functools.partial(self._load_tensor, num_bands, data_type),
-                            num_parallel_calls=self._num_parallel_calls)
+            return ds_input.map(functools.partial(self._load_tensor_tfrecord, num_bands, data_type),
+                                num_parallel_calls=self._num_parallel_calls)
+        ds_input = self._tf_tiles(file_list, label_list)
+        def load_imagery_class(filename, x1, y1, x2, y2):
+            y = tf.py_func(functools.partial(self._load_tensor_imagery, data_type,
+                                             self._image_class if label_list is None else self._label_class),
+                           [filename, [x1, y1, x2, y2]], [data_type])
+            y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))
+            return tf.stack(y)
+        return ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
 
     def _chunk_tf_image(self, num_bands, image):
         """Split up a tensor image into tensor chunks"""
@@ -403,7 +433,7 @@ class ImageryDatasetTFRecord:
         return chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
     def labels(self):
-        label_set = self._load_images(self._label_files, 1, tf.uint8).map(self._reshape_labels)
+        label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files).map(self._reshape_labels)
 
         return label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 
@@ -441,22 +471,20 @@ class ImageryDatasetTFRecord:
     def scale_factor(self):
         return self._data_scale_factor
 
-    def _get_label_for_input_image(self, input_path, top_folder, label_folder): # pylint: disable=no-self-use
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder, label_extension): # pylint: disable=no-self-use
         """Returns the path to the expected label for for the given input image file"""
-
-        LABEL_EXT = '.tfrecordlabel'
 
         # Label file should have the same name but different extension in the label folder
         rel_path   = os.path.relpath(input_path, top_folder)
         label_path = os.path.join(label_folder, rel_path)
-        label_path = os.path.splitext(label_path)[0] + LABEL_EXT
+        label_path = os.path.splitext(label_path)[0] + label_extension
         # If labels are provided then we need a label file for every image in the data set!
         if not os.path.exists(label_path):
             raise Exception('Error: Expected label file to exist at path: ' + label_path)
         return label_path
 
 
-    def _find_images(self, top_folder, label_folder, extensions):
+    def _find_images(self, top_folder, label_folder, extensions, label_extension):
         """List all of the files in a (recursive) folder matching the provided extension.
            If a label folder is provided, look for corresponding label files which
            have the same relative path in that folder but ending with "_label.tif".
@@ -480,7 +508,7 @@ class ImageryDatasetTFRecord:
                     image_files.append(path)
 
                     if label_folder:
-                        label_path = self._get_label_for_input_image(path, top_folder, label_folder)
+                        label_path = self._get_label_for_input_image(path, top_folder, label_folder, label_extension)
                         label_files.append(label_path)
 
         image_files = np.array(image_files)
@@ -495,7 +523,7 @@ class ImageryDatasetTFRecord:
 class AutoencoderDataset(ImageryDatasetTFRecord):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def _get_label_for_input_image(self, input_path, top_folder, label_folder):
+    def _get_label_for_input_image(self, input_path, top_folder, label_folder, label_extension): # pylint: disable=no-self-use
         # For the autoencoder, the label is the same as the input data!
         return input_path
 

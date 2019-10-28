@@ -2,7 +2,6 @@
 Classes for block-aligned reading from multiple Geotiff files.
 """
 import os
-import sys
 import time
 import copy
 import math
@@ -209,6 +208,22 @@ class MultiTiffFileReader():
             b += self._image_handles[i].num_bands()
         return b
 
+    def read_roi(self, roi, data_type, num_threads=1):
+        result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()), dtype=data_type)
+
+        def process_one_image(image_index):
+            image      = self._image_handles[image_index]
+            band_index = self._get_band_index(image_index) # The first index of one or more sequential bands
+            for band in range(1,image.num_bands()+1):
+                result[:, :, band_index] = image.read_pixels(roi, band)
+                band_index += 1
+
+        pool = ThreadPool(num_threads)
+        pool.map(process_one_image, range(0,len(self._image_handles)))
+        pool.close()
+        pool.join()
+        return result
+
     def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
@@ -241,7 +256,7 @@ class MultiTiffFileReader():
         # Allocate the output data structure
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
         num_elements = num_chunks * self.num_bands() * chunk_size * chunk_size
-        num_bytes    = num_elements*sys.getsizeof(data_type(0))
+        num_bytes    = num_elements * data_type.itemsize
         bytes_free   = psutil.virtual_memory().available
         #print('num_bytes GB = ', num_bytes/utilities.BYTES_PER_GB)
         #print('bytes_free GB = ', bytes_free/utilities.BYTES_PER_GB)

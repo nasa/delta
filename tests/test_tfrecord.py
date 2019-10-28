@@ -1,8 +1,11 @@
+#pylint: disable=redefined-outer-name
 import os
 import random
 import shutil
 import tempfile
 
+import zipfile
+from osgeo import gdal
 import pytest
 import numpy as np
 import tensorflow as tf
@@ -10,6 +13,7 @@ from tensorflow import keras
 
 from delta.imagery import tfrecord_utils
 from delta.imagery import imagery_dataset
+from delta.imagery.image_writer import TiffWriter
 from delta.ml import train
 
 def generate_tile(width=32, height=32, blocks=50):
@@ -51,30 +55,76 @@ def tfrecord_filenames():
     image_writer.close()
     label_writer.close()
     yield (image_path, label_path)
-    os.remove(image_path)
-    os.remove(label_path)
+
     shutil.rmtree(tmpdir) # also remove input_list.csv
 
-@pytest.fixture(scope="function")
-def tfrecord_dataset(tfrecord_filenames): #pylint: disable=redefined-outer-name
-    (image_path, label_path) = tfrecord_filenames
+@pytest.fixture(scope="module")
+def worldview_filenames():
+    size = 64
+    tmpdir = tempfile.mkdtemp()
+    image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
+    imd_name = '19MAY13164205-M2AS-503204071020_01_P003.IMD'
+    zip_path = os.path.join(tmpdir, image_name + '.zip')
+    label_path = os.path.join(tmpdir, image_name + '_label.tif')
+    image_dir = os.path.join(tmpdir, 'image')
+    image_path = os.path.join(image_dir, image_name + '.tif')
+    vendor_dir = os.path.join(image_dir, 'vendor_metadata')
+    imd_path = os.path.join(vendor_dir, imd_name)
+    os.mkdir(image_dir)
+    os.mkdir(vendor_dir)
+    open(imd_path, 'a').close() # only metadata file we use
+    image_writer = TiffWriter()
+    label_writer = TiffWriter()
+    image_writer.init_output_geotiff(image_path, size, size, None, data_type=gdal.GDT_Float32, num_bands=1)
+    label_writer.init_output_geotiff(label_path, size, size, None, data_type=gdal.GDT_Byte, num_bands=1)
+
+    (image, label) = generate_tile(size, size)
+    image_writer.write_geotiff_block(image[:,:,0], 0, 0, 0)
+    label_writer.write_geotiff_block(label, 0, 0, 0)
+    image_writer.finish_writing_geotiff()
+    label_writer.finish_writing_geotiff()
+    image_writer.cleanup()
+    label_writer.cleanup()
+
+    z = zipfile.ZipFile(zip_path, mode='x')
+    z.write(image_path, arcname=image_name + '.tif')
+    z.write(imd_path, arcname=os.path.join('vendor_metadata', imd_name))
+    z.close()
+
+    yield (zip_path, label_path)
+
+    shutil.rmtree(tmpdir)
+
+NUM_SOURCES = 2
+@pytest.fixture(scope="module")
+def all_sources(tfrecord_filenames, worldview_filenames):
+    return [(tfrecord_filenames, '.tfrecord', 'tfrecord', 'tfrecord', '.tfrecordlabel', 'tfrecord'),
+            (worldview_filenames, '.zip', 'worldview', 'worldview', '_label.tif', 'tif')]
+
+@pytest.fixture(scope="function", params=range(2))
+def dataset(all_sources, request):
+    source = all_sources[request.param]
+    (image_path, label_path) = source[0]
     config_values = {'ml': {}, 'input_dataset' : {}, 'cache' : {}}
-    config_values['ml']['chunk_size'] = 3
-    config_values['ml']['chunk_stride'] = 1
-    config_values['input_dataset']['extension'] = '.tfrecord'
-    config_values['input_dataset']['image_type'] = 'tfrecord'
-    config_values['input_dataset']['file_type'] = 'tfrecord'
+    config_values['input_dataset']['extension'] = source[1]
+    config_values['input_dataset']['image_type'] = source[2]
+    config_values['input_dataset']['file_type'] = source[3]
+    config_values['input_dataset']['label_extension'] = source[4]
+    config_values['input_dataset']['label_file_type'] = source[5]
     config_values['input_dataset']['data_directory'] = os.path.dirname(image_path)
     config_values['input_dataset']['label_directory'] = os.path.dirname(label_path)
     config_values['input_dataset']['num_input_threads'] = 1
     config_values['input_dataset']['shuffle_buffer_size'] = 2000
+    config_values['ml']['chunk_size'] = 3
+    config_values['ml']['chunk_stride'] = 1
     config_values['cache']['cache_dir'] = os.path.dirname(image_path)
+    config_values['cache']['cache_limit'] = 10
     dataset = imagery_dataset.ImageryDatasetTFRecord(config_values)
     return dataset
 
-def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer-name
+def test_tfrecord_write_read(dataset):
     """Writes and reads from disks, then checks if what is read is valid according to the generation procedure."""
-    ds = tfrecord_dataset.dataset(filter_zero=False)
+    ds = dataset.dataset(filter_zero=False)
     iterator = ds.make_one_shot_iterator()
     n = iterator.get_next()
     sess = tf.Session()
@@ -99,7 +149,7 @@ def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer
         except tf.errors.OutOfRangeError:
             break
 
-def test_train(tfrecord_dataset): #pylint: disable=redefined-outer-name
+def test_train(dataset):
     model = keras.Sequential([
         #keras.layers.Flatten(input_shape=(3, 3, 1)),
         #keras.layers.Dense(1, activation=tf.nn.relu)])
@@ -108,7 +158,7 @@ def test_train(tfrecord_dataset): #pylint: disable=redefined-outer-name
     optimizer = tf.train.AdamOptimizer(learning_rate=0.01)
     model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error', metrics=['accuracy'])
     def create_dataset():
-        d = tfrecord_dataset.dataset(filter_zero=False)
+        d = dataset.dataset(filter_zero=False)
         d = d.batch(100).repeat(5)
         return d
     estimator = train.train(model, create_dataset, create_dataset)
