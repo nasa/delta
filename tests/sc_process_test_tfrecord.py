@@ -111,7 +111,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
         # Use wrapper class to create a Tensorflow Dataset object.
         # - The dataset will provide image chunks and corresponding labels.
-        ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+        ids = imagery_dataset.ImageryDataset(config_values)
         ds = ids.dataset()
 
         #print("Num regions = " + str(ids.total_num_regions()))
@@ -142,7 +142,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
 
     # Get these values without initializing the dataset (v1.12)
-    ds_info = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    ds_info = imagery_dataset.ImageryDataset(config_values)
     model = make_model(ds_info.num_bands(), config_values['ml']['chunk_size'])
     print('num images = ', ds_info.num_images())
 
@@ -175,7 +175,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     # TODO: Load the model from disk instead of putting this at the end of training!
 
     #config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1
-    #ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    #ids = imagery_dataset.ImageryDataset(config_values)
     #ds = ids.dataset(filter_zero=False, shuffle=False, predict=True)
     #ds = ds.batch(500)
     #ds = ds.repeat(1)
@@ -194,8 +194,11 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     predict_batch = 200
     def make_classify_ds():
         config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1 # TODO
-        ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
-        ds = ids.dataset(filter_zero=False, shuffle=False, predict=(not options.use_keras))
+        ids = imagery_dataset.ImageryDataset(config_values)
+        if options.use_keras:
+            ds = ids.data()
+        else:
+            ds = ids.dataset(filter_zero=False, shuffle=False)
         ds = ds.batch(predict_batch)
         return ds
 

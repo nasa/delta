@@ -119,7 +119,7 @@ def dataset(all_sources, request):
     config_values['ml']['chunk_stride'] = 1
     config_values['cache']['cache_dir'] = os.path.dirname(image_path)
     config_values['cache']['cache_limit'] = 10
-    dataset = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    dataset = imagery_dataset.ImageryDataset(config_values)
     return dataset
 
 def test_tfrecord_write_read(dataset):

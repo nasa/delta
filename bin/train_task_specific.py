@@ -42,7 +42,7 @@ def assemble_dataset(config_values):
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    ids = imagery_dataset.ImageryDataset(config_values)
     ds = ids.dataset()
     ds = ds.repeat(config_values['ml']['num_epochs']).batch(config_values['ml']['batch_size'])
     ds = ds.prefetch(None)
@@ -52,7 +52,7 @@ def assemble_dataset(config_values):
 
 def assemble_dataset_for_predict(config_values):
     # Slightly simpler version of the previous function
-    ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    ids = imagery_dataset.ImageryDataset(config_values)
     ds  = ids.dataset().batch(1) # Batch needed to match the original format
     return ds
 
@@ -85,8 +85,15 @@ def main(argsIn): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
+    if options.data_folder:
+        config_values['input_dataset']['data_directory'] = options.data_folder
+    if options.label_folder:
+        config_values['input_dataset']['label_directory'] = options.label_folder
+    if config_values['input_dataset']['data_directory'] is None:
+        print('Must specify a data_directory.', file=sys.stderr)
+        sys.exit(0)
 
     #batch_size = config_values['ml']['batch_size']
     #num_epochs = config_values['ml']['num_epochs']
@@ -97,7 +104,7 @@ def main(argsIn): #pylint: disable=R0914
         os.mkdir(output_folder)
 
     print('loading data from ' + config_values['input_dataset']['data_directory'])
-    ids = imagery_dataset.ImageryDatasetTFRecord(config_values)
+    ids = imagery_dataset.ImageryDataset(config_values)
 
     # TF additions
     # If the mlfow directory doesn't exist, create it.
@@ -122,8 +129,8 @@ def main(argsIn): #pylint: disable=R0914
     # Estimator interface requires the dataset to be constructed within a function.
     tf.logging.set_verbosity(tf.logging.INFO)
     dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-                                           log_model=False, num_gpus=options.num_gpus)
+    estimator = experiment.train(model, dataset_fn, steps_per_epoch=1000,
+                                 log_model=False, num_gpus=options.num_gpus)
 
     print(estimator) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
