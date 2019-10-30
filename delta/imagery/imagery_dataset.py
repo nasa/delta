@@ -15,16 +15,16 @@ from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
 from delta.imagery.sources import landsat
 from delta.imagery.sources import worldview
+from delta.imagery.sources import tfrecord
 
 
 # Map text strings to the Image wrapper classes defined above
 IMAGE_CLASSES = {
         'landsat' : landsat.LandsatImage,
-        'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
-        'tif' : basic_sources.SimpleTiff,
-        'tfrecord' : basic_sources.TFRecordImage
+        'tiff' : basic_sources.TiffImage,
+        'tfrecord' : tfrecord.TFRecordImage
 }
 
 # TODO: Where is a good place for this?
@@ -34,8 +34,8 @@ IMAGE_CLASSES = {
 # - For WorldView and Landsat this means post TOA processing.
 PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
                                'landsat'  : 120.0, # TODO
-                               'tif'      : 255.0,
-                               'rgba'     : 255.0}
+                               'tiff'      : 255.0,
+                               'rgba'      : 255.0}
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -61,7 +61,7 @@ class ImageryDataset:
         try:
             file_type = config_values['input_dataset']['file_type']
             self._image_class = IMAGE_CLASSES[file_type]
-            self._use_tfrecord = self._image_class is basic_sources.TFRecordImage
+            self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
             self._label_class = IMAGE_CLASSES[file_type]
         except IndexError:
             raise Exception('Did not recognize input_dataset:image_type: ' + image_type)
@@ -91,9 +91,7 @@ class ImageryDataset:
 
         # Load the first image to get the number of bands for the input files.
         # TODO: remove cache manager and num_regions
-        self._num_bands = self._image_class(self._image_files[0],
-                                            self._cache_manager,
-                                            None).get_num_bands()
+        self._num_bands = self._image_class(self._image_files[0], self._cache_manager, None).num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
@@ -105,12 +103,12 @@ class ImageryDataset:
         assert self._use_tfrecord
         return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
 
-    def _load_tensor_imagery(self, data_type, image_class, filename, bbox):
+    def _load_tensor_imagery(self, image_class, filename, bbox):
         """Loads a single image as a tensor."""
         assert not self._use_tfrecord
         image = image_class(filename.numpy().decode(), self._cache_manager, 1)
-        rect = rectangle.Rectangle(bbox[0], bbox[1], bbox[2], bbox[3])
-        r = image.read(data_type.as_numpy_dtype(), rect)
+        rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+        r = image.read(rect)
         return r
 
     def _tf_tiles(self, file_list, label_list=None):
@@ -133,7 +131,7 @@ class ImageryDataset:
                                 num_parallel_calls=self._num_parallel_calls)
         ds_input = self._tf_tiles(file_list, label_list)
         def load_imagery_class(filename, x1, y1, x2, y2):
-            y = tf.py_function(functools.partial(self._load_tensor_imagery, data_type,
+            y = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                  self._image_class if label_list is None else self._label_class),
                                [filename, [x1, y1, x2, y2]], [data_type])
             y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))

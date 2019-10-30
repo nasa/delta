@@ -39,11 +39,11 @@ def check_landsat_tiff(filename):
     assert 'projection' in meta
     assert 'metadata' in meta
 
-    rect = rectangle.Rectangle(0, 0, width=input_reader.image_size()[0],
-                               height=input_reader.image_size()[0])
-    d_1 = input_reader.parallel_load_chunks(rect, 1, 0)
-    assert d_1.shape == (input_reader.image_size()[0] * input_reader.image_size()[1],
-                         input_reader.num_bands(), 1, 1)
+    r = rectangle.Rectangle(0, 0, width=input_reader.image_size()[0],
+                            height=input_reader.image_size()[0])
+    d1 = input_reader.read_roi(r)
+    assert d1.shape == (input_reader.image_size()[0], input_reader.image_size()[1],
+                        input_reader.num_bands())
 
 def check_same(filename1, filename2):
     '''
@@ -69,9 +69,9 @@ def check_same(filename1, filename2):
     assert m_1['metadata'] == m_2['metadata']
 
     (width, height) = in1.image_size()
-    d_1 = in1.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
-    d_2 = in2.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
-    assert np.array_equal(d_1, d_2)
+    d1 = in1.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
+    d2 = in2.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
+    assert np.array_equal(d1, d2)
 
 def test_geotiff_read():
     '''

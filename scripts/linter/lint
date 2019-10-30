@@ -3,4 +3,4 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 export PYTHONPATH=$DIR/../../delta/:$PYTHONPATH
-exec python -m pylint --rcfile=$DIR/pylintrc $*
+exec python3 -m pylint --rcfile=$DIR/pylintrc $*
