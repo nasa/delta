@@ -13,7 +13,7 @@ for n in os.listdir('bin'):
 
 setuptools.setup(
     name="delta",
-    version="0.0.1",
+    version="0.1.1",
     author="NASA Ames",
     author_email="todo@todo",
     description="Deep learning for satellite imagery",
@@ -32,7 +32,7 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow-gpu>=1.12,<1.14',
+        'tensorflow-gpu>=2.0',
         'mlflow',
         'portalocker',
         'appdirs'

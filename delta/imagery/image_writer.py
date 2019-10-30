@@ -230,14 +230,14 @@ class TiffWriter:
             if numTiles == 0:
                 print('All tiles have been written!')
                 break
-            else:
-                if totalWait >= MAX_WAIT_TIME:
-                    print('Waited too long to finish, forcing shutdown!')
-                    break # Waited long enough, force shutdown.
-                else:
-                    print('Waiting on '+str(numTiles)+' writes to finish...')
-                    totalWait += SLEEP_TIME # Wait a bit longer
-                    time.sleep(SLEEP_TIME)
+
+            if totalWait >= MAX_WAIT_TIME:
+                print('Waited too long to finish, forcing shutdown!')
+                break # Waited long enough, force shutdown.
+
+            print('Waiting on '+str(numTiles)+' writes to finish...')
+            totalWait += SLEEP_TIME # Wait a bit longer
+            time.sleep(SLEEP_TIME)
 
         # Make sure that the write queue is empty.
         with self._writeQueueLock:

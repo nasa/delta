@@ -85,12 +85,8 @@ def main(argsIn): #pylint: disable=R0914
         print(usage)
         return -1
 
-    config_values = config.parse_config_file(options.config_file,
-                                             options.data_folder, options.image_type)
-
-    #batch_size = config_values['ml']['batch_size']
-    #num_epochs = config_values['ml']['num_epochs']
-
+    config.load_config_file(options.config_file)
+    config_values = config.get_config()
 
     output_folder = config_values['ml']['output_folder']
     if not os.path.exists(output_folder):
@@ -109,27 +105,33 @@ def main(argsIn): #pylint: disable=R0914
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'task_specific_%s'%(config_values['input_dataset']['image_type'],),
+                            loss_fn='categorical_crossentropy',
                             output_dir=output_folder)
     mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
-    in_data_shape = (ids.num_bands(), ids.chunk_size(), ids.chunk_size())
+    in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
     out_data_shape = config_values['ml']['num_classes']
-    model = make_task_specific(in_data_shape, out_data_shape)
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.logging.set_verbosity(tf.logging.INFO)
-    dataset_fn = functools.partial(assemble_dataset, config_values)
-    estimator = experiment.train_estimator(model, dataset_fn, steps_per_epoch=1000,
-                                           log_model=False, num_gpus=options.num_gpus)
+#    tf.logging.set_verbosity(tf.logging.INFO)
 
-    print(estimator) # Need to do something with the estimator to appease the lint gods
+    dataset_fn = functools.partial(assemble_dataset, config_values)
+    model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
+
+    model = experiment.train_keras(model_fn, dataset_fn,
+                                   num_epochs=config_values['ml']['num_epochs'],
+                                   num_gpus=options.num_gpus)
+
+    print(model) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
     if config_values['ml']['model_dest_name'] is not None:
-        out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
-        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
+        out_filename = os.path.join(output_folder, 
+                                    config_values['ml']['model_dest_name'])
+        tf.keras.models.save_model(model, out_filename, overwrite=True, 
+                                   include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
 
