@@ -7,10 +7,18 @@ import tensorflow as tf
 from delta.ml import train
 
 def test_find_cpus():
+    '''
+    Tests that tensorflow can find the available CPUs.
+    '''
     assert len(train.get_devices(0)) > 0, "Could not find any CPU Logical Devices"
 
 def test_find_gpus():
-    assert len(train.get_devices(1)) > 0, "Could not find any GPU Logical Devices" 
+    '''
+    Tests that tensorflow can find the available GPUs.
+    Note: this will fail if tested on a computer without a GPU that Tensorflow
+    recognizes.
+    '''
+    assert len(train.get_devices(1)) > 0, "Could not find any GPU Logical Devices"
 
 
 def test_mnist_train():
@@ -38,4 +46,4 @@ def test_mnist_train():
 if __name__ == '__main__':
     test_find_cpus()
     test_find_gpus()
-    test_mnist()
+    test_mnist_train()
