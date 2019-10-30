@@ -37,8 +37,8 @@ def check_landsat_tiff(filename):
     assert 'metadata' in meta
 
     r = rectangle.Rectangle(0, 0, width=input_reader.image_size()[0], height=input_reader.image_size()[0])
-    d1 = input_reader.parallel_load_chunks(r, 1, 0)
-    assert d1.shape == (input_reader.image_size()[0] * input_reader.image_size()[1], input_reader.num_bands(), 1, 1)
+    d1 = input_reader.read_roi(r)
+    assert d1.shape == (input_reader.image_size()[0], input_reader.image_size()[1], input_reader.num_bands())
 
 def check_same(filename1, filename2):
     in1 = MultiTiffFileReader()
@@ -61,8 +61,8 @@ def check_same(filename1, filename2):
     assert m1['metadata'] == m2['metadata']
 
     (width, height) = in1.image_size()
-    d1 = in1.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
-    d2 = in2.parallel_load_chunks(rectangle.Rectangle(0, 0, width=width, height=height), 1, 0)
+    d1 = in1.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
+    d2 = in2.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
     assert np.array_equal(d1, d2)
 
 def test_geotiff_read():

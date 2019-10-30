@@ -99,12 +99,12 @@ class ImageryDataset:
         assert self._use_tfrecord
         return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
 
-    def _load_tensor_imagery(self, data_type, image_class, filename, bbox):
+    def _load_tensor_imagery(self, image_class, filename, bbox):
         """Loads a single image as a tensor."""
         assert not self._use_tfrecord
         image = image_class(tf.compat.as_str_any(filename), self._cache_manager, 1)
-        rect = rectangle.Rectangle(bbox[0], bbox[1], bbox[2], bbox[3])
-        r = image.read(data_type.as_numpy_dtype(), rect)
+        rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+        r = image.read(rect)
         return r
 
     def _tf_tiles(self, file_list, label_list=None):
@@ -127,7 +127,7 @@ class ImageryDataset:
                                 num_parallel_calls=self._num_parallel_calls)
         ds_input = self._tf_tiles(file_list, label_list)
         def load_imagery_class(filename, x1, y1, x2, y2):
-            y = tf.py_func(functools.partial(self._load_tensor_imagery, data_type,
+            y = tf.py_func(functools.partial(self._load_tensor_imagery,
                                              self._image_class if label_list is None else self._label_class),
                            [filename, [x1, y1, x2, y2]], [data_type])
             y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))

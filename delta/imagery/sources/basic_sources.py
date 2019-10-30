@@ -119,7 +119,7 @@ class DeltaImage(ABC):
         """
 
     @abstractmethod
-    def read(self, data_type=np.float64, roi=None):
+    def read(self, roi=None):
         """
         Read the image of the given data type. An optional roi specifies the boundaries.
         """
@@ -170,7 +170,7 @@ class TFRecordImage(DeltaImage):
     def chunk_image_region(self, roi, chunk_size, chunk_overlap, data_type=np.float64):
         pass
 
-    def read(self, data_type=np.float64, roi=None):
+    def read(self, roi=None):
         raise NotImplementedError()
 
     def __get_bands_size(self):
@@ -224,17 +224,13 @@ class TiffImage(DeltaImage):
 
         return chunk_data
 
-    def read(self, data_type=np.float64, roi=None):
+    def read(self, roi=None):
         input_paths = self.prep()
 
         # Set up the input image handle
         input_reader = image_reader.MultiTiffFileReader()
         input_reader.load_images(input_paths)
-        if roi is None:
-            s = input_reader.image_size()
-            roi = rectangle.Rectangle(0, 0, s[0], s[1])
-        roi = rectangle.Rectangle(int(roi.min_x), int(roi.min_y), int(roi.max_x), int(roi.max_y))
-        return input_reader.read_roi(roi, data_type=data_type)
+        return input_reader.read_roi(roi)
 
     def size(self):
         input_paths = self.prep()

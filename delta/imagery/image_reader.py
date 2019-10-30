@@ -208,8 +208,12 @@ class MultiTiffFileReader():
             b += self._image_handles[i].num_bands()
         return b
 
-    def read_roi(self, roi, data_type, num_threads=1):
-        result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()), dtype=data_type)
+    def read_roi(self, roi=None, num_threads=1):
+        if roi is None:
+            s = self.image_size()
+            roi = rectangle.Rectangle(0, 0, s[0], s[1])
+        result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()),
+                          dtype=utilities.gdal_dtype_to_numpy_type(self.data_type()))
 
         def process_one_image(image_index):
             image      = self._image_handles[image_index]
