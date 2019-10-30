@@ -105,22 +105,25 @@ def main(argsIn): #pylint: disable=R0914
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'task_specific_%s'%(config_values['input_dataset']['image_type'],),
+                            loss_fn='categorical_crossentropy',
                             output_dir=output_folder)
     mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
     mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
     mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
     print('Creating model')
-    in_data_shape = (ids.num_bands(), ids.chunk_size(), ids.chunk_size())
+    in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
     out_data_shape = config_values['ml']['num_classes']
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
-    tf.logging.set_verbosity(tf.logging.INFO)
+#    tf.logging.set_verbosity(tf.logging.INFO)
 
     dataset_fn = functools.partial(assemble_dataset, config_values)
     model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
 
-    model = experiment.train_keras(model_fn, dataset_fn,  num_gpus=options.num_gpus)
+    model = experiment.train_keras(model_fn, dataset_fn,
+                                   num_epochs=config_values['ml']['num_epochs'],
+                                   num_gpus=options.num_gpus)
 
     print(model) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
