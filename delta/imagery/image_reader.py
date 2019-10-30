@@ -224,7 +224,7 @@ class MultiTiffFileReader():
         pool.join()
         return result
 
-    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64):
+    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64()):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
         """

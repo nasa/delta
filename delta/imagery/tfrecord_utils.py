@@ -23,14 +23,14 @@ def wrap_bytes(value):
     """Helper-function for wrapping raw bytes so they can be saved to the TFRecords file"""
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
+TFRECORD_COMPRESSION_TYPE = 'GZIP'
+
 def make_tfrecord_writer(output_path, compress=True):
     """Set up a TFRecord writer with the correct options"""
     if not compress:
-        return tf.python_io.TFRecordWriter(output_path)
-    options = tf.python_io.TFRecordOptions(tf.python_io.TFRecordCompressionType.GZIP)
-    return tf.python_io.TFRecordWriter(output_path, options)
-
-TFRECORD_COMPRESSION_TYPE = 'GZIP' # Needs to be synchronized with the function above
+        return tf.io.TFRecordWriter(output_path)
+    options = tf.io.TFRecordOptions(TFRECORD_COMPRESSION_TYPE)
+    return tf.io.TFRecordWriter(output_path, options)
 
 def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_bands):
     """Pack an image stored as a 3D numpy array and write it to an open TFRecord file"""
@@ -53,26 +53,26 @@ def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_ba
 
 # Create a dictionary describing the features.
 IMAGE_FEATURE_DESCRIPTION = {
-    'image_raw': tf.FixedLenFeature([], tf.string),
-    'num_bands': tf.FixedLenFeature([], tf.int64),
-    'col'      : tf.FixedLenFeature([], tf.int64),
-    'row'      : tf.FixedLenFeature([], tf.int64),
-    'width'    : tf.FixedLenFeature([], tf.int64),
-    'height'   : tf.FixedLenFeature([], tf.int64),
-    'bytes_per_num': tf.FixedLenFeature([], tf.int64)
+    'image_raw': tf.io.FixedLenFeature([], tf.string),
+    'num_bands': tf.io.FixedLenFeature([], tf.int64),
+    'col'      : tf.io.FixedLenFeature([], tf.int64),
+    'row'      : tf.io.FixedLenFeature([], tf.int64),
+    'width'    : tf.io.FixedLenFeature([], tf.int64),
+    'height'   : tf.io.FixedLenFeature([], tf.int64),
+    'bytes_per_num': tf.io.FixedLenFeature([], tf.int64)
 }
 
 
 def load_tfrecord_raw(example_proto):
     """Just get the handle to the tfrecord element"""
-    return tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
+    return tf.io.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
 
 def load_tfrecord_element(example_proto, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
        The image is returned in format [1, channels, height, width]"""
 
-    value = tf.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
-    array = tf.decode_raw(value['image_raw'], data_type)
+    value = tf.io.parse_single_example(example_proto, IMAGE_FEATURE_DESCRIPTION)
+    array = tf.io.decode_raw(value['image_raw'], data_type)
     # num_bands must be static in graph, width and height will not matter after patching
     shape = tf.stack([1, value['height'], value['width'], num_bands])
     array2 = tf.reshape(array, shape)
@@ -93,16 +93,12 @@ def get_record_info(record_path, compressed=True):
 
     parsed_image_dataset = raw_image_dataset.map(load_tfrecord_raw)
 
-    iterator = parsed_image_dataset.make_one_shot_iterator()
-    next_batch = iterator.get_next()
-
-    with tf.Session() as sess:
-
-        value = sess.run(next_batch)
-        num_bands = int(value['num_bands'])
-        height = int(value['height'])
-        width  = int(value['width'])
-        return (num_bands, height, width)
+    iterator = iter(parsed_image_dataset)
+    value = next(iterator)
+    num_bands = int(value['num_bands'])
+    height = int(value['height'])
+    width  = int(value['width'])
+    return (num_bands, height, width)
 
 
 def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):

@@ -210,6 +210,7 @@ class ImageryDataset:
         return self._data_scale_factor
 
     def _get_label_for_input_image(self, input_path, top_folder, label_folder, label_extension): # pylint: disable=no-self-use
+
         """Returns the path to the expected label for for the given input image file"""
 
         # Label file should have the same name but different extension in the label folder

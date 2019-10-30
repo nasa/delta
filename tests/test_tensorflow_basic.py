@@ -1,4 +1,17 @@
+"""
+file: test_tensorflow_basic.py
+purpose: A file which tests running tensorflow on the MNIST dataset.
+date: 2019.03.18
+"""
 import tensorflow as tf
+from delta.ml import train
+
+def test_find_cpus():
+    assert len(train.get_devices(0)) > 0, "Could not find any CPU Logical Devices"
+
+def test_find_gpus():
+    assert len(train.get_devices(1)) > 0, "Could not find any GPU Logical Devices" 
+
 
 def test_mnist_train():
     """ Tests the tensorflow library on the MNIST data set. """
@@ -17,6 +30,12 @@ def test_mnist_train():
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
 
-    model.fit(x_train, y_train, epochs=1)
-    result = model.evaluate(x_test, y_test)
-    assert result[1] > 0.9
+    model.fit(x_train, y_train, epochs=5, verbose=0)
+    (_, accuracy) = model.evaluate(x_test, y_test, verbose=0)
+    assert accuracy > 0.96
+
+
+if __name__ == '__main__':
+    test_find_cpus()
+    test_find_gpus()
+    test_mnist()

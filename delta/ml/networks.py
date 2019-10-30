@@ -6,8 +6,8 @@ import numpy as np
 def make_autoencoder(in_shape, encoding_size=32,encoder_type='conv'):
     assert isinstance(encoding_size, int)
 
-    mlflow.log_param('input_size',str(in_shape))
-    mlflow.log_param('encoding_size',encoding_size)
+#    mlflow.log_param('input_size',str(in_shape))
+#    mlflow.log_param('encoding_size',encoding_size)
 
     model = None
     if encoder_type == 'conv':

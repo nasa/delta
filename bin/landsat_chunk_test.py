@@ -2,6 +2,7 @@
 """
 Script test out the image chunk generation calls.
 """
+# pylint: disable=unsubscriptable-object
 import os
 import sys
 import argparse
