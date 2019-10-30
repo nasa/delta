@@ -1,6 +1,7 @@
 """
 Classes for block-aligned reading from multiple Geotiff files.
 """
+#pylint: disable=no-self-use,unused-argument,too-many-arguments,too-many-locals,fixme
 import os
 import time
 import copy
@@ -29,22 +30,37 @@ class TiffReader:
 
 
     def open_image(self, path):
+        '''
+        Opens an image if it exists
+        '''
         if not os.path.exists(path):
             raise Exception('Image file does not exist: ' + path)
         self._handle = gdal.Open(path)
 
     def close_image(self):
+        '''
+        Closes an image
+        '''
         self._handle = None
 
     # TODO: Error checking!!!
 
     def num_bands(self):
+        '''
+        Gets number of bands.
+        '''
         return self._handle.RasterCount
 
     def image_size(self):
+        '''
+        Gets image size
+        '''
         return (self._handle.RasterXSize, self._handle.RasterYSize)
 
     def nodata_value(self, band=1):
+        '''
+        returns the value that indicates no data is present in a pixel for a band.
+        '''
         band_handle = self._handle.GetRasterBand(band)
         return band_handle.GetNoDataValue()
 
@@ -54,13 +70,16 @@ class TiffReader:
         return band_handle.DataType
 
     def get_bytes_per_pixel(self, band=1):
+        '''
+        returns the number of bytes per pixel
+        '''
         band_handle = self._handle.GetRasterBand(band)
         return utilities.get_num_bytes_from_gdal_type(band_handle.DataType)
 
     def get_block_info(self, band):
         """Returns ((block height, block width), (num blocks x, num blocks y))"""
         band_handle = self._handle.GetRasterBand(band)
-        block_size  = band_handle.GetBlockSize()
+        block_size = band_handle.GetBlockSize()
 
         num_blocks_x = int(math.ceil(self._handle.RasterXSize / block_size[0]))
         num_blocks_y = int(math.ceil(self._handle.RasterYSize / block_size[1]))
@@ -69,13 +88,13 @@ class TiffReader:
 
     def get_all_metadata(self):
         """Returns all useful image metadata"""
-        d = dict()
-        d['projection'  ] = self._handle.GetProjection()
-        d['geotransform'] = self._handle.GetGeoTransform()
-        d['gcps'        ] = self._handle.GetGCPs()
-        d['gcpproj'     ] = self._handle.GetGCPProjection()
-        d['metadata'    ] = self._handle.GetMetadata()
-        return d
+        data = dict()
+        data['projection'] = self._handle.GetProjection()
+        data['geotransform'] = self._handle.GetGeoTransform()
+        data['gcps'] = self._handle.GetGCPs()
+        data['gcpproj'] = self._handle.GetGCPProjection()
+        data['metadata'] = self._handle.GetMetadata()
+        return data
 
     def get_block_aligned_read_roi(self, desired_roi):
         """Returns the block aligned pixel region to read in a Rectangle format
@@ -91,18 +110,20 @@ class TiffReader:
         (block_size, unused_num_blocks) = self.get_block_info(band)
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
         start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
-        stop_block_x  = int(math.floor((desired_roi.max_x-1) / block_size[0])) # Rect max is exclusive
-        stop_block_y  = int(math.floor((desired_roi.max_y-1) / block_size[1])) # The stops are inclusive
+        # Rect max is exclusive
+        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[0]))
+        # The stops are inclusive
+        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
 
         start_col = start_block_x * block_size[0]
         start_row = start_block_y * block_size[1]
-        num_cols  = (stop_block_x - start_block_x + 1) * block_size[0]
-        num_rows  = (stop_block_y - start_block_y + 1) * block_size[1]
+        num_cols = (stop_block_x - start_block_x + 1) * block_size[0]
+        num_rows = (stop_block_y - start_block_y + 1) * block_size[1]
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
-        ans    = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
-        size   = self.image_size()
+        ans = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        size = self.image_size()
         bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         return ans.get_intersection(bounds)
 
@@ -150,28 +171,36 @@ class MultiTiffFileReader():
 
     def close(self):
         """Close all loaded images."""
-        for h in self._image_handles:
-            h.close_image()
+        for handle in self._image_handles:
+            handle.close_image()
         self._image_handles = []
 
     # TODO: Error checking!
     def image_size(self):
+        '''
+        Returns image size!
+        '''
         return self._image_handles[0].image_size()
 
     def data_type(self, band=1):
+        '''
+        Returns band data type!
+        '''
         return self._image_handles[0].data_type(band)
 
     def num_bands(self):
         """Get the total number of bands across all input images"""
-        b = 0
+        num_bands = 0
         for image in self._image_handles:
-            b += image.num_bands()
-        return b
+            num_bands += image.num_bands()
+        return num_bands
 
     def nodata_value(self, band=1):
+        '''Returns the bands nodata value'''
         return self._image_handles[0].nodata_value(band)
 
     def get_block_info(self, band):
+        '''Returns the bands blockinfo'''
         return self._image_handles[0].get_block_info(band)
 
     def get_all_metadata(self):
@@ -184,47 +213,56 @@ class MultiTiffFileReader():
         """
         total_size = 0
         for image in self._image_handles:
-            for band in range(1,image.num_bands()+1):
-                total_size += image.num_bands() * roi.area() * image.get_bytes_per_pixel(band)
+            for band in range(1, image.num_bands()+1):
+                total_size += image.num_bands() * roi.area() * \
+                              image.get_bytes_per_pixel(band)
         return total_size / utilities.BYTES_PER_MB
 
     def sleep_until_mem_free_for_roi(self, roi):
         """Sleep until enough free memory exists to load this ROI"""
         # TODO: This will have to be more sophisticated.
-        WAIT_TIME_SECS = 5
+        wait_time_secs = 5
         mb_needed = self.estimate_memory_usage(roi)
-        mb_free   = 0
+        mb_free = 0
         while mb_free < mb_needed:
             mb_free = psutil.virtual_memory().available / utilities.BYTES_PER_MB
             if mb_free < mb_needed:
-                print('Need %d MB to load the next ROI, but only have %d MB free. Sleep for %d seconds...'
-                      % (mb_needed, mb_free, WAIT_TIME_SECS))
-                time.sleep(WAIT_TIME_SECS)
+                print('''Need %d MB to load the next ROI, but only have %d MB free.
+                         Sleep for %d seconds...'''
+                      % (mb_needed, mb_free, wait_time_secs))
+                time.sleep(wait_time_secs)
 
     def _get_band_index(self, image_index):
         """Return the absolute band index of the first band in the given image index"""
-        b = 0
-        for i in range(0,image_index):
-            b += self._image_handles[i].num_bands()
-        return b
+        band_index = 0
+        for i in range(0, image_index):
+            band_index += self._image_handles[i].num_bands()
+        return band_index
 
     def read_roi(self, roi, data_type, num_threads=1):
-        result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()), dtype=data_type)
+        '''Reads the region of interest'''
+        result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()),
+                          dtype=data_type)
 
         def process_one_image(image_index):
-            image      = self._image_handles[image_index]
-            band_index = self._get_band_index(image_index) # The first index of one or more sequential bands
-            for band in range(1,image.num_bands()+1):
+            '''
+            Local convenience function for processing one image
+            '''
+            image = self._image_handles[image_index]
+            # The first index of one or more sequential bands
+            band_index = self._get_band_index(image_index)
+            for band in range(1, image.num_bands()+1):
                 result[:, :, band_index] = image.read_pixels(roi, band)
                 band_index += 1
 
         pool = ThreadPool(num_threads)
-        pool.map(process_one_image, range(0,len(self._image_handles)))
+        pool.map(process_one_image, range(0, len(self._image_handles)))
         pool.close()
         pool.join()
         return result
 
-    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1, data_type=np.float64()):
+    def parallel_load_chunks(self, roi, chunk_size, chunk_overlap, num_threads=1,
+                             data_type=np.dtype('float64')):
         """Uses multiple threads to populate a numpy data structure with
            image chunks spanning the given roi, formatted for Tensorflow to load.
         """
@@ -232,15 +270,18 @@ class MultiTiffFileReader():
         # Get image chunk centers
         chunk_info = utilities.generate_chunk_info(chunk_size, chunk_overlap)
         (chunk_center_list, chunk_roi) = \
-            utilities.get_chunk_center_list_in_region(roi, chunk_info[0], chunk_info[1], chunk_size)
+            utilities.get_chunk_center_list_in_region(roi, chunk_info[0], chunk_info[1],
+                                                      chunk_size)
         if not chunk_center_list:
             raise ValueError('Unable to load any chunks from this ROI!')
 
         # Throw out any partial chunks.
         image_size = self.image_size()
-        whole_image_roi = rectangle.Rectangle(0,0,width=image_size[0],height=image_size[1])
+        whole_image_roi = rectangle.Rectangle(0, 0, width=image_size[0],
+                                              height=image_size[1])
         (chunk_center_list, chunk_roi) = \
-                utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size, whole_image_roi)
+                utilities.restrict_chunk_list_to_roi(chunk_center_list, chunk_size,
+                                                     whole_image_roi)
 
         num_chunks = len(chunk_center_list)
         if not num_chunks:
@@ -250,30 +291,35 @@ class MultiTiffFileReader():
         read_roi = self._image_handles[0].get_block_aligned_read_roi(chunk_roi)
 
         # Adjust centers to be relative to the read ROI.
-        offset_centers = [(c[0]-read_roi.min_x,c[1]-read_roi.min_y)
+        offset_centers = [(c[0]-read_roi.min_x, c[1]-read_roi.min_y)
                           for c in chunk_center_list]
 
         # Allocate the output data structure
         output_shape = (num_chunks, self.num_bands(), chunk_size, chunk_size)
         num_elements = num_chunks * self.num_bands() * chunk_size * chunk_size
-        num_bytes    = num_elements * data_type.itemsize
-        bytes_free   = psutil.virtual_memory().available
+        num_bytes = num_elements * data_type.itemsize
+        bytes_free = psutil.virtual_memory().available
         #print('num_bytes GB = ', num_bytes/utilities.BYTES_PER_GB)
         #print('bytes_free GB = ', bytes_free/utilities.BYTES_PER_GB)
         if num_bytes > bytes_free:
-            raise Exception('Tried to allocate chunk buffer of size: ', num_bytes/utilities.BYTES_PER_GB, ' GB',
-                            ' but only ', bytes_free/utilities.BYTES_PER_GB, ' GB is available!')
+            raise Exception('Tried to allocate chunk buffer of size: ',
+                            num_bytes/utilities.BYTES_PER_GB, ' GB',
+                            ' but only ', bytes_free/utilities.BYTES_PER_GB,
+                            ' GB is available!')
         data_store = np.zeros(shape=output_shape, dtype=data_type)
 
 
         # Internal function to copy all chunks from all bands of one image handle to data_store
         def process_one_image(image_index):
-            image      = self._image_handles[image_index]
-            band_index = self._get_band_index(image_index) # The first index of one or more sequential bands
-            for band in range(1,image.num_bands()+1):
+            '''
+            Local convenience function that processes one image.
+            '''
+            image = self._image_handles[image_index]
+            # The first index of one or more sequential bands
+            band_index = self._get_band_index(image_index)
+            for band in range(1, image.num_bands()+1):
                 #print('Data read from image ' + str(image) + ', band ' + str(band))
                 this_data = image.read_pixels(read_roi, band)
-
                 # Copy each of the data chunks into the output.
                 chunk_index = 0
                 for center in offset_centers:
@@ -285,7 +331,7 @@ class MultiTiffFileReader():
 
         # Call process_one_image in parallel using a thread pool
         pool = ThreadPool(num_threads)
-        pool.map(process_one_image, range(0,len(self._image_handles)))
+        pool.map(process_one_image, range(0, len(self._image_handles)))
         pool.close()
         pool.join()
         return data_store
@@ -327,7 +373,7 @@ class MultiTiffFileReader():
             # each input image.
             data_vec = []
             for image in self._image_handles:
-                for band in range(1,image.num_bands()+1):
+                for band in range(1, image.num_bands()+1):
                     data_vec.append(image.read_pixels(read_roi, band))
 
             # Loop through the remaining ROIs and apply the callback function to each
@@ -356,16 +402,17 @@ class MultiTiffFileReader():
 def get_block_and_roi(output_roi, read_roi, block_size):
     """Helper function to use with MultiTiffFileReader process_roi callback functions.
         Returns ((block_col, block_row), (x0, y0, x1, y1))
-        where the block row and column are based on output_roi in an image using blocks of size block_size,
-        and n0,n1 are the start and end positions to read from read_roi to get the data for output_roi.
+        where the block row and column are based on output_roi in an image using blocks
+        of size block_size, and n0,n1 are the start and end positions to read from
+        read_roi to get the data for output_roi.
     """
     block_col = output_roi.min_x / block_size[0]
     block_row = output_roi.min_y / block_size[1]
 
     # Figure out where the desired output data falls in read_roi
-    x0 = output_roi.min_x - read_roi.min_x
-    y0 = output_roi.min_y - read_roi.min_y
-    x1 = x0 + output_roi.width()
-    y1 = y0 + output_roi.height()
+    x_0 = output_roi.min_x - read_roi.min_x
+    y_0 = output_roi.min_y - read_roi.min_y
+    x_1 = x_0 + output_roi.width()
+    y_1 = y_0 + output_roi.height()
 
-    return ((block_col, block_row), (x0, y0, x1, y1))
+    return ((block_col, block_row), (x_0, y_0, x_1, y_1))
