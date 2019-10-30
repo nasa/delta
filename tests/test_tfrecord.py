@@ -126,13 +126,13 @@ def dataset(all_sources, request):
     dataset = imagery_dataset.ImageryDataset(config_values)
     return dataset
 
-def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer-name
+def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
     """
     Writes and reads from disks, then checks if what is read is valid according to the
     generation procedure.
     """
 
-    ds = tfrecord_dataset.dataset(filter_zero=False)
+    ds = dataset.dataset(filter_zero=False)
     iterator = iter(ds.batch(1))
     for (image, label) in iterator:
         try:
@@ -183,5 +183,4 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
                            validation_data=None,
                            num_gpus=0)
     ret = model.evaluate(x=create_dataset())
-    print(ret)
-    #assert ret['binary_accuracy'] > 0.90
+    assert ret[1] > 0.90
