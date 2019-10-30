@@ -5,7 +5,6 @@ import os
 import time
 import copy
 import math
-from multiprocessing.dummy import Pool as ThreadPool
 
 import psutil
 
@@ -208,24 +207,19 @@ class MultiTiffFileReader():
             b += self._image_handles[i].num_bands()
         return b
 
-    def read_roi(self, roi=None, num_threads=1):
+    def read_roi(self, roi=None):
         if roi is None:
             s = self.image_size()
             roi = rectangle.Rectangle(0, 0, s[0], s[1])
         result = np.zeros(shape=(roi.height(), roi.width(), self.num_bands()),
                           dtype=utilities.gdal_dtype_to_numpy_type(self.data_type()))
 
-        def process_one_image(image_index):
-            image      = self._image_handles[image_index]
-            band_index = self._get_band_index(image_index) # The first index of one or more sequential bands
+        for (i, image) in enumerate(self._image_handles):
+            band_index = self._get_band_index(i) # The first index of one or more sequential bands
             for band in range(1,image.num_bands()+1):
                 result[:, :, band_index] = image.read_pixels(roi, band)
                 band_index += 1
 
-        pool = ThreadPool(num_threads)
-        pool.map(process_one_image, range(0,len(self._image_handles)))
-        pool.close()
-        pool.join()
         return result
 
     def process_rois(self, requested_rois, callback_function, strict_order=False):
