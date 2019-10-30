@@ -1,13 +1,20 @@
+'''
+Creates different neural networks for DELTA.
+filename: networks.py
+author: P. Michael Furlong
+'''
+
+import numpy as np
+import mlflow
 import tensorflow as tf
 from tensorflow import keras
-import mlflow
-import numpy as np
 
-def make_autoencoder(in_shape, encoding_size=32,encoder_type='conv'):
+def make_autoencoder(in_shape, encoding_size=32, encoder_type='conv'):
+    '''
+    Factory method for creating autoencoders.  At the moment does not provide a lot
+    of flexibility.
+    '''
     assert isinstance(encoding_size, int)
-
-#    mlflow.log_param('input_size',str(in_shape))
-#    mlflow.log_param('encoding_size',encoding_size)
 
     model = None
     if encoder_type == 'conv':
@@ -15,13 +22,16 @@ def make_autoencoder(in_shape, encoding_size=32,encoder_type='conv'):
     elif encoder_type == 'dense':
         model = make_dense_autoencoder(in_shape, encoding_size=encoding_size)
     else:
-        print('ERROR: Unrecognized autoencoder type %s' % (encoder_type,))
-        exit()
+        raise RuntimeError('ERROR: Unrecognized autoencoder type %s' % (encoder_type,))
+
     ### end if
     return model
 ### end make_autoencoder
 
 def make_dense_autoencoder(in_shape, encoding_size=None):
+    '''
+    Makes an arbitrary one-hidden-layer dense autoencoder.
+    '''
 
     # Define network
     model = keras.Sequential([
@@ -34,6 +44,10 @@ def make_dense_autoencoder(in_shape, encoding_size=None):
 ### end make_dense_autoencoder
 
 def make_convolutional_autoencoder(in_shape, encoding_size=None):
+    '''
+    Makes an arbitrary convolutional autoencoder.
+    TODO: Consider asymmetrical autoencoders re: Robert Campbell's project.
+    '''
 
     model = keras.models.Sequential([
         # Encoder
@@ -66,11 +80,11 @@ def make_task_specific(in_shape, out_shape):
 
     dropout_rate = 0.3
 
-    mlflow.log_param('fc1_size',fc1_size)
-    mlflow.log_param('fc2_size',fc2_size)
-    mlflow.log_param('fc3_size',fc3_size)
-    mlflow.log_param('fc4_size',fc4_size)
-    mlflow.log_param('dropout_rate',dropout_rate)
+    mlflow.log_param('fc1_size', fc1_size)
+    mlflow.log_param('fc2_size', fc2_size)
+    mlflow.log_param('fc3_size', fc3_size)
+    mlflow.log_param('fc4_size', fc4_size)
+    mlflow.log_param('dropout_rate', dropout_rate)
 
 
     # Define network

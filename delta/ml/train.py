@@ -1,13 +1,18 @@
-#pylint: disable=no-self-use,unused-argument
-import mlflow
-import mlflow.tensorflow
+'''
+Functions for training neural networks using the tensorflow 2.0 Keras api.  Also
+provides Experiment class for tracking network parameters and performance.
+'''
+
+#pylint: disable=no-self-use,unused-argument,too-many-arguments
 import os.path
 import tensorflow as tf
+import mlflow
+import mlflow.tensorflow
 
 
 def get_devices(num_gpus):
     '''
-    Takes a number of GPUs and returns a list of TensorFlow LogicalDevices. 
+    Takes a number of GPUs and returns a list of TensorFlow LogicalDevices.
 
     Arguments
 
@@ -19,7 +24,8 @@ def get_devices(num_gpus):
         devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
     else:
         devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
-        assert len(devs) >= num_gpus, "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
+        assert len(devs) >= num_gpus,\
+               "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
         devs = devs[:num_gpus]
     ### end if num_gpus < 1
     return devs
@@ -35,8 +41,11 @@ def get_distribution_strategy(devices):
         strategy = tf.distribute.MirroredStrategy(devices=devices)
     return strategy
 
-def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks=[], 
+def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks=None,
           num_epochs=70, validation_data=None, num_gpus=0):
+    '''
+    Trains a model constructed by model_fn on datasaet constructed by train_dataset_fn
+    '''
 
     assert model_fn is not None, "No model function supplied."
     assert train_dataset_fn is not None, "No training dataset function supplied."
@@ -50,7 +59,7 @@ def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
     ### end with
 
-    history = model.fit(train_dataset_fn(), 
+    history = model.fit(train_dataset_fn(),
                         epochs=num_epochs,
                         callbacks=callbacks,
                         validation_data=validation_data)
@@ -61,7 +70,8 @@ def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks
 class Experiment:
     """TODO"""
 
-    def __init__(self, tracking_uri, experiment_name, output_dir='./', loss_fn='mean_squared_error', save_freq=100000):
+    def __init__(self, tracking_uri, experiment_name, output_dir='./',
+                 loss_fn='mean_squared_error', save_freq=100000):
         self.experiment_name = experiment_name
         self.output_dir = output_dir
         self.loss_fn = loss_fn
@@ -85,9 +95,12 @@ class Experiment:
 
         Arguments
 
-        model_fn -- A zero-argument function that constructs the neural network to be trained. model_fn() should return a Keras Model
-        train_dataset_fn -- A zero-argument function that constructs the dataset as a Tensorflow Dataset object.
-        num_epochs -- The number of epochs to train the network for.  Default value is 70
+        model_fn -- A zero-argument function that constructs the neural network to be
+                    trained. model_fn() should return a Keras Model
+        train_dataset_fn -- A zero-argument function that constructs the dataset as a
+                            Tensorflow Dataset object.
+        num_epochs -- The number of epochs to train the network for.  Default value is
+                      70
         validation_data -- The data used to validate the network.  Default None.
         num_gpus -- The number of GPUs used to train the network.  If GPU
 
@@ -101,24 +114,26 @@ class Experiment:
         strategy = get_distribution_strategy(devs)
         with strategy.scope():
             model = model_fn()
-            assert isinstance(model, tf.keras.models.Model), "Model is not a Tensorflow Keras model"
+            assert isinstance(model, tf.keras.models.Model),\
+                   "Model is not a Tensorflow Keras model"
             model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
         ### end with
 
         callbacks = [
-                tf.keras.callbacks.ModelCheckpoint(
-                    filepath=os.path.join(self.output_dir,'model_{batch}.h5'),
-                    monitor='val_loss',
-                    save_freq = self.save_freq,
-#                     save_best_only = True,
-                    verbose=0),
-                tf.keras.callbacks.TensorBoard(
-                    log_dir=os.path.join(self.output_dir,'tb_logs'),
-                    update_freq = self.save_freq,
-                    )
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=os.path.join(self.output_dir, 'model_{batch}.h5'),
+                monitor='val_loss',
+                verbose=0,
+                save_best_only=True,
+                save_freq=self.save_freq,
+                ),
+            tf.keras.callbacks.TensorBoard(
+                log_dir=os.path.join(self.output_dir, 'tb_logs'),
+                update_freq=self.save_freq,
+                )
         ]
 
-        history = model.fit(train_dataset_fn(), 
+        history = model.fit(train_dataset_fn(),
                             epochs=num_epochs,
                             callbacks=callbacks,
                             validation_data=validation_data)
@@ -148,6 +163,6 @@ class Experiment:
         """
         assert isinstance(params, dict)
         for k in params.keys():
-            mlflow.log_param(k,params[k])
+            mlflow.log_param(k, params[k])
         ### end for
     ### end log_parameters
