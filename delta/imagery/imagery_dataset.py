@@ -22,7 +22,7 @@ IMAGE_CLASSES = {
         'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
-        'tif' : basic_sources.SimpleTiff,
+        'tif' : basic_sources.TiffImage,
         'tfrecord' : basic_sources.TFRecordImage
 }
 
@@ -87,7 +87,7 @@ class ImageryDataset:
 
         # Load the first image to get the number of bands for the input files.
         # TODO: remove cache manager and num_regions
-        self._num_bands = self._image_class(self._image_files[0], self._cache_manager, None).get_num_bands()
+        self._num_bands = self._image_class(self._image_files[0], self._cache_manager, None).num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
