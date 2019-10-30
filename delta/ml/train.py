@@ -35,6 +35,28 @@ def get_distribution_strategy(devices):
         strategy = tf.distribute.MirroredStrategy(devices=devices)
     return strategy
 
+def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks=[], 
+          num_epochs=70, validation_data=None, num_gpus=0):
+
+    assert model_fn is not None, "No model function supplied."
+    assert train_dataset_fn is not None, "No training dataset function supplied."
+    assert num_gpus > -1, "Number of GPUs is negative."
+
+    devs = get_devices(num_gpus)
+    strategy = get_distribution_strategy(devs)
+    with strategy.scope():
+        model = model_fn()
+        assert isinstance(model, tf.keras.models.Model), "Model is not a Tensorflow Keras model"
+        model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
+    ### end with
+
+    history = model.fit(train_dataset_fn(), 
+                        epochs=num_epochs,
+                        callbacks=callbacks,
+                        validation_data=validation_data)
+
+    return model, history
+### end train
 
 class Experiment:
     """TODO"""
