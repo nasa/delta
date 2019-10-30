@@ -14,16 +14,16 @@ from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
 from delta.imagery.sources import landsat
 from delta.imagery.sources import worldview
+from delta.imagery.sources import tfrecord
 
 
 # Map text strings to the Image wrapper classes defined above
 IMAGE_CLASSES = {
         'landsat' : landsat.LandsatImage,
-        'landsat-simple' : landsat.SimpleLandsatImage,
         'worldview' : worldview.WorldviewImage,
         'rgba' : basic_sources.RGBAImage,
-        'tif' : basic_sources.TiffImage,
-        'tfrecord' : basic_sources.TFRecordImage
+        'tiff' : basic_sources.TiffImage,
+        'tfrecord' : tfrecord.TFRecordImage
 }
 
 # TODO: Where is a good place for this?
@@ -33,8 +33,8 @@ IMAGE_CLASSES = {
 # - For WorldView and Landsat this means post TOA processing.
 PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
                                'landsat'  : 120.0, # TODO
-                               'tif'      : 255.0,
-                               'rgba'     : 255.0}
+                               'tiff'      : 255.0,
+                               'rgba'      : 255.0}
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -60,7 +60,7 @@ class ImageryDataset:
         try:
             file_type = config_values['input_dataset']['file_type']
             self._image_class = IMAGE_CLASSES[file_type]
-            self._use_tfrecord = self._image_class is basic_sources.TFRecordImage
+            self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
             self._label_class = IMAGE_CLASSES[file_type]
         except IndexError:
             raise Exception('Did not recognize input_dataset:image_type: ' + image_type)

@@ -65,7 +65,7 @@ def worldview_filenames():
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
     imd_name = '19MAY13164205-M2AS-503204071020_01_P003.IMD'
     zip_path = os.path.join(tmpdir, image_name + '.zip')
-    label_path = os.path.join(tmpdir, image_name + '_label.tif')
+    label_path = os.path.join(tmpdir, image_name + '_label.tiff')
     image_dir = os.path.join(tmpdir, 'image')
     image_path = os.path.join(image_dir, image_name + '.tif')
     vendor_dir = os.path.join(image_dir, 'vendor_metadata')
@@ -99,7 +99,7 @@ NUM_SOURCES = 2
 @pytest.fixture(scope="module")
 def all_sources(tfrecord_filenames, worldview_filenames):
     return [(tfrecord_filenames, '.tfrecord', 'tfrecord', 'tfrecord', '.tfrecordlabel', 'tfrecord'),
-            (worldview_filenames, '.zip', 'worldview', 'worldview', '_label.tif', 'tif')]
+            (worldview_filenames, '.zip', 'worldview', 'worldview', '_label.tiff', 'tiff')]
 
 @pytest.fixture(scope="function", params=range(2))
 def dataset(all_sources, request):
