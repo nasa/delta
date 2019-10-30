@@ -1,6 +1,7 @@
 """
 Tools for loading input images into the TensorFlow Dataset class.
 """
+#pylint: disable=no-self-use,unused-argument,too-many-arguments,too-many-locals,fixme
 import functools
 import os
 import sys #pylint: disable=W0611
@@ -44,8 +45,8 @@ class ImageryDataset:
         """Initialize the dataset based on the specified config values."""
 
         # Record some of the config values
-        self._chunk_size    = config_values['ml']['chunk_size']
-        self._chunk_stride  = config_values['ml']['chunk_stride']
+        self._chunk_size = config_values['ml']['chunk_size']
+        self._chunk_stride = config_values['ml']['chunk_stride']
         self._cache_manager = disk_folder_cache.DiskCache(config_values['cache']['cache_dir'],
                                                           config_values['cache']['cache_limit'])
 
@@ -77,17 +78,22 @@ class ImageryDataset:
             input_extensions = [config_values['input_dataset']['extension']]
         else:
             input_extensions = ['.tfrecord']
-            print('"input_dataset:extension" value not found in config file, using default value of .tfrecord')
+            print('''"input_dataset:extension" value not found in config file,
+                       using default value of .tfrecord''')
 
         # Generate a text file list of all the input images, plus region indices.
         data_folder  = config_values['input_dataset']['data_directory']
         label_folder = config_values['input_dataset']['label_directory']
-        (self._image_files, self._label_files) = self._find_images(data_folder, label_folder, input_extensions,
+        (self._image_files, self._label_files) = self._find_images(data_folder,
+                                                                   label_folder,
+                                                                   input_extensions,
                                                                    config_values['input_dataset']['label_extension'])
 
         # Load the first image to get the number of bands for the input files.
         # TODO: remove cache manager and num_regions
-        self._num_bands = self._image_class(self._image_files[0], self._cache_manager, None).get_num_bands()
+        self._num_bands = self._image_class(self._image_files[0],
+                                            self._cache_manager,
+                                            None).get_num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = config_values['input_dataset']['num_input_threads']
@@ -140,7 +146,8 @@ class ImageryDataset:
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, self._chunk_stride, self._chunk_stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1]
-        result  = tf.image.extract_image_patches(image, ksizes, strides, rates, padding='VALID')
+        result  = tf.image.extract_patches(image, ksizes, strides, rates,
+                                           padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
         result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
         return result
