@@ -50,11 +50,11 @@ def tfrecord_filenames():
     for i in range(2):
         for j in range(2):
             (image, label) = generate_tile(size, size)
-            tfrecord_utils.write_tfrecord_image(image, image_writer, 
-                                                i * size, j * size, 
+            tfrecord_utils.write_tfrecord_image(image, image_writer,
+                                                i * size, j * size,
                                                 size, size, 1)
-            tfrecord_utils.write_tfrecord_image(label, label_writer, 
-                                                i * size, j * size, 
+            tfrecord_utils.write_tfrecord_image(label, label_writer,
+                                                i * size, j * size,
                                                 size, size, 1)
     image_writer.close()
     label_writer.close()
@@ -128,14 +128,13 @@ def dataset(all_sources, request):
 
 def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer-name
     """
-    Writes and reads from disks, then checks if what is read is valid according to the 
+    Writes and reads from disks, then checks if what is read is valid according to the
     generation procedure.
     """
 
     ds = tfrecord_dataset.dataset(filter_zero=False)
     iterator = iter(ds.batch(1))
-    #while True:
-    for (image, label) in iterator: 
+    for (image, label) in iterator:
         try:
             if label:
                 assert image[0][0][0][0] == 1
@@ -155,7 +154,7 @@ def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer
             v5 = image[0][1][2][0] == 0
             if v4 or v5:
                 assert label == 0
-            v6 = image[0][2][0][0] == 0  
+            v6 = image[0][2][0][0] == 0
             v7 = image[0][2][1][0] == 0
             v8 = image[0][2][2][0] == 0
             if v6 or v7 or v8:
@@ -164,26 +163,25 @@ def test_tfrecord_write_read(tfrecord_dataset): #pylint: disable=redefined-outer
             break
 
 
-def test_train(tfrecord_dataset): #pylint: disable=redefined-outer-name
+def test_train(dataset): #pylint: disable=redefined-outer-name
     def model_fn():
         return  keras.Sequential([
-                    keras.layers.Conv2D(1, kernel_size=(3, 3), 
-                                        kernel_initializer=keras.initializers.Zeros(),
-                                        activation='relu', data_format='channels_last',
-                                        input_shape=(3, 3, 1))
-                    ])
+            keras.layers.Conv2D(1, kernel_size=(3, 3),
+                                kernel_initializer=keras.initializers.Zeros(),
+                                activation='relu', data_format='channels_last',
+                                input_shape=(3, 3, 1))])
     def create_dataset():
         d = dataset.dataset(filter_zero=False)
         d = d.batch(100).repeat(5)
         return d
 
     # Ignoring returned model training history to keep pylint happy.
-    model, _ = train.train(model_fn, create_dataset, 
-                                 optimizer=tf.optimizers.Adam(learning_rate=0.01),
-                                 loss_fn='mean_squared_logarithmic_error',
-                                 num_epochs=1,
-                                 validation_data=None,
-                                 num_gpus=0)
+    model, _ = train.train(model_fn, create_dataset,
+                           optimizer=tf.optimizers.Adam(learning_rate=0.01),
+                           loss_fn='mean_squared_logarithmic_error',
+                           num_epochs=1,
+                           validation_data=None,
+                           num_gpus=0)
     ret = model.evaluate(x=create_dataset())
     print(ret)
     #assert ret['binary_accuracy'] > 0.90
