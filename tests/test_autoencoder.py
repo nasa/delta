@@ -24,7 +24,9 @@ def dataset_fashion_mnist(batch_size=200, num_epochs=5, shuffle_buffer_size=10):
     (train_images, _), (_, _) = fashion_mnist.load_data()
     train_images = train_images / MNIST_MAX
     (num_data, _, _) = train_images.shape
-    train_images = np.reshape(train_images, (num_data, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
+    reduce_by = 4
+    train_images = train_images[:(num_data // reduce_by), :, :]
+    train_images = np.reshape(train_images, (num_data // reduce_by, MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS))
 
     d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(train_images),
                                tf.data.Dataset.from_tensor_slices(train_images)))
@@ -37,7 +39,7 @@ def test_dense_autoencoder():
     tests the performance of the dense autoencoder on the Fashion MNIST dataset
     '''
 
-    num_epochs = 1
+    num_epochs = 2 
     in_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model_fn = functools.partial(networks.make_autoencoder,
                                  in_shape, encoding_size=32, encoder_type='dense')
@@ -52,7 +54,7 @@ def test_conv_autoencoder():
     tests the performance of the convolutional autoencoder on the Fashion MNIST dataset
     '''
 
-    num_epochs = 1
+    num_epochs = 2 
     in_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model_fn = functools.partial(networks.make_autoencoder,
                                  in_shape, encoding_size=32, encoder_type='conv')
