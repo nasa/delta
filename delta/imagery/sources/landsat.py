@@ -200,11 +200,3 @@ class LandsatImage(basic_sources.TiffImage):
 
     def prep(self):
         return prep_landsat_image(self.path, self._cache_manager)
-
-class SimpleLandsatImage(basic_sources.TiffImage):
-    """All landsat bands in one tiff file"""
-    DEFAULT_NUM_REGIONS = 1
-    DEFAULT_EXTENSIONS = ['.tif']
-
-    def prep(self):
-        return [self.path]
