@@ -11,8 +11,8 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from delta.imagery import tfrecord_utils
 from delta.imagery import imagery_dataset
+from delta.imagery.sources import tfrecord
 from delta.imagery.image_writer import TiffWriter
 from delta.ml import train
 
@@ -44,18 +44,18 @@ def tfrecord_filenames():
     tmpdir = tempfile.mkdtemp()
     image_path = os.path.join(tmpdir, 'test.tfrecord')
     label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
-    image_writer = tfrecord_utils.make_tfrecord_writer(image_path)
-    label_writer = tfrecord_utils.make_tfrecord_writer(label_path)
+    image_writer = tfrecord.make_tfrecord_writer(image_path)
+    label_writer = tfrecord.make_tfrecord_writer(label_path)
     size = 32
     for i in range(2):
         for j in range(2):
             (image, label) = generate_tile(size, size)
-            tfrecord_utils.write_tfrecord_image(image, image_writer,
-                                                i * size, j * size,
-                                                size, size, 1)
-            tfrecord_utils.write_tfrecord_image(label, label_writer,
-                                                i * size, j * size,
-                                                size, size, 1)
+            tfrecord.write_tfrecord_image(image, image_writer,
+                                          i * size, j * size,
+                                          size, size, 1)
+            tfrecord.write_tfrecord_image(label, label_writer,
+                                          i * size, j * size,
+                                          size, size, 1)
     image_writer.close()
     label_writer.close()
     yield (image_path, label_path)

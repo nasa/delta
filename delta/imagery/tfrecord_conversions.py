@@ -7,8 +7,8 @@ import tensorflow as tf
 from tensorflow.python.framework.errors_impl import OutOfRangeError
 
 from delta.imagery import utilities
-from delta.imagery import tfrecord_utils
 from delta.imagery.sources import landsat
+from delta.imagery.sources import tfrecord
 from delta.imagery.sources import worldview
 from delta.imagery.sources import landsat_toa
 from delta.imagery.sources import worldview_toa
@@ -19,7 +19,7 @@ from delta.imagery.sources import worldview_toa
 def compress_tfrecord_file(input_path, output_path):
     """Make a compressed copy of an uncompressed TFRecord file"""
 
-    writer   = tfrecord_utils.make_tfrecord_writer(output_path, compress=True)
+    writer   = tfrecord.make_tfrecord_writer(output_path, compress=True)
     reader   = tf.data.TFRecordDataset(input_path, compression_type="")
     iterator = reader.make_one_shot_iterator()
 
@@ -116,7 +116,7 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     # Generate the intermediate tiff files
     tif_paths, bands_to_use = function(input_path, work_folder)
 
-    tfrecord_utils.tiffs_to_tf_record(tif_paths, output_paths, tile_size, bands_to_use)
+    tfrecord.tiffs_to_tf_record(tif_paths, output_paths, tile_size, bands_to_use)
 
     # Remove all of the temporary files
     os.system('rm -rf ' + work_folder)

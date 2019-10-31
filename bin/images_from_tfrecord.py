@@ -8,7 +8,7 @@ import argparse
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import OutOfRangeError
 
-from delta.imagery import tfrecord_utils
+from delta.imagery.sources import tfrecord
 
 #------------------------------------------------------------------------------
 
@@ -17,12 +17,14 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
     """Extract entries from a tfrecord file and write them as plain image files"""
 
     # Get size information from the file
-    num_bands, input_region_height, input_region_width \
-      = tfrecord_utils.get_record_info(input_path, compressed)
+    image = tfrecord.TFRecordImage(input_path, None, 1, compressed)
+    num_bands = image.num_bands()
+
+    (input_region_height, input_region_width) = image.size()
 
     # Set up a reader object
     if compressed:
-        reader = tf.data.TFRecordDataset(input_path, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
+        reader = tf.data.TFRecordDataset(input_path, compression_type=tfrecord.TFRECORD_COMPRESSION_TYPE)
     else:
         reader = tf.data.TFRecordDataset(input_path, compression_type="")
     iterator = iter(reader)
@@ -41,7 +43,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
 
             # Read the next item from the TFRecord file
             data_type = tf.uint8 if label else tf.float32
-            image = tfrecord_utils.load_tfrecord_element(value, num_bands, data_type = data_type)
+            image = tfrecord.load_tensor(value, num_bands, data_type = data_type)
             #print(str((input_region_height, input_region_width)))
             #print(sess.run(image))
             #continue

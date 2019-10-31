@@ -10,7 +10,6 @@ import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery import tfrecord_utils
 from delta.imagery import disk_folder_cache
 from delta.imagery.sources import basic_sources
 from delta.imagery.sources import landsat
@@ -101,7 +100,7 @@ class ImageryDataset:
         """Loads a single tfrecord image as a tensor."""
 
         assert self._use_tfrecord
-        return tfrecord_utils.load_tfrecord_element(element, num_bands, data_type=data_type)
+        return tfrecord.load_tensor(element, num_bands, data_type=data_type)
 
     def _load_tensor_imagery(self, image_class, filename, bbox):
         """Loads a single image as a tensor."""
@@ -126,7 +125,7 @@ class ImageryDataset:
         """
         if self._use_tfrecord:
             ds_input = tf.data.Dataset.from_tensor_slices(file_list if label_list is None else label_list)
-            ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord_utils.TFRECORD_COMPRESSION_TYPE)
+            ds_input = tf.data.TFRecordDataset(ds_input, compression_type=tfrecord.TFRECORD_COMPRESSION_TYPE)
             return ds_input.map(functools.partial(self._load_tensor_tfrecord, num_bands, data_type),
                                 num_parallel_calls=self._num_parallel_calls)
         ds_input = self._tf_tiles(file_list, label_list)
