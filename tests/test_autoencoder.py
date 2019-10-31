@@ -39,7 +39,7 @@ def test_dense_autoencoder():
     tests the performance of the dense autoencoder on the Fashion MNIST dataset
     '''
 
-    num_epochs = 2 
+    num_epochs = 2
     in_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model_fn = functools.partial(networks.make_autoencoder,
                                  in_shape, encoding_size=32, encoder_type='dense')
@@ -54,7 +54,7 @@ def test_conv_autoencoder():
     tests the performance of the convolutional autoencoder on the Fashion MNIST dataset
     '''
 
-    num_epochs = 2 
+    num_epochs = 2
     in_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
     model_fn = functools.partial(networks.make_autoencoder,
                                  in_shape, encoding_size=32, encoder_type='conv')
