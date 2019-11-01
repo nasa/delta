@@ -4,6 +4,7 @@ Functions to support the Landsat satellites.
 
 import os
 
+from delta.config import config
 from delta.imagery import utilities
 from . import basic_sources
 
@@ -149,54 +150,48 @@ def find_mtl_file(folder):
         return None
     return os.path.join(folder, meta_files[0])
 
-def prep_landsat_image(path, cache_manager):
-    """Prepares a Landsat file from the archive for processing.
-       Returns [band, paths, in, order, ...]
-       Uses the bands specified in get_landsat_bands_to_use()
-       TODO: Handle bands which are not 30 meters!
-       TODO: Apply TOA conversion!
-    """
-
-    scene_info = get_scene_info(path)
-
-    # Get the folder where this will be stored from the cache manager
-    name = '_'.join([scene_info['sensor'], scene_info['lpath'], scene_info['lrow'], scene_info['date']])
-    untar_folder = cache_manager.register_item(name)
-
-    # Check if we already unpacked this data
-    all_files_present = False
-    if os.path.exists(untar_folder):
-        mtl_path = find_mtl_file(untar_folder)
-        if mtl_path:
-            mtl_data = parse_mtl_file(mtl_path)
-            all_files_present = check_if_files_present(mtl_data, untar_folder)
-
-    if all_files_present:
-        print('Already have unpacked files in ' + untar_folder)
-    else:
-        print('Unpacking tar file ' + path + ' to folder ' + untar_folder)
-        utilities.unpack_to_folder(path, untar_folder)
-
-    bands_to_use = get_landsat_bands_to_use(scene_info['sensor'])
-
-    # Generate all the band file names (the MTL file is not returned)
-    mtl_path = find_mtl_file(untar_folder)
-    mtl_data = parse_mtl_file(mtl_path)
-    output_paths = get_band_paths(mtl_data, untar_folder, bands_to_use)
-
-    # Check that the files exist
-    for p in output_paths:
-        if not os.path.exists(p):
-            raise Exception('Did not find expected file: ' + p
-                            + ' after unpacking tar file ' + path)
-
-    return output_paths
-
 
 class LandsatImage(basic_sources.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    DEFAULT_NUM_REGIONS = 24
-    DEFAULT_EXTENSIONS = ['.gz']
 
     def prep(self):
-        return prep_landsat_image(self.path, self._cache_manager)
+        """Prepares a Landsat file from the archive for processing.
+           Returns [band, paths, in, order, ...]
+           Uses the bands specified in get_landsat_bands_to_use()
+           TODO: Handle bands which are not 30 meters!
+           TODO: Apply TOA conversion!
+        """
+        scene_info = get_scene_info(self.path)
+
+        # Get the folder where this will be stored from the cache manager
+        name = '_'.join([scene_info['sensor'], scene_info['lpath'], scene_info['lrow'], scene_info['date']])
+        untar_folder = config.cache_manager().register_item(name)
+
+        # Check if we already unpacked this data
+        all_files_present = False
+        if os.path.exists(untar_folder):
+            mtl_path = find_mtl_file(untar_folder)
+            if mtl_path:
+                mtl_data = parse_mtl_file(mtl_path)
+                all_files_present = check_if_files_present(mtl_data, untar_folder)
+
+        if all_files_present:
+            print('Already have unpacked files in ' + untar_folder)
+        else:
+            print('Unpacking tar file ' + self.path + ' to folder ' + untar_folder)
+            utilities.unpack_to_folder(self.path, untar_folder)
+
+        bands_to_use = get_landsat_bands_to_use(scene_info['sensor'])
+
+        # Generate all the band file names (the MTL file is not returned)
+        mtl_path = find_mtl_file(untar_folder)
+        mtl_data = parse_mtl_file(mtl_path)
+        output_paths = get_band_paths(mtl_data, untar_folder, bands_to_use)
+
+        # Check that the files exist
+        for p in output_paths:
+            if not os.path.exists(p):
+                raise Exception('Did not find expected file: ' + p
+                                + ' after unpacking tar file ' + self.path)
+
+        return output_paths

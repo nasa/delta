@@ -4,6 +4,7 @@ Functions to support the WorldView satellites.
 
 import os
 
+from delta.config import config
 from delta.imagery import utilities
 from . import basic_sources
 
@@ -99,38 +100,31 @@ def get_scene_info(path):
     output['date'  ] = parts[2][6:14]
     return output
 
-# This function is currently set up for the HDDS archived WV data, files from other
-#  locations will need to be handled differently.
-def prep_worldview_image(path, cache_manager):
-    """Prepares a WorldView file from the archive for processing.
-       Returns the path to the file ready to use.
-       TODO: Apply TOA conversion!
-    """
-
-    scene_info = get_scene_info(path)
-
-    # Get the folder where this will be stored from the cache manager
-    name = '_'.join([scene_info['sensor'], scene_info['date']])
-    unpack_folder = cache_manager.register_item(name)
-
-    # Check if we already unpacked this data
-    (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
-
-    if imd_path and tif_path:
-        #print('Already have unpacked files in ' + unpack_folder)
-        pass
-    else:
-        print('Unpacking file ' + path + ' to folder ' + unpack_folder)
-        utilities.unpack_to_folder(path, unpack_folder)
-        (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
-
-    return [tif_path]
-
-
 class WorldviewImage(basic_sources.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    DEFAULT_NUM_REGIONS = 40 # May be too small
-    DEFAULT_EXTENSIONS = ['.zip']
 
+    # This function is currently set up for the HDDS archived WV data, files from other
+    #  locations will need to be handled differently.
     def prep(self):
-        return prep_worldview_image(self.path, self._cache_manager)
+        """Prepares a WorldView file from the archive for processing.
+           Returns the path to the file ready to use.
+           TODO: Apply TOA conversion!
+        """
+        scene_info = get_scene_info(self.path)
+
+        # Get the folder where this will be stored from the cache manager
+        name = '_'.join([scene_info['sensor'], scene_info['date']])
+        unpack_folder = config.cache_manager().register_item(name)
+
+        # Check if we already unpacked this data
+        (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+
+        if imd_path and tif_path:
+            #print('Already have unpacked files in ' + unpack_folder)
+            pass
+        else:
+            print('Unpacking file ' + self.path + ' to folder ' + unpack_folder)
+            utilities.unpack_to_folder(self.path, unpack_folder)
+            (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+
+        return [tif_path]

@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 import math
 import os
 
+from delta.config import config
 from delta.imagery import image_reader
 from delta.imagery import rectangle
 
@@ -58,12 +59,8 @@ class DeltaImage(ABC):
     """Base class used for wrapping input images in a way that they can be passed
        to Tensorflow dataset objects.
     """
-
-    DEFAULT_EXTENSIONS = ['.tif']
-
-    # Constants which must be specified for all image types, these are the default values.
-    def __init__(self, num_regions):
-        self._num_regions = num_regions
+    def __init__(self, path):
+        self.path = path
 
     @abstractmethod
     def read(self, roi=None):
@@ -81,20 +78,20 @@ class DeltaImage(ABC):
 
     def tiles(self):
         """Generator to yield ROIs for the image."""
+        max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
         s = self.size()
-        # TODO: add to config, replace with max buffer size?
-        for i in range(self._num_regions):
-            yield horizontal_split(s, i, self._num_regions)
+        # TODO: account for image type
+        image_bytes = s[0] * s[1] * self.num_bands() * 4
+        num_regions = math.ceil(image_bytes / max_block_bytes)
+        for i in range(num_regions):
+            yield horizontal_split(s, i, num_regions)
 
 class TiffImage(DeltaImage):
     """For all versions of DeltaImage that can use our image_reader class"""
 
-    DEFAULT_EXTENSIONS = ['.tif']
-
-    def __init__(self, path, cache_manager, num_regions):
-        super(TiffImage, self).__init__(num_regions)
+    def __init__(self, path):
+        super(TiffImage, self).__init__(path)
         self.path = path
-        self._cache_manager = cache_manager
 
     def prep(self):
         """Prepare the file to be opened by other tools (unpack, etc)"""
@@ -126,14 +123,12 @@ class TiffImage(DeltaImage):
 class RGBAImage(TiffImage):
     """Basic RGBA images where the alpha channel needs to be stripped"""
 
-    DEFAULT_EXTENSIONS = ['.tif']
-
     def prep(self):
         """Converts RGBA images to RGB images"""
 
         # Get the path to the cached image
         fname = os.path.basename(self.path)
-        output_path = self._cache_manager.register_item(fname)
+        output_path = config.cache_manager().register_item(fname)
 
         if not os.path.exists(output_path):
             # Just remove the alpha band from the original image

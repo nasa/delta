@@ -13,7 +13,7 @@ import mlflow
 import tensorflow as tf #pylint: disable=C0413
 from tensorflow import keras #pylint: disable=C0413
 
-from delta import config #pylint: disable=C0413
+from delta.config import config #pylint: disable=C0413
 from delta.imagery import imagery_dataset #pylint: disable=C0413
 from delta.ml.train import Experiment
 
@@ -52,51 +52,16 @@ def make_model(channel, in_len):
 def main(args): #pylint: disable=R0914,R0912,R0915
     parser = argparse.ArgumentParser(usage='sc_process_test.py [options]')
 
-    parser.add_argument("--config-file", dest="config_file", required=False,
-                        help="Dataset configuration file.")
-
-    parser.add_argument("--data-folder", dest="data_folder", required=False,
-                        help="Specify data folder instead of supplying config file.")
-    parser.add_argument("--label-folder", dest="label_folder", required=False,
-                        help="Specify label folder instead of supplying config file.")
-
-    parser.add_argument("--num-gpus", dest="num_gpus", required=False, default=0, type=int,
-                        help="Try to use this many GPUs.")
     parser.add_argument("--test-limit", dest="test_limit", type=int, default=0,
                         help="If set, use a maximum of this many input values for training.")
 
     parser.add_argument("--load-model", action="store_true", dest="load_model", default=False,
                         help="Start with the model saved in the current output location.")
 
-    #parser.add_argument("--skip-training", action="store_true", dest="skip_training", default=False,
-    #                    help="Don't train the network but do load a checkpoint if available.")
-
     parser.add_argument("--experimental", action="store_true", dest="experimental", default=False,
                         help="Run experimental code!")
 
-    try:
-        options = parser.parse_args(args[1:])
-    except argparse.ArgumentError:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-
-    if (not options.config_file) and (not options.data_folder):
-        parser.print_help(sys.stderr)
-        print('Must specify either --config-file or --data-folder')
-        sys.exit(1)
-
-    config.load_config_file(options.config_file)
-    config_values = config.get_config()
-    if options.data_folder:
-        config_values['input_dataset']['data_directory'] = options.data_folder
-    if options.label_folder:
-        config_values['input_dataset']['label_directory'] = options.label_folder
-    if config_values['input_dataset']['data_directory'] is None:
-        print('Must specify a data_directory.', file=sys.stderr)
-        sys.exit(0)
-    batch_size = config_values['ml']['batch_size']
-    num_epochs = config_values['ml']['num_epochs']
-    output_folder = config_values['ml']['output_folder']
+    options = config.parse_args(parser, args)
 
     # With TF 1.12, the dataset needs to be constructed inside a function passed in to
     # the estimator "train_and_evaluate" function to avoid getting a graph error!
@@ -104,17 +69,17 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
         # Use wrapper class to create a Tensorflow Dataset object.
         # - The dataset will provide image chunks and corresponding labels.
-        ids = imagery_dataset.ImageryDataset(config_values)
+        ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
         ds = ids.dataset()
 
         #print("Num regions = " + str(ids.total_num_regions()))
         #if ids.total_num_regions() < batch_size:
         #    raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
         #                    % (batch_size, ids.total_num_regions()))
-        ds = ds.batch(batch_size)
+        ds = ds.batch(config.batch_size())
 
         #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
-        ds = ds.repeat(num_epochs) # Need to be set here for use with train_and_evaluate
+        ds = ds.repeat(config.num_epochs()) # Need to be set here for use with train_and_evaluate
 
         if options.test_limit:
             ds = ds.take(options.test_limit)
@@ -122,41 +87,42 @@ def main(args): #pylint: disable=R0914,R0912,R0915
         return ds
 
     print('Creating experiment')
-    mlflow_tracking_dir = os.path.join(output_folder, 'mlruns')
-    if not os.path.exists(output_folder):
-        os.mkdir(output_folder)
+    mlflow_tracking_dir = os.path.join(config.output_folder(), 'mlruns')
+    if not os.path.exists(config.output_folder()):
+        os.mkdir(config.output_folder())
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
+    config_d = config.dataset()
     experiment = Experiment(mlflow_tracking_dir,
-                            'autoencoder_%s'%(config_values['input_dataset']['image_type'],),
-                            output_dir=output_folder)
-    mlflow.log_param('image type',   config_values['input_dataset']['image_type'])
-    mlflow.log_param('image folder', config_values['input_dataset']['data_directory'])
-    mlflow.log_param('chunk size',   config_values['ml']['chunk_size'])
+                            'autoencoder_%s'%(config_d.image_type()),
+                            output_dir=config.output_folder())
+    mlflow.log_param('image type',   config_d.image_type())
+    mlflow.log_param('image folder', config_d.data_directory())
+    mlflow.log_param('chunk size',   config.chunk_size())
 
     # Get these values without initializing the dataset (v1.12)
-    ds_info = imagery_dataset.ImageryDataset(config_values)
-    model = make_model(ds_info.num_bands(), config_values['ml']['chunk_size'])
+    ds_info = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    model = make_model(ds_info.num_bands(), config.chunk_size())
     print('num images = ', ds_info.num_images())
 
-    out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+    out_filename = os.path.join(config.output_folder(), config.model_dest_name())
     if options.load_model:
         print('Loading model from ' + out_filename)
         model_fn = functools.partial(tf.keras.models.load_model, out_filename)
     else:
         model_fn = functools.partial(make_model, ds_info.num_bands(),
-                                     config_values['ml']['chunk_size'])
+                                     config.chunk_size())
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
     model, _ = experiment.train_keras(model_fn, assemble_dataset,
-                                      num_epochs=config_values['ml']['num_epochs'],
-                                      num_gpus=options.num_gpus)
+                                      num_epochs=config.num_epochs(),
+                                      num_gpus=config.num_gpus())
     #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
 
 
     print('Saving Model')
-    if config_values['ml']['model_dest_name'] is not None:
+    if config.model_dest_name() is not None:
         model.save(out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
 
@@ -182,8 +148,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     # Make a non-shuffled dataset for only one image
     predict_batch = 200
     def make_classify_ds():
-        config_values['ml']['chunk_overlap'] = 0#int(config_values['ml']['chunk_size']) - 1 # TODO
-        ids = imagery_dataset.ImageryDataset(config_values)
+        ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), 1)
         if options.use_keras:
             ds = ids.data()
         else:

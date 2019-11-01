@@ -14,7 +14,7 @@ import mlflow
 import tensorflow as tf
 from tensorflow import keras
 
-from delta import config
+from delta.config import config
 from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
 
@@ -77,13 +77,7 @@ def assemble_mnist_dataset_for_predict(test_count, no_labels=False):
 def main(args_in): #pylint: disable=R0914
     """Main function for executing MNIST training test"""
 
-    usage = "usage: train_autoencoder [options]"
-    parser = argparse.ArgumentParser(usage=usage)
-
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
-
-    parser.add_argument("--config-file", dest="config_file", required=True,
-                        help="Dataset configuration file.")
 
     parser.add_argument("--use-fraction", dest="use_fraction", default=1.0, type=float,
                         help="Only use this fraction of the MNIST data, to reduce processing time.")
@@ -94,39 +88,24 @@ def main(args_in): #pylint: disable=R0914
 
     parser.add_argument("--load-model", action="store_true", dest="load_model", default=False,
                         help="Start with the model saved in the current output location.")
+    options = config.parse_args(parser, args_in, labels=False)
 
-    parser.add_argument("--num-gpus", dest="num_gpus", default=0, type=int,
-                        help="Try to use this many GPUs.")
+    config.set_value('ml', 'chunk_size', MNIST_WIDTH)
 
-    try:
-        options = parser.parse_args(args_in)
-    except argparse.ArgumentError:
-        print(usage)
-        return -1
-
-    config.load_config_file(options.config_file)
-    config_values = config.get_config()
-
-    batch_size = config_values['ml']['batch_size']
-    num_epochs = config_values['ml']['num_epochs']
-
-    config_values['ml']['chunk_size'] = MNIST_WIDTH
-
-    output_folder = config_values['ml']['output_folder']
-    if not os.path.exists(output_folder):
-        os.mkdir(output_folder)
+    if not os.path.exists(config.output_folder()):
+        os.mkdir(config.output_folder())
 
 
     # Get the MNIST train and test datasets to pass to the estimator
-    dataset_train_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
-                                         config_values['input_dataset']['shuffle_buffer_size'],
+    dataset_train_fn = functools.partial(assemble_mnist_dataset, config.batch_size(), config.num_epochs(),
+                                         config.dataset().shuffle_buffer_size(),
                                          options.use_fraction, get_test=False)
     #dataset_test_fn = functools.partial(assemble_mnist_dataset, batch_size, num_epochs,
     #                                    config_values['input_dataset']['shuffle_buffer_size'],
     #                                    options.use_fraction, get_test=True)
 
     # If the mlfow directory doesn't exist, create it.
-    mlflow_tracking_dir = os.path.join(output_folder, 'mlruns')
+    mlflow_tracking_dir = os.path.join(config.output_folder(), 'mlruns')
     if not os.path.exists(mlflow_tracking_dir):
         os.mkdir(mlflow_tracking_dir)
     ### end if
@@ -134,9 +113,9 @@ def main(args_in): #pylint: disable=R0914
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'autoencoder_Fashion_MNIST',
-                            output_dir=output_folder)
+                            output_dir=config.output_folder())
 
-    out_filename = os.path.join(output_folder, config_values['ml']['model_dest_name'])
+    out_filename = os.path.join(config.output_folder(), config.model_dest_name())
     if options.load_model:
         print('Loading model from ' + out_filename)
         model_fn = functools.partial(tf.keras.models.load_model, out_filename)
@@ -145,17 +124,17 @@ def main(args_in): #pylint: disable=R0914
         data_shape = (MNIST_WIDTH, MNIST_WIDTH, MNIST_BANDS)
         #model = make_autoencoder(data_shape, encoding_size=config_values['ml']['num_hidden'])
         model_fn = functools.partial(make_autoencoder, data_shape,
-                                     encoding_size=config_values['ml']['num_hidden'])
+                                     encoding_size=config.num_hidden())
 
     print('Training')
     # Estimator interface requires the dataset to be constructed within a function.
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
     model, _ = experiment.train_keras(model_fn, dataset_train_fn,
-                                      num_epochs=config_values['ml']['num_epochs'],
-                                      num_gpus=options.num_gpus)
+                                      num_epochs=config.num_epochs(),
+                                      num_gpus=config.num_gpus())
 
     print('Saving Model')
-    if config_values['ml']['model_dest_name'] is not None:
+    if config.model_dest_name() is not None:
         model.save(out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
     ### end if
@@ -192,7 +171,7 @@ def main(args_in): #pylint: disable=R0914
         plt.imshow(pic)
         plt.title('Output image %03d' % (i, ))
 
-        debug_image_filename = os.path.join(output_folder,
+        debug_image_filename = os.path.join(config.output_folder(),
                                             'Fashion_MNIST_input_output_%03d.png' % (i, ))
         plt.savefig(debug_image_filename)
 

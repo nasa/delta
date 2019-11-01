@@ -1,13 +1,16 @@
+import argparse
 import collections
 import configparser
 import os
 import os.path
+import sys
+
+import numpy as np
 import pkg_resources
 import appdirs
+from delta.imagery import disk_folder_cache
 
-__config_dict = {}
-
-def __recursive_update(d, u):
+def recursive_update(d, u):
     """
     Like dict.update, but recursively updates only
     values that have changed in sub-dictionaries.
@@ -17,65 +20,263 @@ def __recursive_update(d, u):
         if not isinstance(dv, collections.Mapping):
             d[k] = v
         elif isinstance(v, collections.Mapping):
-            d[k] = __recursive_update(dv, v)
+            d[k] = recursive_update(dv, v)
         else:
             d[k] = v
     return d
 
-def load_config_file(config_path):
-    """
-    Loads a config file, then updates the default configuration
-    with the loaded values.
-    """
-    global __config_dict #pylint: disable=global-statement
-    __config_dict = __recursive_update(__config_dict, __parse_config_file(config_path))
+class DatasetConfig:
+    def __init__(self, config_dict):
+        self._image_type = config_dict['image_type']
+        self._file_type = config_dict['file_type']
+        self._label_file_type = config_dict['label_file_type']
 
-def get_config():
-    return __config_dict
+        self._data_directory = config_dict['data_directory']
+        self._label_directory = config_dict['label_directory']
+        self._image_extension = config_dict['extension']
+        self._label_extension = config_dict['label_extension']
 
-def __parse_config_file(config_path):
-    """
-    Reads a config file on disk and returns it as a dictionary.
-    """
-    if not os.path.exists(config_path):
-        raise Exception('Config file does not exist: ' + config_path)
-    config_reader = configparser.ConfigParser()
+        self._num_threads = config_dict['num_input_threads']
+        self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
+        self._max_block_size = config_dict['max_block_size']
 
-    try:
-        config_reader.read(config_path)
-    except IndexError:
-        raise Exception('Failed to read config file: ' + config_path)
+    def data_directory(self):
+        return self._data_directory
+    def label_directory(self):
+        return self._label_directory
+    def image_type(self):
+        return self._image_type
+    def file_type(self):
+        return self._file_type
+    def label_file_type(self):
+        return self._label_file_type
+    def num_threads(self):
+        return self._num_threads
+    def shuffle_buffer_size(self):
+        return self._shuffle_buffer_size
+    def max_block_size(self):
+        return self._max_block_size
 
-    # Convert to a dictionary
-    config_data = {s:dict(config_reader.items(s)) for s in config_reader.sections()}
+    def _get_label(self, image_path):
+        """Returns the path to the expected label for for the given input image file"""
 
-    # Make sure all sections are there
-    for section, items in config_data.items():
-        for name, value in items.items():
-            value = os.path.expanduser(os.path.expandvars(value))
-            if value.lower() == 'none': # Useful in some cases
-                value = None
-            else:
-                try: # Convert eligible values to integers
-                    value = int(value)
-                except (ValueError, TypeError):
-                    pass
-            config_data[section][name] = value
+        # Label file should have the same name but different extension in the label folder
+        rel_path   = os.path.relpath(image_path, self._data_directory)
+        label_path = os.path.join(self._label_directory, rel_path)
+        label_path = os.path.splitext(label_path)[0] + self._label_extension
+        if not os.path.exists(label_path):
+            raise Exception('Error: Expected label file to exist at path: ' + label_path)
+        return label_path
 
-    return config_data
+    def images(self):
+        """List all of the files specified by the configuration.
+           If a label folder is provided, look for corresponding label files which
+           have the same relative path in that folder but ending with "_label.tif".
+           Returns (image_files, label_files)
+        """
 
-__dirs = appdirs.AppDirs('delta', 'nasa')
-DEFAULT_CONFIG_FILES = [pkg_resources.resource_filename('delta', 'config/delta.cfg'),
-                        os.path.join(__dirs.site_config_dir, 'delta.cfg'),
-                        os.path.join(__dirs.user_config_dir, 'delta.cfg')]
+        if self._label_directory:
+            if not os.path.exists(self._label_directory):
+                raise Exception('Supplied label folder does not exist: ' + self._label_directory)
+
+        image_files = []
+        if self._label_directory:
+            label_files = []
+        else:
+            label_files = None
+
+        for root, dummy_directories, filenames in os.walk(self._data_directory):
+            for filename in filenames:
+                if os.path.splitext(filename)[1].endswith(self._image_extension):
+                    path = os.path.join(root, filename.strip())
+                    image_files.append(path)
+
+                    if self._label_directory:
+                        label_files.append(self._get_label(path))
+
+        image_files = np.array(image_files)
+        label_files = np.array(label_files)
+        indices = np.arange(len(image_files))
+        np.random.shuffle(indices)
+
+        shuffle_images = image_files[indices]
+        shuffle_labels = label_files[indices]
+        return (shuffle_images, shuffle_labels)
+
+class DeltaConfig:
+    def __init__(self):
+        self.__config_dict = None
+        self._cache_manager = None
+        self.reset()
+
+    def reset(self):
+        """
+        Restores the config file to the default state specified in defaults.cfg.
+        """
+        self.__config_dict = {}
+        self.__config_dict['cache'] = {}
+        self.__config_dict['cache']['cache_dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
+        self.load(pkg_resources.resource_filename('delta', 'config/delta.cfg'))
+        self._cache_manager = None
+
+    def load(self, config_path):
+        """
+        Loads a config file, then updates the default configuration
+        with the loaded values.
+        """
+        if not os.path.exists(config_path):
+            raise Exception('Config file does not exist: ' + config_path)
+        config_reader = configparser.ConfigParser()
+
+        try:
+            config_reader.read(config_path)
+        except IndexError:
+            raise Exception('Failed to read config file: ' + config_path)
+
+        # Convert to a dictionary
+        config_data = {s:dict(config_reader.items(s)) for s in config_reader.sections()}
+
+        # Make sure all sections are there
+        for section, items in config_data.items():
+            for name, value in items.items():
+                value = os.path.expanduser(os.path.expandvars(value))
+                if value.lower() == 'none': # Useful in some cases
+                    value = None
+                else:
+                    try: # Convert eligible values to integers
+                        value = int(value)
+                    except (ValueError, TypeError):
+                        pass
+                config_data[section][name] = value
+
+        self.__config_dict = recursive_update(self.__config_dict, config_data)
+
+    def set_value(self, group, name, value):
+        self.__config_dict[group][name] = value
+
+    def num_gpus(self):
+        return self.__config_dict['general']['num_gpus']
+
+    def dataset(self):
+        return DatasetConfig(self.__config_dict['input_dataset'])
+
+    def chunk_size(self):
+        return self.__config_dict['ml']['chunk_size']
+    def chunk_stride(self):
+        return self.__config_dict['ml']['chunk_stride']
+    def batch_size(self):
+        return self.__config_dict['ml']['batch_size']
+    def num_epochs(self):
+        return self.__config_dict['ml']['num_epochs']
+    def output_folder(self):
+        return self.__config_dict['ml']['output_folder']
+    def model_folder(self):
+        return self.__config_dict['ml']['model_folder']
+    def model_dest_name(self):
+        return self.__config_dict['ml']['model_dest_name']
+    def num_hidden(self):
+        return self.__config_dict['ml']['num_hidden']
+    def num_classes(self):
+        return self.__config_dict['ml']['num_classes']
+
+    def cache_manager(self):
+        if self._cache_manager is None:
+            self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['cache']['cache_dir'],
+                                                              self.__config_dict['cache']['cache_limit'])
+        return self._cache_manager
+
+    def parse_args(self, parser, args, labels=True):
+        group = parser.add_argument_group('General')
+        group.add_argument("--num-gpus", dest="num_gpus", required=False, type=int,
+                           help="Try to use this many GPUs.")
+
+        group = parser.add_argument_group('Input Data')
+
+        group.add_argument('--data-config', dest='data_config', required=False,
+                           help='Dataset configuration file.')
+
+        group.add_argument("--data-folder", dest="data_folder", required=False,
+                           help="Specify data folder instead of supplying config file.")
+        group.add_argument("--image-type", dest="image_type", required=False,
+                           help="Image type (tiff, worldview, landsat, etc.).")
+        group.add_argument("--file-type", dest="file_type", required=False,
+                           help="File type (tfrecord, tiff, worldview, landsat, etc.).")
+        group.add_argument("--image-extension", dest="image_extension", required=False,
+                           help="File type for images (.tfrecord, .tiff, .tar.gz, etc.).")
+        if labels:
+            group.add_argument("--label-folder", dest="label_folder", required=False,
+                               help="Specify label folder instead of supplying config file.")
+            group.add_argument("--label-type", dest="label_type", required=False,
+                               help="Label file type.")
+            group.add_argument("--label-extension", dest="label_extension", required=False,
+                               help="File extension for labels (.tfrecord, .tiff, etc.).")
+
+        group = parser.add_argument_group('Machine Learning')
+        group.add_argument('--ml-config', dest='ml_config', required=False,
+                           help='ML configuration file.')
+        group.add_argument("--chunk-size", dest="chunk_size", required=False, type=int,
+                           help="Width of an image chunk to process at once.")
+        group.add_argument("--chunk-stride", dest="chunk_stride", required=False, type=int,
+                           help="Pixels to skip between chunks. A value of 1 means every chunk.")
+        group.add_argument("--batch-size", dest="batch_size", required=False, type=int,
+                           help="Number of features in a batch.")
+        group.add_argument("--num-epochs", dest="num_epochs", required=False, type=int,
+                           help="Number of times to run through all the features.")
+
+        try:
+            options = parser.parse_args(args[1:])
+        except argparse.ArgumentError:
+            parser.print_help(sys.stderr)
+            sys.exit(1)
+
+        if options.data_config:
+            config.load(options.data_config)
+        if options.ml_config:
+            config.load(options.ml_config)
+
+        c = self.__config_dict
+        if options.label_folder:
+            c['input_dataset']['label_directory'] = options.label_folder
+        if options.data_folder:
+            c['input_dataset']['data_directory'] = options.data_folder
+        if c['input_dataset']['data_directory'] is None:
+            print('Must specify a data_directory.', file=sys.stderr)
+            sys.exit(0)
+        if options.image_type:
+            c['input_dataset']['image_type'] = options.image_type
+        if c['input_dataset']['image_type'] is None:
+            print('Must specify an image_type.', file=sys.stderr)
+            sys.exit(0)
+        if options.file_type:
+            c['input_dataset']['file_type'] = options.file_type
+        if options.image_extension:
+            c['input_dataset']['extension'] = options.image_extension
+        if options.label_type:
+            c['input_dataset']['label_type'] = options.label_type
+        if options.label_extension:
+            c['input_dataset']['label_extension'] = options.label_extension
+        if options.batch_size:
+            c['ml']['batch_size'] = options.batch_size
+        if options.chunk_size:
+            c['ml']['chunk_size'] = options.chunk_size
+        if options.chunk_stride:
+            c['ml']['chunk_stride'] = options.chunk_stride
+        if options.num_epochs:
+            c['ml']['num_epochs'] = options.num_epochs
+
+        return options
+
+config = DeltaConfig()
 
 def __load_initial_config():
     # only contains things not in default config file
-    global __config_dict #pylint: disable=global-statement
-    __config_dict = {'cache' : {'cache_dir' : __dirs.user_cache_dir}}
-    load_config_file(DEFAULT_CONFIG_FILES[0])
-    for filename in DEFAULT_CONFIG_FILES[1:]:
+    global config #pylint: disable=global-statement
+    dirs = appdirs.AppDirs('delta', 'nasa')
+    DEFAULT_CONFIG_FILES = [os.path.join(dirs.site_config_dir, 'delta.cfg'),
+                            os.path.join(dirs.user_config_dir, 'delta.cfg')]
+
+    for filename in DEFAULT_CONFIG_FILES:
         if os.path.exists(filename):
-            load_config_file(filename)
+            config.load(filename)
 
 __load_initial_config()

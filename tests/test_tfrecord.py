@@ -11,6 +11,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
+from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import tfrecord
 from delta.imagery.image_writer import TiffWriter
@@ -108,22 +109,18 @@ def all_sources(tfrecord_filenames, worldview_filenames):
 @pytest.fixture(scope="function", params=range(2))
 def dataset(all_sources, request):
     source = all_sources[request.param]
+    config.reset() # don't load any user files
     (image_path, label_path) = source[0]
-    config_values = {'ml': {}, 'input_dataset' : {}, 'cache' : {}}
-    config_values['input_dataset']['extension'] = source[1]
-    config_values['input_dataset']['image_type'] = source[2]
-    config_values['input_dataset']['file_type'] = source[3]
-    config_values['input_dataset']['label_extension'] = source[4]
-    config_values['input_dataset']['label_file_type'] = source[5]
-    config_values['input_dataset']['data_directory'] = os.path.dirname(image_path)
-    config_values['input_dataset']['label_directory'] = os.path.dirname(label_path)
-    config_values['input_dataset']['num_input_threads'] = 1
-    config_values['input_dataset']['shuffle_buffer_size'] = 2000
-    config_values['ml']['chunk_size'] = 3
-    config_values['ml']['chunk_stride'] = 1
-    config_values['cache']['cache_dir'] = os.path.dirname(image_path)
-    config_values['cache']['cache_limit'] = 10
-    dataset = imagery_dataset.ImageryDataset(config_values)
+    config.set_value('input_dataset', 'extension', source[1])
+    config.set_value('input_dataset', 'image_type', source[2])
+    config.set_value('input_dataset', 'file_type', source[3])
+    config.set_value('input_dataset', 'label_extension', source[4])
+    config.set_value('input_dataset', 'label_file_type', source[5])
+    config.set_value('input_dataset', 'data_directory', os.path.dirname(image_path))
+    config.set_value('input_dataset', 'label_directory', os.path.dirname(label_path))
+    config.set_value('ml', 'chunk_size', 3)
+    config.set_value('cache', 'cache_dir', os.path.dirname(image_path))
+    dataset = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
     return dataset
 
 def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name

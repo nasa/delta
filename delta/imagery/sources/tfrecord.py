@@ -27,9 +27,8 @@ IMAGE_FEATURE_DESCRIPTION = {
 }
 
 class TFRecordImage(basic_sources.DeltaImage):
-    def __init__(self, path, _, num_regions, compressed=True):
-        super(TFRecordImage, self).__init__(num_regions)
-        self.path = path
+    def __init__(self, path, compressed=True):
+        super(TFRecordImage, self).__init__(path)
         self._compressed = compressed
         self._num_bands = None
         self._size = None
