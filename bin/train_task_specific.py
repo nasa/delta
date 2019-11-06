@@ -36,12 +36,11 @@ def get_debug_bands(image_type):
 
 # With TF 1.12, the dataset needs to be constructed inside a function passed in to
 # the estimator "train_and_evaluate" function to avoid getting a graph error!
-def assemble_dataset():
+def assemble_dataset(config_vals):
     # Use wrapper class to create a Tensorflow Dataset object.
-    # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.AutoencoderDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    ids = imagery_dataset.ImageryDataset(config_vals.dataset(), config_vals.chunk_size(), config_vals.chunk_stride())
     ds = ids.dataset()
-    ds = ds.repeat(config.num_epochs()).batch(config.batch_size())
+    ds = ds.repeat(config_vals.num_epochs()).batch(config_vals.batch_size())
     ds = ds.prefetch(None)
 
     return ds
@@ -67,7 +66,7 @@ def main(argsIn): #pylint: disable=R0914
     print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'task_specific_%s'%(config_d.image_type()),
-                            loss_fn='categorical_crossentropy',
+                            loss_fn=config.loss_function(),
                             output_dir=config.output_folder())
     mlflow.log_param('image type',   config_d.image_type())
     mlflow.log_param('image folder', config_d.data_directory())
@@ -81,8 +80,9 @@ def main(argsIn): #pylint: disable=R0914
 #    tf.logging.set_verbosity(tf.logging.INFO)
 
     model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
+    dataset_fn = functools.partial(assemble_dataset, config)
 
-    model = experiment.train_keras(model_fn, assemble_dataset,
+    model = experiment.train_keras(model_fn, dataset_fn,
                                    num_epochs=config.num_epochs(),
                                    num_gpus=config.num_gpus())
 

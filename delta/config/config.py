@@ -178,6 +178,8 @@ class DeltaConfig:
         return self.__config_dict['ml']['num_hidden']
     def num_classes(self):
         return self.__config_dict['ml']['num_classes']
+    def loss_function(self):
+        return self.__config_dict['ml']['loss_fn']
 
     def cache_manager(self):
         if self._cache_manager is None:
