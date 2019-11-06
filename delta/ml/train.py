@@ -124,8 +124,8 @@ class Experiment:
                 filepath=os.path.join(self.output_dir, 'model_{batch}.h5'),
                 monitor='val_loss',
                 verbose=0,
-                save_best_only=True,
                 save_freq=self.save_freq,
+                save_best_only=False,
                 ),
             tf.keras.callbacks.TensorBoard(
                 log_dir=os.path.join(self.output_dir, 'tb_logs'),
