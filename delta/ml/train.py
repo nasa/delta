@@ -3,7 +3,7 @@ Functions for training neural networks using the tensorflow 2.0 Keras api.  Also
 provides Experiment class for tracking network parameters and performance.
 '''
 
-#pylint: disable=no-self-use,unused-argument,too-many-arguments
+#pylint: disable=no-self-use,unused-argument,too-many-arguments,unexpected-keyword-arg
 import os.path
 import tensorflow as tf
 import mlflow
