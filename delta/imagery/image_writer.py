@@ -10,7 +10,7 @@ from osgeo import gdal
 #=============================================================================
 # Image writer class
 
-def write_simple_image(output_path, data, data_type=gdal.GDT_Byte):
+def write_simple_image(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
     """Just dump 2D numpy data to a single channel image file"""
 
     num_cols  = data.shape[1]
@@ -19,6 +19,12 @@ def write_simple_image(output_path, data, data_type=gdal.GDT_Byte):
 
     driver = gdal.GetDriverByName('GTiff')
     handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
+    if metadata:
+        handle.SetProjection  (metadata['projection'  ])
+        handle.SetGeoTransform(metadata['geotransform'])
+        handle.SetMetadata    (metadata['metadata'    ])
+        handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
+
     band   = handle.GetRasterBand(1)
     band.WriteArray(data)
     band.FlushCache()
@@ -101,9 +107,8 @@ class TiffWriter:
             if noTiles:
                 if self._shutdown:
                     break # Shutdown was commanded
-                else:
-                    time.sleep(SLEEP_TIME) # Wait
-                    continue
+                time.sleep(SLEEP_TIME) # Wait
+                continue
 
             if not self._handle:
                 print('ERROR: Trying to write image block before initialization!')
