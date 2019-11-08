@@ -7,6 +7,7 @@ import tensorflow as tf
 from tensorflow.python.framework.errors_impl import OutOfRangeError
 
 from delta.imagery import utilities
+from delta.imagery import rectangle
 from delta.imagery import image_reader
 from delta.imagery.sources import landsat
 from delta.imagery.sources import tfrecord
@@ -147,6 +148,57 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     else:
         tfrecord.tiffs_to_tf_record(tif_paths, output_paths, tile_size, bands_to_use,
                                     tile_overlap)
+
+    if not keep: # Remove all of the temporary files
+        os.system('rm -rf ' + work_folder)
+
+    return (image_size, metadata)
+
+
+def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_label, tile_size,
+                                 keep=False, redo=False, tile_overlap=0):
+    """Specialized convertion function that splits one Worldview image into 8 output TFrecord files."""
+
+    if not os.path.exists(work_folder):
+        os.mkdir(work_folder)
+
+    # Generate the intermediate tiff files
+    if is_label:
+        tif_paths, bands_to_use = _convert_image_to_tfrecord_tif(input_path, work_folder)
+    else:
+        tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path, work_folder, redo)
+
+    # Gather some image information which is hard to get later on
+    reader = image_reader.TiffReader()
+    reader.open_image(tif_paths[0]) # TODO: Check this indexing!
+    image_size = reader.image_size()
+    metadata   = reader.get_all_metadata()
+
+    # Split the image into eight parts
+    split_width  = image_size[0] / 4
+    split_height = image_size[1] / 2
+    rect = rectangle.Rectangle(0,0,width=image_size[0],height=image_size[1])
+    rois = rect.make_tile_rois(split_width, split_height, include_partials=False, overlap_amount=0)
+
+    for (i, roi) in enumerate(rois):
+
+        # Use gdal_translate to create a subset of the TOA image
+        output_path  = output_prefix + '_section_' + str(i) + '.tfrecord'
+        section_path = os.path.join(work_folder, 'section_' + str(i) + '.tif')
+        if utilities.file_is_good(section_path) and not redo:
+            print('Section file already exists: ' + section_path)
+        else:
+            cmd = ('gdal_translate %s %s -srcwin %d %d %d %d'
+                   % (tif_paths[0], section_path, roi.min_x, roi.min_y, roi.width(), roi.height()))
+            print(cmd)
+            os.system(cmd)
+
+        # Convert the subset image to tfrecord
+        if utilities.file_is_good(output_path) and not redo:
+            print('Using existing TFRecord file: ' + str(output_path))
+        else:
+            tfrecord.tiffs_to_tf_record([section_path], output_path, tile_size, bands_to_use,
+                                        tile_overlap)
 
     if not keep: # Remove all of the temporary files
         os.system('rm -rf ' + work_folder)
