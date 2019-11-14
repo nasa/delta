@@ -90,13 +90,12 @@ def test_geotiff_write(tmpdir):
     (block_size, (blocks_x, blocks_y)) = input_reader.get_block_info(1)
     (cols, rows) = input_reader.image_size()
 
-    writer = TiffWriter()
-    writer.init_output_geotiff(str(new_tiff), cols, rows, input_reader.nodata_value(1),
-                               tile_width=block_size[0],
-                               tile_height=block_size[1],
-                               metadata=input_reader.get_all_metadata(),
-                               num_bands=input_reader.num_bands(),
-                               data_type=input_reader.data_type(1))
+    writer = TiffWriter(str(new_tiff), cols, rows, input_reader.num_bands(),
+                        data_type=input_reader.data_type(1),
+                        tile_width=block_size[0],
+                        tile_height=block_size[1],
+                        metadata=input_reader.get_all_metadata(),
+                        no_data_value=input_reader.nodata_value(1))
 
     input_bounds = rectangle.Rectangle(0, 0, width=cols, height=rows)
     output_rois = []
@@ -126,12 +125,11 @@ def test_geotiff_write(tmpdir):
 
         # Crop the desired data portion and write it out.
         for i in range(input_reader.num_bands()):
-            output_data = data_vec[i][y_0:y_1, x_0:x_1]
-            assert data_vec[i].shape == (y_1 - y_0, x_1 - x_0)
-            writer.write_geotiff_block(output_data, col, row, band=i)
+            output_data = data_vec[i, y_0:y_1, x_0:x_1]
+            assert data_vec.shape == (input_reader.num_bands(), y_1 - y_0, x_1 - x_0)
+            writer.write_block(output_data, col, row, band=i)
 
     input_reader.process_rois(output_rois, callback_function)
-    writer.finish_writing_geotiff()
-    writer.cleanup()
+    del writer
 
     check_same('data/landsat.tiff', str(new_tiff))

@@ -58,10 +58,10 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     tile_gen_overlap = chunk_overlap # TODO: The tfrecord can't be cached if this changes!
     include_partials = (tile_gen_overlap>0) # This is how it is decided in this function call, could be changed.
     image_size, metadata = \
-      tfrecord_conversions.convert_image_to_tfrecord(options.input_image, tfrecord_path,
+      tfrecord_conversions.convert_image_to_tfrecord(options.input_image, [tfrecord_path],
                                                      options.work_folder,
                                                      (TILE_SIZE, TILE_SIZE), options.image_type,
-                                                     keep=True, tile_overlap=tile_gen_overlap)
+                                                     tile_overlap=tile_gen_overlap)
     if not os.path.exists(tfrecord_path):
         print('Failed to convert input image!')
         return -1

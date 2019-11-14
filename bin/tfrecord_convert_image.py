@@ -92,7 +92,7 @@ def main(argsIn):
     if options.reverse:
         unpack_image_record(options.input_images[0], options.output_path)
     else:
-        tfrecord.tiffs_to_tf_record(options.input_images, options.output_path, options.tile_size)
+        tfrecord.tiffs_to_tf_record(options.input_images, [options.output_path], options.tile_size)
 
     print('Script is finished.')
     return 0

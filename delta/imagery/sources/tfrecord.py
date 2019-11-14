@@ -130,15 +130,15 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
                                               include_partials, overlap_amount)
 
 
-    write_compressed = (len(record_paths) == 1) or (isinstance(record_paths, str))
+    write_compressed = (len(record_paths) == 1)
     if write_compressed:
         # Set up the output file, it will contain all the tiles from this input image.
-        writer = make_tfrecord_writer(record_paths, compress=True)
+        writer = make_tfrecord_writer(record_paths[0], compress=True)
 
     if not bands_to_use:
         bands_to_use = range(1,num_bands+1)
 
-    def callback_function(output_roi, read_roi, data_vec):
+    def callback_function(output_roi, read_roi, data):
         """Callback function to write the first channel to the output file."""
 
         # Figure out where the desired output data falls in read_roi
@@ -147,8 +147,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
         # Pack all bands into a numpy array in the shape TF will expect later.
         array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
         for band in bands_to_use:
-            band_data = data_vec[band-1]
-            array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
+            array[:,:, band-1] = data[band-1, y0:y1, x0:x1] # Crop the correct region
 
         if write_compressed: # Single output file
             write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
@@ -171,7 +170,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
     print('Writing TFRecord data...')
 
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
-    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
+    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed, show_progress=True)
     if write_compressed:
         print('Done writing: ' + str(input_paths))
     else:

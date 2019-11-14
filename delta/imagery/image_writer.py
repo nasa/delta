@@ -1,8 +1,6 @@
 """
 Geotiff writing class using GDAL with dedicated writer thread.
 """
-import threading
-import time
 import math
 
 from osgeo import gdal
@@ -45,37 +43,43 @@ def write_multiband_image(output_path, data, data_type=gdal.GDT_Byte):
 
 
 class TiffWriter:
-
     """Class to manage block writes to a Geotiff file.
-       TODO: Make sure everything works with opening and closing files in sequence!
     """
+    def __init__(self, path, num_rows, num_cols, num_bands=1, data_type=gdal.GDT_Byte, #pylint:disable=too-many-arguments
+                 tile_width=256, tile_height=256, no_data_value=None, metadata=None):
+        self._width  = num_cols
+        self._height = num_rows
+        self._tile_height = tile_height
+        self._tile_width  = tile_width
 
-    def __init__(self):
-        self._handle         = None
-        self._shutdown       = False # Turned on in __del__()
-        self._writeQueue     = []
-        self._writeQueueLock = threading.Lock()
+        # Constants
+        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
+        options += ['BLOCKXSIZE='+str(self._tile_width),
+                    'BLOCKYSIZE='+str(self._tile_height)]
+        MIN_SIZE_FOR_TILES=100
+        if num_cols > MIN_SIZE_FOR_TILES or num_rows > MIN_SIZE_FOR_TILES:
+            options += ['TILED=YES']
 
-        self._writerThread = threading.Thread(target=self._internal_writer)
+        driver = gdal.GetDriverByName('GTiff')
+        self._handle = driver.Create(path, num_cols, num_rows, num_bands, data_type, options)
+        if not self._handle:
+            raise Exception('Failed to create output file: ' + path)
 
-        self._writerThread.start()
+        if no_data_value is not None:
+            for i in range(1,num_bands+1):
+                self._handle.GetRasterBand(i).SetNoDataValue(no_data_value)
 
-        self._width  = 0
-        self._height = 0
-        self._tile_width  = 256
-        self._tile_height = 256
+        # Set the metadata values used in image_reader.py
+        # TODO: May need to adjust the order here to work with some files
+        if metadata:
+            self._handle.SetProjection  (metadata['projection'  ])
+            self._handle.SetGeoTransform(metadata['geotransform'])
+            self._handle.SetMetadata    (metadata['metadata'    ])
+            self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
 
     def __del__(self):
-        '''Try this just in case, but it may not work!'''
-        self.cleanup()
-
-    def cleanup(self):
-        self.finish_writing_geotiff()
-
-        # Shut down the writing thread, giving it ten minutes to finish.
-        TIMEOUT = 60*10
-        self._shutdown = True
-        self._writerThread.join(TIMEOUT)
+        self._handle.FlushCache()
+        self._handle = None
 
     def get_size(self):
         return (self._width, self._height)
@@ -88,101 +92,7 @@ class TiffWriter:
         num_y = int(math.ceil(self._height / self._tile_height))
         return (num_x, num_y)
 
-    def _internal_writer(self):
-        '''Internal thread that writes blocks as they become available.'''
-
-        SLEEP_TIME = 0.2
-
-        blockCounter = 0
-        while True:
-
-            # Check the write queue
-            with self._writeQueueLock:
-                noTiles = not self._writeQueue
-                # If there is a tile, grab it while we have tho lock.
-                if not noTiles:
-                    parts = self._writeQueue.pop(0)
-
-            # Wait until a tile is ready to be written
-            if noTiles:
-                if self._shutdown:
-                    break # Shutdown was commanded
-                time.sleep(SLEEP_TIME) # Wait
-                continue
-
-            if not self._handle:
-                print('ERROR: Trying to write image block before initialization!')
-                break
-
-            # Write out the block
-            try:
-                self._write_geotiff_block_internal(parts[0], parts[1], parts[2], parts[3])
-                blockCounter += 1
-            except Exception as e: #pylint: disable=W0703
-                print(str(e))
-                print('Exception on: %s, %s, %s, %s' % (str(parts[0].shape), str(parts[1]),
-                                                        str(parts[2]), str(parts[3])))
-
-        print('Write thread ended after writing ' + str(blockCounter) +' blocks.')
-
-
-    def _write_geotiff_block_internal(self, data, block_col, block_row, band):
-        '''Write a single block to disk in a geotiff file'''
-
-        if not self._handle:
-            raise Exception('Failed to write block: output file not initialized!')
-
-        band = self._handle.GetRasterBand(band+1)
-        #stuff = dir(band)
-        #for s in stuff:
-        #    print(s)
-        #band.WriteBlock(block_col, block_row, data) This function is not supported!
-
-        bSize = band.GetBlockSize()
-        band.WriteArray(data, block_col*bSize[0], block_row*bSize[1])
-
-        #band.FlushBlock(block_col, block_row) This function is not supported!
-        band.FlushCache() # TODO: Call after every tile?
-
-
-    def init_output_geotiff(self, path, num_rows, num_cols, noDataValue, #pylint: disable=R0913
-                            tile_width=256, tile_height=256, metadata=None,
-                            data_type=gdal.GDT_Byte, num_bands=1):
-        '''Set up a geotiff file for writing and return the handle.'''
-        # TODO: Copy metadata from the source file.
-
-        self._width  = num_cols
-        self._height = num_rows
-        self._tile_height = tile_height
-        self._tile_width  = tile_width
-
-        # Constants
-        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        options += ['BLOCKXSIZE='+str(self._tile_width),
-                    'BLOCKYSIZE='+str(self._tile_height)]
-        # TODO: Some tile sizes fail to write if copied from the input image!!
-        MIN_SIZE_FOR_TILES=100
-        if num_cols > MIN_SIZE_FOR_TILES or num_rows > MIN_SIZE_FOR_TILES:
-            options += ['TILED=YES']
-
-        driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, num_cols, num_rows, num_bands, data_type, options)
-        if not self._handle:
-            raise Exception('Failed to create output file: ' + path)
-
-        if noDataValue is not None:
-            for i in range(1,num_bands+1):
-                self._handle.GetRasterBand(i).SetNoDataValue(noDataValue)
-
-        # Set the metadata values used in image_reader.py
-        # TODO: May need to adjust the order here to work with some files
-        if metadata:
-            self._handle.SetProjection  (metadata['projection'  ])
-            self._handle.SetGeoTransform(metadata['geotransform'])
-            self._handle.SetMetadata    (metadata['metadata'    ])
-            self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
-
-    def write_geotiff_block(self, data, block_col, block_row, band=0):
+    def write_block(self, data, block_col, block_row, band=0):
         '''Add a tile write command to the queue.
            Partial tiles are allowed at the right at bottom edges.
         '''
@@ -211,45 +121,7 @@ class TiffWriter:
                                 + ', output file block size is '
                                 + str((self._tile_width, self._tile_height)))
 
-        if not self._handle:
-            time.sleep(0.5) # Sleep a short time then check again in case of race conditions.
-            if not self._handle:
-                raise Exception('Error: Data block added before initialization!')
+        gdal_band = self._handle.GetRasterBand(band+1)
 
-        # Grab the lock and append to it.
-        with self._writeQueueLock:
-            self._writeQueue.append((data, block_col, block_row, band))
-
-    def finish_writing_geotiff(self):
-        '''Call when we have finished writing a geotiff file.'''
-
-        if not self._handle:
-            return
-
-        MAX_WAIT_TIME = 180  # Wait up to this long to finish writing tiles.
-        SLEEP_TIME    = 1.0 # Wait interval
-        totalWait     = 0.0
-        print('Finishing TIFF writing...')
-        while True:
-            with self._writeQueueLock:
-                numTiles = len(self._writeQueue)
-            if numTiles == 0:
-                print('All tiles have been written!')
-                break
-
-            if totalWait >= MAX_WAIT_TIME:
-                print('Waited too long to finish, forcing shutdown!')
-                break # Waited long enough, force shutdown.
-
-            print('Waiting on '+str(numTiles)+' writes to finish...')
-            totalWait += SLEEP_TIME # Wait a bit longer
-            time.sleep(SLEEP_TIME)
-
-        # Make sure that the write queue is empty.
-        with self._writeQueueLock:
-            self._writeQueue = []
-
-        # Finish whatever we are writing, then close the handle.
-        band = self._handle.GetRasterBand(1)
-        band.FlushCache()
-        self._handle = None
+        bSize = gdal_band.GetBlockSize()
+        gdal_band.WriteArray(data, block_col*bSize[0], block_row*bSize[1])

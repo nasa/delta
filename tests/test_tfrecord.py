@@ -78,18 +78,14 @@ def worldview_filenames():
     os.mkdir(image_dir)
     os.mkdir(vendor_dir)
     open(imd_path, 'a').close() # only metadata file we use
-    image_writer = TiffWriter()
-    label_writer = TiffWriter()
-    image_writer.init_output_geotiff(image_path, size, size, None, data_type=gdal.GDT_Float32, num_bands=1)
-    label_writer.init_output_geotiff(label_path, size, size, None, data_type=gdal.GDT_Byte, num_bands=1)
+    image_writer = TiffWriter(image_path, size, size, data_type=gdal.GDT_Float32)
+    label_writer = TiffWriter(label_path, size, size, data_type=gdal.GDT_Byte)
 
     (image, label) = generate_tile(size, size)
-    image_writer.write_geotiff_block(image[:,:,0], 0, 0, 0)
-    label_writer.write_geotiff_block(label, 0, 0, 0)
-    image_writer.finish_writing_geotiff()
-    label_writer.finish_writing_geotiff()
-    image_writer.cleanup()
-    label_writer.cleanup()
+    image_writer.write_block(image[:,:,0], 0, 0, 0)
+    label_writer.write_block(label, 0, 0, 0)
+    del image_writer
+    del label_writer
 
     z = zipfile.ZipFile(zip_path, mode='x')
     z.write(image_path, arcname=image_name + '.tif')

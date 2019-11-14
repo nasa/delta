@@ -113,14 +113,14 @@ def _convert_image_to_tfrecord_worldview(input_path, work_folder, redo=False):
 
 
 def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, image_type,
-                              keep=False, redo=False, tile_overlap=0):
+                              redo=False, tile_overlap=0):
     """Convert a single image file (possibly compressed) of image_type into TFRecord format.
        If one output path is provided, all output data will be stored there compressed.  If
        multiple output paths are provided, the output data will be divided randomly among those
        files and they will be uncompressed.
        work_folder is deleted if the conversion is successful."""
 
-    single_output = (len(output_paths) == 1) or (isinstance(output_paths, str))
+    single_output = (len(output_paths) == 1)
 
     if not os.path.exists(work_folder):
         os.mkdir(work_folder)
@@ -143,14 +143,11 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     image_size = reader.image_size()
     metadata   = reader.get_all_metadata()
 
-    if single_output and utilities.file_is_good(output_paths) and not redo:
+    if single_output and utilities.file_is_good(output_paths[0]) and not redo:
         print('Using existing TFRecord file: ' + str(output_paths))
     else:
         tfrecord.tiffs_to_tf_record(tif_paths, output_paths, tile_size, bands_to_use,
                                     tile_overlap)
-
-    if not keep: # Remove all of the temporary files
-        os.system('rm -rf ' + work_folder)
 
     return (image_size, metadata)
 
@@ -197,7 +194,7 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
         if utilities.file_is_good(output_path) and not redo:
             print('Using existing TFRecord file: ' + str(output_path))
         else:
-            tfrecord.tiffs_to_tf_record([section_path], output_path, tile_size, bands_to_use,
+            tfrecord.tiffs_to_tf_record([section_path], [output_path], tile_size, bands_to_use,
                                         tile_overlap)
 
     if not keep: # Remove all of the temporary files

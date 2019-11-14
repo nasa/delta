@@ -17,6 +17,10 @@ from delta.imagery import utilities
 
 #------------------------------------------------------------------------------
 
+def progress_bar(text, fill_amount, prefix = '', length = 80):
+    filled_length = int(length * fill_amount)
+    prog_bar = '█' * filled_length + '-' * (length - filled_length)
+    print('\r%s |%s| %s' % (prefix, prog_bar, text), end = '\r')
 
 class TiffReader:
     """Wrapper class to help read image data from GeoTiff files"""
@@ -126,12 +130,15 @@ class TiffReader:
         bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
         return ans.get_intersection(bounds)
 
-    def read_pixels(self, roi, band):
+    def read_pixels(self, roi, band, buf=None):
         """Reads in the requested region of the image."""
         band_handle = self._handle.GetRasterBand(band)
 
-        data = band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height())
-        return data
+        if buf is None:
+            data = band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height())
+            return data
+        band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height(), buf_obj=buf)
+        return buf
 
 
 
@@ -253,7 +260,7 @@ class MultiTiffFileReader():
 
         return result
 
-    def process_rois(self, requested_rois, callback_function, strict_order=False):
+    def process_rois(self, requested_rois, callback_function, strict_order=False, show_progress=False):
         """Process the given region broken up into blocks using the callback function.
            Each block will get the image data from each input image passed into the function.
            Function definition TBD!
@@ -271,15 +278,25 @@ class MultiTiffFileReader():
 
         image_size = self.image_size()
         whole_bounds = rectangle.Rectangle(0, 0, width=image_size[0], height=image_size[1])
-        for roi in block_rois:
+        for roi in requested_rois:
             if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi))
 
+        buf = np.zeros(shape=(self.num_bands(), 1, 1),
+                       dtype=utilities.gdal_dtype_to_numpy_type(self.data_type()))
+
+        total_rois = len(block_rois)
+        num_remaining = total_rois
         # Loop until we have processed all of the blocks.
         while block_rois:
             # For the next (output) block, figure out the (input block) aligned
             # data read that we need to perform to get it.
             read_roi = first_image.get_block_aligned_read_roi(block_rois[0])
+
+            if read_roi.width() > buf.shape[2] or read_roi.height() > buf.shape[1]: # pylint: disable=E1136
+                new_height, new_width = (max(buf.shape[1], read_roi.height()), max(buf.shape[2], read_roi.width())) # pylint: disable=E1136
+                buf = np.zeros(shape=(self.num_bands(), new_height, new_width),
+                               dtype=utilities.gdal_dtype_to_numpy_type(self.data_type()))
 
             # If we don't have enough memory to load the ROI, wait here until we do.
             self.sleep_until_mem_free_for_roi(read_roi)
@@ -288,15 +305,13 @@ class MultiTiffFileReader():
             #       in the same order!
             # Read in all of the data for this region, appending all bands for
             # each input image.
-            data_vec = []
             for image in self._image_handles:
                 for band in range(1, image.num_bands()+1):
-                    data_vec.append(image.read_pixels(read_roi, band))
+                    image.read_pixels(read_roi, band, buf=buf[band-1])
 
             # Loop through the remaining ROIs and apply the callback function to each
             # ROI that is contained in the section we read in.
             index = 0
-            num_processed = 0
             while index < len(block_rois):
 
                 roi = block_rois[index]
@@ -310,11 +325,16 @@ class MultiTiffFileReader():
                 # any kind of cropping here.
 
                 # Execute the callback function with the data vector.
-                callback_function(roi, read_roi, data_vec)
+                callback_function(roi, read_roi, buf[:, 0:read_roi.height(), 0:read_roi.width()])
 
                 # Instead of advancing the index, remove the current ROI from the list.
                 block_rois.pop(index)
-                num_processed += 1
+                num_remaining -= 1
+                if show_progress:
+                    progress_bar('%d / %d' % (total_rois - num_remaining, total_rois),
+                                 (total_rois - num_remaining) / total_rois, prefix='Blocks Processed:')
+        if show_progress:
+            print()
 
 def get_block_and_roi(output_roi, read_roi, block_size):
     """Helper function to use with MultiTiffFileReader process_roi callback functions.

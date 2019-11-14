@@ -2,8 +2,6 @@
 Higher level functions for dealing with large images.
 """
 
-import time
-
 from delta.imagery import image_reader, image_writer, rectangle, utilities
 
 
@@ -30,17 +28,15 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         block_size_out[Y] = int(tile_size[Y])
 
     # Set up the output image
-    writer = image_writer.TiffWriter()
-    writer.init_output_geotiff(output_path, num_rows, num_cols, nodata_out,
-                               block_size_out[X], block_size_out[Y],
-                               input_metadata,
-                               utilities.get_gdal_data_type('float'),
-                               num_bands)
+    writer = image_writer.TiffWriter(output_path, num_rows, num_cols, num_bands,
+                                     utilities.get_gdal_data_type('float'),
+                                     block_size_out[X], block_size_out[Y],
+                                     nodata_out, input_metadata)
 
     input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(block_size_out[X], block_size_out[Y], include_partials=True)
 
-    def callback_function(output_roi, read_roi, data_vec):
+    def callback_function(output_roi, read_roi, data):
         """Callback function to write the first channel to the output file."""
 
         # Figure out some ROI positioning values
@@ -48,25 +44,18 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
 
         # Loop on bands
         for band in range(0,num_bands):
-            data = data_vec[band]
-
             # Crop the desired data portion and apply the user function.
             if num_bands == 1:
-                output_data = user_function(data[y0:y1, x0:x1])
+                output_data = user_function(data[band, y0:y1, x0:x1])
             else:
-                output_data = user_function(data[y0:y1, x0:x1], band)
+                output_data = user_function(data[band, y0:y1, x0:x1], band)
 
             # Write out the result
-            writer.write_geotiff_block(output_data, col, row, band)
+            writer.write_block(output_data, col, row, band)
 
     print('Writing TIFF blocks...')
-    input_reader.process_rois(output_rois, callback_function)
+    input_reader.process_rois(output_rois, callback_function, show_progress=True)
 
-    writer.finish_writing_geotiff()
-
-    time.sleep(2)
-    writer.cleanup()
+    del writer
 
     print('Done writing: ' + output_path)
-
-    image = None # Close the image  #pylint: disable=W0612
