@@ -1,38 +1,19 @@
 """
 Script test out the image chunk generation calls.
 """
-#pylint: disable=C0413
 import sys
 import os
 import argparse
 import functools
-# import matplotlib.pyplot as plt
-# import numpy as np
-
-### Tensorflow includes
 
 import mlflow
 
 import tensorflow as tf
-# from tensorflow import keras
-#import matplotlib.pyplot as plt
 
-from delta.config import config #pylint: disable=C0413
-from delta.imagery import imagery_dataset #pylint: disable=C0413
-from delta.ml.train import Experiment  #pylint: disable=C0413
+from delta.config import config
+from delta.imagery import imagery_dataset
+from delta.ml.train import Experiment
 from delta.ml.networks import make_task_specific
-
-
-
-# TODO: Move this function!
-def get_debug_bands(image_type):
-    '''Pick the best bands to use for debug images'''
-    bands = [0]
-    if image_type == 'worldview':
-        # TODO: Distinguish between WV2 and WV3
-        bands = [4,2,1] # RGB
-    # TODO: Support more sensors
-    return bands
 
 # With TF 1.12, the dataset needs to be constructed inside a function passed in to
 # the estimator "train_and_evaluate" function to avoid getting a graph error!
@@ -45,7 +26,7 @@ def assemble_dataset(config_vals):
 
     return ds
 
-def main(argsIn): #pylint: disable=R0914
+def main(argsIn):
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
     config.parse_args(parser, argsIn)
@@ -99,4 +80,4 @@ def main(argsIn): #pylint: disable=R0914
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv))

@@ -116,10 +116,10 @@ class DeltaConfig:
         self.__config_dict = {}
         self.__config_dict['cache'] = {}
         self.__config_dict['cache']['cache_dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
-        self.load(pkg_resources.resource_filename('delta', 'config/delta.cfg'))
+        self.load(pkg_resources.resource_filename('delta', 'config/delta.cfg'), ignore_new=True)
         self._cache_manager = None
 
-    def load(self, config_path):
+    def load(self, config_path, ignore_new=False):
         """
         Loads a config file, then updates the default configuration
         with the loaded values.
@@ -139,8 +139,15 @@ class DeltaConfig:
         # Make sure all sections are there
         for section, items in config_data.items():
             for name, value in items.items():
-                value = os.path.expanduser(os.path.expandvars(value))
-                if value.lower() == 'none': # Useful in some cases
+                if not ignore_new and (section not in self.__config_dict or name not in self.__config_dict[section]):
+                    print('Unrecognized key %s:%s in config file %s.' % (section, name, config_path), file=sys.stderr)
+                    sys.exit(1)
+                value = os.path.expandvars(value)
+                if 'folder' in name or 'directory' in name:
+                    value = os.path.expanduser(value)
+                    # make relative paths relative to this config file
+                    value = os.path.normpath(os.path.join(os.path.dirname(config_path), value))
+                if value.lower() == 'none' or value == '': # Useful in some cases
                     value = None
                 else:
                     try: # Convert eligible values to integers
