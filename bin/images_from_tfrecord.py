@@ -17,7 +17,7 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
     """Extract entries from a tfrecord file and write them as plain image files"""
 
     # Get size information from the file
-    image = tfrecord.TFRecordImage(input_path, None, 1, compressed)
+    image = tfrecord.TFRecordImage(input_path, compressed)
     num_bands = image.num_bands()
 
     (input_region_height, input_region_width) = image.size()

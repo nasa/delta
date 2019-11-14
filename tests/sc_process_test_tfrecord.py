@@ -121,8 +121,8 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
 
 
-    print('Saving Model')
     if config.model_dest_name() is not None:
+        print('Saving Model to file: ' + out_filename)
         model.save(out_filename, overwrite=True, include_optimizer=True)
         mlflow.log_artifact(out_filename)
 

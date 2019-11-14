@@ -67,6 +67,16 @@ def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks
     return model, history
 ### end train
 
+def load_keras_model(file_path, num_gpus=1):
+    """Loads a saved keras model from disk ready to use multiple_GPUs.
+       This function is NOT compatible with the Experiment class!"""
+    devices  = get_devices(num_gpus)
+    strategy = get_distribution_strategy(devices)
+    with strategy.scope():
+        model = tf.keras.models.load_model(file_path)
+        return model
+
+
 class Experiment:
     """TODO"""
 
@@ -153,9 +163,9 @@ class Experiment:
         return scores
     ### end def test
 
-    def load_model(self, src):
-        """TODO"""
-        raise NotImplementedError('loading models is not yet implemented')
+    #def load_model(self, src):
+    #    """TODO"""
+    #    raise NotImplementedError('loading models is not yet implemented')
 
     def log_parameters(self, params):
         """

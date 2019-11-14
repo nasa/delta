@@ -44,11 +44,11 @@ class ImageryDataset:
 
         try:
             # TODO: remove
-            self._data_scale_factor = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
+            self._data_scale_factor  = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
         except KeyError:
             print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
                   + ', defaulting to 1.0 (no scaling)')
-            self._data_scale_factor = 1.0
+            self._data_scale_factor  = 1.0
 
         if dataset_config.file_type() not in IMAGE_CLASSES:
             raise Exception('file_type %s not recognized.' % dataset_config.file_type())
@@ -143,7 +143,7 @@ class ImageryDataset:
         chunk_set = self._chunk_images(self._load_images(self._image_files, self._num_bands, tf.float32))
 
         # Scale data into 0-1 range
-        # TODO: remove this
+        # TODO: remove this?
         chunk_set = chunk_set.map(lambda x: tf.math.divide(x, self._data_scale_factor))
 
         # Break up the chunk sets to individual chunks
@@ -194,4 +194,43 @@ class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
     def labels(self):
+        return self.data()
+
+class ClassifyDataset(ImageryDataset):
+    """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
+
+    def __init__(self, dataset_config, image_file, chunk_size, chunk_stride=1): #pylint: disable=W0231
+        """Initialize the dataset based on the specified config values."""
+
+        # Record some of the config values
+        self._chunk_size = chunk_size
+        self._chunk_stride = chunk_stride
+
+        try:
+            # TODO: remove
+            self._data_scale_factor  = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
+        except KeyError:
+            print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
+                  + ', defaulting to 1.0 (no scaling)')
+            self._data_scale_factor  = 1.0
+
+        if dataset_config.file_type() not in IMAGE_CLASSES:
+            raise Exception('file_type %s not recognized.' % dataset_config.file_type())
+        self._image_class = IMAGE_CLASSES[dataset_config.file_type()]
+        self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
+        if not self._use_tfrecord:
+            raise NotImplementedError('Classification only supported for TFRecord images!')
+
+        self._image_files = [image_file]
+
+        # Load the first image to get the number of bands for the input files.
+        self._num_bands = self._image_class(self._image_files[0]).num_bands()
+
+        # Tell TF to use the functions above to load our data.
+        self._num_parallel_calls  = dataset_config.num_threads()
+
+
+    def dataset(self, filter_zero=True, shuffle=True):
+        """Return the underlying TensorFlow dataset object that this class creates"""
+        # Just classifying so we only need the input images
         return self.data()

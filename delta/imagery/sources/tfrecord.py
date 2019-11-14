@@ -107,7 +107,8 @@ def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_ba
 
     tfrecord_writer.write(example.SerializeToString())
 
-def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
+def tiffs_to_tf_record(input_paths, record_paths, tile_size,
+                       bands_to_use=None, overlap_amount=0):
     """Convert a image consisting of one or more .tif files into a TFRecord file
        split into multiple tiles so that it is easy to read using TensorFlow.
        All bands are used unless bands_to_use is set to a list of one-indexed band indices,
@@ -124,7 +125,10 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size, bands_to_use=None):
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
     input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
-    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials=False)
+    include_partials = (overlap_amount > 0) # These are always used together
+    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1],
+                                              include_partials, overlap_amount)
+
 
     write_compressed = (len(record_paths) == 1) or (isinstance(record_paths, str))
     if write_compressed:
