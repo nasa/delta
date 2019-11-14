@@ -74,6 +74,7 @@ def main(argsIn): #pylint: disable=R0914
     print('Creating model')
     in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
     out_data_shape = config.num_classes()
+    print(out_data_shape)
     print('Training')
 
     # Estimator interface requires the dataset to be constructed within a function.
