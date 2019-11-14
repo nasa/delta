@@ -30,11 +30,6 @@ PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
                                'landsat'  : 120.0, # TODO
                                'tiff'      : 255.0,
                                'rgba'      : 255.0}
-LABEL_MAX_VALUE = {'worldview': 2.0,
-                   'landsat'  : 1.0, # TODO
-                   'tiff'     : 1.0, # TODO
-                   'rgba'     : 1.0} # TODO
-
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -50,12 +45,10 @@ class ImageryDataset:
         try:
             # TODO: remove
             self._data_scale_factor  = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
-            self._label_scale_factor = LABEL_MAX_VALUE[dataset_config.image_type()]
         except KeyError:
             print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
                   + ', defaulting to 1.0 (no scaling)')
             self._data_scale_factor  = 1.0
-            self._label_scale_factor = 1.0
 
         if dataset_config.file_type() not in IMAGE_CLASSES:
             raise Exception('file_type %s not recognized.' % dataset_config.file_type())
@@ -158,10 +151,6 @@ class ImageryDataset:
 
     def labels(self):
         label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files).map(self._reshape_labels)
-
-        # Scale data into 0-1 range
-        # TODO: remove this?
-        label_set = label_set.map(lambda x: tf.math.divide(x, self._label_scale_factor))
 
         return label_set.flat_map(tf.data.Dataset.from_tensor_slices)
 

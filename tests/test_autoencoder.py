@@ -15,7 +15,7 @@ MNIST_WIDTH = 28 # The images are 28x28 pixels, single channel
 MNIST_BANDS = 1
 MNIST_MAX = 255.0 # Input images are 0-255
 
-def dataset_fashion_mnist(batch_size=200, num_epochs=5, shuffle_buffer_size=10, reduce_by=4):
+def dataset_fashion_mnist(batch_size=200, num_epochs=5, shuffle_buffer_size=10, reduce_by=16):
     '''
     Creates a Tensorflow dataset out of the MNIST fashion dataset for training an
     autoencode
@@ -29,11 +29,11 @@ def dataset_fashion_mnist(batch_size=200, num_epochs=5, shuffle_buffer_size=10, 
 
     d_s = tf.data.Dataset.zip((tf.data.Dataset.from_tensor_slices(train_images),
                                tf.data.Dataset.from_tensor_slices(train_images)))
-    d_s = d_s.shuffle(shuffle_buffer_size).repeat(num_epochs).batch(batch_size)
+    d_s = d_s.shuffle(shuffle_buffer_size).batch(batch_size).repeat(num_epochs)
     return d_s
 
 
-def test_dense_autoencoder(reduce_by=10, num_epochs=2, err_thresh=0.05):
+def test_dense_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.1):
     '''
     tests the performance of the dense autoencoder on the Fashion MNIST dataset
     '''
@@ -47,7 +47,7 @@ def test_dense_autoencoder(reduce_by=10, num_epochs=2, err_thresh=0.05):
     assert model is not None
     assert history.history['loss'][-1] < err_thresh, "Terminal Loss was greater than %f" % err_thresh
 
-def test_conv_autoencoder(reduce_by=10, num_epochs=2, err_thresh=0.05):
+def test_conv_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.1):
     '''
     tests the performance of the convolutional autoencoder on the Fashion MNIST dataset
     '''
