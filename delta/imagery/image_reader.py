@@ -3,11 +3,8 @@ Classes for block-aligned reading from multiple Geotiff files.
 """
 #pylint: disable=no-self-use,unused-argument,too-many-arguments,too-many-locals,fixme
 import os
-import time
 import copy
 import math
-
-import psutil
 
 from osgeo import gdal
 import numpy as np
@@ -213,31 +210,6 @@ class MultiTiffFileReader():
         """All input images should share the same metadata"""
         return self._image_handles[0].get_all_metadata()
 
-    def estimate_memory_usage(self, roi):
-        """Estimate the amount of memory (in MB) that will be used to store the
-           requested pixel roi.
-        """
-        total_size = 0
-        for image in self._image_handles:
-            for band in range(1, image.num_bands()+1):
-                total_size += image.num_bands() * roi.area() * \
-                              image.get_bytes_per_pixel(band)
-        return total_size / utilities.BYTES_PER_MB
-
-    def sleep_until_mem_free_for_roi(self, roi):
-        """Sleep until enough free memory exists to load this ROI"""
-        # TODO: This will have to be more sophisticated.
-        wait_time_secs = 5
-        mb_needed = self.estimate_memory_usage(roi)
-        mb_free = 0
-        while mb_free < mb_needed:
-            mb_free = psutil.virtual_memory().available / utilities.BYTES_PER_MB
-            if mb_free < mb_needed:
-                print('''Need %d MB to load the next ROI, but only have %d MB free.
-                         Sleep for %d seconds...'''
-                      % (mb_needed, mb_free, wait_time_secs))
-                time.sleep(wait_time_secs)
-
     def _get_band_index(self, image_index):
         """Return the absolute band index of the first band in the given image index"""
         band_index = 0
@@ -297,9 +269,6 @@ class MultiTiffFileReader():
                 new_height, new_width = (max(buf.shape[1], read_roi.height()), max(buf.shape[2], read_roi.width())) # pylint: disable=E1136
                 buf = np.zeros(shape=(self.num_bands(), new_height, new_width),
                                dtype=utilities.gdal_dtype_to_numpy_type(self.data_type()))
-
-            # If we don't have enough memory to load the ROI, wait here until we do.
-            self.sleep_until_mem_free_for_roi(read_roi)
 
             # TODO: We need a way to make sure the bands for certain image types always end up
             #       in the same order!
