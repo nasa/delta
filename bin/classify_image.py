@@ -20,7 +20,7 @@ from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery import imagery_dataset
 from delta.imagery import tfrecord_conversions
-from delta.imagery import image_writer
+from delta.imagery.sources import tiff
 #from delta.ml.train import Experiment
 from delta.ml.train import load_keras_model
 
@@ -188,7 +188,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
             roi_index += 1
 
     print('Writing classified image to: ' + options.output_path)
-    image_writer.write_simple_image(options.output_path, pic, data_type=gdal.GDT_Byte, metadata=metadata)
+    tiff.write_simple_image(options.output_path, pic, data_type=gdal.GDT_Byte, metadata=metadata)
     #plt.imsave(options.output_path+'.png', pic) # Generates an RGB false color image
 
     draw = time.time()

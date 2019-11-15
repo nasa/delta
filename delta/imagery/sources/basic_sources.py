@@ -4,10 +4,8 @@ Support for TIFF imagery.
 
 from abc import ABC, abstractmethod
 import math
-import os
 
 from delta.config import config
-from delta.imagery import image_reader
 from delta.imagery import rectangle
 
 def horizontal_split(image_size, region, num_splits):
@@ -85,54 +83,3 @@ class DeltaImage(ABC):
         num_regions = math.ceil(image_bytes / max_block_bytes)
         for i in range(num_regions):
             yield horizontal_split(s, i, num_regions)
-
-class TiffImage(DeltaImage):
-    """For all versions of DeltaImage that can use our image_reader class"""
-
-    def __init__(self, path):
-        super(TiffImage, self).__init__(path)
-        self.path = path
-
-    def prep(self):
-        """Prepare the file to be opened by other tools (unpack, etc)"""
-        return [self.path]
-
-    def num_bands(self):
-        """Return the number of bands in a prepared file"""
-        input_paths = self.prep()
-
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.num_bands()
-
-    def read(self, roi=None):
-        input_paths = self.prep()
-
-        # Set up the input image handle
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.read_roi(roi)
-
-    def size(self):
-        input_paths = self.prep()
-
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.image_size()
-
-class RGBAImage(TiffImage):
-    """Basic RGBA images where the alpha channel needs to be stripped"""
-
-    def prep(self):
-        """Converts RGBA images to RGB images"""
-
-        # Get the path to the cached image
-        fname = os.path.basename(self.path)
-        output_path = config.cache_manager().register_item(fname)
-
-        if not os.path.exists(output_path):
-            # Just remove the alpha band from the original image
-            cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + self.path + ' ' + output_path
-            print(cmd)
-            os.system(cmd)
-        return [output_path]

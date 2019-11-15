@@ -2,7 +2,8 @@
 Higher level functions for dealing with large images.
 """
 
-from delta.imagery import image_reader, image_writer, rectangle, utilities
+from delta.imagery import rectangle, utilities
+from delta.imagery.sources import tiff
 
 
 def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,0), nodata_out=0):
@@ -13,7 +14,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     """
 
     # Set up an image reader and get information from it
-    input_reader = image_reader.MultiTiffFileReader([input_path])
+    input_reader = tiff.MultiTiffFileReader([input_path])
     (num_cols, num_rows) = input_reader.image_size()
     num_bands  = input_reader.num_bands()
     (block_size_in, _) = input_reader.get_block_info(band=1)
@@ -28,10 +29,10 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         block_size_out[Y] = int(tile_size[Y])
 
     # Set up the output image
-    writer = image_writer.TiffWriter(output_path, num_rows, num_cols, num_bands,
-                                     utilities.get_gdal_data_type('float'),
-                                     block_size_out[X], block_size_out[Y],
-                                     nodata_out, input_metadata)
+    writer = tiff.TiffWriter(output_path, num_rows, num_cols, num_bands,
+                             utilities.get_gdal_data_type('float'),
+                             block_size_out[X], block_size_out[Y],
+                             nodata_out, input_metadata)
 
     input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(block_size_out[X], block_size_out[Y], include_partials=True)

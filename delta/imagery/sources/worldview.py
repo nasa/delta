@@ -6,7 +6,7 @@ import os
 
 from delta.config import config
 from delta.imagery import utilities
-from . import basic_sources
+from . import tiff
 
 def parse_meta_file(meta_path):
     """Parse out the needed values from the IMD or XML file"""
@@ -100,7 +100,7 @@ def get_scene_info(path):
     output['date'  ] = parts[2][6:14]
     return output
 
-class WorldviewImage(basic_sources.TiffImage):
+class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
 
     # This function is currently set up for the HDDS archived WV data, files from other

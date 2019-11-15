@@ -14,7 +14,7 @@ from tensorflow import keras
 from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import tfrecord
-from delta.imagery.image_writer import TiffWriter
+from delta.imagery.sources.tiff import TiffWriter
 from delta.ml import train
 
 def generate_tile(width=32, height=32, blocks=50):

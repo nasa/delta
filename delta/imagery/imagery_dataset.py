@@ -6,18 +6,15 @@ import functools
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery.sources import basic_sources
-from delta.imagery.sources import landsat
-from delta.imagery.sources import worldview
-from delta.imagery.sources import tfrecord
+from delta.imagery.sources import landsat, worldview, tiff, tfrecord
 
 
 # Map text strings to the Image wrapper classes defined above
 IMAGE_CLASSES = {
         'landsat' : landsat.LandsatImage,
         'worldview' : worldview.WorldviewImage,
-        'rgba' : basic_sources.RGBAImage,
-        'tiff' : basic_sources.TiffImage,
+        'rgba' : tiff.RGBAImage,
+        'tiff' : tiff.TiffImage,
         'tfrecord' : tfrecord.TFRecordImage
 }
 

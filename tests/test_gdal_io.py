@@ -7,8 +7,7 @@ import numpy as np
 from delta.imagery import utilities
 
 from delta.imagery import rectangle
-from delta.imagery.image_reader import MultiTiffFileReader
-from delta.imagery.image_writer import TiffWriter
+from delta.imagery.sources.tiff import MultiTiffFileReader, TiffWriter
 
 def check_landsat_tiff(filename):
     '''

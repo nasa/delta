@@ -9,9 +9,8 @@ import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery import image_reader
 
-from . import basic_sources
+from . import basic_sources, tiff
 
 # Create a dictionary describing the features.
 TFRECORD_COMPRESSION_TYPE = 'GZIP'
@@ -115,7 +114,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
        If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
-    input_reader = image_reader.MultiTiffFileReader(input_paths)
+    input_reader = tiff.MultiTiffFileReader(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
     num_bands = input_reader.num_bands()
     #print('Input data type: ' + str(input_reader.data_type()))

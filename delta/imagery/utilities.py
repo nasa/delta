@@ -296,3 +296,8 @@ def restrict_chunk_list_to_roi(chunk_center_list, chunk_size, roi):
             else:
                 output_chunk_roi.expand_to_contain_rect(rect)
     return (output_list, output_chunk_roi)
+
+def progress_bar(text, fill_amount, prefix = '', length = 80):
+    filled_length = int(length * fill_amount)
+    prog_bar = '█' * filled_length + '-' * (length - filled_length)
+    print('\r%s |%s| %s' % (prefix, prog_bar, text), end = '\r')

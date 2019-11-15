@@ -6,7 +6,7 @@ import os
 
 from delta.config import config
 from delta.imagery import utilities
-from . import basic_sources
+from . import tiff
 
 
 def allocate_bands_for_spacecraft(landsat_number):
@@ -151,7 +151,7 @@ def find_mtl_file(folder):
     return os.path.join(folder, meta_files[0])
 
 
-class LandsatImage(basic_sources.TiffImage):
+class LandsatImage(tiff.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
 
     def prep(self):

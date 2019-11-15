@@ -8,10 +8,7 @@ from tensorflow.python.framework.errors_impl import OutOfRangeError
 
 from delta.imagery import utilities
 from delta.imagery import rectangle
-from delta.imagery import image_reader
-from delta.imagery.sources import landsat
-from delta.imagery.sources import tfrecord
-from delta.imagery.sources import worldview
+from delta.imagery.sources import landsat, tiff, tfrecord, worldview
 from delta.imagery.sources import landsat_toa
 from delta.imagery.sources import worldview_toa
 
@@ -136,7 +133,7 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     tif_paths, bands_to_use = function(input_path, work_folder) #, redo)
 
     # Gather some image information which is hard to get later on
-    reader = image_reader.TiffReader()
+    reader = tiff.TiffReader()
     reader.open_image(tif_paths[0]) # TODO: Check this indexing!
     image_size = reader.image_size()
     metadata   = reader.get_all_metadata()
@@ -164,7 +161,7 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
         tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path, work_folder, redo)
 
     # Gather some image information which is hard to get later on
-    reader = image_reader.TiffReader()
+    reader = tiff.TiffReader()
     reader.open_image(tif_paths[0]) # TODO: Check this indexing!
     image_size = reader.image_size()
     metadata   = reader.get_all_metadata()
