@@ -61,13 +61,12 @@ def _convert_image_to_tfrecord_landsat(input_path, work_folder):
     meta_data = landsat.parse_mtl_file(meta_path)
     bands_to_use = landsat.get_landsat_bands_to_use(scene_info['sensor'])
 
-    print('TOA conversion...')
     toa_folder = os.path.join(work_folder, 'toa_output')
+    print('Writing TOA corrected file to %s...' % (toa_folder))
     landsat_toa.do_landsat_toa_conversion(meta_path, toa_folder, calc_reflectance=True, num_processes=1)
 
     if not landsat.check_if_files_present(meta_data, toa_folder):
         raise Exception('TOA conversion failed for: ', input_path)
-    print('TOA conversion finished')
 
     toa_paths = landsat.get_band_paths(meta_data, toa_folder, bands_to_use)
 
@@ -103,11 +102,10 @@ def _convert_image_to_tfrecord_worldview(input_path, work_folder, redo=False):
     if utilities.file_is_good(toa_path) and not redo:
         print('TOA file ' + toa_path + ' already exists.')
     else:
-        print('TOA conversion...')
+        print('Writing TOA corrected file to %s...' % (toa_path))
         worldview_toa.do_worldview_toa_conversion(tif_path, meta_path, toa_path, calc_reflectance=False)
     if not os.path.exists(toa_path):
         raise Exception('TOA conversion failed for: ', input_path)
-    print('TOA conversion finished')
 
     return ([toa_path], bands_to_use)
 

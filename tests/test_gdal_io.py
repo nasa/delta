@@ -108,25 +108,17 @@ def test_geotiff_write(tmpdir):
             roi = roi.get_intersection(input_bounds)
             output_rois.append(roi)
 
-    def callback_function(output_roi, read_roi, data_vec):
+    def callback_function(output_roi, data_vec):
         """Callback function to write the first channel to the output file."""
 
         # Figure out the output block
         col = output_roi.min_x // block_size[0]
         row = output_roi.min_y // block_size[1]
 
-        # Figure out where the desired output data falls in read_roi
-        x_0 = output_roi.min_x - read_roi.min_x
-        y_0 = output_roi.min_y - read_roi.min_y
-        x_1 = x_0 + output_roi.width()
-        y_1 = y_0 + output_roi.height()
-        assert x_0 == 0
-        assert y_0 == 0
-
         # Crop the desired data portion and write it out.
         for i in range(input_reader.num_bands()):
-            output_data = data_vec[i, y_0:y_1, x_0:x_1]
-            assert data_vec.shape == (input_reader.num_bands(), y_1 - y_0, x_1 - x_0)
+            output_data = data_vec[i, :, :]
+            assert data_vec.shape == (input_reader.num_bands(), output_roi.height(), output_roi.width())
             writer.write_block(output_data, col, row, band=i)
 
     input_reader.process_rois(output_rois, callback_function)

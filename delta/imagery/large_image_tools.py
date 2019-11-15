@@ -36,26 +36,24 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
     output_rois = input_bounds.make_tile_rois(block_size_out[X], block_size_out[Y], include_partials=True)
 
-    def callback_function(output_roi, read_roi, data):
+    def callback_function(output_roi, data):
         """Callback function to write the first channel to the output file."""
 
         # Figure out some ROI positioning values
-        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, block_size_out)
+        block_col = output_roi.min_x / block_size_out[0]
+        block_row = output_roi.min_y / block_size_out[1]
 
         # Loop on bands
         for band in range(0,num_bands):
             # Crop the desired data portion and apply the user function.
             if num_bands == 1:
-                output_data = user_function(data[band, y0:y1, x0:x1])
+                output_data = user_function(data[band, :, :])
             else:
-                output_data = user_function(data[band, y0:y1, x0:x1], band)
+                output_data = user_function(data[band, :, :], band)
 
             # Write out the result
-            writer.write_block(output_data, col, row, band)
+            writer.write_block(output_data, block_col, block_row, band)
 
-    print('Writing TIFF blocks...')
     input_reader.process_rois(output_rois, callback_function, show_progress=True)
 
     del writer
-
-    print('Done writing: ' + output_path)

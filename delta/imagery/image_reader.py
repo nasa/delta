@@ -321,11 +321,9 @@ class MultiTiffFileReader():
                         break
                     continue
 
-                # We pass the read roi to the function rather than doing
-                # any kind of cropping here.
-
-                # Execute the callback function with the data vector.
-                callback_function(roi, read_roi, buf[:, 0:read_roi.height(), 0:read_roi.width()])
+                x0 = roi.min_x - read_roi.min_x
+                y0 = roi.min_y - read_roi.min_y
+                callback_function(roi, buf[:, y0:y0 + roi.height(), x0:x0 + roi.width()])
 
                 # Instead of advancing the index, remove the current ROI from the list.
                 block_rois.pop(index)

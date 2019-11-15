@@ -9,7 +9,6 @@ import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery import utilities
 from delta.imagery import image_reader
 
 from . import basic_sources
@@ -119,7 +118,6 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
     input_reader = image_reader.MultiTiffFileReader(input_paths)
     (num_cols, num_rows) = input_reader.image_size()
     num_bands = input_reader.num_bands()
-    data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
     #print('Input data type: ' + str(input_reader.data_type()))
     #print('Using output data type: ' + str(data_type))
 
@@ -138,16 +136,11 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
     if not bands_to_use:
         bands_to_use = range(1,num_bands+1)
 
-    def callback_function(output_roi, read_roi, data):
+    def callback_function(output_roi, data):
         """Callback function to write the first channel to the output file."""
 
-        # Figure out where the desired output data falls in read_roi
-        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
-
-        # Pack all bands into a numpy array in the shape TF will expect later.
-        array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
-        for band in bands_to_use:
-            array[:,:, band-1] = data[band-1, y0:y1, x0:x1] # Crop the correct region
+        # switch from bands first to bands last
+        array = np.transpose(data, [1, 2, 0])
 
         if write_compressed: # Single output file
             write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
@@ -171,7 +164,3 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
 
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
     input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed, show_progress=True)
-    if write_compressed:
-        print('Done writing: ' + str(input_paths))
-    else:
-        print('Done writing: ' + input_paths[0])
