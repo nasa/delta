@@ -4,28 +4,25 @@ Test for GDAL I/O classes.
 import pytest
 import numpy as np
 
-from delta.imagery import utilities
-
 from delta.imagery import rectangle
-from delta.imagery.sources.tiff import MultiTiffFileReader, TiffWriter
+from delta.imagery.sources.tiff import TiffReader, TiffWriter
 
 def check_landsat_tiff(filename):
     '''
     Checks reading landsat tiffs.
     '''
-    input_reader = MultiTiffFileReader()
-    input_reader.load_images([filename])
-    assert input_reader.image_size() == (37, 37)
+    input_reader = TiffReader(filename)
+    assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
-    for i in range(1, input_reader.num_bands() + 1):
-        (bsize, (blocks_x, blocks_y)) = input_reader.get_block_info(i)
+    for i in range(0, input_reader.num_bands()):
+        (bsize, (blocks_x, blocks_y)) = input_reader.block_info(i)
         assert bsize == [37, 6]
         assert blocks_x == 1
         assert blocks_y == 7
-        assert utilities.gdal_dtype_to_numpy_type(input_reader.data_type(i)) == np.float32
+        assert input_reader.numpy_type(i) == np.float32
         assert input_reader.nodata_value(i) is None
 
-    meta = input_reader.get_all_metadata()
+    meta = input_reader.metadata()
     geo = meta['geotransform']
     assert geo[0] == pytest.approx(-122.3, abs=0.01)
     assert geo[1] == pytest.approx(0.0, abs=0.01)
@@ -38,38 +35,35 @@ def check_landsat_tiff(filename):
     assert 'projection' in meta
     assert 'metadata' in meta
 
-    r = rectangle.Rectangle(0, 0, width=input_reader.image_size()[0],
-                            height=input_reader.image_size()[0])
-    d1 = input_reader.read_roi(r)
-    assert d1.shape == (input_reader.image_size()[0], input_reader.image_size()[1],
-                        input_reader.num_bands())
+    r = rectangle.Rectangle(0, 0, width=input_reader.size()[0],
+                            height=input_reader.size()[0])
+    d1 = input_reader.read(roi=r)
+    assert d1.shape == (input_reader.num_bands(), input_reader.height(), input_reader.width())
 
 def check_same(filename1, filename2):
     '''
     Checks whether or not two files are the same
     '''
-    in1 = MultiTiffFileReader()
-    in2 = MultiTiffFileReader()
-    in1.load_images([filename1])
-    in2.load_images([filename2])
-    assert in1.image_size() == in2.image_size()
+    in1 = TiffReader(filename1)
+    in2 = TiffReader(filename2)
+    assert in1.size() == in2.size()
     assert in1.num_bands() == in2.num_bands()
-    for i in range(1, in1.num_bands() + 1):
-        assert in1.get_block_info(i) == in2.get_block_info(i)
+    for i in range(in1.num_bands()):
+        assert in1.block_info(i) == in2.block_info(i)
         assert in1.data_type(i) == in2.data_type(i)
         assert in1.nodata_value(i) == in2.nodata_value(i)
 
-    m_1 = in1.get_all_metadata()
-    m_2 = in2.get_all_metadata()
+    m_1 = in1.metadata()
+    m_2 = in2.metadata()
     assert m_1['geotransform'] == m_2['geotransform']
     assert m_1['gcps'] == m_2['gcps']
     assert m_1['gcpproj'] == m_2['gcpproj']
     assert m_1['projection'] == m_2['projection']
     assert m_1['metadata'] == m_2['metadata']
 
-    (width, height) = in1.image_size()
-    d1 = in1.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
-    d2 = in2.read_roi(rectangle.Rectangle(0, 0, width=width, height=height))
+    (width, height) = in1.size()
+    d1 = in1.read(roi=rectangle.Rectangle(0, 0, width=width, height=height))
+    d2 = in2.read(roi=rectangle.Rectangle(0, 0, width=width, height=height))
     assert np.array_equal(d1, d2)
 
 def test_geotiff_read():
@@ -82,19 +76,18 @@ def test_geotiff_write(tmpdir):
     '''
     Tests writing a landsat geotiff.
     '''
-    input_reader = MultiTiffFileReader()
-    input_reader.load_images(['data/landsat.tiff'])
+    input_reader = TiffReader('data/landsat.tiff')
     new_tiff = tmpdir / 'test.tiff'
 
-    (block_size, (blocks_x, blocks_y)) = input_reader.get_block_info(1)
-    (cols, rows) = input_reader.image_size()
+    (block_size, (blocks_x, blocks_y)) = input_reader.block_info()
+    (cols, rows) = input_reader.size()
 
     writer = TiffWriter(str(new_tiff), cols, rows, input_reader.num_bands(),
-                        data_type=input_reader.data_type(1),
+                        data_type=input_reader.data_type(),
                         tile_width=block_size[0],
                         tile_height=block_size[1],
-                        metadata=input_reader.get_all_metadata(),
-                        no_data_value=input_reader.nodata_value(1))
+                        metadata=input_reader.metadata(),
+                        no_data_value=input_reader.nodata_value())
 
     input_bounds = rectangle.Rectangle(0, 0, width=cols, height=rows)
     output_rois = []

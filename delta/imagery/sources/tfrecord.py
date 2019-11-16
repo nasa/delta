@@ -114,8 +114,8 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
        If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
-    input_reader = tiff.MultiTiffFileReader(input_paths)
-    (num_cols, num_rows) = input_reader.image_size()
+    input_reader = tiff.TiffReader(input_paths)
+    (num_cols, num_rows) = input_reader.size()
     num_bands = input_reader.num_bands()
     #print('Input data type: ' + str(input_reader.data_type()))
     #print('Using output data type: ' + str(data_type))

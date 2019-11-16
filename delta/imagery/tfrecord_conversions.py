@@ -133,10 +133,9 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     tif_paths, bands_to_use = function(input_path, work_folder) #, redo)
 
     # Gather some image information which is hard to get later on
-    reader = tiff.TiffReader()
-    reader.open_image(tif_paths[0]) # TODO: Check this indexing!
-    image_size = reader.image_size()
-    metadata   = reader.get_all_metadata()
+    reader = tiff.TiffReader(tif_paths[0])
+    image_size = reader.size()
+    metadata   = reader.metadata()
 
     if single_output and utilities.file_is_good(output_paths[0]) and not redo:
         print('Using existing TFRecord file: ' + str(output_paths))
@@ -161,10 +160,9 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
         tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path, work_folder, redo)
 
     # Gather some image information which is hard to get later on
-    reader = tiff.TiffReader()
-    reader.open_image(tif_paths[0]) # TODO: Check this indexing!
-    image_size = reader.image_size()
-    metadata   = reader.get_all_metadata()
+    reader = tiff.TiffReader(tif_paths[0])
+    image_size = reader.size()
+    metadata   = reader.metadata()
 
     # Split the image into eight parts
     split_width  = image_size[0] / 4
