@@ -221,7 +221,7 @@ class TiffReader:
 
         for i in range(self.num_bands()):
             self.read(roi=roi, band=i, buf=buf[i, :, :])
-        return buf
+        return np.transpose(buf, [1, 2, 0])
 
     def process_rois(self, requested_rois, callback_function, strict_order=False, show_progress=False):
         '''

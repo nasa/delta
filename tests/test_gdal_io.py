@@ -38,7 +38,7 @@ def check_landsat_tiff(filename):
     r = rectangle.Rectangle(0, 0, width=input_reader.size()[0],
                             height=input_reader.size()[0])
     d1 = input_reader.read(roi=r)
-    assert d1.shape == (input_reader.num_bands(), input_reader.height(), input_reader.width())
+    assert d1.shape == (input_reader.height(), input_reader.width(), input_reader.num_bands())
 
 def check_same(filename1, filename2):
     '''
