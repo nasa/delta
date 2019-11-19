@@ -36,7 +36,11 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     config.load(options.config_path)
 
     print('Loading model from ' + options.keras_model)
-    model = load_keras_model(options.keras_model, options.num_gpus)
+    try:
+        model = load_keras_model(options.keras_model, options.num_gpus)
+    except AttributeError:
+        model = tf.keras.models.load_model(options.keras_model)
+    ### end try
 
     if not options.work_folder:
         options.work_folder = options.output_path + '_work'
@@ -166,7 +170,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
         pic = np.zeros([height, width], dtype=np.uint8)
         pic_offset = int(math.floor(config.chunk_size()/2.0))
 
-    label_scale = 255 # TODO: Maybe not constant?
+    #label_scale = 255 # TODO: Maybe not constant?
     i   = 0
     col = 0
     row = 0
@@ -181,7 +185,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
                 col = tile_col*full_tile_patches + pic_offset
                 for x in range(0,dims[0]): #pylint: disable=W0612
                     val = predictions[i]
-                    pic[row, col] = val * label_scale
+                    pic[row, col] = np.argmax(val) # * label_scale
                     i += 1
                     col += 1
                 row += 1
