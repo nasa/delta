@@ -154,14 +154,14 @@ def find_mtl_file(folder):
 class LandsatImage(tiff.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
 
-    def prep(self):
+    def _prep(self, paths):
         """Prepares a Landsat file from the archive for processing.
            Returns [band, paths, in, order, ...]
            Uses the bands specified in get_landsat_bands_to_use()
            TODO: Handle bands which are not 30 meters!
            TODO: Apply TOA conversion!
         """
-        scene_info = get_scene_info(self.path)
+        scene_info = get_scene_info(paths)
 
         # Get the folder where this will be stored from the cache manager
         name = '_'.join([scene_info['sensor'], scene_info['lpath'], scene_info['lrow'], scene_info['date']])
@@ -178,8 +178,8 @@ class LandsatImage(tiff.TiffImage):
         if all_files_present:
             print('Already have unpacked files in ' + untar_folder)
         else:
-            print('Unpacking tar file ' + self.path + ' to folder ' + untar_folder)
-            utilities.unpack_to_folder(self.path, untar_folder)
+            print('Unpacking tar file ' + paths + ' to folder ' + untar_folder)
+            utilities.unpack_to_folder(paths, untar_folder)
 
         bands_to_use = get_landsat_bands_to_use(scene_info['sensor'])
 
@@ -192,6 +192,6 @@ class LandsatImage(tiff.TiffImage):
         for p in output_paths:
             if not os.path.exists(p):
                 raise Exception('Did not find expected file: ' + p
-                                + ' after unpacking tar file ' + self.path)
+                                + ' after unpacking tar file ' + paths)
 
         return output_paths

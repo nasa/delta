@@ -105,12 +105,12 @@ class WorldviewImage(tiff.TiffImage):
 
     # This function is currently set up for the HDDS archived WV data, files from other
     #  locations will need to be handled differently.
-    def prep(self):
+    def _prep(self, paths):
         """Prepares a WorldView file from the archive for processing.
            Returns the path to the file ready to use.
            TODO: Apply TOA conversion!
         """
-        scene_info = get_scene_info(self.path)
+        scene_info = get_scene_info(paths)
 
         # Get the folder where this will be stored from the cache manager
         name = '_'.join([scene_info['sensor'], scene_info['date']])
@@ -123,8 +123,8 @@ class WorldviewImage(tiff.TiffImage):
             #print('Already have unpacked files in ' + unpack_folder)
             pass
         else:
-            print('Unpacking file ' + self.path + ' to folder ' + unpack_folder)
-            utilities.unpack_to_folder(self.path, unpack_folder)
+            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
+            utilities.unpack_to_folder(paths, unpack_folder)
             (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
         return [tif_path]

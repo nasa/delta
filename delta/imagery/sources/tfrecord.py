@@ -26,19 +26,20 @@ IMAGE_FEATURE_DESCRIPTION = {
 
 class TFRecordImage(basic_sources.DeltaImage):
     def __init__(self, path, compressed=True):
-        super(TFRecordImage, self).__init__(path)
+        super(TFRecordImage, self).__init__()
         self._compressed = compressed
         self._num_bands = None
         self._size = None
+        self._path = path
 
-    def read(self, roi=None):
+    def read(self, roi=None, band=None, buf=None):
         raise NotImplementedError("Random read access not supported in TFRecord.")
 
     def __get_bands_size(self):
-        if not os.path.exists(self.path):
-            raise Exception('Missing file: ' + self.path)
+        if not os.path.exists(self._path):
+            raise Exception('Missing file: ' + self._path)
 
-        record_path = tf.convert_to_tensor(self.path)
+        record_path = tf.convert_to_tensor(self._path)
         if self._compressed:
             dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
         else:
@@ -114,7 +115,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
        If multiple record paths are passed in, each tile one is written to a random output file."""
 
     # Open the input image and get information about it
-    input_reader = tiff.TiffReader(input_paths)
+    input_reader = tiff.TiffImage(input_paths)
     (num_cols, num_rows) = input_reader.size()
     num_bands = input_reader.num_bands()
     #print('Input data type: ' + str(input_reader.data_type()))

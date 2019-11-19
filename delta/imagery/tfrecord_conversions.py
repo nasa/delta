@@ -133,7 +133,7 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     tif_paths, bands_to_use = function(input_path, work_folder) #, redo)
 
     # Gather some image information which is hard to get later on
-    reader = tiff.TiffReader(tif_paths[0])
+    reader = tiff.TiffImage(tif_paths[0])
     image_size = reader.size()
     metadata   = reader.metadata()
 
@@ -160,7 +160,7 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
         tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path, work_folder, redo)
 
     # Gather some image information which is hard to get later on
-    reader = tiff.TiffReader(tif_paths[0])
+    reader = tiff.TiffImage(tif_paths[0])
     image_size = reader.size()
     metadata   = reader.metadata()
 

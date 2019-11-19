@@ -5,13 +5,13 @@ import pytest
 import numpy as np
 
 from delta.imagery import rectangle
-from delta.imagery.sources.tiff import TiffReader, TiffWriter
+from delta.imagery.sources.tiff import TiffImage, TiffWriter
 
 def check_landsat_tiff(filename):
     '''
     Checks reading landsat tiffs.
     '''
-    input_reader = TiffReader(filename)
+    input_reader = TiffImage(filename)
     assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
     for i in range(0, input_reader.num_bands()):
@@ -44,8 +44,8 @@ def check_same(filename1, filename2):
     '''
     Checks whether or not two files are the same
     '''
-    in1 = TiffReader(filename1)
-    in2 = TiffReader(filename2)
+    in1 = TiffImage(filename1)
+    in2 = TiffImage(filename2)
     assert in1.size() == in2.size()
     assert in1.num_bands() == in2.num_bands()
     for i in range(in1.num_bands()):
@@ -76,7 +76,7 @@ def test_geotiff_write(tmpdir):
     '''
     Tests writing a landsat geotiff.
     '''
-    input_reader = TiffReader('data/landsat.tiff')
+    input_reader = TiffImage('data/landsat.tiff')
     new_tiff = tmpdir / 'test.tiff'
 
     (block_size, (blocks_x, blocks_y)) = input_reader.block_info()

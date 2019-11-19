@@ -57,11 +57,8 @@ class DeltaImage(ABC):
     """Base class used for wrapping input images in a way that they can be passed
        to Tensorflow dataset objects.
     """
-    def __init__(self, path):
-        self.path = path
-
     @abstractmethod
-    def read(self, roi=None):
+    def read(self, roi=None, band=None, buf=None):
         """
         Read the image of the given data type. An optional roi specifies the boundaries.
         """
@@ -69,6 +66,12 @@ class DeltaImage(ABC):
     @abstractmethod
     def size(self):
         """Return the size of this image in pixels"""
+
+    def width(self):
+        return self.size()[1]
+
+    def height(self):
+        return self.size()[0]
 
     @abstractmethod
     def num_bands(self):

@@ -14,7 +14,7 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
     """
 
     # Set up an image reader and get information from it
-    input_reader = tiff.TiffReader(input_path)
+    input_reader = tiff.TiffImage(input_path)
     (num_cols, num_rows) = input_reader.size()
     num_bands  = input_reader.num_bands()
     (block_size_in, _) = input_reader.block_info()
