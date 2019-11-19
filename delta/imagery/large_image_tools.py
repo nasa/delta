@@ -48,9 +48,9 @@ def apply_function_to_file(input_path, output_path, user_function, tile_size=(0,
         for band in range(0,num_bands):
             # Crop the desired data portion and apply the user function.
             if num_bands == 1:
-                output_data = user_function(data[band, :, :])
+                output_data = user_function(data[:, :, band])
             else:
-                output_data = user_function(data[band, :, :], band)
+                output_data = user_function(data[:, :, band], band)
 
             # Write out the result
             writer.write_block(output_data, block_col, block_row, band)

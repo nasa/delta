@@ -214,7 +214,7 @@ class TiffImage(basic_sources.DeltaImage):
 
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
-                callback_function(roi, buf[:, y0:y0 + roi.height(), x0:x0 + roi.width()])
+                callback_function(roi, buf[y0:y0 + roi.height(), x0:x0 + roi.width(), :])
 
                 # Instead of advancing the index, remove the current ROI from the list.
                 block_rois.pop(index)
