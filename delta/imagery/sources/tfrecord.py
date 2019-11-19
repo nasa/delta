@@ -32,7 +32,7 @@ class TFRecordImage(basic_sources.DeltaImage):
         self._size = None
         self._path = path
 
-    def read(self, roi=None, band=None, buf=None):
+    def _read(self, roi, bands, buf=None):
         raise NotImplementedError("Random read access not supported in TFRecord.")
 
     def __get_bands_size(self):

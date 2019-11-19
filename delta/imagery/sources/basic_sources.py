@@ -57,25 +57,64 @@ class DeltaImage(ABC):
     """Base class used for wrapping input images in a way that they can be passed
        to Tensorflow dataset objects.
     """
+    def __init__(self):
+        self.__preprocess_function = None
+
+    def read(self, roi=None, bands=None, buf=None):
+        """
+        Reads in the requested region of the image.
+
+        If roi is not specified, reads the entire image.
+        If buf is specified, writes the image to buf.
+        If bands is not specified, reads all bands in [row, col, band] indexing. Otherwise
+        only the listed bands are read.
+        If bands is a single integer, drops the band dimension.
+        """
+        if roi is None:
+            roi = rectangle.Rectangle(0, 0, self.height(), self.width())
+        if bands is None:
+            bands = range(self.num_bands())
+        if isinstance(bands, int):
+            result = self._read(roi, [bands], buf)
+            result = result[:, :, 0] # reduce dimensions
+        else:
+            result = self._read(roi, bands, buf)
+        if self.__preprocess_function:
+            return self.__preprocess_function(result, roi, bands)
+        return result
+
+    def set_preprocess(self, callback):
+        """
+        Set a preproprocessing function callback to be applied to the results of all reads on the image.
+
+        The function takes the arguments callback(image, roi, bands), where image is the numpy array containing
+        the read data, roi is the region of interest read, and bands is a list of the bands being read.
+        """
+        self.__preprocess_function = callback
+
     @abstractmethod
-    def read(self, roi=None, band=None, buf=None):
+    def _read(self, roi, bands, buf=None):
         """
         Read the image of the given data type. An optional roi specifies the boundaries.
+
+        This function is intended to be overwritten by subclasses.
         """
 
     @abstractmethod
     def size(self):
         """Return the size of this image in pixels"""
 
-    def width(self):
-        return self.size()[1]
-
-    def height(self):
-        return self.size()[0]
-
     @abstractmethod
     def num_bands(self):
         """Return the number of bands in the image"""
+
+    def width(self):
+        """Return the number of columns."""
+        return self.size()[1]
+
+    def height(self):
+        """Return the number of rows."""
+        return self.size()[0]
 
     def tiles(self):
         """Generator to yield ROIs for the image."""

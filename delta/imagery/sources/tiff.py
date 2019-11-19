@@ -23,7 +23,6 @@ class TiffImage(basic_sources.DeltaImage):
         '''
         super(TiffImage, self).__init__()
         paths = self._prep(path)
-        print(paths)
 
         self._paths = paths
         self._handles = []
@@ -63,35 +62,20 @@ class TiffImage(basic_sources.DeltaImage):
 
     def num_bands(self):
         self.__asert_open()
-        print(len(self._band_map))
         return len(self._band_map)
 
     def size(self):
         self.__asert_open()
-        print(self._handles[0].RasterXSize, self._handles[0].RasterYSize)
         return (self._handles[0].RasterXSize, self._handles[0].RasterYSize)
 
-    def read(self, roi=None, band=None, buf=None):
-        '''
-        Reads in the requested region of the image.
-
-        If roi is not specified, reads the entire image.
-        If buf is specified, writes the image to buf.
-        If band is not specified, reads all bands in [band, row, col] indexing.
-        '''
+    def _read(self, roi, bands, buf=None):
         self.__asert_open()
-        if roi is None:
-            roi = rectangle.Rectangle(0, 0, self.height(), self.width())
-
-        if band is not None:
-            band_handle = self._gdal_band(band)
-            return band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height(), buf_obj=buf)
 
         if buf is None:
             buf = np.zeros(shape=(self.num_bands(), roi.height(), roi.width()), dtype=self.numpy_type())
-
-        for i in range(self.num_bands()):
-            self.read(roi=roi, band=i, buf=buf[i, :, :])
+        for i, b in enumerate(bands):
+            band_handle = self._gdal_band(b)
+            band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height(), buf_obj=buf[i, :, :])
         return np.transpose(buf, [1, 2, 0])
 
     def _gdal_band(self, band):

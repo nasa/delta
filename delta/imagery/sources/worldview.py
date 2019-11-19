@@ -127,4 +127,8 @@ class WorldviewImage(tiff.TiffImage):
             utilities.unpack_to_folder(paths, unpack_folder)
             (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
+        self._meta_path = imd_path
         return [tif_path]
+
+    def meta_path(self):
+        return self._meta_path
