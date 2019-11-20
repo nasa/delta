@@ -69,7 +69,7 @@ def load_tensor(tf_filename, num_bands, data_type=tf.float32):
     value = tf.io.parse_single_example(tf_filename, IMAGE_FEATURE_DESCRIPTION)
     array = tf.io.decode_raw(value['image_raw'], data_type)
     # num_bands must be static in graph, width and height will not matter after patching
-    shape = tf.stack([1, value['height'], value['width'], num_bands])
+    shape = tf.stack([1, value['width'], value['height'], num_bands])
     return tf.reshape(array, shape)
 
 def _wrap_int64(value):

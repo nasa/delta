@@ -47,16 +47,17 @@ def tfrecord_filenames():
     label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
     image_writer = tfrecord.make_tfrecord_writer(image_path)
     label_writer = tfrecord.make_tfrecord_writer(label_path)
-    size = 32
-    for i in range(2):
-        for j in range(2):
-            (image, label) = generate_tile(size, size)
+    width = 32
+    height = 30
+    for i in range(1):
+        for j in range(1):
+            (image, label) = generate_tile(width, height)
             tfrecord.write_tfrecord_image(image, image_writer,
-                                          i * size, j * size,
-                                          size, size, 1)
+                                          i * width, j * height,
+                                          width, height, 1)
             tfrecord.write_tfrecord_image(label, label_writer,
-                                          i * size, j * size,
-                                          size, size, 1)
+                                          i * width, j * height,
+                                          width, height, 1)
     image_writer.close()
     label_writer.close()
     yield (image_path, label_path)
