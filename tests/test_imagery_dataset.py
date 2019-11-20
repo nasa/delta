@@ -5,7 +5,6 @@ import shutil
 import tempfile
 
 import zipfile
-from osgeo import gdal
 import pytest
 import numpy as np
 import tensorflow as tf
@@ -14,7 +13,7 @@ from tensorflow import keras
 from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import tfrecord
-from delta.imagery.sources.tiff import TiffWriter
+from delta.imagery.sources.tiff import write_tiff
 from delta.ml import train
 
 def generate_tile(width=32, height=32, blocks=50):
@@ -78,14 +77,10 @@ def worldview_filenames():
     os.mkdir(image_dir)
     os.mkdir(vendor_dir)
     open(imd_path, 'a').close() # only metadata file we use
-    image_writer = TiffWriter(image_path, width, height, data_type=gdal.GDT_Float32)
-    label_writer = TiffWriter(label_path, width, height, data_type=gdal.GDT_Byte)
 
     (image, label) = generate_tile(width, height)
-    image_writer.write_block(image[:,:,0], 0, 0, 0)
-    label_writer.write_block(label, 0, 0, 0)
-    del image_writer
-    del label_writer
+    write_tiff(image_path, image)
+    write_tiff(label_path, label)
 
     z = zipfile.ZipFile(zip_path, mode='x')
     z.write(image_path, arcname=image_name + '.tif')

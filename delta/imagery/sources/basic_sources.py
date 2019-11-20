@@ -102,11 +102,11 @@ class DeltaImage(ABC):
 
     @abstractmethod
     def size(self):
-        """Return the size of this image in pixels"""
+        """Return the size of this image in pixels, as (width, height)."""
 
     @abstractmethod
     def num_bands(self):
-        """Return the number of bands in the image"""
+        """Return the number of bands in the image."""
 
     def width(self):
         """Return the number of columns."""

@@ -74,9 +74,9 @@ def __load_tensor(tf_filename, num_bands, data_type=tf.float32):
 
 def create_dataset(file_list, num_bands, data_type, num_parallel_calls=1):
     """
-    Returns a tensorflow dataset for the files in file_list.
+    Returns a tensorflow dataset for the tfrecord files in file_list.
 
-    Each entry is a tensor of size 1, width, height, num_bands and of type data_type.
+    Each entry is a tensor of size (width, height, num_bands) and of type data_type.
     """
     ds_input = tf.data.Dataset.from_tensor_slices(file_list)
     ds_input = tf.data.TFRecordDataset(ds_input, compression_type=TFRECORD_COMPRESSION_TYPE)
@@ -104,6 +104,8 @@ def write_tfrecord_image(image, tfrecord_writer, col, row):
     num_bands = 1
     if len(image.shape) >= 3:
         num_bands = image.shape[2]
+    else:
+        num_bands = 1
     # Along with the data, record enough info to recreate the image
     data = {'image_raw': _wrap_bytes(array_bytes),
             'num_bands': _wrap_int64(num_bands),

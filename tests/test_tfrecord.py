@@ -12,16 +12,14 @@ def tiff_image(tmp_path):
     height = 32
     numpy_image = np.random.rand(width, height, 3)
     filename = str(tmp_path / 'test.tiff')
-    image_writer = tiff.TiffWriter(filename, width, height, 3, data_type=gdal.GDT_Float32)
-    for i in range(3):
-        image_writer.write_block(numpy_image[:,:,i], 0, 0, i)
-    del image_writer
+    tiff.write_tiff(filename, numpy_image, data_type=gdal.GDT_Float32)
     return (numpy_image, filename)
 
 def test_save_tfrecord(tiff_image, tmp_path):
     filename = str(tmp_path / 'test.tfrecord')
     image = tiff.TiffImage(tiff_image[1])
     image_writer = tfrecord.make_tfrecord_writer(filename)
+    print(image.width(), image.height())
     tfrecord.write_tfrecord_image(image.read(), image_writer, 0, 0)
     image_writer.close()
     #tfrecord.image_to_tfrecord(image, [filename], image.size(), show_progress=False)

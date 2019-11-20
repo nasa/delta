@@ -66,16 +66,20 @@ class TiffImage(basic_sources.DeltaImage):
 
     def size(self):
         self.__asert_open()
-        return (self._handles[0].RasterXSize, self._handles[0].RasterYSize)
+        return (self._handles[0].RasterYSize, self._handles[0].RasterXSize)
 
     def _read(self, roi, bands, buf=None):
         self.__asert_open()
 
         if buf is None:
-            buf = np.zeros(shape=(self.num_bands(), roi.height(), roi.width()), dtype=self.numpy_type())
+            buf = np.zeros(shape=(self.num_bands(), roi.width(), roi.height()), dtype=self.numpy_type())
         for i, b in enumerate(bands):
             band_handle = self._gdal_band(b)
-            band_handle.ReadAsArray(roi.min_x, roi.min_y, roi.width(), roi.height(), buf_obj=buf[i, :, :])
+            s = buf[i, :, :].shape
+            if s != (roi.width(), roi.height()):
+                raise IOError('Buffer shape should be (%d, %d) but is (%d, %d)!' %
+                              (roi.width(), roi.height(), s[0], s[1]))
+            band_handle.ReadAsArray(roi.min_y, roi.min_x, roi.height(), roi.width(), buf_obj=buf[i, :, :])
         return np.transpose(buf, [1, 2, 0])
 
     def _gdal_band(self, band):
@@ -192,11 +196,11 @@ class TiffImage(basic_sources.DeltaImage):
             # data read that we need to perform to get it.
             read_roi = self.get_block_aligned_read_roi(block_rois[0])
 
-            if read_roi.width() > buf.shape[2] or read_roi.height() > buf.shape[1]: # pylint: disable=E1136
-                new_height, new_width = (max(buf.shape[1], read_roi.height()), max(buf.shape[2], read_roi.width())) # pylint: disable=E1136
-                buf = np.zeros(shape=(self.num_bands(), new_height, new_width), dtype=self.numpy_type())
+            if read_roi.width() > buf.shape[1] or read_roi.height() > buf.shape[2]: # pylint: disable=E1136
+                new_width, new_height = (max(buf.shape[1], read_roi.width()), max(buf.shape[2], read_roi.height())) # pylint: disable=E1136
+                buf = np.zeros(shape=(self.num_bands(), new_width, new_height), dtype=self.numpy_type())
 
-            self.read(roi=read_roi, buf=buf)
+            self.read(roi=read_roi, buf=buf[:, :read_roi.width(), :read_roi.height()])
 
             # Loop through the remaining ROIs and apply the callback function to each
             # ROI that is contained in the section we read in.
@@ -212,7 +216,8 @@ class TiffImage(basic_sources.DeltaImage):
 
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
-                callback_function(roi, buf[y0:y0 + roi.height(), x0:x0 + roi.width(), :])
+
+                callback_function(roi, np.transpose(buf[:, x0:x0 + roi.width(), y0:y0 + roi.height()], [1, 2, 0]))
 
                 # Instead of advancing the index, remove the current ROI from the list.
                 block_rois.pop(index)
@@ -222,6 +227,40 @@ class TiffImage(basic_sources.DeltaImage):
                                            (total_rois - num_remaining) / total_rois, prefix='Blocks Processed:')
         if show_progress:
             print()
+
+    def save(self, path, tile_size=(0,0), show_progress=False):
+        """
+        Save a TiffImage to the file output_path, optionally overwriting the tile_size.
+        """
+
+        # Use the input tile size for the block size unless the user specified one.
+        (bs, _) = self.block_info()
+        block_size_x = bs[0]
+        block_size_y = bs[1]
+        if tile_size[0] > 0:
+            block_size_x = tile_size[0]
+        if tile_size[1] > 0:
+            block_size_y = tile_size[1]
+
+        # Set up the output image
+        with TiffWriter(path, self.width(), self.height(), self.num_bands(),
+                        self.data_type(), block_size_x, block_size_y,
+                        self.nodata_value(), self.metadata()) as writer:
+            input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+            output_rois = input_bounds.make_tile_rois(block_size_x, block_size_y, include_partials=True)
+
+            def callback_function(output_roi, data):
+                """Callback function to write the first channel to the output file."""
+
+                # Figure out some ROI positioning values
+                block_x = output_roi.min_x / block_size_x
+                block_y = output_roi.min_y / block_size_y
+
+                # Loop on bands
+                for band in range(data.shape[2]):
+                    writer.write_block(data[:, :, band], block_x, block_y, band)
+
+            self.process_rois(output_rois, callback_function, show_progress=show_progress)
 
 class RGBAImage(TiffImage):
     """Basic RGBA images where the alpha channel needs to be stripped"""
@@ -239,47 +278,30 @@ class RGBAImage(TiffImage):
             os.system(cmd)
         return [output_path]
 
-def write_simple_image(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
+def write_tiff(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
     """Just dump 2D numpy data to a single channel image file"""
 
-    num_cols  = data.shape[1]
-    num_rows  = data.shape[0]
-    num_bands = 1
+    if len(data.shape) < 3:
+        num_bands = 1
+    else:
+        num_bands = data.shape[2]
 
-    driver = gdal.GetDriverByName('GTiff')
-    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
-    if metadata:
-        handle.SetProjection  (metadata['projection'  ])
-        handle.SetGeoTransform(metadata['geotransform'])
-        handle.SetMetadata    (metadata['metadata'    ])
-        handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
-
-    band   = handle.GetRasterBand(1)
-    band.WriteArray(data)
-    band.FlushCache()
-
-def write_multiband_image(output_path, data, data_type=gdal.GDT_Byte):
-    """Dump 3D numpy data to a multi channel image file"""
-
-    num_cols  = data.shape[2]
-    num_rows  = data.shape[1]
-    num_bands = data.shape[0]
-
-    driver = gdal.GetDriverByName('GTiff')
-    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
-    for b in range(0,num_bands):
-        band   = handle.GetRasterBand(b+1)
-        band.WriteArray(data[b,:,:])
-    band.FlushCache()
-
+    with TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
+                    data_type=data_type, metadata=metadata, tile_width=data.shape[0],
+                    tile_height=data.shape[1]) as writer:
+        if len(data.shape) < 3:
+            writer.write_block(data[:, :], 0, 0, 0)
+        else:
+            for b in range(num_bands):
+                writer.write_block(data[:, :, b], 0, 0, b)
 
 class TiffWriter:
     """Class to manage block writes to a Geotiff file.
     """
-    def __init__(self, path, num_rows, num_cols, num_bands=1, data_type=gdal.GDT_Byte, #pylint:disable=too-many-arguments
+    def __init__(self, path, width, height, num_bands=1, data_type=gdal.GDT_Byte, #pylint:disable=too-many-arguments
                  tile_width=256, tile_height=256, no_data_value=None, metadata=None):
-        self._width  = num_cols
-        self._height = num_rows
+        self._width  = width
+        self._height = height
         self._tile_height = tile_height
         self._tile_width  = tile_width
 
@@ -288,11 +310,11 @@ class TiffWriter:
         options += ['BLOCKXSIZE='+str(self._tile_width),
                     'BLOCKYSIZE='+str(self._tile_height)]
         MIN_SIZE_FOR_TILES=100
-        if num_cols > MIN_SIZE_FOR_TILES or num_rows > MIN_SIZE_FOR_TILES:
+        if width > MIN_SIZE_FOR_TILES or height > MIN_SIZE_FOR_TILES:
             options += ['TILED=YES']
 
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, num_cols, num_rows, num_bands, data_type, options)
+        self._handle = driver.Create(path, height, width, num_bands, data_type, options)
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
@@ -308,8 +330,19 @@ class TiffWriter:
             self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
 
     def __del__(self):
-        self._handle.FlushCache()
-        self._handle = None
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        self.close()
+        return False
+
+    def close(self):
+        if self._handle is not None:
+            self._handle.FlushCache()
+            self._handle = None
 
     def get_size(self):
         return (self._width, self._height)
@@ -322,31 +355,30 @@ class TiffWriter:
         num_y = int(math.ceil(self._height / self._tile_height))
         return (num_x, num_y)
 
-    def write_block(self, data, block_col, block_row, band=0):
+    def write_block(self, data, block_x, block_y, band=0):
         '''Add a tile write command to the queue.
            Partial tiles are allowed at the right at bottom edges.
         '''
 
         # Check that the tile position is valid
         num_tiles = self.get_num_tiles()
-        if (block_col >= num_tiles[0]) or (block_row >= num_tiles[1]):
-            raise Exception('Block position ' + str((block_col, block_row))
+        if (block_x >= num_tiles[0]) or (block_y >= num_tiles[1]):
+            raise Exception('Block position ' + str((block_x, block_y))
                             + ' is outside the tile count: ' + str(num_tiles))
-        is_edge_block = ((block_col == num_tiles[0]-1) or
-                         (block_row == num_tiles[1]-1))
+        is_edge_block = ((block_x == num_tiles[0]-1) or
+                         (block_y == num_tiles[1]-1))
 
         if is_edge_block: # Data must fit inside the image size
-            max_col = block_col*self._tile_width  + data.shape[1]
-            max_row = block_row*self._tile_height + data.shape[0]
-            if ( (max_col > self._width ) or
-                 (max_row > self._height)   ):
+            max_x = block_x * self._tile_width  + data.shape[0]
+            max_y = block_y * self._tile_height + data.shape[1]
+            if max_x > self._width or max_y > self._height:
                 raise Exception('Error: Data block max position '
-                                + str((max_col, max_row))
+                                + str((max_x, max_y))
                                 + ' falls outside the image bounds: '
                                 + str((self._width, self._height)))
         else: # Shape must be exactly one tile
-            if ( (data.shape[0] != self._tile_height) or
-                 (data.shape[1] != self._tile_width )  ):
+            if ( (data.shape[0] != self._tile_width) or
+                 (data.shape[1] != self._tile_height)  ):
                 raise Exception('Error: Data block size is ' + str(data.shape)
                                 + ', output file block size is '
                                 + str((self._tile_width, self._tile_height)))
@@ -354,4 +386,4 @@ class TiffWriter:
         gdal_band = self._handle.GetRasterBand(band+1)
 
         bSize = gdal_band.GetBlockSize()
-        gdal_band.WriteArray(data, block_col*bSize[0], block_row*bSize[1])
+        gdal_band.WriteArray(data, block_y * bSize[1], block_x * bSize[0])
