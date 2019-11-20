@@ -140,11 +140,10 @@ class TiffImage(basic_sources.DeltaImage):
         to get the requested data region while respecting block boundaries.
         '''
         self.__asert_open()
-        size = self.size()
-        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
-                            + ' is outside the bounds of image with size' + str(size))
+                            + ' is outside the bounds of image with size' + str(self.size()))
 
         (block_size, unused_num_blocks) = self.block_info(0)
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
@@ -162,8 +161,7 @@ class TiffImage(basic_sources.DeltaImage):
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
         ans = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
-        size = self.size()
-        bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return ans.get_intersection(bounds)
 
     def process_rois(self, requested_rois, callback_function, strict_order=False, show_progress=False):
@@ -180,10 +178,10 @@ class TiffImage(basic_sources.DeltaImage):
 
         block_rois = copy.copy(requested_rois)
 
-        whole_bounds = rectangle.Rectangle(0, 0, self.height(), self.width())
+        whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         for roi in requested_rois:
             if not whole_bounds.contains_rect(roi):
-                raise Exception('Roi outside image bounds: ' + str(roi))
+                raise Exception('Roi outside image bounds: ' + str(roi) + str(whole_bounds))
 
         buf = np.zeros(shape=(self.num_bands(), 1, 1), dtype=self.numpy_type())
 

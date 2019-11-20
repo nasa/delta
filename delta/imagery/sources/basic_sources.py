@@ -71,7 +71,7 @@ class DeltaImage(ABC):
         If bands is a single integer, drops the band dimension.
         """
         if roi is None:
-            roi = rectangle.Rectangle(0, 0, self.height(), self.width())
+            roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         if bands is None:
             bands = range(self.num_bands())
         if isinstance(bands, int):
@@ -110,11 +110,11 @@ class DeltaImage(ABC):
 
     def width(self):
         """Return the number of columns."""
-        return self.size()[1]
+        return self.size()[0]
 
     def height(self):
         """Return the number of rows."""
-        return self.size()[0]
+        return self.size()[1]
 
     def tiles(self):
         """Generator to yield ROIs for the image."""
