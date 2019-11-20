@@ -1,6 +1,7 @@
 """
 Functions to support images stored as TFRecord.
 """
+import functools
 import os.path
 import random
 
@@ -62,15 +63,25 @@ class TFRecordImage(basic_sources.DeltaImage):
         return self._size
 
 
-def load_tensor(tf_filename, num_bands, data_type=tf.float32):
+def __load_tensor(tf_filename, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
        The image is returned in format [1, channels, height, width]"""
 
     value = tf.io.parse_single_example(tf_filename, IMAGE_FEATURE_DESCRIPTION)
     array = tf.io.decode_raw(value['image_raw'], data_type)
     # num_bands must be static in graph, width and height will not matter after patching
-    shape = tf.stack([1, value['width'], value['height'], num_bands])
-    return tf.reshape(array, shape)
+    return tf.reshape(array, [value['width'], value['height'], num_bands])
+
+def create_dataset(file_list, num_bands, data_type, num_parallel_calls=1):
+    """
+    Returns a tensorflow dataset for the files in file_list.
+
+    Each entry is a tensor of size 1, width, height, num_bands and of type data_type.
+    """
+    ds_input = tf.data.Dataset.from_tensor_slices(file_list)
+    ds_input = tf.data.TFRecordDataset(ds_input, compression_type=TFRECORD_COMPRESSION_TYPE)
+    return ds_input.map(functools.partial(__load_tensor, num_bands=num_bands, data_type=data_type),
+                        num_parallel_calls=num_parallel_calls)
 
 def _wrap_int64(value):
     """Helper-function for wrapping an integer so it can be saved to the TFRecords file"""
@@ -87,16 +98,19 @@ def make_tfrecord_writer(output_path, compress=True):
     options = tf.io.TFRecordOptions(TFRECORD_COMPRESSION_TYPE)
     return tf.io.TFRecordWriter(output_path, options)
 
-def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_bands):
+def write_tfrecord_image(image, tfrecord_writer, col, row):
     """Pack an image stored as a 3D numpy array and write it to an open TFRecord file"""
     array_bytes = image.tostring()
+    num_bands = 1
+    if len(image.shape) >= 3:
+        num_bands = image.shape[2]
     # Along with the data, record enough info to recreate the image
     data = {'image_raw': _wrap_bytes(array_bytes),
             'num_bands': _wrap_int64(num_bands),
             'col'      : _wrap_int64(col),
             'row'      : _wrap_int64(row),
-            'width'    : _wrap_int64(width),
-            'height'   : _wrap_int64(height),
+            'width'    : _wrap_int64(image.shape[0]),
+            'height'   : _wrap_int64(image.shape[1]),
             'bytes_per_num': _wrap_int64(4) # TODO: Vary this!
            }
 
@@ -123,8 +137,7 @@ def image_to_tfrecord(image, record_paths, tile_size, bands_to_use=None, overlap
         """Callback function to write the first channel to the output file."""
 
         if write_compressed: # Single output file
-            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
-                                 output_roi.width(), output_roi.height(), image.num_bands())
+            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y)
         else: # Choose a random output file
             this_record_path = random.choice(record_paths)
             if not os.path.exists(this_record_path):
@@ -135,8 +148,7 @@ def image_to_tfrecord(image, record_paths, tile_size, bands_to_use=None, overlap
             with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
                 temp_path = this_record_path + '_temp.tfrecord'
                 this_writer = make_tfrecord_writer(temp_path, compress=False)
-                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y,
-                                     output_roi.width(), output_roi.height(), image.num_bands())
+                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y)
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)
@@ -180,8 +192,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
         """Callback function to write the first channel to the output file."""
 
         if write_compressed: # Single output file
-            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
-                                 output_roi.width(), output_roi.height(), num_bands)
+            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y)
         else: # Choose a random output file
             this_record_path = random.choice(record_paths)
             if not os.path.exists(this_record_path):
@@ -191,8 +202,7 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
             with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
                 temp_path = this_record_path + '_temp.tfrecord'
                 this_writer = make_tfrecord_writer(temp_path, compress=False)
-                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y,
-                                     output_roi.width(), output_roi.height(), num_bands)
+                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y)
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)

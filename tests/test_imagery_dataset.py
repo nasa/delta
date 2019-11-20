@@ -53,11 +53,9 @@ def tfrecord_filenames():
         for j in range(1):
             (image, label) = generate_tile(width, height)
             tfrecord.write_tfrecord_image(image, image_writer,
-                                          i * width, j * height,
-                                          width, height, 1)
+                                          i * width, j * height)
             tfrecord.write_tfrecord_image(label, label_writer,
-                                          i * width, j * height,
-                                          width, height, 1)
+                                          i * width, j * height)
     image_writer.close()
     label_writer.close()
     yield (image_path, label_path)
@@ -66,7 +64,8 @@ def tfrecord_filenames():
 
 @pytest.fixture(scope="module")
 def worldview_filenames():
-    size = 64
+    width = 64
+    height = 62
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
     imd_name = '19MAY13164205-M2AS-503204071020_01_P003.IMD'
@@ -79,10 +78,10 @@ def worldview_filenames():
     os.mkdir(image_dir)
     os.mkdir(vendor_dir)
     open(imd_path, 'a').close() # only metadata file we use
-    image_writer = TiffWriter(image_path, size, size, data_type=gdal.GDT_Float32)
-    label_writer = TiffWriter(label_path, size, size, data_type=gdal.GDT_Byte)
+    image_writer = TiffWriter(image_path, width, height, data_type=gdal.GDT_Float32)
+    label_writer = TiffWriter(label_path, width, height, data_type=gdal.GDT_Byte)
 
-    (image, label) = generate_tile(size, size)
+    (image, label) = generate_tile(width, height)
     image_writer.write_block(image[:,:,0], 0, 0, 0)
     label_writer.write_block(label, 0, 0, 0)
     del image_writer
