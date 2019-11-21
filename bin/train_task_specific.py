@@ -64,9 +64,9 @@ def main(argsIn):
     model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
     dataset_fn = functools.partial(assemble_dataset, config)
 
-    model = experiment.train_keras(model_fn, dataset_fn,
-                                   num_epochs=config.num_epochs(),
-                                   num_gpus=config.num_gpus())
+    model, _ = experiment.train_keras(model_fn, dataset_fn,
+                                      num_epochs=config.num_epochs(),
+                                      num_gpus=config.num_gpus())
 
     print(model) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
