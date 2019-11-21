@@ -8,65 +8,7 @@ from delta.config import config
 from delta.imagery import utilities
 from . import tiff
 
-def parse_meta_file(meta_path):
-    """Parse out the needed values from the IMD or XML file"""
-
-    if not os.path.exists(meta_path):
-        raise Exception('Metadata file not found: ' + meta_path)
-
-    # TODO: Add more tags!
-    # These are all the values we want to read in
-    DESIRED_TAGS = ['ABSCALFACTOR', 'EFFECTIVEBANDWIDTH']
-
-    data = {'ABSCALFACTOR':[],
-            'EFFECTIVEBANDWIDTH':[]}
-
-    with open(meta_path, 'r') as f:
-        for line in f:
-
-            #line = line.replace('"','') # Clean up
-            upline = line.replace(';','').upper().strip()
-
-            if 'MEANSUNEL = ' in upline:
-                value = upline.split('=')[-1]
-                data['MEANSUNEL'] = float(value)
-
-            if 'SATID = ' in upline:
-                value = upline.split('=')[-1].replace('"','').strip()
-                data['SATID'] = value
-
-            # Look for the other info we want
-            for tag in DESIRED_TAGS:
-                if tag in upline:
-
-                    # Add the value to the appropriate list
-                    # -> If the bands are not in order we will need to be more careful here.
-                    parts = upline.split('=')
-                    value = parts[1]
-                    data[tag].append(float(value))
-
-    return data
-
-
-def get_worldview_bands_to_use(sensor_name):
-    """Return the list of zero-based band indices that we are currently
-       using to process the given WorldView sensor.
-    """
-
-    WV2_DESIRED_BANDS = [0, 1, 2, 3, 4, 5, 6, 7]
-    WV3_DESIRED_BANDS = [0, 1, 2, 3, 4, 5, 6, 7] # TODO: More bands?
-
-    if '2' in sensor_name:
-        bands = WV2_DESIRED_BANDS
-    else:
-        if '3' in sensor_name:
-            bands = WV3_DESIRED_BANDS
-        else:
-            raise Exception('Unknown WorldView type: ' + sensor_name)
-    return bands
-
-
-def get_files_from_unpack_folder(folder):
+def _get_files_from_unpack_folder(folder):
     """Return the image and header file paths from the given unpack folder.
        Returns (None, None) if the files were not found.
     """
@@ -90,18 +32,29 @@ def get_files_from_unpack_folder(folder):
             break
     return (tif_path, imd_path)
 
-def get_scene_info(path):
-    """Extract information about the landsat scene from the file name"""
-    # ex: WV02N42_939570W073_2520792013040400000000MS00_GU004003002.zip
-    fname  = os.path.basename(path)
-    parts  = fname.split('_')
-    output = {}
-    output['sensor'] = parts[0][0:4]
-    output['date'  ] = parts[2][6:14]
-    return output
-
 class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    def __init__(self, paths):
+        super(WorldviewImage, self).__init__(paths)
+        self._meta_path = None
+        self._meta = None
+
+    def _unpack(self, paths):
+        # Get the folder where this will be stored from the cache manager
+        name = '_'.join([self._sensor, self._date])
+        unpack_folder = config.cache_manager().register_item(name)
+
+        # Check if we already unpacked this data
+        (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+
+        if imd_path and tif_path:
+            #print('Already have unpacked files in ' + unpack_folder)
+            pass
+        else:
+            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
+            utilities.unpack_to_folder(paths, unpack_folder)
+            (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+        return (tif_path, imd_path)
 
     # This function is currently set up for the HDDS archived WV data, files from other
     #  locations will need to be handled differently.
@@ -110,25 +63,60 @@ class WorldviewImage(tiff.TiffImage):
            Returns the path to the file ready to use.
            TODO: Apply TOA conversion!
         """
-        scene_info = get_scene_info(paths)
+        assert isinstance(paths, str)
+        parts = os.path.basename(paths).split('_')
+        self._sensor = parts[0][0:4]
+        self._date = parts[2][6:14]
 
-        # Get the folder where this will be stored from the cache manager
-        name = '_'.join([scene_info['sensor'], scene_info['date']])
-        unpack_folder = config.cache_manager().register_item(name)
-
-        # Check if we already unpacked this data
-        (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
-
-        if imd_path and tif_path:
-            #print('Already have unpacked files in ' + unpack_folder)
-            pass
-        else:
-            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
-            utilities.unpack_to_folder(paths, unpack_folder)
-            (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+        (tif_path, imd_path) = self._unpack(paths)
 
         self._meta_path = imd_path
+        self.__parse_meta_file(imd_path)
         return [tif_path]
 
     def meta_path(self):
         return self._meta_path
+
+    def __parse_meta_file(self, meta_path):
+        """Parse out the needed values from the IMD or XML file"""
+
+        if not os.path.exists(meta_path):
+            raise Exception('Metadata file not found: ' + meta_path)
+
+        # TODO: Add more tags!
+        # These are all the values we want to read in
+        DESIRED_TAGS = ['ABSCALFACTOR', 'EFFECTIVEBANDWIDTH']
+
+        data = {'ABSCALFACTOR':[],
+                'EFFECTIVEBANDWIDTH':[]}
+
+        with open(meta_path, 'r') as f:
+            for line in f:
+
+                upline = line.replace(';','').upper().strip()
+
+                if 'MEANSUNEL = ' in upline:
+                    value = upline.split('=')[-1]
+                    data['MEANSUNEL'] = float(value)
+
+                if 'SATID = ' in upline:
+                    value = upline.split('=')[-1].replace('"','').strip()
+                    data['SATID'] = value
+
+                # Look for the other info we want
+                for tag in DESIRED_TAGS:
+                    if tag in upline:
+
+                        # Add the value to the appropriate list
+                        # -> If the bands are not in order we will need to be more careful here.
+                        parts = upline.split('=')
+                        value = parts[1]
+                        data[tag].append(float(value))
+
+        self._meta_path = meta_path
+        self._meta = data
+
+    def scale(self):
+        return self._meta['ABSCALFACTOR']
+    def bandwidth(self):
+        return self._meta['EFFECTIVEBANDWIDTH']

@@ -228,11 +228,13 @@ class TiffImage(basic_sources.DeltaImage):
         if show_progress:
             print()
 
-    def save(self, path, tile_size=(0,0), show_progress=False):
+    def save(self, path, tile_size=(0,0), nodata_value=None, show_progress=False):
         """
         Save a TiffImage to the file output_path, optionally overwriting the tile_size.
         """
 
+        if nodata_value is None:
+            nodata_value = self.nodata_value()
         # Use the input tile size for the block size unless the user specified one.
         (bs, _) = self.block_info()
         block_size_x = bs[0]
@@ -245,7 +247,7 @@ class TiffImage(basic_sources.DeltaImage):
         # Set up the output image
         with TiffWriter(path, self.width(), self.height(), self.num_bands(),
                         self.data_type(), block_size_x, block_size_y,
-                        self.nodata_value(), self.metadata()) as writer:
+                        nodata_value, self.metadata()) as writer:
             input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
             output_rois = input_bounds.make_tile_rois(block_size_x, block_size_y, include_partials=True)
 

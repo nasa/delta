@@ -9,8 +9,8 @@ from delta.imagery import utilities
 from . import tiff
 
 
-def allocate_bands_for_spacecraft(landsat_number):
-    """Set up value storage for parse_mtl_file()"""
+def _allocate_bands_for_spacecraft(landsat_number):
+    """Set up value storage for _parse_mtl_file()"""
 
     BAND_COUNTS = {'5':7, '7':9, '8':11}
 
@@ -29,7 +29,7 @@ def allocate_bands_for_spacecraft(landsat_number):
 
     return data
 
-def parse_mtl_file(mtl_path):
+def _parse_mtl_file(mtl_path):
     """Parse out the needed values from the MTL file"""
 
     if not os.path.exists(mtl_path):
@@ -49,7 +49,7 @@ def parse_mtl_file(mtl_path):
             # Get the spacecraft ID and allocate storage
             if 'SPACECRAFT_ID = LANDSAT_' in line:
                 spacecraft_id = line.split('_')[-1].strip()
-                data = allocate_bands_for_spacecraft(spacecraft_id)
+                data = _allocate_bands_for_spacecraft(spacecraft_id)
 
             if 'SUN_ELEVATION = ' in line:
                 value = line.split('=')[-1].strip()
@@ -82,7 +82,7 @@ def parse_mtl_file(mtl_path):
     return data
 
 
-def get_scene_info(path):
+def _get_scene_info(path):
     """Extract information about the landsat scene from the file name"""
     fname  = os.path.basename(path)
     parts  = fname.split('_')
@@ -93,7 +93,7 @@ def get_scene_info(path):
     output['date'  ] = parts[3]
     return output
 
-def get_landsat_bands_to_use(sensor_name):
+def _get_landsat_bands_to_use(sensor_name):
     """Return the list of one-based band indices that we are currently
        using to process the given landsat sensor.
     """
@@ -115,7 +115,7 @@ def get_landsat_bands_to_use(sensor_name):
                 raise Exception('Unknown landsat type: ' + sensor_name)
     return bands
 
-def get_band_paths(mtl_data, folder, bands_to_use=None):
+def _get_band_paths(mtl_data, folder, bands_to_use=None):
     """Return full paths to all band files that should be in the folder.
        Optionally specify a list of bands to use, otherwise all are used"""
 
@@ -128,16 +128,16 @@ def get_band_paths(mtl_data, folder, bands_to_use=None):
         paths.append(band_path)
     return paths
 
-def check_if_files_present(mtl_data, folder, bands_to_use=None):
+def _check_if_files_present(mtl_data, folder, bands_to_use=None):
     """Return True if all the files associated with the MTL data are present."""
 
-    band_paths = get_band_paths(mtl_data, folder, bands_to_use)
+    band_paths = _get_band_paths(mtl_data, folder, bands_to_use)
     for b in band_paths:
         if not utilities.file_is_good(b):
             return False
     return True
 
-def find_mtl_file(folder):
+def _find_mtl_file(folder):
     """Returns the path to the MTL file in a folder.
        Returns None if there is no MTL file.
        Raises an Exception if there are multiple MTL files."""
@@ -157,23 +157,27 @@ class LandsatImage(tiff.TiffImage):
     def _prep(self, paths):
         """Prepares a Landsat file from the archive for processing.
            Returns [band, paths, in, order, ...]
-           Uses the bands specified in get_landsat_bands_to_use()
+           Uses the bands specified in _get_landsat_bands_to_use()
            TODO: Handle bands which are not 30 meters!
            TODO: Apply TOA conversion!
         """
-        scene_info = get_scene_info(paths)
+        scene_info = _get_scene_info(paths)
+        self._sensor = scene_info['sensor']
+        self._lpath = scene_info['lpath']
+        self._lrow = scene_info['lrow']
+        self._date = scene_info['date']
 
         # Get the folder where this will be stored from the cache manager
-        name = '_'.join([scene_info['sensor'], scene_info['lpath'], scene_info['lrow'], scene_info['date']])
+        name = '_'.join([self._sensor, self._lpath, self._lrow, self._date])
         untar_folder = config.cache_manager().register_item(name)
 
         # Check if we already unpacked this data
         all_files_present = False
         if os.path.exists(untar_folder):
-            mtl_path = find_mtl_file(untar_folder)
+            mtl_path = _find_mtl_file(untar_folder)
             if mtl_path:
-                mtl_data = parse_mtl_file(mtl_path)
-                all_files_present = check_if_files_present(mtl_data, untar_folder)
+                mtl_data = _parse_mtl_file(mtl_path)
+                all_files_present = _check_if_files_present(mtl_data, untar_folder)
 
         if all_files_present:
             print('Already have unpacked files in ' + untar_folder)
@@ -181,12 +185,12 @@ class LandsatImage(tiff.TiffImage):
             print('Unpacking tar file ' + paths + ' to folder ' + untar_folder)
             utilities.unpack_to_folder(paths, untar_folder)
 
-        bands_to_use = get_landsat_bands_to_use(scene_info['sensor'])
+        bands_to_use = _get_landsat_bands_to_use(self._sensor)
 
         # Generate all the band file names (the MTL file is not returned)
-        mtl_path = find_mtl_file(untar_folder)
-        mtl_data = parse_mtl_file(mtl_path)
-        output_paths = get_band_paths(mtl_data, untar_folder, bands_to_use)
+        self._mtl_path = _find_mtl_file(untar_folder)
+        self._mtl_data = _parse_mtl_file(self._mtl_path)
+        output_paths = _get_band_paths(self._mtl_data, untar_folder, bands_to_use)
 
         # Check that the files exist
         for p in output_paths:
@@ -195,3 +199,18 @@ class LandsatImage(tiff.TiffImage):
                                 + ' after unpacking tar file ' + paths)
 
         return output_paths
+
+    def radiance_mult(self):
+        return self._mtl_data['RADIANCE_MULT']
+    def radiance_add(self):
+        return self._mtl_data['RADIANCE_ADD']
+    def reflectance_mult(self):
+        return self._mtl_data['REFLECTANCE_MULT']
+    def reflectance_add(self):
+        return self._mtl_data['REFLECTANCE_ADD']
+    def k1_constant(self):
+        return self._mtl_data['K1_CONSTANT']
+    def k2_constant(self):
+        return self._mtl_data['K2_CONSTANT']
+    def sun_elevation(self):
+        return self._mtl_data['SUN_ELEVATION']

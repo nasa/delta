@@ -5,7 +5,6 @@ import math
 import functools
 import numpy as np
 
-from delta.imagery import large_image_tools
 from delta.imagery.sources import worldview
 
 #------------------------------------------------------------------------------
@@ -33,11 +32,13 @@ def get_earth_sun_distance():
 
 # The np.where clause handles input nodata values.
 
-def apply_toa_radiance(data, band, factor, width):
+def apply_toa_radiance(data, _, bands, factors, widths):
     """Apply a top of atmosphere radiance conversion to WorldView data"""
-    f = factor[band]
-    w = width [band]
-    return np.where(data>0, (data*f)/w, OUTPUT_NODATA)
+    for b in bands:
+        f = factors[b]
+        w = widths[b]
+        data[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)
+    return data
 
 def apply_toa_reflectance(data, band, factor, width, sun_elevation,
                           satellite, earth_sun_distance):
@@ -52,21 +53,16 @@ def apply_toa_reflectance(data, band, factor, width, sun_elevation,
     return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
 
 
-def do_worldview_toa_conversion(image_path, meta_path, output_path, tile_size=(256, 256), calc_reflectance=False):
+def do_worldview_toa_conversion(image_path, output_path, tile_size=(256, 256), calc_reflectance=False):
     """Convert a WorldView input file to a TOA corrected output file.
        Using the reflectance calculation is slightly more complicated but may be more useful."""
 
-    # Get all of the TOA coefficients and input file names
-    data = worldview.parse_meta_file(meta_path)
-    #print(data)
-
-    scale  = data['ABSCALFACTOR']
-    bwidth = data['EFFECTIVEBANDWIDTH']
+    image = worldview.WorldviewImage(image_path)
 
     #ds = get_earth_sun_distance() # TODO: Implement this function!
 
     if not calc_reflectance:
-        user_function = functools.partial(apply_toa_radiance, factor=scale, width=bwidth)
+        user_function = functools.partial(apply_toa_radiance, factors=image.scale(), widths=image.bandwidth())
     else:
         raise Exception('TODO: WV reflectance calculation is not fully implemented!')
 
@@ -75,4 +71,5 @@ def do_worldview_toa_conversion(image_path, meta_path, output_path, tile_size=(2
         #                                  satellite=data['SATID'],
         #                                  earth_sun_distance=ds)
 
-    large_image_tools.apply_function_to_file(image_path, output_path, user_function, tile_size, OUTPUT_NODATA)
+    image.set_preprocess(user_function)
+    image.save(output_path, tile_size=tile_size, nodata_value=OUTPUT_NODATA)

@@ -18,11 +18,7 @@ def tiff_image(tmp_path):
 def test_save_tfrecord(tiff_image, tmp_path):
     filename = str(tmp_path / 'test.tfrecord')
     image = tiff.TiffImage(tiff_image[1])
-    image_writer = tfrecord.make_tfrecord_writer(filename)
-    print(image.width(), image.height())
-    tfrecord.write_tfrecord_image(image.read(), image_writer, 0, 0)
-    image_writer.close()
-    #tfrecord.image_to_tfrecord(image, [filename], image.size(), show_progress=False)
+    tfrecord.image_to_tfrecord(image, [filename], image.size(), show_progress=False)
     ds = tfrecord.create_dataset([filename], image.num_bands(), tf.float32)
     for value in ds.take(1):
         value = np.squeeze(value.numpy())
