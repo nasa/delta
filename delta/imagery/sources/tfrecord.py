@@ -121,13 +121,15 @@ def write_tfrecord_image(image, tfrecord_writer, col, row):
 
     tfrecord_writer.write(example.SerializeToString())
 
-def image_to_tfrecord(image, record_paths, tile_size, bands_to_use=None, overlap_amount=0, show_progress=True):
+def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
+                      overlap_amount=0, include_partials=True, show_progress=True):
+    if not tile_size:
+        tile_size = image.size()
     if not bands_to_use:
         bands_to_use = range(image.num_bands())
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
     input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
-    include_partials = (overlap_amount > 0) # These are always used together
     output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials, overlap_amount)
 
     write_compressed = (len(record_paths) == 1)
@@ -139,7 +141,7 @@ def image_to_tfrecord(image, record_paths, tile_size, bands_to_use=None, overlap
         """Callback function to write the first channel to the output file."""
 
         if write_compressed: # Single output file
-            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y)
+            write_tfrecord_image(array[:, :, bands_to_use], writer, output_roi.min_x, output_roi.min_y)
         else: # Choose a random output file
             this_record_path = random.choice(record_paths)
             if not os.path.exists(this_record_path):
@@ -154,8 +156,6 @@ def image_to_tfrecord(image, record_paths, tile_size, bands_to_use=None, overlap
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)
-
-    print('Writing TFRecord data...')
 
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
     image.process_rois(output_rois, callback_function, strict_order=write_compressed, show_progress=show_progress)
