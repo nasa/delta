@@ -95,19 +95,16 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
     tif_paths, bands_to_use = function(input_path, work_folder) #, redo)
 
     # Gather some image information which is hard to get later on
-    reader = tiff.TiffImage(tif_paths[0])
-    image_size = reader.size()
-    metadata   = reader.metadata()
+    image = tiff.TiffImage(tif_paths)
 
     if single_output and utilities.file_is_good(output_paths[0]) and not redo:
         print('Using existing TFRecord file: ' + str(output_paths))
     else:
-        tfrecord.tiffs_to_tf_record(tif_paths, output_paths, tile_size, bands_to_use,
-                                    tile_overlap)
+        tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap)
 
-    return (image_size, metadata)
+    return (image.size(), image.metadata())
 
-
+# TODO: do we really need this
 def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_label, tile_size,
                                  keep=False, redo=False, tile_overlap=0):
     """Specialized convertion function that splits one Worldview image into 8 output TFrecord files."""
@@ -149,8 +146,8 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
         if utilities.file_is_good(output_path) and not redo:
             print('Using existing TFRecord file: ' + str(output_path))
         else:
-            tfrecord.tiffs_to_tf_record([section_path], [output_path], tile_size, bands_to_use,
-                                        tile_overlap)
+            image = tiff.TiffImage([section_path])
+            tfrecord.image_to_tfrecord(image, [output_path], tile_size, bands_to_use, tile_overlap)
 
     if not keep: # Remove all of the temporary files
         os.system('rm -rf ' + work_folder)

@@ -168,14 +168,13 @@ class TiffImage(basic_sources.DeltaImage):
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return ans.get_intersection(bounds)
 
-    def process_rois(self, requested_rois, callback_function, strict_order=False, show_progress=False):
+    def process_rois(self, requested_rois, callback_function, show_progress=False):
         '''
         Process the given region broken up into blocks using the callback function.
         Each block will get the image data from each input image passed into the function.
         Blocks that go over the image boundary will be passed as partial image blocks.
         All data reading and function calling takes place in the current thread, to use
         multiple threads you need to hand off the work in the callback function.
-        If strict_order is passed in the ROIs will be processed in exactly the input order.
         '''
 
         self.__asert_open()
@@ -210,8 +209,6 @@ class TiffImage(basic_sources.DeltaImage):
                 roi = block_rois[index]
                 if not read_roi.contains_rect(roi):
                     index += 1
-                    if strict_order:
-                        break
                     continue
 
                 x0 = roi.min_x - read_roi.min_x

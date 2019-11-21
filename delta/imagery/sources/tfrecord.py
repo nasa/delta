@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from delta.imagery import rectangle
 
-from . import basic_sources, tiff
+from . import basic_sources
 
 # Create a dictionary describing the features.
 TFRECORD_COMPRESSION_TYPE = 'GZIP'
@@ -123,6 +123,10 @@ def write_tfrecord_image(image, tfrecord_writer, col, row):
 
 def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
                       overlap_amount=0, include_partials=True, show_progress=True):
+    """Convert a TiffImage into a TFRecord file
+       split into multiple tiles so that it is easy to read using TensorFlow.
+       All bands are used unless bands_to_use is set to a list of zero-indexed band indices.
+       If multiple record paths are passed in, each tile is written to a random output file."""
     if not tile_size:
         tile_size = image.size()
     if not bands_to_use:
@@ -148,7 +152,6 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
                 os.system('touch ' + this_record_path) # Should be safe multithreaded
             # We need to write a new uncompressed tfrecord file,
             # concatenate them together, and then delete the temporary file.
-            print(this_record_path)
             with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
                 temp_path = this_record_path + '_temp.tfrecord'
                 this_writer = make_tfrecord_writer(temp_path, compress=False)
@@ -158,58 +161,4 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
                 os.remove(temp_path)
 
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
-    image.process_rois(output_rois, callback_function, strict_order=write_compressed, show_progress=show_progress)
-
-def tiffs_to_tf_record(input_paths, record_paths, tile_size,
-                       bands_to_use=None, overlap_amount=0):
-    """Convert a image consisting of one or more .tif files into a TFRecord file
-       split into multiple tiles so that it is easy to read using TensorFlow.
-       All bands are used unless bands_to_use is set to a list of one-indexed band indices,
-       in which case there should only be one input path.
-       If multiple record paths are passed in, each tile one is written to a random output file."""
-
-    # Open the input image and get information about it
-    input_reader = tiff.TiffImage(input_paths)
-    (num_cols, num_rows) = input_reader.size()
-    num_bands = input_reader.num_bands()
-    #print('Input data type: ' + str(input_reader.data_type()))
-    #print('Using output data type: ' + str(data_type))
-
-    # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
-    input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
-    include_partials = (overlap_amount > 0) # These are always used together
-    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1],
-                                              include_partials, overlap_amount)
-
-
-    write_compressed = (len(record_paths) == 1)
-    if write_compressed:
-        # Set up the output file, it will contain all the tiles from this input image.
-        writer = make_tfrecord_writer(record_paths[0], compress=True)
-
-    if not bands_to_use:
-        bands_to_use = range(num_bands)
-
-    def callback_function(output_roi, array):
-        """Callback function to write the first channel to the output file."""
-
-        if write_compressed: # Single output file
-            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y)
-        else: # Choose a random output file
-            this_record_path = random.choice(record_paths)
-            if not os.path.exists(this_record_path):
-                os.system('touch ' + this_record_path) # Should be safe multithreaded
-            # We need to write a new uncompressed tfrecord file,
-            # concatenate them together, and then delete the temporary file.
-            with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
-                temp_path = this_record_path + '_temp.tfrecord'
-                this_writer = make_tfrecord_writer(temp_path, compress=False)
-                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y)
-                this_writer = None # Make sure the writer is finished
-                os.system('cat %s >> %s' % (temp_path, this_record_path))
-                os.remove(temp_path)
-
-    print('Writing TFRecord data...')
-
-    # If this is a single file the ROIs must be written out in order, otherwise we don't care.
-    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed, show_progress=True)
+    image.process_rois(output_rois, callback_function, show_progress=show_progress)
