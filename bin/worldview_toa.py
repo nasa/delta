@@ -6,7 +6,7 @@ import sys
 import argparse
 import traceback
 
-from delta.imagery.sources import worldview_toa
+from delta.imagery.sources import worldview
 
 #------------------------------------------------------------------------------
 
@@ -19,9 +19,6 @@ def main(argsIn):
 
         parser.add_argument("--image-path", dest="image_path", required=True,
                             help="Path to the image file.")
-
-        parser.add_argument("--meta-path", dest="meta_path", required=True,
-                            help="Path to the metadata file (.IMD or .xml).")
 
         parser.add_argument("--output-path", dest="output_path", required=True,
                             help="Where to write the output image.")
@@ -47,8 +44,9 @@ def main(argsIn):
         return -1
 
     try:
-        worldview_toa.do_worldview_toa_conversion(options.image_path, options.meta_path, options.output_path,
-                                                  options.tile_size, options.calc_reflectance)
+        image = worldview.WorldviewImage(options.image_path)
+        worldview.toa_preprocess(image, options.calc_reflectance)
+        image.save(options.output_path, tile_size=options.tile_size, show_progress=True)
     except Exception:  #pylint: disable=W0703
         traceback.print_exc()
         sys.stdout.flush()

@@ -5,7 +5,7 @@ Convert .tif image(s) into a single TFrecord file consisting of multiple tiles.
 import sys
 import argparse
 
-from delta.imagery.sources import tfrecord
+from delta.imagery.sources import tiff, tfrecord
 
 
 #------------------------------------------------------------------------------
@@ -92,7 +92,8 @@ def main(argsIn):
     if options.reverse:
         unpack_image_record(options.input_images[0], options.output_path)
     else:
-        tfrecord.tiffs_to_tf_record(options.input_images, options.output_path, options.tile_size)
+        image = tiff.TiffImage(options.input_images)
+        tfrecord.image_to_tfrecord(image, [options.output_path], options.tile_size)
 
     print('Script is finished.')
     return 0

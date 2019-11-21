@@ -4,10 +4,8 @@ Support for TIFF imagery.
 
 from abc import ABC, abstractmethod
 import math
-import os
 
 from delta.config import config
-from delta.imagery import image_reader
 from delta.imagery import rectangle
 
 def horizontal_split(image_size, region, num_splits):
@@ -59,22 +57,64 @@ class DeltaImage(ABC):
     """Base class used for wrapping input images in a way that they can be passed
        to Tensorflow dataset objects.
     """
-    def __init__(self, path):
-        self.path = path
+    def __init__(self):
+        self.__preprocess_function = None
+
+    def read(self, roi=None, bands=None, buf=None):
+        """
+        Reads in the requested region of the image.
+
+        If roi is not specified, reads the entire image.
+        If buf is specified, writes the image to buf.
+        If bands is not specified, reads all bands in [row, col, band] indexing. Otherwise
+        only the listed bands are read.
+        If bands is a single integer, drops the band dimension.
+        """
+        if roi is None:
+            roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        if bands is None:
+            bands = range(self.num_bands())
+        if isinstance(bands, int):
+            result = self._read(roi, [bands], buf)
+            result = result[:, :, 0] # reduce dimensions
+        else:
+            result = self._read(roi, bands, buf)
+        if self.__preprocess_function:
+            return self.__preprocess_function(result, roi, bands)
+        return result
+
+    def set_preprocess(self, callback):
+        """
+        Set a preproprocessing function callback to be applied to the results of all reads on the image.
+
+        The function takes the arguments callback(image, roi, bands), where image is the numpy array containing
+        the read data, roi is the region of interest read, and bands is a list of the bands being read.
+        """
+        self.__preprocess_function = callback
 
     @abstractmethod
-    def read(self, roi=None):
+    def _read(self, roi, bands, buf=None):
         """
         Read the image of the given data type. An optional roi specifies the boundaries.
+
+        This function is intended to be overwritten by subclasses.
         """
 
     @abstractmethod
     def size(self):
-        """Return the size of this image in pixels"""
+        """Return the size of this image in pixels, as (width, height)."""
 
     @abstractmethod
     def num_bands(self):
-        """Return the number of bands in the image"""
+        """Return the number of bands in the image."""
+
+    def width(self):
+        """Return the number of columns."""
+        return self.size()[0]
+
+    def height(self):
+        """Return the number of rows."""
+        return self.size()[1]
 
     def tiles(self):
         """Generator to yield ROIs for the image."""
@@ -85,54 +125,3 @@ class DeltaImage(ABC):
         num_regions = math.ceil(image_bytes / max_block_bytes)
         for i in range(num_regions):
             yield horizontal_split(s, i, num_regions)
-
-class TiffImage(DeltaImage):
-    """For all versions of DeltaImage that can use our image_reader class"""
-
-    def __init__(self, path):
-        super(TiffImage, self).__init__(path)
-        self.path = path
-
-    def prep(self):
-        """Prepare the file to be opened by other tools (unpack, etc)"""
-        return [self.path]
-
-    def num_bands(self):
-        """Return the number of bands in a prepared file"""
-        input_paths = self.prep()
-
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.num_bands()
-
-    def read(self, roi=None):
-        input_paths = self.prep()
-
-        # Set up the input image handle
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.read_roi(roi)
-
-    def size(self):
-        input_paths = self.prep()
-
-        input_reader = image_reader.MultiTiffFileReader()
-        input_reader.load_images(input_paths)
-        return input_reader.image_size()
-
-class RGBAImage(TiffImage):
-    """Basic RGBA images where the alpha channel needs to be stripped"""
-
-    def prep(self):
-        """Converts RGBA images to RGB images"""
-
-        # Get the path to the cached image
-        fname = os.path.basename(self.path)
-        output_path = config.cache_manager().register_item(fname)
-
-        if not os.path.exists(output_path):
-            # Just remove the alpha band from the original image
-            cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + self.path + ' ' + output_path
-            print(cmd)
-            os.system(cmd)
-        return [output_path]

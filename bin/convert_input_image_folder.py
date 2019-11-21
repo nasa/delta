@@ -9,7 +9,6 @@ import argparse
 import multiprocessing
 import traceback
 import functools
-import tempfile
 
 from delta.imagery import utilities
 from delta.imagery import tfrecord_conversions
@@ -101,15 +100,21 @@ def get_input_files(options):
 
 
 # Cleaner ways to do this don't work with multiprocessing!
-def try_catch_and_call(func, input_path, output_paths, work_folder):
+def try_catch_and_call(func, input_path, output_paths):
     """Wrap the provided function in a try/catch statement"""
     try:
-        func(input_path, output_paths, work_folder)
+        func(input_path, output_paths)
         print('Finished converting file ', input_path)
         return 0
-    except Exception:  #pylint: disable=W0703
+    except: # pylint:disable=bare-except
         print('ERROR: Failed to process input file: ' + input_path)
         traceback.print_exc()
+        # delete any incomplete work so we don't use it
+        try:
+            for filename in output_paths:
+                os.remove(filename)
+        except OSError:
+            pass
         sys.stdout.flush()
         return -1
 
@@ -205,7 +210,6 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
             if options.mix_outputs: # Use flat folder with mixed files
                 output_paths = mix_paths
-                work_folder =  tempfile.mkdtemp()
             else:
                 # Recreate the subfolders in the output folder
                 rel_path    = os.path.relpath(f, options.input_folder)
@@ -214,25 +218,23 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 subfolder   = os.path.dirname(output_path)
                 name        = os.path.basename(output_path)
                 name        = os.path.splitext(name)[0]
-                work_folder = os.path.join(options.output_folder, name + '_work')
-                output_paths = output_path
+                output_paths = [output_path]
 
                 if not os.path.exists(subfolder):
                     os.mkdir(subfolder)
 
                 # Skip existing output files
                 if os.path.exists(output_path) and not options.redo:
+                    print('Skipping %s, since %s already exists. Use --redo to overwrite.' % (f, output_path))
                     continue
 
             if options.num_processes > 1:# Add the command to the task pool
                 task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
-                                                                         output_paths, work_folder)))
+                                                                         output_paths)))
             else:
-                result = try_catch_and_call(convert_file_function, f, output_paths, work_folder)
-                #result = convert_file_function(f, output_paths, work_folder)
+                result = try_catch_and_call(convert_file_function, f, output_paths)
                 if result == 0:
                     num_succeeded += 1
-            #break # DEBUG
 
             count += 1
             if options.limit and (count >= options.limit):
@@ -252,7 +254,10 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 if h.get() == 0:
                     num_succeeded += 1
 
-        print('Successfully converted ', num_succeeded, ' out of ', count, ' input files.')
+    if num_succeeded != count:
+        print('Failed to convert %s / %s files.' % (count - num_succeeded, count), file=sys.stderr)
+        return 1
+    print('Successfully converted ', num_succeeded, ' input files.')
 
     if not options.mix_outputs:
         return 0 # Finished!

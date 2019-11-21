@@ -22,12 +22,8 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
 
     (input_region_height, input_region_width) = image.size()
 
-    # Set up a reader object
-    if compressed:
-        reader = tf.data.TFRecordDataset(input_path, compression_type=tfrecord.TFRECORD_COMPRESSION_TYPE)
-    else:
-        reader = tf.data.TFRecordDataset(input_path, compression_type="")
-    iterator = iter(reader)
+    dataset = tfrecord.create_dataset([input_path], num_bands, tf.uint8 if label else tf.float32)
+    iterator = iter(dataset)
 
     scaling = 1
     if label: # Get labels into a good 255 range
@@ -39,15 +35,8 @@ def images_from_tfrecord(input_path, output_prefix, width=4, compressed=True, la
     concat = None
     while True:
         try:
-            value = next(iterator)
-
-            # Read the next item from the TFRecord file
-            data_type = tf.uint8 if label else tf.float32
-            image = tfrecord.load_tensor(value, num_bands, data_type = data_type)
-            #print(str((input_region_height, input_region_width)))
-            #print(sess.run(image))
-            #continue
-            pic = image[0,:,:,0] # Just take the first channel for now
+            image = next(iterator)
+            pic = image[:,:,0] # Just take the first channel for now
             pic = tf.reshape(pic, ( input_region_height, input_region_width, 1))
 
             pic = tf.cast(pic*scaling, tf.uint8)

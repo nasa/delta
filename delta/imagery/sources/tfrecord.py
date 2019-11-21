@@ -1,16 +1,14 @@
 """
 Functions to support images stored as TFRecord.
 """
+import functools
 import os.path
 import random
 
 import portalocker
-import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery import utilities
-from delta.imagery import image_reader
 
 from . import basic_sources
 
@@ -28,19 +26,20 @@ IMAGE_FEATURE_DESCRIPTION = {
 
 class TFRecordImage(basic_sources.DeltaImage):
     def __init__(self, path, compressed=True):
-        super(TFRecordImage, self).__init__(path)
+        super(TFRecordImage, self).__init__()
         self._compressed = compressed
         self._num_bands = None
         self._size = None
+        self._path = path
 
-    def read(self, roi=None):
+    def _read(self, roi, bands, buf=None):
         raise NotImplementedError("Random read access not supported in TFRecord.")
 
     def __get_bands_size(self):
-        if not os.path.exists(self.path):
-            raise Exception('Missing file: ' + self.path)
+        if not os.path.exists(self._path):
+            raise Exception('Missing file: ' + self._path)
 
-        record_path = tf.convert_to_tensor(self.path)
+        record_path = tf.convert_to_tensor(self._path)
         if self._compressed:
             dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
         else:
@@ -64,15 +63,25 @@ class TFRecordImage(basic_sources.DeltaImage):
         return self._size
 
 
-def load_tensor(tf_filename, num_bands, data_type=tf.float32):
+def __load_tensor(tf_filename, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
        The image is returned in format [1, channels, height, width]"""
 
     value = tf.io.parse_single_example(tf_filename, IMAGE_FEATURE_DESCRIPTION)
     array = tf.io.decode_raw(value['image_raw'], data_type)
     # num_bands must be static in graph, width and height will not matter after patching
-    shape = tf.stack([1, value['height'], value['width'], num_bands])
-    return tf.reshape(array, shape)
+    return tf.reshape(array, [value['width'], value['height'], num_bands])
+
+def create_dataset(file_list, num_bands, data_type, num_parallel_calls=1, compressed=True):
+    """
+    Returns a tensorflow dataset for the tfrecord files in file_list.
+
+    Each entry is a tensor of size (width, height, num_bands) and of type data_type.
+    """
+    ds_input = tf.data.Dataset.from_tensor_slices(file_list)
+    ds_input = tf.data.TFRecordDataset(ds_input, compression_type=TFRECORD_COMPRESSION_TYPE if compressed else None)
+    return ds_input.map(functools.partial(__load_tensor, num_bands=num_bands, data_type=data_type),
+                        num_parallel_calls=num_parallel_calls)
 
 def _wrap_int64(value):
     """Helper-function for wrapping an integer so it can be saved to the TFRecords file"""
@@ -89,16 +98,21 @@ def make_tfrecord_writer(output_path, compress=True):
     options = tf.io.TFRecordOptions(TFRECORD_COMPRESSION_TYPE)
     return tf.io.TFRecordWriter(output_path, options)
 
-def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_bands):
+def write_tfrecord_image(image, tfrecord_writer, col, row):
     """Pack an image stored as a 3D numpy array and write it to an open TFRecord file"""
     array_bytes = image.tostring()
+    num_bands = 1
+    if len(image.shape) >= 3:
+        num_bands = image.shape[2]
+    else:
+        num_bands = 1
     # Along with the data, record enough info to recreate the image
     data = {'image_raw': _wrap_bytes(array_bytes),
             'num_bands': _wrap_int64(num_bands),
             'col'      : _wrap_int64(col),
             'row'      : _wrap_int64(row),
-            'width'    : _wrap_int64(width),
-            'height'   : _wrap_int64(height),
+            'width'    : _wrap_int64(image.shape[0]),
+            'height'   : _wrap_int64(image.shape[1]),
             'bytes_per_num': _wrap_int64(4) # TODO: Vary this!
            }
 
@@ -107,52 +121,31 @@ def write_tfrecord_image(image, tfrecord_writer, col, row, width, height, num_ba
 
     tfrecord_writer.write(example.SerializeToString())
 
-def tiffs_to_tf_record(input_paths, record_paths, tile_size,
-                       bands_to_use=None, overlap_amount=0):
-    """Convert a image consisting of one or more .tif files into a TFRecord file
+def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
+                      overlap_amount=0, include_partials=True, show_progress=False):
+    """Convert a TiffImage into a TFRecord file
        split into multiple tiles so that it is easy to read using TensorFlow.
-       All bands are used unless bands_to_use is set to a list of one-indexed band indices,
-       in which case there should only be one input path.
-       If multiple record paths are passed in, each tile one is written to a random output file."""
-
-    # Open the input image and get information about it
-    input_reader = image_reader.MultiTiffFileReader(input_paths)
-    (num_cols, num_rows) = input_reader.image_size()
-    num_bands = input_reader.num_bands()
-    data_type = utilities.gdal_dtype_to_numpy_type(input_reader.data_type())
-    #print('Input data type: ' + str(input_reader.data_type()))
-    #print('Using output data type: ' + str(data_type))
+       All bands are used unless bands_to_use is set to a list of zero-indexed band indices.
+       If multiple record paths are passed in, each tile is written to a random output file."""
+    if not tile_size:
+        tile_size = image.size()
+    if not bands_to_use:
+        bands_to_use = range(image.num_bands())
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
-    input_bounds = rectangle.Rectangle(0, 0, width=num_cols, height=num_rows)
-    include_partials = (overlap_amount > 0) # These are always used together
-    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1],
-                                              include_partials, overlap_amount)
+    input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
+    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials, overlap_amount)
 
-
-    write_compressed = (len(record_paths) == 1) or (isinstance(record_paths, str))
+    write_compressed = (len(record_paths) == 1)
     if write_compressed:
         # Set up the output file, it will contain all the tiles from this input image.
-        writer = make_tfrecord_writer(record_paths, compress=True)
+        writer = make_tfrecord_writer(record_paths[0], compress=True)
 
-    if not bands_to_use:
-        bands_to_use = range(1,num_bands+1)
-
-    def callback_function(output_roi, read_roi, data_vec):
+    def callback_function(output_roi, array):
         """Callback function to write the first channel to the output file."""
 
-        # Figure out where the desired output data falls in read_roi
-        ((col, row), (x0, y0, x1, y1)) = image_reader.get_block_and_roi(output_roi, read_roi, tile_size) #pylint: disable=W0612
-
-        # Pack all bands into a numpy array in the shape TF will expect later.
-        array = np.zeros(shape=[output_roi.height(), output_roi.width(), num_bands], dtype=data_type)
-        for band in bands_to_use:
-            band_data = data_vec[band-1]
-            array[:,:, band-1] = band_data[y0:y1, x0:x1] # Crop the correct region
-
         if write_compressed: # Single output file
-            write_tfrecord_image(array, writer, output_roi.min_x, output_roi.min_y,
-                                 output_roi.width(), output_roi.height(), num_bands)
+            write_tfrecord_image(array[:, :, bands_to_use], writer, output_roi.min_x, output_roi.min_y)
         else: # Choose a random output file
             this_record_path = random.choice(record_paths)
             if not os.path.exists(this_record_path):
@@ -162,17 +155,12 @@ def tiffs_to_tf_record(input_paths, record_paths, tile_size,
             with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
                 temp_path = this_record_path + '_temp.tfrecord'
                 this_writer = make_tfrecord_writer(temp_path, compress=False)
-                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y,
-                                     output_roi.width(), output_roi.height(), num_bands)
+                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y)
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)
 
-    print('Writing TFRecord data...')
-
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
-    input_reader.process_rois(output_rois, callback_function, strict_order=write_compressed)
+    image.process_rois(output_rois, callback_function, show_progress=show_progress)
     if write_compressed:
-        print('Done writing: ' + str(input_paths))
-    else:
-        print('Done writing: ' + input_paths[0])
+        writer.close()

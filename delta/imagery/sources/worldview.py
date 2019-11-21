@@ -2,71 +2,19 @@
 Functions to support the WorldView satellites.
 """
 
+import math
+import functools
 import os
+import numpy as np
 
 from delta.config import config
 from delta.imagery import utilities
-from . import basic_sources
+from . import tiff
 
-def parse_meta_file(meta_path):
-    """Parse out the needed values from the IMD or XML file"""
+# Use this value for all WorldView nodata values we write, though they usually don't have any nodata.
+OUTPUT_NODATA = 0.0
 
-    if not os.path.exists(meta_path):
-        raise Exception('Metadata file not found: ' + meta_path)
-
-    # TODO: Add more tags!
-    # These are all the values we want to read in
-    DESIRED_TAGS = ['ABSCALFACTOR', 'EFFECTIVEBANDWIDTH']
-
-    data = {'ABSCALFACTOR':[],
-            'EFFECTIVEBANDWIDTH':[]}
-
-    with open(meta_path, 'r') as f:
-        for line in f:
-
-            #line = line.replace('"','') # Clean up
-            upline = line.replace(';','').upper().strip()
-
-            if 'MEANSUNEL = ' in upline:
-                value = upline.split('=')[-1]
-                data['MEANSUNEL'] = float(value)
-
-            if 'SATID = ' in upline:
-                value = upline.split('=')[-1].replace('"','').strip()
-                data['SATID'] = value
-
-            # Look for the other info we want
-            for tag in DESIRED_TAGS:
-                if tag in upline:
-
-                    # Add the value to the appropriate list
-                    # -> If the bands are not in order we will need to be more careful here.
-                    parts = upline.split('=')
-                    value = parts[1]
-                    data[tag].append(float(value))
-
-    return data
-
-
-def get_worldview_bands_to_use(sensor_name):
-    """Return the list of zero-based band indices that we are currently
-       using to process the given WorldView sensor.
-    """
-
-    WV2_DESIRED_BANDS = [0, 1, 2, 3, 4, 5, 6, 7]
-    WV3_DESIRED_BANDS = [0, 1, 2, 3, 4, 5, 6, 7] # TODO: More bands?
-
-    if '2' in sensor_name:
-        bands = WV2_DESIRED_BANDS
-    else:
-        if '3' in sensor_name:
-            bands = WV3_DESIRED_BANDS
-        else:
-            raise Exception('Unknown WorldView type: ' + sensor_name)
-    return bands
-
-
-def get_files_from_unpack_folder(folder):
+def _get_files_from_unpack_folder(folder):
     """Return the image and header file paths from the given unpack folder.
        Returns (None, None) if the files were not found.
     """
@@ -90,41 +38,153 @@ def get_files_from_unpack_folder(folder):
             break
     return (tif_path, imd_path)
 
-def get_scene_info(path):
-    """Extract information about the landsat scene from the file name"""
-    # ex: WV02N42_939570W073_2520792013040400000000MS00_GU004003002.zip
-    fname  = os.path.basename(path)
-    parts  = fname.split('_')
-    output = {}
-    output['sensor'] = parts[0][0:4]
-    output['date'  ] = parts[2][6:14]
-    return output
-
-class WorldviewImage(basic_sources.TiffImage):
+class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    def __init__(self, paths):
+        self._meta_path = None
+        self._meta = None
+        super(WorldviewImage, self).__init__(paths)
 
-    # This function is currently set up for the HDDS archived WV data, files from other
-    #  locations will need to be handled differently.
-    def prep(self):
-        """Prepares a WorldView file from the archive for processing.
-           Returns the path to the file ready to use.
-           TODO: Apply TOA conversion!
-        """
-        scene_info = get_scene_info(self.path)
-
+    def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
-        name = '_'.join([scene_info['sensor'], scene_info['date']])
+        name = '_'.join([self._sensor, self._date])
         unpack_folder = config.cache_manager().register_item(name)
 
         # Check if we already unpacked this data
-        (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+        (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
 
         if imd_path and tif_path:
             #print('Already have unpacked files in ' + unpack_folder)
             pass
         else:
-            print('Unpacking file ' + self.path + ' to folder ' + unpack_folder)
-            utilities.unpack_to_folder(self.path, unpack_folder)
-            (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
+            utilities.unpack_to_folder(paths, unpack_folder)
+            (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+        return (tif_path, imd_path)
 
+    # This function is currently set up for the HDDS archived WV data, files from other
+    #  locations will need to be handled differently.
+    def _prep(self, paths):
+        """Prepares a WorldView file from the archive for processing.
+           Returns the path to the file ready to use.
+           TODO: Apply TOA conversion!
+        """
+        assert isinstance(paths, str)
+        parts = os.path.basename(paths).split('_')
+        self._sensor = parts[0][0:4]
+        self._date = parts[2][6:14]
+
+        (tif_path, imd_path) = self._unpack(paths)
+
+        self._meta_path = imd_path
+        self.__parse_meta_file(imd_path)
         return [tif_path]
+
+    def meta_path(self):
+        return self._meta_path
+
+    def __parse_meta_file(self, meta_path):
+        """Parse out the needed values from the IMD or XML file"""
+
+        if not os.path.exists(meta_path):
+            raise Exception('Metadata file not found: ' + meta_path)
+
+        # TODO: Add more tags!
+        # These are all the values we want to read in
+        DESIRED_TAGS = ['ABSCALFACTOR', 'EFFECTIVEBANDWIDTH']
+
+        data = {'ABSCALFACTOR':[],
+                'EFFECTIVEBANDWIDTH':[]}
+
+        with open(meta_path, 'r') as f:
+            for line in f:
+
+                upline = line.replace(';','').upper().strip()
+
+                if 'MEANSUNEL = ' in upline:
+                    value = upline.split('=')[-1]
+                    data['MEANSUNEL'] = float(value)
+
+                if 'SATID = ' in upline:
+                    value = upline.split('=')[-1].replace('"','').strip()
+                    data['SATID'] = value
+
+                # Look for the other info we want
+                for tag in DESIRED_TAGS:
+                    if tag in upline:
+
+                        # Add the value to the appropriate list
+                        # -> If the bands are not in order we will need to be more careful here.
+                        parts = upline.split('=')
+                        value = parts[1]
+                        data[tag].append(float(value))
+
+        self._meta_path = meta_path
+        self._meta = data
+
+    def scale(self):
+        return self._meta['ABSCALFACTOR']
+    def bandwidth(self):
+        return self._meta['EFFECTIVEBANDWIDTH']
+
+# TOA correction
+def _get_esun_value(sat_id, band):
+    """Get the ESUN value for the given satellite and band"""
+
+    VALUES = {'WV02':[1580.814, 1758.2229, 1974.2416, 1856.4104,
+                      1738.4791, 1559.4555, 1342.0695, 1069.7302, 861.2866],
+              'WV03':[1583.58, 1743.81, 1971.48, 1856.26,
+                      1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
+    try:
+        return VALUES[sat_id][band]
+    except Exception:
+        raise Exception('No ESUN value for ' + sat_id
+                        + ', band ' + str(band))
+
+def _get_earth_sun_distance():
+    """Returns the distance between the Earth and the Sun in AU for the given date"""
+    # TODO: Copy the calculation from the WV manuals.
+    return 1.0
+
+# The np.where clause handles input nodata values.
+
+def _apply_toa_radiance(data, _, bands, factors, widths):
+    """Apply a top of atmosphere radiance conversion to WorldView data"""
+    for b in bands:
+        f = factors[b]
+        w = widths[b]
+        data[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)
+    return data
+
+def _apply_toa_reflectance(data, band, factor, width, sun_elevation,
+                           satellite, earth_sun_distance):
+    """Apply a top of atmosphere reflectance conversion to WorldView data"""
+    f = factor[band]
+    w = width [band]
+
+    esun    = _get_esun_value(satellite, band)
+    des2    = earth_sun_distance*earth_sun_distance
+    theta   = np.pi/2.0 - sun_elevation
+    scaling = (des2*np.pi) / (esun*math.cos(theta))
+    return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
+
+
+def toa_preprocess(image, calc_reflectance=False):
+    """
+    Set a WorldviewImage's preprocessing function to do worldview TOA correction.
+    Using the reflectance calculation is slightly more complicated but may be more useful.
+    """
+
+    #ds = get_earth_sun_distance() # TODO: Implement this function!
+
+    if not calc_reflectance:
+        user_function = functools.partial(_apply_toa_radiance, factors=image.scale(), widths=image.bandwidth())
+    else:
+        raise Exception('TODO: WV reflectance calculation is not fully implemented!')
+
+        #user_function = functools.partial(apply_toa_reflectance, factor=scale, width=bwidth,
+        #                                  sun_elevation=math.radians(data['MEANSUNEL']),
+        #                                  satellite=data['SATID'],
+        #                                  earth_sun_distance=ds)
+
+    image.set_preprocess(user_function)

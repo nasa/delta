@@ -11,7 +11,6 @@ import shutil
 import argparse
 #import matplotlib.pyplot as plt
 import numpy as np
-from osgeo import gdal
 
 #import mlflow
 import tensorflow as tf
@@ -20,7 +19,7 @@ from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery import imagery_dataset
 from delta.imagery import tfrecord_conversions
-from delta.imagery import image_writer
+from delta.imagery.sources import tiff
 #from delta.ml.train import Experiment
 from delta.ml.train import load_keras_model
 
@@ -62,10 +61,9 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     tile_gen_overlap = chunk_overlap # TODO: The tfrecord can't be cached if this changes!
     include_partials = (tile_gen_overlap>0) # This is how it is decided in this function call, could be changed.
     image_size, metadata = \
-      tfrecord_conversions.convert_image_to_tfrecord(options.input_image, tfrecord_path,
-                                                     options.work_folder,
+      tfrecord_conversions.convert_image_to_tfrecord(options.input_image, [tfrecord_path],
                                                      (TILE_SIZE, TILE_SIZE), options.image_type,
-                                                     keep=True, tile_overlap=tile_gen_overlap)
+                                                     tile_overlap=tile_gen_overlap)
     if not os.path.exists(tfrecord_path):
         print('Failed to convert input image!')
         return -1
@@ -192,7 +190,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
             roi_index += 1
 
     print('Writing classified image to: ' + options.output_path)
-    image_writer.write_simple_image(options.output_path, pic, data_type=gdal.GDT_Byte, metadata=metadata)
+    tiff.write_tiff(options.output_path, pic, metadata=metadata)
     #plt.imsave(options.output_path+'.png', pic) # Generates an RGB false color image
 
     draw = time.time()
