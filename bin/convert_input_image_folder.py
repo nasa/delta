@@ -5,12 +5,10 @@ convert them to a Tensorflow friendly format in the output folder.
 """
 import os
 import sys
-import shutil
 import argparse
 import multiprocessing
 import traceback
 import functools
-import tempfile
 
 from delta.imagery import utilities
 from delta.imagery import tfrecord_conversions
@@ -102,10 +100,10 @@ def get_input_files(options):
 
 
 # Cleaner ways to do this don't work with multiprocessing!
-def try_catch_and_call(func, input_path, output_paths, work_folder):
+def try_catch_and_call(func, input_path, output_paths):
     """Wrap the provided function in a try/catch statement"""
     try:
-        func(input_path, output_paths, work_folder)
+        func(input_path, output_paths)
         print('Finished converting file ', input_path)
         return 0
     except: # pylint:disable=bare-except
@@ -208,12 +206,10 @@ def main(argsIn): #pylint: disable=R0914,R0912
         # Assign input files to the pool
         count = 0
         num_succeeded = 0
-        work_folders = []
         for f in input_files:
 
             if options.mix_outputs: # Use flat folder with mixed files
                 output_paths = mix_paths
-                work_folder =  tempfile.mkdtemp()
             else:
                 # Recreate the subfolders in the output folder
                 rel_path    = os.path.relpath(f, options.input_folder)
@@ -222,7 +218,6 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 subfolder   = os.path.dirname(output_path)
                 name        = os.path.basename(output_path)
                 name        = os.path.splitext(name)[0]
-                work_folder = os.path.join(options.output_folder, name + '_work')
                 output_paths = [output_path]
 
                 if not os.path.exists(subfolder):
@@ -233,12 +228,11 @@ def main(argsIn): #pylint: disable=R0914,R0912
                     print('Skipping %s, since %s already exists. Use --redo to overwrite.' % (f, output_path))
                     continue
 
-            work_folders.append(work_folder)
             if options.num_processes > 1:# Add the command to the task pool
                 task_handles.append(pool.apply_async(try_catch_and_call,(convert_file_function, f,
-                                                                         output_paths, work_folder)))
+                                                                         output_paths)))
             else:
-                result = try_catch_and_call(convert_file_function, f, output_paths, work_folder)
+                result = try_catch_and_call(convert_file_function, f, output_paths)
                 if result == 0:
                     num_succeeded += 1
 
@@ -259,10 +253,6 @@ def main(argsIn): #pylint: disable=R0914,R0912
             for h in task_handles:
                 if h.get() == 0:
                     num_succeeded += 1
-
-    # always delete work folders, don't want people to resume from unfinished work
-    for wf in work_folders:
-        shutil.rmtree(wf, ignore_errors=True)
 
     if num_succeeded != count:
         print('Failed to convert %s / %s files.' % (count - num_succeeded, count), file=sys.stderr)

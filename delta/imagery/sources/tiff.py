@@ -2,7 +2,9 @@
 Classes for block-aligned reading from multiple Geotiff files.
 """
 import os
+import concurrent.futures
 import copy
+import functools
 import math
 
 from osgeo import gdal
@@ -84,7 +86,9 @@ class TiffImage(basic_sources.DeltaImage):
 
     def _gdal_band(self, band):
         (h, b) = self._band_map[band]
-        return self._handles[h].GetRasterBand(b)
+        ret = self._handles[h].GetRasterBand(b)
+        assert ret
+        return ret
 
     def nodata_value(self, band=0):
         '''
@@ -117,10 +121,11 @@ class TiffImage(basic_sources.DeltaImage):
         band_handle = self._gdal_band(band)
         block_size = band_handle.GetBlockSize()
 
-        num_blocks_x = int(math.ceil(self.height() / block_size[0]))
-        num_blocks_y = int(math.ceil(self.width() / block_size[1]))
+        num_blocks_x = int(math.ceil(self.height() / block_size[1]))
+        num_blocks_y = int(math.ceil(self.width() / block_size[0]))
 
-        return (block_size, (num_blocks_x, num_blocks_y))
+        # we are backwards from gdal I think
+        return ((block_size[1], block_size[0]), (num_blocks_x, num_blocks_y))
 
     def metadata(self):
         '''
@@ -157,14 +162,14 @@ class TiffImage(basic_sources.DeltaImage):
         # The stops are inclusive
         stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
 
-        start_col = start_block_x * block_size[0]
-        start_row = start_block_y * block_size[1]
-        num_cols = (stop_block_x - start_block_x + 1) * block_size[0]
-        num_rows = (stop_block_y - start_block_y + 1) * block_size[1]
+        start_x = start_block_x * block_size[0]
+        start_y = start_block_y * block_size[1]
+        w = (stop_block_x - start_block_x + 1) * block_size[0]
+        h = (stop_block_y - start_block_y + 1) * block_size[1]
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
-        ans = rectangle.Rectangle(start_col, start_row, width=num_cols, height=num_rows)
+        ans = rectangle.Rectangle(start_x, start_y, width=w, height=h)
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return ans.get_intersection(bounds)
 
@@ -172,9 +177,8 @@ class TiffImage(basic_sources.DeltaImage):
         '''
         Process the given region broken up into blocks using the callback function.
         Each block will get the image data from each input image passed into the function.
-        Blocks that go over the image boundary will be passed as partial image blocks.
-        All data reading and function calling takes place in the current thread, to use
-        multiple threads you need to hand off the work in the callback function.
+        Data reading takes place in a separate thread, but the callbacks are executed
+        in a consistent order on a single thread.
         '''
 
         self.__asert_open()
@@ -186,38 +190,41 @@ class TiffImage(basic_sources.DeltaImage):
             if not whole_bounds.contains_rect(roi):
                 raise Exception('Roi outside image bounds: ' + str(roi) + str(whole_bounds))
 
-        buf = np.zeros(shape=(self.num_bands(), 1, 1), dtype=self.numpy_type())
+        # gdal doesn't work reading multithreading. But this let's a thread
+        # take care of IO input while we do computation.
+        exe = concurrent.futures.ThreadPoolExecutor(1)
+        jobs = []
 
         total_rois = len(block_rois)
-        num_remaining = total_rois
         while block_rois:
             # For the next (output) block, figure out the (input block) aligned
             # data read that we need to perform to get it.
             read_roi = self.get_block_aligned_read_roi(block_rois[0])
 
-            if read_roi.width() > buf.shape[1] or read_roi.height() > buf.shape[2]: # pylint: disable=E1136
-                new_width, new_height = (max(buf.shape[1], read_roi.width()), max(buf.shape[2], read_roi.height())) # pylint: disable=E1136
-                buf = np.zeros(shape=(self.num_bands(), new_width, new_height), dtype=self.numpy_type())
-
-            self.read(roi=read_roi, buf=buf[:, :read_roi.width(), :read_roi.height()])
+            applicable_rois = []
 
             # Loop through the remaining ROIs and apply the callback function to each
             # ROI that is contained in the section we read in.
             index = 0
             while index < len(block_rois):
 
-                roi = block_rois[index]
-                if not read_roi.contains_rect(roi):
+                if not read_roi.contains_rect(block_rois[index]):
                     index += 1
                     continue
+                applicable_rois.append(block_rois.pop(index))
 
+            buf = exe.submit(functools.partial(self.read, read_roi))
+            jobs.append((buf, read_roi, applicable_rois))
+
+        num_remaining = total_rois
+        for (buf_exe, read_roi, rois) in jobs:
+            buf = buf_exe.result()
+            for roi in rois:
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
 
-                callback_function(roi, np.transpose(buf[:, x0:x0 + roi.width(), y0:y0 + roi.height()], [1, 2, 0]))
+                callback_function(roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :])
 
-                # Instead of advancing the index, remove the current ROI from the list.
-                block_rois.pop(index)
                 num_remaining -= 1
                 if show_progress:
                     utilities.progress_bar('%d / %d' % (total_rois - num_remaining, total_rois),
@@ -304,11 +311,12 @@ class TiffWriter:
         self._height = height
         self._tile_height = tile_height
         self._tile_width  = tile_width
+        print(self._tile_width, self._tile_height)
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        options += ['BLOCKXSIZE='+str(self._tile_width),
-                    'BLOCKYSIZE='+str(self._tile_height)]
+        options += ['BLOCKXSIZE='+str(self._tile_height),
+                    'BLOCKYSIZE='+str(self._tile_width)]
         MIN_SIZE_FOR_TILES=100
         if width > MIN_SIZE_FOR_TILES or height > MIN_SIZE_FOR_TILES:
             options += ['TILED=YES']
@@ -384,6 +392,6 @@ class TiffWriter:
                                 + str((self._tile_width, self._tile_height)))
 
         gdal_band = self._handle.GetRasterBand(band+1)
+        assert gdal_band
 
-        bSize = gdal_band.GetBlockSize()
-        gdal_band.WriteArray(data, block_y * bSize[1], block_x * bSize[0])
+        gdal_band.WriteArray(data, block_y * self._tile_height, block_x * self._tile_width)

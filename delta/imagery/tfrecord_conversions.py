@@ -7,9 +7,7 @@ from tensorflow.python.framework.errors_impl import OutOfRangeError
 
 from delta.imagery import utilities
 from delta.imagery import rectangle
-from delta.imagery.sources import tiff, tfrecord
-from delta.imagery.sources import landsat_toa
-from delta.imagery.sources import worldview_toa
+from delta.imagery.sources import landsat, tiff, tfrecord, worldview
 
 
 #------------------------------------------------------------------------------
@@ -35,52 +33,45 @@ def compress_tfrecord_file(input_path, output_path):
             break
     return count
 
-def _convert_image_to_tfrecord_tif(input_path, _):
+def _convert_image_to_tfrecord_tif(input_path):
     """Convert one input tif image"""
-    return ([input_path], None)
+    return (tiff.TiffImage([input_path]), None)
 
-def _convert_image_to_tfrecord_rgba(input_path, _):
+def _convert_image_to_tfrecord_rgba(input_path):
     """Ignore the 4th channel of an RGBA image"""
-    return ([input_path], [1,2,3])
+    return (tiff.TiffImage([input_path]), [1,2,3])
 
 
-def _convert_image_to_tfrecord_landsat(input_path, work_folder):
+def _convert_image_to_tfrecord_landsat(input_path):
     """Convert one input Landsat file (containing multiple tif tiles)"""
 
-    toa_path = os.path.join(work_folder, 'toa.tiff')
+    image = landsat.LandsatImage(input_path)
+    landsat.toa_preprocess(image, calc_reflectance=True)
 
-    landsat_toa.do_landsat_toa_conversion(input_path, toa_path, calc_reflectance=True)
-    if not os.path.exists(toa_path):
-        raise Exception('TOA conversion failed for: ', input_path)
-
-    return ([toa_path], None)
+    return (image, None)
 
 
-def _convert_image_to_tfrecord_worldview(input_path, work_folder):
+def _convert_image_to_tfrecord_worldview(input_path):
     """Convert one input WorldView file"""
 
-    toa_path     = os.path.join(work_folder, 'toa.tiff')
     bands_to_use = [0, 1, 2, 3, 4, 5, 6, 7]
 
-    worldview_toa.do_worldview_toa_conversion(input_path, toa_path, calc_reflectance=False)
-    if not os.path.exists(toa_path):
-        raise Exception('TOA conversion failed for: ', input_path)
+    image = worldview.WorldviewImage(input_path)
+    worldview.toa_preprocess(image, calc_reflectance=False)
 
-    return ([toa_path], bands_to_use)
+    return (image, bands_to_use)
 
 
-def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, image_type,
+def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
                               redo=False, tile_overlap=0):
-    """Convert a single image file (possibly compressed) of image_type into TFRecord format.
-       If one output path is provided, all output data will be stored there compressed.  If
-       multiple output paths are provided, the output data will be divided randomly among those
-       files and they will be uncompressed.
-       work_folder is deleted if the conversion is successful."""
+    """
+    Convert a single image file (possibly compressed) of image_type into TFRecord format.
+    If one output path is provided, all output data will be stored there compressed.  If
+    multiple output paths are provided, the output data will be divided randomly among those
+    files and they will be uncompressed.
+    """
 
     single_output = (len(output_paths) == 1)
-
-    if not os.path.exists(work_folder):
-        os.mkdir(work_folder)
 
     CONVERT_FUNCTIONS = {'worldview':_convert_image_to_tfrecord_worldview,
                          'landsat'  :_convert_image_to_tfrecord_landsat,
@@ -92,15 +83,13 @@ def convert_image_to_tfrecord(input_path, output_paths, work_folder, tile_size, 
         raise Exception('Unrecognized image type: ' + image_type)
 
     # Generate the intermediate tiff files
-    tif_paths, bands_to_use = function(input_path, work_folder) #, redo)
-
-    # Gather some image information which is hard to get later on
-    image = tiff.TiffImage(tif_paths)
+    image, bands_to_use = function(input_path)
 
     if single_output and utilities.file_is_good(output_paths[0]) and not redo:
         print('Using existing TFRecord file: ' + str(output_paths))
     else:
-        tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap)
+        print('Applying conversions and writing tfrecord file...')
+        tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap, show_progress=True)
 
     return (image.size(), image.metadata())
 
@@ -114,9 +103,9 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
 
     # Generate the intermediate tiff files
     if is_label:
-        tif_paths, bands_to_use = _convert_image_to_tfrecord_tif(input_path, work_folder)
+        tif_paths, bands_to_use = _convert_image_to_tfrecord_tif(input_path)
     else:
-        tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path, work_folder)
+        tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path)
 
     # Gather some image information which is hard to get later on
     reader = tiff.TiffImage(tif_paths[0])
@@ -147,7 +136,7 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
             print('Using existing TFRecord file: ' + str(output_path))
         else:
             image = tiff.TiffImage([section_path])
-            tfrecord.image_to_tfrecord(image, [output_path], tile_size, bands_to_use, tile_overlap)
+            tfrecord.image_to_tfrecord(image, [output_path], tile_size, bands_to_use, tile_overlap, show_progress=True)
 
     if not keep: # Remove all of the temporary files
         os.system('rm -rf ' + work_folder)

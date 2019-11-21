@@ -5,7 +5,7 @@ Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 import sys
 import argparse
 
-from delta.imagery.sources import landsat_toa
+from delta.imagery.sources import landsat
 
 
 #------------------------------------------------------------------------------
@@ -40,8 +40,9 @@ def main(argsIn):
         print(usage)
         return -1
 
-    landsat_toa.do_landsat_toa_conversion(options.image_path, options.output_file, options.tile_size,
-                                          options.calc_reflectance)
+    image = landsat.LandsatImage(options.iamge_path)
+    landsat.toa_preprocess(image, options.calc_reflectance)
+    image.save(options.output_file, tile_size=options.tile_size, show_progress=True)
 
     print('Landsat TOA conversion is finished.')
     return 0
