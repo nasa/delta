@@ -138,6 +138,7 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     # TODO: Read these from file!
     height = 9216
     width = 14400
+    chunk_stride = config.chunk_size()-1 # Set this to 1 to classify every pixel!
     tile_size = 256 # TODO: Where to get this?
     num_tiles_x = int(math.floor(width/tile_size))
     num_tiles_y = int(math.floor(height/tile_size))
@@ -147,20 +148,14 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
     # Make a non-shuffled dataset for only one image
     predict_batch = 200
-    def make_classify_ds():
-        ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), 1)
-        if options.use_keras:
-            ds = ids.data()
-        else:
-            ds = ids.dataset(filter_zero=False, shuffle=False)
-        ds = ds.batch(predict_batch)
-        return ds
-
+    ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), chunk_stride)
+    ds  = ids.data()
+    ds  = ds.batch(predict_batch)
 
     print('Classifying the image...')
     start = time.time()
 
-    predictions = model.predict(make_classify_ds(), verbose=1)
+    predictions = model.predict(ds, verbose=1)
 
     stop = time.time()
     print('Output count = ' + str(len(predictions)))
