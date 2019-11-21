@@ -277,13 +277,14 @@ class RGBAImage(TiffImage):
             os.system(cmd)
         return [output_path]
 
-def write_tiff(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
+def write_tiff(output_path, data, metadata=None):
     """Just dump 2D numpy data to a single channel image file"""
 
     if len(data.shape) < 3:
         num_bands = 1
     else:
         num_bands = data.shape[2]
+    data_type = utilities.numpy_dtype_to_gdal_type(data.dtype)
 
     with TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
                     data_type=data_type, metadata=metadata, tile_width=data.shape[0],

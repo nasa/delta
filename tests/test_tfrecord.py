@@ -1,5 +1,4 @@
 #pylint: disable=redefined-outer-name
-from osgeo import gdal
 import pytest
 import numpy as np
 import tensorflow as tf
@@ -10,9 +9,9 @@ from delta.imagery.sources import tfrecord, tiff
 def tiff_image(tmp_path):
     width = 64
     height = 32
-    numpy_image = np.random.rand(width, height, 3)
+    numpy_image = np.random.rand(width, height, 3).astype(np.float32)
     filename = str(tmp_path / 'test.tiff')
-    tiff.write_tiff(filename, numpy_image, data_type=gdal.GDT_Float32)
+    tiff.write_tiff(filename, numpy_image)
     return (numpy_image, filename)
 
 def test_save_tfrecord(tiff_image, tmp_path):
@@ -73,3 +72,17 @@ def test_save_single_band(tiff_image, tmp_path):
         value = np.squeeze(value.numpy())
         assert value.shape == (tiff_image[0].shape[0], tiff_image[0].shape[1])
         assert np.allclose(value, tiff_image[0][:, :, 2])
+
+def test_mix(tiff_image, tmp_path):
+    filename1 = str(tmp_path / 'test1.tfrecord')
+    filename2 = str(tmp_path / 'test2.tfrecord')
+    image = tiff.TiffImage(tiff_image[1])
+    tfrecord.image_to_tfrecord(image, [filename1, filename2], (30, 30), show_progress=False)
+    ds = tfrecord.create_dataset([filename1, filename2], image.num_bands(), tf.float32, compressed=False)
+    area = 0
+    for value in ds:
+        value = np.squeeze(value.numpy())
+        assert value.shape[0] == 30 or value.shape[0] == 4
+        assert value.shape[1] == 30 or value.shape[1] == 2
+        area += value.shape[0] * value.shape[1]
+    assert area == 64 * 32

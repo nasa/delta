@@ -90,16 +90,19 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         if self._use_tfrecord:
-            return tfrecord.create_dataset(file_list if label_list is None else label_list,
-                                           num_bands, data_type, self._num_parallel_calls)
-        ds_input = self._tf_tiles(file_list, label_list)
-        def load_imagery_class(filename, x1, y1, x2, y2):
-            y = tf.py_function(functools.partial(self._load_tensor_imagery,
-                                                 self._image_class if label_list is None else self._label_class),
-                               [filename, [x1, y1, x2, y2]], [data_type])
-            y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))
-            return y
-        return ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
+            ret = tfrecord.create_dataset(file_list if label_list is None else label_list,
+                                          num_bands, data_type, self._num_parallel_calls)
+        else:
+            ds_input = self._tf_tiles(file_list, label_list)
+            def load_imagery_class(filename, x1, y1, x2, y2):
+                y = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                     self._image_class if label_list is None else self._label_class),
+                                   [filename, [x1, y1, x2, y2]], [data_type])
+                #y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))
+                return y
+            ret = ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
+        # ignore images that are too small to use
+        return ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
 
     def _chunk_tf_image(self, num_bands, image):
         """Split up a tensor image into tensor chunks"""
@@ -107,7 +110,6 @@ class ImageryDataset:
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, self._chunk_stride, self._chunk_stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1]
-        tf.print(tf.shape(image), tf.shape(tf.expand_dims(image, 0)))
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]

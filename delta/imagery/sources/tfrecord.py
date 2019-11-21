@@ -72,14 +72,14 @@ def __load_tensor(tf_filename, num_bands, data_type=tf.float32):
     # num_bands must be static in graph, width and height will not matter after patching
     return tf.reshape(array, [value['width'], value['height'], num_bands])
 
-def create_dataset(file_list, num_bands, data_type, num_parallel_calls=1):
+def create_dataset(file_list, num_bands, data_type, num_parallel_calls=1, compressed=True):
     """
     Returns a tensorflow dataset for the tfrecord files in file_list.
 
     Each entry is a tensor of size (width, height, num_bands) and of type data_type.
     """
     ds_input = tf.data.Dataset.from_tensor_slices(file_list)
-    ds_input = tf.data.TFRecordDataset(ds_input, compression_type=TFRECORD_COMPRESSION_TYPE)
+    ds_input = tf.data.TFRecordDataset(ds_input, compression_type=TFRECORD_COMPRESSION_TYPE if compressed else None)
     return ds_input.map(functools.partial(__load_tensor, num_bands=num_bands, data_type=data_type),
                         num_parallel_calls=num_parallel_calls)
 
@@ -122,7 +122,7 @@ def write_tfrecord_image(image, tfrecord_writer, col, row):
     tfrecord_writer.write(example.SerializeToString())
 
 def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
-                      overlap_amount=0, include_partials=True, show_progress=True):
+                      overlap_amount=0, include_partials=True, show_progress=False):
     """Convert a TiffImage into a TFRecord file
        split into multiple tiles so that it is easy to read using TensorFlow.
        All bands are used unless bands_to_use is set to a list of zero-indexed band indices.
@@ -162,3 +162,5 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
 
     # If this is a single file the ROIs must be written out in order, otherwise we don't care.
     image.process_rois(output_rois, callback_function, show_progress=show_progress)
+    if write_compressed:
+        writer.close()

@@ -11,7 +11,6 @@ import shutil
 import argparse
 #import matplotlib.pyplot as plt
 import numpy as np
-from osgeo import gdal
 
 #import mlflow
 import tensorflow as tf
@@ -188,7 +187,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
             roi_index += 1
 
     print('Writing classified image to: ' + options.output_path)
-    tiff.write_tiff(options.output_path, pic, data_type=gdal.GDT_Byte, metadata=metadata)
+    tiff.write_tiff(options.output_path, pic, metadata=metadata)
     #plt.imsave(options.output_path+'.png', pic) # Generates an RGB false color image
 
     draw = time.time()

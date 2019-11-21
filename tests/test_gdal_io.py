@@ -4,8 +4,6 @@ Test for GDAL I/O classes.
 import pytest
 import numpy as np
 
-from osgeo import gdal
-
 from delta.imagery import rectangle
 from delta.imagery.sources.tiff import TiffImage, write_tiff
 
@@ -104,7 +102,7 @@ def test_geotiff_write(tmpdir):
     numpy_image[2, 4] = 14
     filename = str(tmpdir / 'test.tiff')
 
-    write_tiff(filename, numpy_image, data_type=gdal.GDT_Byte)
+    write_tiff(filename, numpy_image)
 
     img = TiffImage(filename)
     data = np.squeeze(img.read())

@@ -12,8 +12,7 @@ from tensorflow import keras
 
 from delta.config import config
 from delta.imagery import imagery_dataset
-from delta.imagery.sources import tfrecord
-from delta.imagery.sources.tiff import write_tiff
+from delta.imagery.sources import tfrecord, tiff
 from delta.ml import train
 
 def generate_tile(width=32, height=32, blocks=50):
@@ -40,31 +39,44 @@ def generate_tile(width=32, height=32, blocks=50):
     return (image, label)
 
 @pytest.fixture(scope="module")
-def tfrecord_filenames():
+def original_file():
     tmpdir = tempfile.mkdtemp()
-    image_path = os.path.join(tmpdir, 'test.tfrecord')
-    label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
-    image_writer = tfrecord.make_tfrecord_writer(image_path)
-    label_writer = tfrecord.make_tfrecord_writer(label_path)
-    width = 32
-    height = 30
-    for i in range(1):
-        for j in range(1):
-            (image, label) = generate_tile(width, height)
-            tfrecord.write_tfrecord_image(image, image_writer,
-                                          i * width, j * height)
-            tfrecord.write_tfrecord_image(label, label_writer,
-                                          i * width, j * height)
-    image_writer.close()
-    label_writer.close()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    (image, label) = generate_tile(64, 32, 50)
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
     yield (image_path, label_path)
 
     shutil.rmtree(tmpdir)
 
 @pytest.fixture(scope="module")
-def worldview_filenames():
-    width = 64
-    height = 62
+def tfrecord_filenames(original_file):
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'test.tfrecord')
+    label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
+    tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[0]), [image_path], tile_size=(30, 30))
+    tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[1]), [label_path], tile_size=(30, 30))
+    #image_writer = tfrecord.make_tfrecord_writer(image_path)
+    #label_writer = tfrecord.make_tfrecord_writer(label_path)
+    #width = 32
+    #height = 30
+    #for i in range(1):
+    #    for j in range(1):
+    #        (image, label) = generate_tile(width, height)
+    #        tfrecord.write_tfrecord_image(image, image_writer,
+    #                                      i * width, j * height)
+    #        tfrecord.write_tfrecord_image(label, label_writer,
+    #                                      i * width, j * height)
+    #image_writer.close()
+    #label_writer.close()
+    yield (image_path, label_path)
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="module")
+def worldview_filenames(original_file):
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
     imd_name = '19MAY13164205-M2AS-503204071020_01_P003.IMD'
@@ -78,9 +90,11 @@ def worldview_filenames():
     os.mkdir(vendor_dir)
     open(imd_path, 'a').close() # only metadata file we use
 
-    (image, label) = generate_tile(width, height)
-    write_tiff(image_path, image)
-    write_tiff(label_path, label)
+    tiff.TiffImage(original_file[0]).save(image_path)
+    tiff.TiffImage(original_file[1]).save(label_path)
+    #(image, label) = generate_tile(width, height)
+    #tiff.write_tiff(image_path, image)
+    #tiff.write_tiff(label_path, label)
 
     z = zipfile.ZipFile(zip_path, mode='x')
     z.write(image_path, arcname=image_name + '.tif')
@@ -113,6 +127,26 @@ def dataset(all_sources, request):
     config.set_value('cache', 'cache_dir', os.path.dirname(image_path))
     dataset = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
     return dataset
+
+def test_tfrecord_write(tfrecord_filenames):
+    images = tfrecord.create_dataset([tfrecord_filenames[0]], 1, tf.float32)
+    labels = tfrecord.create_dataset([tfrecord_filenames[1]], 1, tf.uint8)
+    ds = tf.data.Dataset.zip((images, labels))
+    for value in ds:
+        image = tf.squeeze(value[0])
+        label = tf.squeeze(value[1])
+        assert image.shape == label.shape
+        for x in range(1, image.shape[0] - 1):
+            for y in range(1, image.shape[1] - 1):
+                if label[x][y]:
+                    assert image[x-1][y-1] == 1
+                    assert image[x-1][y  ] == 1
+                    assert image[x-1][y+1] == 1
+                    assert image[x  ][y-1] == 1
+                    assert image[x  ][y+1] == 1
+                    assert image[x+1][y-1] == 1
+                    assert image[x+1][y  ] == 1
+                    assert image[x+1][y+1] == 1
 
 def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
     """
