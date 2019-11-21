@@ -129,6 +129,10 @@ def dataset(all_sources, request):
     return dataset
 
 def test_tfrecord_write(tfrecord_filenames):
+    """
+    Write and read from disks, but only reading full images, not chunked data
+    from ImageryDataset.
+    """
     images = tfrecord.create_dataset([tfrecord_filenames[0]], 1, tf.float32)
     labels = tfrecord.create_dataset([tfrecord_filenames[1]], 1, tf.uint8)
     ds = tf.data.Dataset.zip((images, labels))
