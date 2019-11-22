@@ -193,10 +193,6 @@ def main(argsIn):
         print(usage)
         return -1
 
-    output_folder = os.path.dirname(options.output_path)
-    if output_folder and not os.path.exists(output_folder):
-        os.mkdir(output_folder)
-
     # Extract information about the landsat file
     date = landsat.get_scene_info(options.landsat_path)['date']
     date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
