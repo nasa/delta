@@ -311,7 +311,6 @@ class TiffWriter:
         self._height = height
         self._tile_height = tile_height
         self._tile_width  = tile_width
-        print(self._tile_width, self._tile_height)
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']

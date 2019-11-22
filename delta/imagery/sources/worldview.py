@@ -150,11 +150,12 @@ def _get_earth_sun_distance():
 
 def _apply_toa_radiance(data, _, bands, factors, widths):
     """Apply a top of atmosphere radiance conversion to WorldView data"""
+    buf = np.zeros(data.shape, dtype=np.float32)
     for b in bands:
         f = factors[b]
         w = widths[b]
-        data[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)
-    return data
+        buf[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)
+    return buf
 
 def _apply_toa_reflectance(data, band, factor, width, sun_elevation,
                            satellite, earth_sun_distance):
