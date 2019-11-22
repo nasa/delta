@@ -304,7 +304,7 @@ def restrict_chunk_list_to_roi(chunk_center_list, chunk_size, roi):
                 output_chunk_roi.expand_to_contain_rect(rect)
     return (output_list, output_chunk_roi)
 
-def progress_bar(text, fill_amount, prefix = '', length = 80):
+def progress_bar(text, fill_amount, prefix = '', length = 80): #pylint: disable=W0613
     filled_length = int(length * fill_amount)
     fill_char = '█' if sys.stdout.encoding.lower() == 'utf-8' else 'X'
     prog_bar = fill_char * filled_length + '-' * (length - filled_length)
