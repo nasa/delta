@@ -223,30 +223,33 @@ class LandsatImage(tiff.TiffImage):
 # top of atmosphere correction
 def _apply_toa_radiance(data, _, bands, factors, constants):
     """Apply a top of atmosphere radiance conversion to landsat data"""
+    buf = np.zeros(data.shape, dtype=np.float32)
     for b in bands:
         f = factors[b]
         c = constants[b]
-        data[:, :, b] = np.where(data[:, :, b] > 0, data[:, :, b] * f + c, OUTPUT_NODATA)
-    return data
+        buf[:, :, b] = np.where(data[:, :, b] > 0, data[:, :, b] * f + c, OUTPUT_NODATA)
+    return buf
 
 def _apply_toa_temperature(data, _, bands, factors, constants, k1, k2):
     """Apply a top of atmosphere radiance + temp conversion to landsat data"""
+    buf = np.zeros(data.shape, dtype=np.float32)
     for b in bands:
         f = factors[b]
         c = constants[b]
         k1 = k1[b]
         k2 = k2[b]
-        data[:, :, b] = np.where(data[:, :, b] > 0, k2 / np.log(k1 / (data[:, :, b] * f + c) + 1.0), OUTPUT_NODATA)
-    return data
+        buf[:, :, b] = np.where(data[:, :, b] > 0, k2 / np.log(k1 / (data[:, :, b] * f + c) + 1.0), OUTPUT_NODATA)
+    return buf
 
 def _apply_toa_reflectance(data, _, bands, factors, constants, sun_elevation):
     """Apply a top of atmosphere radiance + temp conversion to landsat data"""
+    buf = np.zeros(data.shape, dtype=np.float32)
     for b in bands:
         f = factors[b]
         c = constants[b]
         se = sun_elevation[b]
-        data[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f + c) / math.sin(se), OUTPUT_NODATA)
-    return data
+        buf[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f + c) / math.sin(se), OUTPUT_NODATA)
+    return buf
 
 def toa_preprocess(image, calc_reflectance=False):
     """Convert landsat files in one folder to TOA corrected files in the output folder.
