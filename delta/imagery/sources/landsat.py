@@ -87,7 +87,7 @@ def _parse_mtl_file(mtl_path):
     return data
 
 
-def _get_scene_info(path):
+def get_scene_info(path):
     """Extract information about the landsat scene from the file name"""
     fname  = os.path.basename(path)
     parts  = fname.split('_')
@@ -166,7 +166,7 @@ class LandsatImage(tiff.TiffImage):
            TODO: Handle bands which are not 30 meters!
            TODO: Apply TOA conversion!
         """
-        scene_info = _get_scene_info(paths)
+        scene_info = get_scene_info(paths)
         self._sensor = scene_info['sensor']
         self._lpath = scene_info['lpath']
         self._lrow = scene_info['lrow']

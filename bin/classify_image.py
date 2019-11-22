@@ -43,6 +43,8 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
 
     if not options.work_folder:
         options.work_folder = options.output_path + '_work'
+    if not os.path.exists(options.work_folder):
+        os.mkdir(options.work_folder)
     tfrecord_path          = os.path.join(options.work_folder, 'converted.tfrecord')
     prediction_backup_path = os.path.join(options.work_folder, 'predict_array.npy' )
     config_copy_path       = os.path.join(options.work_folder, 'delta_config_copy.txt')
@@ -59,7 +61,6 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
         chunk_overlap = int(chunk_size) - 1
     chunk_stride = chunk_size - chunk_overlap # Update this
     tile_gen_overlap = chunk_overlap # TODO: The tfrecord can't be cached if this changes!
-    include_partials = (tile_gen_overlap>0) # This is how it is decided in this function call, could be changed.
     image_size, metadata = \
       tfrecord_conversions.convert_image_to_tfrecord(options.input_image, [tfrecord_path],
                                                      (TILE_SIZE, TILE_SIZE), options.image_type,
@@ -71,7 +72,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     shutil.copy(options.config_path, config_copy_path)
 
     #(num_bands, height, width) = tfrecord_utils.get_record_info(tfrecord_path, compressed=True)
-    (width, height) = image_size
+    (height, width) = image_size
     print('width  = ' + str(width))
     print('height = ' + str(height))
 
@@ -101,12 +102,8 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     print('Classify time = ' + str(stop-start))
 
     # TODO: Replace with a function call to Rectangle
-    if include_partials:
-        num_tiles_x = int(math.ceil(width /(TILE_SIZE-tile_gen_overlap)))
-        num_tiles_y = int(math.ceil(height/(TILE_SIZE-tile_gen_overlap)))
-    else: # No partial tiles
-        num_tiles_x = int(math.floor(width /(TILE_SIZE-tile_gen_overlap)))
-        num_tiles_y = int(math.floor(height/(TILE_SIZE-tile_gen_overlap)))
+    num_tiles_x = int(math.ceil(width /(TILE_SIZE-tile_gen_overlap)))
+    num_tiles_y = int(math.ceil(height/(TILE_SIZE-tile_gen_overlap)))
     num_tiles   = num_tiles_x*num_tiles_y
     print('num_tiles_x = ' + str(num_tiles_x))
     print('num_tiles_y = ' + str(num_tiles_y))
@@ -115,7 +112,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
     # Calculate the number of patches in each tile
     image_bounds = rectangle.Rectangle(0, 0, width=width, height=height)
     output_rois = image_bounds.make_tile_rois(TILE_SIZE, TILE_SIZE,
-                                              include_partials=include_partials,
+                                              include_partials=True,
                                               overlap_amount=tile_gen_overlap)
     if num_tiles != len(output_rois):
         print('Tile count mismatch!  This is a bug!')
@@ -168,7 +165,7 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
         pic = np.zeros([height, width], dtype=np.uint8)
         pic_offset = int(math.floor(config.chunk_size()/2.0))
 
-    #label_scale = 255 # TODO: Maybe not constant?
+    #label_scale = 80 # TODO!!!
     i   = 0
     col = 0
     row = 0
@@ -183,14 +180,14 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
                 col = tile_col*full_tile_patches + pic_offset
                 for x in range(0,dims[0]): #pylint: disable=W0612
                     val = predictions[i]
-                    pic[row, col] = np.argmax(val) # * label_scale
+                    pic[row, col] = np.argmax(val)# * label_scale
                     i += 1
                     col += 1
                 row += 1
             roi_index += 1
 
     print('Writing classified image to: ' + options.output_path)
-    tiff.write_tiff(options.output_path, pic, metadata=metadata)
+    tiff.write_simple_image(options.output_path, pic, metadata=metadata)
     #plt.imsave(options.output_path+'.png', pic) # Generates an RGB false color image
 
     draw = time.time()

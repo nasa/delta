@@ -284,8 +284,29 @@ class RGBAImage(TiffImage):
             os.system(cmd)
         return [output_path]
 
-def write_tiff(output_path, data, metadata=None):
+
+def write_simple_image(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
     """Just dump 2D numpy data to a single channel image file"""
+
+    num_cols  = data.shape[1]
+    num_rows  = data.shape[0]
+    num_bands = 1
+
+    driver = gdal.GetDriverByName('GTiff')
+    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
+    if metadata:
+        handle.SetProjection  (metadata['projection'  ])
+        handle.SetGeoTransform(metadata['geotransform'])
+        handle.SetMetadata    (metadata['metadata'    ])
+        handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
+
+    band   = handle.GetRasterBand(1)
+    band.WriteArray(data)
+    band.FlushCache()
+
+
+def write_tiff(output_path, data, metadata=None):
+    """Try to write a tiff file"""
 
     if len(data.shape) < 3:
         num_bands = 1
