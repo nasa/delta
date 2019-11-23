@@ -24,7 +24,7 @@ def compress_and_delete(input_path, output_path):
         os.remove(input_path)
     return result
 
-def parallel_compress_tfrecords(input_paths, output_paths, num_processes, redo=False):
+def parallel_compress_tfrecords(input_paths, output_paths, num_processes):
     """Use multiple processes to compress a list of TFrecord files"""
 
     # Set up processing pool
@@ -37,10 +37,6 @@ def parallel_compress_tfrecords(input_paths, output_paths, num_processes, redo=F
     count = 0
     num_succeeded = 0
     for input_path, output_path in zip(input_paths, output_paths):
-
-        # Skip existing output files
-        if os.path.exists(output_path) and not redo:
-            continue
 
         if num_processes > 1: # Add the command to the task pool
             task_handles.append(pool.apply_async(compress_and_delete, (input_path, output_path)))
@@ -86,56 +82,19 @@ def try_catch_and_call(func, input_path, output_paths):
         sys.stdout.flush()
         return -1
 
-def convert_images(input_files, base_folder, output_folder, output_extension, image_type, tile_size, \
-                   num_processes, mix_outputs, limit, redo):#pylint:disable=too-many-arguments,too-many-locals,too-many-branches
+def convert_images(input_files, output_paths, image_type, tile_size, num_processes, mix_outputs):
     convert_image_function = \
       functools.partial(tfrecord_conversions.convert_image_to_tfrecord,
                         tile_size=tile_size, image_type=image_type)
-
-    mix_paths = []
-    output_prefix = os.path.join(output_folder, 'mix_file_uncompressed_')
-    for i in range(0, len(input_files)):
-        this_path = ('%s%08d%s' % (output_prefix, i, output_extension))
-        mix_paths.append(this_path)
 
     # Set up processing pool
     pool = multiprocessing.Pool(num_processes)
     task_handles = []
 
     # Assign input files to the pool
-    count = 0
     num_succeeded = 0
-    for f in input_files:
-
-        if mix_outputs: # Use flat folder with mixed files
-            output_paths = mix_paths
-        else:
-            if base_folder:
-                # Recreate the subfolders in the output folder
-                rel_path    = os.path.relpath(f, base_folder)
-                output_path = os.path.join(output_folder, rel_path)
-                output_path = os.path.splitext(output_path)[0] + output_extension
-                subfolder   = os.path.dirname(output_path)
-
-                if not os.path.exists(subfolder):
-                    os.mkdir(subfolder)
-            else:
-                output_path = os.path.basename(f)
-                output_path = os.path.join(output_folder, output_path)
-
-            # Skip existing output files
-            if os.path.exists(output_path) and not redo:
-                print('Skipping %s, since %s already exists. Use --redo to overwrite.' % (f, output_path))
-                continue
-            output_paths = [output_path]
-
-        task_handles.append(pool.apply_async(try_catch_and_call,(convert_image_function, f,
-                                                                 output_paths)))
-
-        count += 1
-        if limit and (count >= limit):
-            print('Limiting processing to ', limit, ' files.')
-            break
+    for (i, f) in enumerate(input_files):
+        task_handles.append(pool.apply_async(try_catch_and_call,(convert_image_function, f, output_paths[i])))
 
     # Wait for all the tasks to complete
     utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
@@ -148,8 +107,9 @@ def convert_images(input_files, base_folder, output_folder, output_extension, im
         if h.get() == 0:
             num_succeeded += 1
 
-    if num_succeeded != count:
-        print('Failed to convert %s / %s files.' % (count - num_succeeded, count), file=sys.stderr)
+    if num_succeeded != len(input_files):
+        print('Failed to convert %s / %s files.' %
+              (len(input_files) - num_succeeded, len(input_files)), file=sys.stderr)
         return 1
     print('Successfully converted %s files.' % (num_succeeded))
 
@@ -158,15 +118,41 @@ def convert_images(input_files, base_folder, output_folder, output_extension, im
 
     print('Compressing the mixed files...')
 
-    compressed_paths = []
-    for p in mix_paths:
-        new_path = p.replace('uncompressed_', '')
-        compressed_paths.append(new_path)
-
-    parallel_compress_tfrecords(mix_paths, compressed_paths,
-                                num_processes, redo)
+    parallel_compress_tfrecords(input_files[0], map(input_files[0], lambda x : x.replace('uncompressed_', '')),
+                                num_processes)
 
     return 0
+
+def to_output_path(p, base_folder, output_folder, output_extension):
+    if base_folder:
+        # Recreate the subfolders in the output folder
+        rel_path    = os.path.relpath(p, base_folder)
+        output_path = os.path.join(output_folder, rel_path)
+        output_path = os.path.splitext(output_path)[0] + output_extension
+        subfolder   = os.path.dirname(output_path)
+
+        if not os.path.exists(subfolder):
+            os.mkdir(subfolder)
+    else:
+        output_path = os.path.basename(p)
+        output_path = os.path.join(output_folder, output_path)
+    return [output_path]
+
+def to_mix_paths(output_folder, output_extension, num_files):
+    mix_paths = []
+    output_prefix = os.path.join(output_folder, 'mix_file_uncompressed_')
+    for i in range(0, num_files):
+        this_path = ('%s%08d%s' % (output_prefix, i, output_extension))
+        mix_paths.append(this_path)
+    return mix_paths
+
+def tfrecord_paths(mix_files, files, base_folder, output_folder, output_extension):
+    if mix_files:
+        # return a list of n lists to pass in each time
+        return [to_mix_paths(output_folder, output_extension, len(files))] * len(files)
+    return list(map(functools.partial(to_output_path, base_folder=base_folder,
+                                      output_folder=output_folder, output_extension=output_extension),
+                    files))
 
 def main(argsIn): #pylint: disable=R0914,R0912
 
@@ -200,17 +186,41 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     inputs = config.dataset()
     (image_files, label_files) = inputs.images()
-    print('Converting %s images and %s labels...' % (len(image_files), len(label_files) if label_files else 0))
+    if label_files is None:
+        label_files = []
+
+    if len(label_files) > 0 and options.mix_outputs:
+        raise NotImplementedError('Cannot support labels with mix_outputs.')
+
+    if options.limit:
+        image_files = image_files[:options.limit]
+        label_files = label_files[:options.limit]
+
+    output_paths = tfrecord_paths(options.mix_outputs, image_files, inputs.data_directory(),
+                                  options.output_folder, '.tfrecord')
+    output_label_paths = tfrecord_paths(False, label_files, inputs.label_directory(),
+                                        options.output_folder, '.tfrecordlabel')
+    if not options.redo:
+        for i in range(len(image_files), -1, -1):
+            if os.path.exists(output_paths[i]):
+                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_paths[i]))
+                output_paths.pop(i)
+                image_files.pop(i)
+        for i in range(len(label_files), -1, -1):
+            if os.path.exists(output_label_paths[i]):
+                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_label_paths[i]))
+                output_label_paths.pop(i)
+                label_files.pop(i)
+
+    print('Converting %s images and %s labels...' % (len(image_files), len(label_files)))
     if len(image_files) == 0:
         return -1
 
-    convert_images(image_files, inputs.data_directory(), options.output_folder, '.tfrecord',
-                   inputs.file_type(), options.tile_size, options.num_processes,
-                   options.mix_outputs, options.limit, options.redo)
+    convert_images(image_files, output_paths, inputs.file_type(), options.tile_size, options.num_processes,
+                   options.mix_outputs)
     if label_files:
-        convert_images(label_files, inputs.label_directory(), options.output_folder, '.tfrecordlabel',
-                       inputs.label_file_type(), options.tile_size, options.num_processes,
-                       options.mix_outputs, options.limit, options.redo)
+        convert_images(label_files, output_label_paths, inputs.label_file_type(),
+                       options.tile_size, options.num_processes, options.mix_outputs)
 
     return 0
 
