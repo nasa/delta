@@ -63,15 +63,13 @@ def _convert_image_to_tfrecord_worldview(input_path):
 
 
 def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
-                              redo=False, tile_overlap=0):
+                              tile_overlap=0):
     """
     Convert a single image file (possibly compressed) of image_type into TFRecord format.
     If one output path is provided, all output data will be stored there compressed.  If
     multiple output paths are provided, the output data will be divided randomly among those
     files and they will be uncompressed.
     """
-
-    single_output = (len(output_paths) == 1)
 
     CONVERT_FUNCTIONS = {'worldview':_convert_image_to_tfrecord_worldview,
                          'landsat'  :_convert_image_to_tfrecord_landsat,
@@ -85,11 +83,7 @@ def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
     # Generate the intermediate tiff files
     image, bands_to_use = function(input_path)
 
-    if single_output and utilities.file_is_good(output_paths[0]) and not redo:
-        print('Using existing TFRecord file: ' + str(output_paths))
-    else:
-        print('Applying conversions and writing tfrecord file...')
-        tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap, show_progress=True)
+    tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap, show_progress=True)
 
     return (image.size(), image.metadata())
 

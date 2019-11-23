@@ -143,7 +143,7 @@ def waitForTaskCompletionOrKeypress(taskHandles, logger = None, interactive=True
                 logger_print(logger, 'Recieved quit command!')
                 break
         else:
-            logger_print(logger, "Waiting on " + str(notReady) + ' incomplete tasks.')
+            #logger_print(logger, "Waiting on " + str(notReady) + ' incomplete tasks.')
             time.sleep(sleepTime)
 
         # As long as we have this process waiting, keep track of our resource consumption.

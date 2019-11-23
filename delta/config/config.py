@@ -27,14 +27,28 @@ def recursive_update(d, u):
 
 class DatasetConfig:
     def __init__(self, config_dict):
+        DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
+                              'worldview' : '.zip',
+                              'tfrecord' : '.tfrecord',
+                              'landsat' : '.zip'
+                             }
+
         self._image_type = config_dict['image_type']
         self._file_type = config_dict['file_type']
         self._label_file_type = config_dict['label_file_type']
 
         self._data_directory = config_dict['data_directory']
-        self._label_directory = config_dict['label_directory']
         self._image_extension = config_dict['extension']
+        self._data_file_list = config_dict['data_file_list']
+        if self._data_directory and self._image_extension is None:
+            if self._file_type in DEFAULT_EXTENSIONS:
+                self._image_extension = DEFAULT_EXTENSIONS[self._file_type]
+
+        self._label_directory = config_dict['label_directory']
         self._label_extension = config_dict['label_extension']
+        if self._label_directory and self._label_extension is None:
+            if self._label_file_type in DEFAULT_EXTENSIONS:
+                self._image_extension = DEFAULT_EXTENSIONS[self._label_file_type]
 
         self._num_threads = config_dict['num_input_threads']
         self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
@@ -85,22 +99,33 @@ class DatasetConfig:
         else:
             label_files = None
 
-        for root, dummy_directories, filenames in os.walk(self._data_directory):
-            for filename in filenames:
-                if os.path.splitext(filename)[1].endswith(self._image_extension):
-                    path = os.path.join(root, filename.strip())
-                    image_files.append(path)
+        if self._data_directory:
+            for root, dummy_directories, filenames in os.walk(self._data_directory):
+                for filename in filenames:
+                    if os.path.splitext(filename)[1].endswith(self._image_extension):
+                        path = os.path.join(root, filename.strip())
+                        image_files.append(path)
 
-                    if self._label_directory:
-                        label_files.append(self._get_label(path))
+                        if self._label_directory:
+                            label_files.append(self._get_label(path))
+        elif self._data_file_list:
+            with open(self._data_file_list, 'r') as f:
+                for line in f:
+                    parts = line.split()
+                    image_files.append(parts[0])
+                    if label_files and len(parts) >= 2:
+                        label_files.append(parts[1])
 
         image_files = np.array(image_files)
-        label_files = np.array(label_files)
         indices = np.arange(len(image_files))
         np.random.shuffle(indices)
 
         shuffle_images = image_files[indices]
-        shuffle_labels = label_files[indices]
+        if label_files:
+            label_files = np.array(label_files)
+            shuffle_labels = label_files[indices]
+        else:
+            shuffle_labels = None
         return (shuffle_images, shuffle_labels)
 
 class DeltaConfig:
@@ -143,12 +168,12 @@ class DeltaConfig:
                     print('Unrecognized key %s:%s in config file %s.' % (section, name, config_path), file=sys.stderr)
                     sys.exit(1)
                 value = os.path.expandvars(value)
-                if 'folder' in name or 'directory' in name:
+                if value.lower() == 'none' or value == '': # Useful in some cases
+                    value = None
+                elif 'folder' in name or 'directory' in name:
                     value = os.path.expanduser(value)
                     # make relative paths relative to this config file
                     value = os.path.normpath(os.path.join(os.path.dirname(config_path), value))
-                if value.lower() == 'none' or value == '': # Useful in some cases
-                    value = None
                 else:
                     try: # Convert eligible values to integers
                         value = int(value)
@@ -194,7 +219,7 @@ class DeltaConfig:
                                                               self.__config_dict['cache']['cache_limit'])
         return self._cache_manager
 
-    def parse_args(self, parser, args, labels=True):
+    def parse_args(self, parser, args, labels=True, ml=True):#pylint:disable=too-many-branches
         group = parser.add_argument_group('General')
         group.add_argument("--num-gpus", dest="num_gpus", required=False, type=int,
                            help="Try to use this many GPUs.")
@@ -205,6 +230,8 @@ class DeltaConfig:
                            help='Dataset configuration file.')
 
         group.add_argument("--data-folder", dest="data_folder", required=False,
+                           help="Specify data folder instead of supplying config file.")
+        group.add_argument("--data-file-list", dest="data_file_list", required=False,
                            help="Specify data folder instead of supplying config file.")
         group.add_argument("--image-type", dest="image_type", required=False,
                            help="Image type (tiff, worldview, landsat, etc.).")
@@ -220,17 +247,18 @@ class DeltaConfig:
             group.add_argument("--label-extension", dest="label_extension", required=False,
                                help="File extension for labels (.tfrecord, .tiff, etc.).")
 
-        group = parser.add_argument_group('Machine Learning')
-        group.add_argument('--ml-config', dest='ml_config', required=False,
-                           help='ML configuration file.')
-        group.add_argument("--chunk-size", dest="chunk_size", required=False, type=int,
-                           help="Width of an image chunk to process at once.")
-        group.add_argument("--chunk-stride", dest="chunk_stride", required=False, type=int,
-                           help="Pixels to skip between chunks. A value of 1 means every chunk.")
-        group.add_argument("--batch-size", dest="batch_size", required=False, type=int,
-                           help="Number of features in a batch.")
-        group.add_argument("--num-epochs", dest="num_epochs", required=False, type=int,
-                           help="Number of times to run through all the features.")
+        if ml:
+            group = parser.add_argument_group('Machine Learning')
+            group.add_argument('--ml-config', dest='ml_config', required=False,
+                               help='ML configuration file.')
+            group.add_argument("--chunk-size", dest="chunk_size", required=False, type=int,
+                               help="Width of an image chunk to process at once.")
+            group.add_argument("--chunk-stride", dest="chunk_stride", required=False, type=int,
+                               help="Pixels to skip between chunks. A value of 1 means every chunk.")
+            group.add_argument("--batch-size", dest="batch_size", required=False, type=int,
+                               help="Number of features in a batch.")
+            group.add_argument("--num-epochs", dest="num_epochs", required=False, type=int,
+                               help="Number of times to run through all the features.")
 
         try:
             options = parser.parse_args(args[1:])
@@ -240,17 +268,21 @@ class DeltaConfig:
 
         if options.data_config:
             config.load(options.data_config)
-        if options.ml_config:
-            config.load(options.ml_config)
+        if ml:
+            if options.ml_config:
+                config.load(options.ml_config)
 
         c = self.__config_dict
         if options.label_folder:
             c['input_dataset']['label_directory'] = options.label_folder
         if options.data_folder:
             c['input_dataset']['data_directory'] = options.data_folder
-        if c['input_dataset']['data_directory'] is None:
-            print('Must specify a data_directory.', file=sys.stderr)
+        if options.data_file_list:
+            c['input_dataset']['data_file_list'] = options.data_file_list
+        if c['input_dataset']['data_directory'] is None != c['input_dataset']['data_file_list'] is None:
+            print('Must specify one of data_directory or data_file_list.', file=sys.stderr)
             sys.exit(0)
+
         if options.image_type:
             c['input_dataset']['image_type'] = options.image_type
         if c['input_dataset']['image_type'] is None:
@@ -264,14 +296,16 @@ class DeltaConfig:
             c['input_dataset']['label_type'] = options.label_type
         if options.label_extension:
             c['input_dataset']['label_extension'] = options.label_extension
-        if options.batch_size:
-            c['ml']['batch_size'] = options.batch_size
-        if options.chunk_size:
-            c['ml']['chunk_size'] = options.chunk_size
-        if options.chunk_stride:
-            c['ml']['chunk_stride'] = options.chunk_stride
-        if options.num_epochs:
-            c['ml']['num_epochs'] = options.num_epochs
+
+        if ml:
+            if options.batch_size:
+                c['ml']['batch_size'] = options.batch_size
+            if options.chunk_size:
+                c['ml']['chunk_size'] = options.chunk_size
+            if options.chunk_stride:
+                c['ml']['chunk_stride'] = options.chunk_stride
+            if options.num_epochs:
+                c['ml']['num_epochs'] = options.num_epochs
 
         return options
 
