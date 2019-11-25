@@ -70,7 +70,6 @@ def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
     multiple output paths are provided, the output data will be divided randomly among those
     files and they will be uncompressed.
     """
-
     CONVERT_FUNCTIONS = {'worldview':_convert_image_to_tfrecord_worldview,
                          'landsat'  :_convert_image_to_tfrecord_landsat,
                          'tif'      :_convert_image_to_tfrecord_tif,
@@ -83,7 +82,12 @@ def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
     # Generate the intermediate tiff files
     image, bands_to_use = function(input_path)
 
-    tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap, show_progress=True)
+    try:
+        tfrecord.image_to_tfrecord(image, output_paths, tile_size, bands_to_use, tile_overlap, show_progress=True)
+    except:
+        for f in output_paths:
+            os.remove(f)
+        raise
 
     return (image.size(), image.metadata())
 

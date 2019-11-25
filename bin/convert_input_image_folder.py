@@ -178,23 +178,22 @@ def main(argsIn): #pylint: disable=R0914,R0912
     if len(label_files) > 0 and options.mix_outputs:
         raise NotImplementedError('Cannot support labels with mix_outputs.')
 
-    if options.limit:
-        image_files = image_files[:options.limit]
-        label_files = label_files[:options.limit]
+    image_files = list(image_files[:options.limit])
+    label_files = list(label_files[:options.limit])
 
     output_paths = tfrecord_paths(options.mix_outputs, image_files, inputs.data_directory(),
                                   options.output_folder, '.tfrecord')
     output_label_paths = tfrecord_paths(False, label_files, inputs.label_directory(),
                                         options.output_folder, '.tfrecordlabel')
-    if not options.redo:
-        for i in range(len(image_files), -1, -1):
-            if os.path.exists(output_paths[i]):
-                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_paths[i]))
+    if not options.redo and not options.mix_outputs:
+        for i in range(len(image_files) - 1, -1, -1):
+            if os.path.exists(output_paths[i][0]):
+                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_paths[i][0]))
                 output_paths.pop(i)
                 image_files.pop(i)
-        for i in range(len(label_files), -1, -1):
-            if os.path.exists(output_label_paths[i]):
-                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_label_paths[i]))
+        for i in range(len(label_files) - 1, -1, -1):
+            if os.path.exists(output_label_paths[i][0]):
+                print('Skipping %s which already exists. Use --redo to overwrite.' % (output_label_paths[i][0]))
                 output_label_paths.pop(i)
                 label_files.pop(i)
 
