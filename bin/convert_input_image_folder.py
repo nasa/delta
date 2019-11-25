@@ -89,29 +89,15 @@ def convert_images(input_files, output_paths, image_type, tile_size, num_process
 
     # Set up processing pool
     pool = multiprocessing.Pool(num_processes)
-    task_handles = []
 
-    # Assign input files to the pool
-    num_succeeded = 0
-    for (i, f) in enumerate(input_files):
-        task_handles.append(pool.apply_async(try_catch_and_call,(convert_image_function, f, output_paths[i])))
+    results = pool.starmap_async(convert_image_function, zip(input_files, output_paths))
 
-    # Wait for all the tasks to complete
-    utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
+    results.get()
+    if not results.successful():
+        print('Conversion failed.')
+        sys.exit(0)
 
-    # All tasks should be finished, clean up the processing pool
-    utilities.stop_task_pool(pool)
-
-    num_succeeded = 0
-    for h in task_handles:
-        if h.get() == 0:
-            num_succeeded += 1
-
-    if num_succeeded != len(input_files):
-        print('Failed to convert %s / %s files.' %
-              (len(input_files) - num_succeeded, len(input_files)), file=sys.stderr)
-        return 1
-    print('Successfully converted %s files.' % (num_succeeded))
+    print('Successfully converted all files.')
 
     if not mix_outputs:
         return 0 # Finished!
