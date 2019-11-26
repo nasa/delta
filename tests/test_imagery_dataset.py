@@ -19,7 +19,7 @@ def dataset(all_sources, request):
     config.set_value('input_dataset', 'image_type', source[2])
     config.set_value('input_dataset', 'file_type', source[3])
     config.set_value('input_dataset', 'label_extension', source[4])
-    config.set_value('input_dataset', 'label_file_type', source[5])
+    config.set_value('input_dataset', 'label_type', source[5])
     config.set_value('input_dataset', 'data_directory', os.path.dirname(image_path))
     config.set_value('input_dataset', 'label_directory', os.path.dirname(label_path))
     config.set_value('ml', 'chunk_size', 3)

@@ -33,7 +33,7 @@ def compress_tfrecord_file(input_path, output_path):
             break
     return count
 
-def _convert_image_to_tfrecord_tif(input_path):
+def _convert_image_to_tfrecord_tiff(input_path):
     """Convert one input tif image"""
     return (tiff.TiffImage([input_path]), None)
 
@@ -72,7 +72,7 @@ def convert_image_to_tfrecord(input_path, output_paths, tile_size, image_type,
     """
     CONVERT_FUNCTIONS = {'worldview':_convert_image_to_tfrecord_worldview,
                          'landsat'  :_convert_image_to_tfrecord_landsat,
-                         'tif'      :_convert_image_to_tfrecord_tif,
+                         'tiff'     :_convert_image_to_tfrecord_tiff,
                          'rgba'     :_convert_image_to_tfrecord_rgba}
     try:
         function = CONVERT_FUNCTIONS[image_type]
@@ -101,7 +101,7 @@ def convert_and_divide_worldview(input_path, output_prefix, work_folder, is_labe
 
     # Generate the intermediate tiff files
     if is_label:
-        tif_paths, bands_to_use = _convert_image_to_tfrecord_tif(input_path)
+        tif_paths, bands_to_use = _convert_image_to_tfrecord_tiff(input_path)
     else:
         tif_paths, bands_to_use = _convert_image_to_tfrecord_worldview(input_path)
 

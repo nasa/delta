@@ -52,11 +52,11 @@ class ImageryDataset:
         self._image_class = IMAGE_CLASSES[dataset_config.file_type()]
         self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
 
-        if self._use_tfrecord and dataset_config.label_file_type() != 'tfrecord':
+        if self._use_tfrecord and dataset_config.label_type() != 'tfrecord':
             raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
-        if dataset_config.label_file_type() not in IMAGE_CLASSES:
-            raise Exception('label_type %s not recognized.' % dataset_config.label_file_type())
-        self._label_class = IMAGE_CLASSES[dataset_config.label_file_type()]
+        if dataset_config.label_type() not in IMAGE_CLASSES:
+            raise Exception('label_type %s not recognized.' % dataset_config.label_type())
+        self._label_class = IMAGE_CLASSES[dataset_config.label_type()]
 
         (self._image_files, self._label_files) = dataset_config.images()
 

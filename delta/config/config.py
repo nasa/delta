@@ -35,7 +35,7 @@ class DatasetConfig:
 
         self._image_type = config_dict['image_type']
         self._file_type = config_dict['file_type']
-        self._label_file_type = config_dict['label_file_type']
+        self._label_type = config_dict['label_type']
 
         self._data_directory = config_dict['data_directory']
         self._image_extension = config_dict['extension']
@@ -47,8 +47,8 @@ class DatasetConfig:
         self._label_directory = config_dict['label_directory']
         self._label_extension = config_dict['label_extension']
         if self._label_directory and self._label_extension is None:
-            if self._label_file_type in DEFAULT_EXTENSIONS:
-                self._image_extension = DEFAULT_EXTENSIONS[self._label_file_type]
+            if self._label_type in DEFAULT_EXTENSIONS:
+                self._label_extension = DEFAULT_EXTENSIONS[self._label_type]
 
         self._num_threads = config_dict['num_input_threads']
         self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
@@ -62,8 +62,8 @@ class DatasetConfig:
         return self._image_type
     def file_type(self):
         return self._file_type
-    def label_file_type(self):
-        return self._label_file_type
+    def label_type(self):
+        return self._label_type
     def num_threads(self):
         return self._num_threads
     def shuffle_buffer_size(self):

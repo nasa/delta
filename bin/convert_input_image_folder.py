@@ -7,6 +7,7 @@ import os
 import sys
 import argparse
 import multiprocessing
+import signal
 import traceback
 import functools
 
@@ -83,16 +84,24 @@ def try_catch_and_call(func, input_path, output_paths):
         return -1
 
 def convert_images(input_files, output_paths, image_type, tile_size, num_processes, mix_outputs):
-    convert_image_function = \
-      functools.partial(tfrecord_conversions.convert_image_to_tfrecord,
-                        tile_size=tile_size, image_type=image_type)
+    convert_image_function = functools.partial(tfrecord_conversions.convert_image_to_tfrecord,
+                                               tile_size=tile_size, image_type=image_type)
+    def init_worker():
+        signal.signal(signal.SIGTERM, lambda x, y: os.kill(os.getpid(), signal.SIGINT))
 
     # Set up processing pool
-    pool = multiprocessing.Pool(num_processes)
+    pool = multiprocessing.Pool(num_processes, init_worker)
 
-    results = pool.starmap_async(convert_image_function, zip(input_files, output_paths))
+    try:
+        results = pool.starmap_async(convert_image_function, zip(input_files, output_paths))
+        results.get()
+    except:
+        pool.terminate()
+        pool.join()
+        raise
 
-    results.get()
+    pool.close()
+    pool.join()
     if not results.successful():
         print('Conversion failed.')
         sys.exit(0)
@@ -174,6 +183,8 @@ def main(argsIn): #pylint: disable=R0914,R0912
     (image_files, label_files) = inputs.images()
     if label_files is None:
         label_files = []
+    else:
+        assert len(label_files) == len(image_files)
 
     if len(label_files) > 0 and options.mix_outputs:
         raise NotImplementedError('Cannot support labels with mix_outputs.')
@@ -183,8 +194,8 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     output_paths = tfrecord_paths(options.mix_outputs, image_files, inputs.data_directory(),
                                   options.output_folder, '.tfrecord')
-    output_label_paths = tfrecord_paths(False, label_files, inputs.label_directory(),
-                                        options.output_folder, '.tfrecordlabel')
+    output_label_paths = list(map(lambda x : list(map(lambda y: y.replace('.tfrecord', '_label.tfrecord'), x)),
+                                  output_paths))
     if not options.redo and not options.mix_outputs:
         for i in range(len(image_files) - 1, -1, -1):
             if os.path.exists(output_paths[i][0]):
@@ -203,8 +214,8 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     convert_images(image_files, output_paths, inputs.file_type(), options.tile_size, options.num_processes,
                    options.mix_outputs)
-    if label_files:
-        convert_images(label_files, output_label_paths, inputs.label_file_type(),
+    if len(label_files) > 0:
+        convert_images(label_files, output_label_paths, inputs.label_type(),
                        options.tile_size, options.num_processes, options.mix_outputs)
 
     return 0
