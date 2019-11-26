@@ -5,9 +5,12 @@ import os
 import sys
 import time
 import math
+import shutil
 import signal
 import traceback
 import subprocess
+import zipfile
+import tarfile
 from osgeo import gdal
 import psutil
 import numpy as np
@@ -185,17 +188,21 @@ def try_catch_and_call(function):
 def unpack_to_folder(compressed_path, unpack_folder):
     """Unpack a file into the given folder"""
 
-    # Force create the output folder
-    os.system('mkdir -p ' + unpack_folder)
+    tmpdir = os.path.normpath(unpack_folder) + '_working'
 
     ext = os.path.splitext(compressed_path)[1]
-    if ext.lower() == '.zip':
-        cmd = 'unzip ' + compressed_path + ' -d ' + unpack_folder
-    else: # Assume a tar file
-        cmd = 'tar -xf ' + compressed_path + ' --directory ' + unpack_folder
-
-    print(cmd)
-    os.system(cmd)
+    try:
+        if ext.lower() == '.zip':
+            with zipfile.ZipFile(compressed_path, 'r') as zf:
+                zf.extractall(tmpdir)
+        else: # Assume a tar file
+            with tarfile.TarFile(compressed_path, 'r') as tf:
+                tf.extractall(tmpdir)
+    except:
+        shutil.rmtree(tmpdir)
+        raise
+    # make this atomic so we don't have incomplete data
+    os.rename(tmpdir, unpack_folder)
 
 def get_files_with_extension(folder, extension):
     """Return paths of all the files in a directory matching an extension (recursive)"""
