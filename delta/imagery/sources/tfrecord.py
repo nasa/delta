@@ -139,14 +139,22 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
     write_compressed = (len(record_paths) == 1)
     if write_compressed:
         # Set up the output file, it will contain all the tiles from this input image.
-        writer = make_tfrecord_writer(record_paths[0], compress=True)
-
-    def callback_function(output_roi, array):
-        """Callback function to write the first channel to the output file."""
-
-        if write_compressed: # Single output file
+        partial_name = record_paths[0] + '.partial'
+        writer = make_tfrecord_writer(partial_name, compress=True)
+        def compressed_write(output_roi, array):
             write_tfrecord_image(array[:, :, bands_to_use], writer, output_roi.min_x, output_roi.min_y)
-        else: # Choose a random output file
+        complete = False
+        try:
+            image.process_rois(output_rois, compressed_write, show_progress=show_progress)
+            complete = True
+        finally:
+            writer.close()
+            if complete:
+                os.rename(partial_name, record_paths[0]) # don't use incomplete files
+            else:
+                os.remove(partial_name)
+    else:
+        def mixed_write(output_roi, array):
             this_record_path = random.choice(record_paths)
             if not os.path.exists(this_record_path):
                 os.system('touch ' + this_record_path) # Should be safe multithreaded
@@ -159,8 +167,4 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)
-
-    # If this is a single file the ROIs must be written out in order, otherwise we don't care.
-    image.process_rois(output_rois, callback_function, show_progress=show_progress)
-    if write_compressed:
-        writer.close()
+        image.process_rois(output_rois, mixed_write, show_progress=show_progress)
