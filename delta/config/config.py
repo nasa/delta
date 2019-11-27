@@ -48,7 +48,7 @@ class DatasetConfig:
         self._label_extension = config_dict['label_extension']
         if self._label_directory and self._label_extension is None:
             if self._label_type in DEFAULT_EXTENSIONS:
-                self._label_extension = DEFAULT_EXTENSIONS[self._label_type]
+                self._label_extension = '_label' + DEFAULT_EXTENSIONS[self._label_type]
 
         self._num_threads = config_dict['num_input_threads']
         self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
@@ -102,12 +102,14 @@ class DatasetConfig:
         if self._data_directory:
             for root, dummy_directories, filenames in os.walk(self._data_directory):
                 for filename in filenames:
-                    if os.path.splitext(filename)[1].endswith(self._image_extension):
+                    if filename.endswith(self._image_extension) and not filename.endswith(self._label_extension):
                         path = os.path.join(root, filename.strip())
                         image_files.append(path)
 
                         if self._label_directory:
                             label_files.append(self._get_label(path))
+            if len(image_files) == 0:
+                print('No images ending in %s found in %s.' % (self._image_extension, self._data_directory))
         elif self._data_file_list:
             with open(self._data_file_list, 'r') as f:
                 for line in f:
@@ -259,6 +261,8 @@ class DeltaConfig:
                                help="Number of features in a batch.")
             group.add_argument("--num-epochs", dest="num_epochs", required=False, type=int,
                                help="Number of times to run through all the features.")
+            group.add_argument("--output-folder", dest="output_folder", required=False,
+                               help="Folder to store all output in.")
 
         try:
             options = parser.parse_args(args[1:])
@@ -306,6 +310,8 @@ class DeltaConfig:
                 c['ml']['chunk_stride'] = options.chunk_stride
             if options.num_epochs:
                 c['ml']['num_epochs'] = options.num_epochs
+            if options.output_folder:
+                c['ml']['output_folder'] = options.output_folder
 
         return options
 
