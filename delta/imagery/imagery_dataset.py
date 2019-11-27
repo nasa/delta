@@ -125,7 +125,7 @@ class ImageryDataset:
         """Reshape the labels to account for the chunking process."""
         w = self._chunk_size // 2
         labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w, tf.shape(labels)[1] - 2 * w)
-        labels = labels[0:self._chunk_stride:, 0:self._chunk_stride:]
+        labels = labels[::self._chunk_stride, ::self._chunk_stride]
         return tf.reshape(labels, [-1, 1])
 
     def data(self):
