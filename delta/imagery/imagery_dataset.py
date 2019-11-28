@@ -129,19 +129,20 @@ class ImageryDataset:
         return tf.reshape(labels, [-1, 1])
 
     def data(self):
-        chunk_set = self._chunk_images(self._load_images(self._image_files, self._num_bands, tf.float32))
+        images = self._load_images(self._image_files, self._num_bands, tf.float32)
 
         # Scale data into 0-1 range
         # TODO: remove this?
-        chunk_set = chunk_set.map(lambda x: tf.math.divide(x, self._data_scale_factor))
+        images = images.map(lambda x: tf.math.divide(x, self._data_scale_factor))
 
-        # Break up the chunk sets to individual chunks
-        return chunk_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        chunk_set = self._chunk_images(images)
+
+        return chunk_set.unbatch()
 
     def labels(self):
         label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files).map(self._reshape_labels)
 
-        return label_set.flat_map(tf.data.Dataset.from_tensor_slices)
+        return label_set.unbatch()
 
     def dataset(self, filter_zero=True, shuffle=True):
         """Return the underlying TensorFlow dataset object that this class creates"""
