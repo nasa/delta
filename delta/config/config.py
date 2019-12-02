@@ -102,7 +102,9 @@ class DatasetConfig:
         if self._data_directory:
             for root, dummy_directories, filenames in os.walk(self._data_directory):
                 for filename in filenames:
-                    if filename.endswith(self._image_extension) and not filename.endswith(self._label_extension):
+                    if filename.endswith(self._image_extension):
+                        if self._label_extension and filename.endswith(self._label_extension):
+                            continue
                         path = os.path.join(root, filename.strip())
                         image_files.append(path)
 
