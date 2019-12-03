@@ -197,7 +197,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
     else:
         assert len(label_files) == len(image_files)
 
-    if len(label_files) > 0 and options.mix_outputs:
+    if label_files and options.mix_outputs:
         raise NotImplementedError('Cannot support labels with mix_outputs.')
 
     image_files = list(image_files[:options.limit])
@@ -220,12 +220,10 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 label_files.pop(i)
 
     print('Converting %s images and %s labels...' % (len(image_files), len(label_files)))
-    if len(image_files) == 0:
-        return -1
 
     convert_images(image_files, output_paths, inputs.file_type(), options.tile_size, options.num_processes,
                    options.mix_outputs)
-    if len(label_files) > 0:
+    if label_files:
         convert_images(label_files, output_label_paths, inputs.label_type(),
                        options.tile_size, options.num_processes, options.mix_outputs)
 
