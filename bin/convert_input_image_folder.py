@@ -192,13 +192,14 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     inputs = config.dataset()
     (image_files, label_files) = inputs.images()
+
+    if label_files is not None and options.mix_outputs:
+        raise NotImplementedError('Cannot support labels with mix_outputs.')
+
     if label_files is None:
         label_files = []
     else:
         assert len(label_files) == len(image_files)
-
-    if label_files and options.mix_outputs:
-        raise NotImplementedError('Cannot support labels with mix_outputs.')
 
     image_files = list(image_files[:options.limit])
     label_files = list(label_files[:options.limit])
