@@ -35,39 +35,37 @@ class TFRecordImage(basic_sources.DeltaImage):
     def _read(self, roi, bands, buf=None):
         raise NotImplementedError("Random read access not supported in TFRecord.")
 
-    def __get_bands_size(self):
+    def __get_num_bands(self):
         if not os.path.exists(self._path):
             raise Exception('Missing file: ' + self._path)
 
         record_path = tf.convert_to_tensor(self._path)
         if self._compressed:
-            dataset = tf.data.TFRecordDataset(record_path, compression_type='GZIP')
+            dataset = tf.data.TFRecordDataset(record_path, compression_type=TFRECORD_COMPRESSION_TYPE)
         else:
-            dataset = tf.data.TFRecordDataset(record_path, compression_type='')
+            dataset = tf.data.TFRecordDataset(record_path)
 
         dataset = dataset.map(lambda x : tf.io.parse_single_example(x, IMAGE_FEATURE_DESCRIPTION))
 
         iterator = iter(dataset)
         value = next(iterator)
         self._num_bands = int(value['num_bands'])
-        self._size = (int(value['height']), int(value['width']))
 
     def num_bands(self):
         if self._num_bands is None:
-            self.__get_bands_size()
+            self.__get_num_bands()
         return self._num_bands
 
     def size(self):
-        if self._size is None:
-            self.__get_bands_size()
-        return self._size
+        raise NotImplementedError("TFRecord files don't have a 'size'!")
 
 
-def __load_tensor(tf_filename, num_bands, data_type=tf.float32):
+
+def __load_tensor(record, num_bands, data_type=tf.float32):
     """Unpacks a single input image section from a TFRecord file we created.
        The image is returned in format [1, channels, height, width]"""
 
-    value = tf.io.parse_single_example(tf_filename, IMAGE_FEATURE_DESCRIPTION)
+    value = tf.io.parse_single_example(record, IMAGE_FEATURE_DESCRIPTION)
     array = tf.io.decode_raw(value['image_raw'], data_type)
     # num_bands must be static in graph, width and height will not matter after patching
     return tf.reshape(array, [value['width'], value['height'], num_bands])
@@ -163,7 +161,7 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
             with portalocker.Lock(this_record_path, 'r') as unused: #pylint: disable=W0612
                 temp_path = this_record_path + '_temp.tfrecord'
                 this_writer = make_tfrecord_writer(temp_path, compress=False)
-                write_tfrecord_image(array, this_writer, output_roi.min_x, output_roi.min_y)
+                write_tfrecord_image(array[:, :, bands_to_use], this_writer, output_roi.min_x, output_roi.min_y)
                 this_writer = None # Make sure the writer is finished
                 os.system('cat %s >> %s' % (temp_path, this_record_path))
                 os.remove(temp_path)
