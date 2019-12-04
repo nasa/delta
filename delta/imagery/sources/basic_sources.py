@@ -3,9 +3,7 @@ Support for TIFF imagery.
 """
 
 from abc import ABC, abstractmethod
-import math
 
-from delta.config import config
 from delta.imagery import rectangle
 
 class DeltaImage(ABC):
@@ -71,13 +69,8 @@ class DeltaImage(ABC):
         """Return the number of rows."""
         return self.size()[1]
 
-    def tiles(self):
+    def tiles(self, width, height, overlap=0):
         """Generator to yield ROIs for the image."""
-        max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
-        s = self.size()
-        # TODO: account for image type
-        image_bytes = s[0] * s[1] * self.num_bands() * 4
-        num_regions = math.ceil(image_bytes / max_block_bytes)
-
         input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
-        return input_bounds.make_tile_rois(self.width() // num_regions, self.height(), include_partials=True)
+        return input_bounds.make_tile_rois(width, height,
+                                           include_partials=True, overlap_amount=overlap)

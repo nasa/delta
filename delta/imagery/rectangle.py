@@ -153,8 +153,8 @@ class Rectangle:
         num_tiles = (int(math.ceil(self.width()  / tile_spacing_x )),
                      int(math.ceil(self.height() / tile_spacing_y)))
         output_tiles = []
-        for r in range(0, num_tiles[1]):
-            for c in range(0, num_tiles[0]):
+        for c in range(0, num_tiles[0]):
+            for r in range(0, num_tiles[1]):
 
                 tile = Rectangle(self.min_x + c*tile_spacing_x,
                                  self.min_y + r*tile_spacing_y,

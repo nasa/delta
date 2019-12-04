@@ -2,9 +2,12 @@
 Tools for loading input images into the TensorFlow Dataset class.
 """
 import functools
+import math
+import sys
 
 import tensorflow as tf
 
+from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery.sources import landsat, worldview, tiff, tfrecord
 
@@ -61,25 +64,41 @@ class ImageryDataset:
         (self._image_files, self._label_files) = dataset_config.images()
 
         # Load the first image to get the number of bands for the input files.
-        # TODO: remove cache manager and num_regions
         self._num_bands = self._image_class(self._image_files[0]).num_bands()
 
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = dataset_config.num_threads()
         self._shuffle_buffer_size = dataset_config.shuffle_buffer_size()
 
-    def _load_tensor_imagery(self, image_class, filename, bbox):
+    def _load_tensor_imagery(self, image_class, scale_factor, filename, bbox):
         """Loads a single image as a tensor."""
         assert not self._use_tfrecord
         image = image_class(filename.numpy().decode())
-        rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
+        w = int(bbox[2])
+        h = int(bbox[3])
+        rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
         r = image.read(rect)
+        if scale_factor:
+            r = r / scale_factor
         return r
 
     def _tf_tiles(self, file_list, label_list=None):
+        max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
         def tile_generator():
             for (i, f) in enumerate(file_list):
-                for t in self._image_class(f).tiles():
+                img = self._image_class(f)
+                # TODO: account for other data types properly
+                ratio = 3 # TODO: better way to figure this out? want more height because read is contiguous that way
+                tile_width = int(math.sqrt(ratio * max_block_bytes / img.num_bands() / 4 / (self._chunk_size ** 2)))
+                tile_height = int(ratio * tile_width)
+                if tile_width < self._chunk_size * 2:
+                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
+                    tile_width = self._chunk_size * 2
+                if tile_height < self._chunk_size * 2:
+                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
+                    tile_height = self._chunk_size * 2
+
+                for t in img.tiles(tile_width, tile_height, overlap=self._chunk_size):
                     yield (f if label_list is None else label_list[i], t.min_x, t.min_y, t.max_x, t.max_y)
         return tf.data.Dataset.from_generator(tile_generator,
                                               (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
@@ -92,17 +111,23 @@ class ImageryDataset:
         if self._use_tfrecord:
             ret = tfrecord.create_dataset(file_list if label_list is None else label_list,
                                           num_bands, data_type, self._num_parallel_calls)
+            # ignore images that are too small to use
+            ret = ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
+            if label_list is None:
+                # Scale data into 0-1 range
+                # TODO: remove this?
+                ret = ret.map(lambda x: tf.math.divide(x, self._data_scale_factor))
         else:
             ds_input = self._tf_tiles(file_list, label_list)
             def load_imagery_class(filename, x1, y1, x2, y2):
-                y = tf.py_function(functools.partial(self._load_tensor_imagery,
-                                                     self._image_class if label_list is None else self._label_class),
-                                   [filename, [x1, y1, x2, y2]], [data_type])
-                #y[0].set_shape((self._chunk_size, self._chunk_size, self._num_bands))
-                return y
+                img = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                       self._image_class if label_list is None else self._label_class,
+                                                       self._data_scale_factor if label_list is None else None),
+                                     [filename, [x1, y1, x2, y2]], data_type)
+                return img
             ret = ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
-        # ignore images that are too small to use
-        return ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
+
+        return ret
 
     def _chunk_tf_image(self, num_bands, image):
         """Split up a tensor image into tensor chunks"""
@@ -129,18 +154,15 @@ class ImageryDataset:
         return tf.reshape(labels, [-1, 1])
 
     def data(self):
-        images = self._load_images(self._image_files, self._num_bands, tf.float32)
+        # TODO: other types?
+        chunks = self._load_images(self._image_files, self._num_bands, tf.float32)
+        chunks = self._chunk_images(chunks)
 
-        # Scale data into 0-1 range
-        # TODO: remove this?
-        images = images.map(lambda x: tf.math.divide(x, self._data_scale_factor))
-
-        chunk_set = self._chunk_images(images)
-
-        return chunk_set.unbatch()
+        return chunks.unbatch()
 
     def labels(self):
-        label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files).map(self._reshape_labels)
+        label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files)
+        label_set = label_set.map(self._reshape_labels)
 
         return label_set.unbatch()
 
