@@ -78,6 +78,7 @@ class ImageryDataset:
         h = int(bbox[3])
         rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
         r = image.read(rect)
+        # TODO: remove this?
         if scale_factor:
             r = r / scale_factor
         return r
@@ -88,8 +89,9 @@ class ImageryDataset:
             for (i, f) in enumerate(file_list):
                 img = self._image_class(f)
                 # TODO: account for other data types properly
-                ratio = 3 # TODO: better way to figure this out? want more height because read is contiguous that way
-                tile_width = int(math.sqrt(ratio * max_block_bytes / img.num_bands() / 4 / (self._chunk_size ** 2)))
+                ratio = 5 # TODO: better way to figure this out? want more height because read is contiguous that way
+                # w * h * bands * 4 * chunk * chunk = max_block_bytes
+                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 / (self._chunk_size ** 2) / ratio))
                 tile_height = int(ratio * tile_width)
                 if tile_width < self._chunk_size * 2:
                     print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
@@ -97,7 +99,6 @@ class ImageryDataset:
                 if tile_height < self._chunk_size * 2:
                     print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
                     tile_height = self._chunk_size * 2
-
                 for t in img.tiles(tile_width, tile_height, overlap=self._chunk_size):
                     yield (f if label_list is None else label_list[i], t.min_x, t.min_y, t.max_x, t.max_y)
         return tf.data.Dataset.from_generator(tile_generator,
@@ -127,7 +128,7 @@ class ImageryDataset:
                 return img
             ret = ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
 
-        return ret
+        return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
     def _chunk_tf_image(self, num_bands, image):
         """Split up a tensor image into tensor chunks"""
@@ -139,12 +140,8 @@ class ImageryDataset:
                                            padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
         result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
-        return result
 
-    def _chunk_images(self, tf_images):
-        """Chunk a tensor of images."""
-        return tf_images.map(functools.partial(self._chunk_tf_image, self._num_bands),
-                             num_parallel_calls=self._num_parallel_calls)
+        return result
 
     def _reshape_labels(self, labels):
         """Reshape the labels to account for the chunking process."""
@@ -155,10 +152,12 @@ class ImageryDataset:
 
     def data(self):
         # TODO: other types?
-        chunks = self._load_images(self._image_files, self._num_bands, tf.float32)
-        chunks = self._chunk_images(chunks)
+        ret = self._load_images(self._image_files, self._num_bands, tf.float32)
+        ret = ret.map(functools.partial(self._chunk_tf_image, self._num_bands),
+                      num_parallel_calls=self._num_parallel_calls)
+        ret = ret.prefetch(tf.data.experimental.AUTOTUNE)
 
-        return chunks.unbatch()
+        return ret.unbatch()
 
     def labels(self):
         label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files)
