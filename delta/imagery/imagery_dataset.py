@@ -5,6 +5,7 @@ import functools
 import math
 import sys
 
+import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
@@ -64,6 +65,7 @@ class ImageDataset:
         self._label_file_name = label_file
         self._image = image_class(image_file)
         self._label = label_class(label_file)
+        self._num_bands = self._image.num_bands()
 
         self._max_block_size = dataset_config.max_block_size()
         self._num_parallel_calls  = dataset_config.num_threads()
@@ -81,7 +83,7 @@ class ImageDataset:
             r = self._image.read(rect)
         # TODO: remove this?
         if scale_factor:
-            r = r / scale_factor
+            r = r / np.float32(scale_factor)
         return r
 
     def _tf_tiles(self):
@@ -90,7 +92,7 @@ class ImageDataset:
             # TODO: account for other data types properly
             ratio = 5 # TODO: better way to figure this out? want more height because read is contiguous that way
             # w * h * bands * 4 * chunk * chunk = max_block_bytes
-            tile_width = int(math.sqrt(max_block_bytes / self._image.num_bands() / 4 / (self._chunk_size ** 2) / ratio))
+            tile_width = int(math.sqrt(max_block_bytes / self._num_bands / 4 / (self._chunk_size ** 2) / ratio))
             tile_height = int(ratio * tile_width)
             if tile_width < self._chunk_size * 2:
                 print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
@@ -108,7 +110,7 @@ class ImageDataset:
         Loads either the image or label as a tensor.
         """
         file_name = self._image_file_name if not is_label else self._label_file_name
-        num_bands = self._image.num_bands() if not is_label else 1
+        num_bands = self._num_bands if not is_label else 1
         # TODO: handle other types properly
         data_type = tf.float32 if not is_label else tf.uint8
         if self._use_tfrecord:
@@ -126,11 +128,11 @@ class ImageDataset:
                                                        self._data_scale_factor if not is_label else None),
                                      [[x1, y1, x2, y2]], data_type)
                 return img
-            ret = tiles.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
+            ret = tiles.map(load_imagery_class, num_parallel_calls=1)
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
-    def _chunk_tf_image(self, num_bands, image):
+    def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
@@ -139,7 +141,7 @@ class ImageDataset:
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
-        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, tf.shape(image)[2]])
 
         return result
 
@@ -152,22 +154,18 @@ class ImageDataset:
 
     def data(self):
         ret = self._load_images(is_label=False)
-        ret = ret.map(functools.partial(self._chunk_tf_image, self._image.num_bands()),
-                      num_parallel_calls=self._num_parallel_calls)
-        ret = ret.prefetch(tf.data.experimental.AUTOTUNE)
+        ret = ret.map(self._chunk_image, num_parallel_calls=self._num_parallel_calls)
 
         return ret.unbatch()
 
     def labels(self):
         label_set = self._load_images(is_label=True)
-        label_set = label_set.map(self._reshape_labels)
+        label_set = label_set.map(self._reshape_labels, num_parallel_calls=self._num_parallel_calls)
 
         return label_set.unbatch()
 
     def dataset(self, filter_zero=True, shuffle=True):
         """Return the underlying TensorFlow dataset object that this class creates"""
-
-        # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
 
         def is_chunk_non_zero(data, label):
