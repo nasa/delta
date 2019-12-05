@@ -82,9 +82,9 @@ def do_work(options): #pylint: disable=R0914,R0912,R0915
 
     # Make a non-shuffled dataset for only one image
     predict_batch = 200
-    ids = imagery_dataset.ClassifyDataset(config.dataset(), tfrecord_path,
-                                          chunk_size, chunk_stride)
-    ds  = ids.dataset()
+    ids = imagery_dataset.ImageryDataset(config.dataset(), chunk_size, image_files=[tfrecord_path],
+                                         chunk_stride=chunk_stride)
+    ds  = ids.data()
     ds  = ds.batch(predict_batch)
 
     print('Classifying the image...')

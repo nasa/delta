@@ -7,7 +7,6 @@ import sys
 
 import tensorflow as tf
 
-from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery.sources import landsat, worldview, tiff, tfrecord
 
@@ -31,13 +30,11 @@ PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
                                'tiff'      : 255.0,
                                'rgba'      : 255.0}
 
-class ImageryDataset:
-    """Create dataset with all files as described in the provided config file.
+class ImageDataset:
     """
-
-    def __init__(self, dataset_config, chunk_size, chunk_stride=1):
-        """Initialize the dataset based on the specified config values."""
-
+    Create a dataset to load a single file.
+    """
+    def __init__(self, image_file, label_file, dataset_config, chunk_size, chunk_stride=1):
         # Record some of the config values
         self._chunk_size = chunk_size
         self._chunk_stride = chunk_stride
@@ -48,85 +45,88 @@ class ImageryDataset:
         except KeyError:
             print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
                   + ', defaulting to 1.0 (no scaling)')
-            self._data_scale_factor  = 1.0
+            self._data_scale_factor  = None
 
         if dataset_config.file_type() not in IMAGE_CLASSES:
             raise Exception('file_type %s not recognized.' % dataset_config.file_type())
-        self._image_class = IMAGE_CLASSES[dataset_config.file_type()]
-        self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
+
+        image_class = IMAGE_CLASSES[dataset_config.file_type()]
+        self._use_tfrecord = image_class is tfrecord.TFRecordImage
 
         if self._use_tfrecord and dataset_config.label_type() != 'tfrecord':
             raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
         if dataset_config.label_type() not in IMAGE_CLASSES:
             raise Exception('label_type %s not recognized.' % dataset_config.label_type())
-        self._label_class = IMAGE_CLASSES[dataset_config.label_type()]
-
-        (self._image_files, self._label_files) = dataset_config.images()
+        label_class = IMAGE_CLASSES[dataset_config.label_type()]
 
         # Load the first image to get the number of bands for the input files.
-        self._num_bands = self._image_class(self._image_files[0]).num_bands()
+        self._image_file_name = image_file
+        self._label_file_name = label_file
+        self._image = image_class(image_file)
+        self._label = label_class(label_file)
 
-        # Tell TF to use the functions above to load our data.
+        self._max_block_size = dataset_config.max_block_size()
         self._num_parallel_calls  = dataset_config.num_threads()
         self._shuffle_buffer_size = dataset_config.shuffle_buffer_size()
 
-    def _load_tensor_imagery(self, image_class, scale_factor, filename, bbox):
+    def _load_tensor_imagery(self, is_label, scale_factor, bbox):
         """Loads a single image as a tensor."""
         assert not self._use_tfrecord
-        image = image_class(filename.numpy().decode())
         w = int(bbox[2])
         h = int(bbox[3])
         rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
-        r = image.read(rect)
+        if is_label:
+            r = self._label.read(rect)
+        else:
+            r = self._image.read(rect)
         # TODO: remove this?
         if scale_factor:
             r = r / scale_factor
         return r
 
-    def _tf_tiles(self, file_list, label_list=None):
-        max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
+    def _tf_tiles(self):
+        max_block_bytes = self._max_block_size * 1024 * 1024
         def tile_generator():
-            for (i, f) in enumerate(file_list):
-                img = self._image_class(f)
-                # TODO: account for other data types properly
-                ratio = 5 # TODO: better way to figure this out? want more height because read is contiguous that way
-                # w * h * bands * 4 * chunk * chunk = max_block_bytes
-                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 / (self._chunk_size ** 2) / ratio))
-                tile_height = int(ratio * tile_width)
-                if tile_width < self._chunk_size * 2:
-                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
-                    tile_width = self._chunk_size * 2
-                if tile_height < self._chunk_size * 2:
-                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
-                    tile_height = self._chunk_size * 2
-                for t in img.tiles(tile_width, tile_height, overlap=self._chunk_size):
-                    yield (f if label_list is None else label_list[i], t.min_x, t.min_y, t.max_x, t.max_y)
+            # TODO: account for other data types properly
+            ratio = 5 # TODO: better way to figure this out? want more height because read is contiguous that way
+            # w * h * bands * 4 * chunk * chunk = max_block_bytes
+            tile_width = int(math.sqrt(max_block_bytes / self._image.num_bands() / 4 / (self._chunk_size ** 2) / ratio))
+            tile_height = int(ratio * tile_width)
+            if tile_width < self._chunk_size * 2:
+                print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
+                tile_width = self._chunk_size * 2
+            if tile_height < self._chunk_size * 2:
+                print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
+                tile_height = self._chunk_size * 2
+            for t in self._image.tiles(tile_width, tile_height, overlap=self._chunk_size):
+                yield (t.min_x, t.min_y, t.max_x, t.max_y)
         return tf.data.Dataset.from_generator(tile_generator,
-                                              (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
+                                              (tf.int32, tf.int32, tf.int32, tf.int32))
 
-    def _load_images(self, file_list, num_bands, data_type, label_list=None):
+    def _load_images(self, is_label):
         """
-        Loads a list of images as tensors.
-        If label_list is specified, load labels instead. The corresponding image files are still required however.
+        Loads either the image or label as a tensor.
         """
+        file_name = self._image_file_name if not is_label else self._label_file_name
+        num_bands = self._image.num_bands() if not is_label else 1
+        # TODO: handle other types properly
+        data_type = tf.float32 if not is_label else tf.uint8
         if self._use_tfrecord:
-            ret = tfrecord.create_dataset(file_list if label_list is None else label_list,
-                                          num_bands, data_type, self._num_parallel_calls)
+            ret = tfrecord.create_dataset([file_name], num_bands, data_type, self._num_parallel_calls)
             # ignore images that are too small to use
             ret = ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
-            if label_list is None:
+            if not is_label and self._data_scale_factor:
                 # Scale data into 0-1 range
                 # TODO: remove this?
                 ret = ret.map(lambda x: tf.math.divide(x, self._data_scale_factor))
         else:
-            ds_input = self._tf_tiles(file_list, label_list)
-            def load_imagery_class(filename, x1, y1, x2, y2):
-                img = tf.py_function(functools.partial(self._load_tensor_imagery,
-                                                       self._image_class if label_list is None else self._label_class,
-                                                       self._data_scale_factor if label_list is None else None),
-                                     [filename, [x1, y1, x2, y2]], data_type)
+            tiles = self._tf_tiles()
+            def load_imagery_class(x1, y1, x2, y2):
+                img = tf.py_function(functools.partial(self._load_tensor_imagery, is_label,
+                                                       self._data_scale_factor if not is_label else None),
+                                     [[x1, y1, x2, y2]], data_type)
                 return img
-            ret = ds_input.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
+            ret = tiles.map(load_imagery_class, num_parallel_calls=self._num_parallel_calls)
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -151,16 +151,15 @@ class ImageryDataset:
         return tf.reshape(labels, [-1, 1])
 
     def data(self):
-        # TODO: other types?
-        ret = self._load_images(self._image_files, self._num_bands, tf.float32)
-        ret = ret.map(functools.partial(self._chunk_tf_image, self._num_bands),
+        ret = self._load_images(is_label=False)
+        ret = ret.map(functools.partial(self._chunk_tf_image, self._image.num_bands()),
                       num_parallel_calls=self._num_parallel_calls)
         ret = ret.prefetch(tf.data.experimental.AUTOTUNE)
 
         return ret.unbatch()
 
     def labels(self):
-        label_set = self._load_images(self._image_files, 1, tf.uint8, self._label_files)
+        label_set = self._load_images(is_label=True)
         label_set = label_set.map(self._reshape_labels)
 
         return label_set.unbatch()
@@ -185,63 +184,43 @@ class ImageryDataset:
 
         return ds
 
-    def num_bands(self):
-        """Return the number of bands in each image of the data set"""
-        return self._num_bands
+class ImageryDataset:
+    """
+    Create dataset with all files as described in the provided config file.
+    """
 
-    def chunk_size(self):
-        return self._chunk_size
+    def __init__(self, dataset_config, chunk_size, chunk_stride=1, image_files=None, label_files=None):
+        """
+        Initialize the dataset based on the specified config values.
 
-    def num_images(self):
-        """Return the number of images in the data set"""
-        return len(self._image_files)
+        If image_files is None, the images and labels from the dataset config are used.
+        """
 
-    def scale_factor(self):
-        return self._data_scale_factor
+        if image_files is None:
+            (image_files, label_files) = dataset_config.images()
 
+        self._images = []
+        for (i, img) in enumerate(image_files):
+            label = label_files[i] if label_files is not None else None
+            self._images.append(ImageDataset(img, label, dataset_config, chunk_size, chunk_stride))
 
+    def __combine_datasets(self, datasets): #pylint:disable=no-self-use
+        ds = next(datasets)
+        for d in datasets:
+            ds = ds.concatenate(d)
+        return ds
+
+    def data(self):
+        return self.__combine_datasets(map(lambda x: x.data(), self._images))
+    def labels(self):
+        return self.__combine_datasets(map(lambda x: x.labels(), self._images))
+    def dataset(self, filter_zero=True, shuffle=True):
+        return self.__combine_datasets(map(lambda x: x.dataset(filter_zero=filter_zero, shuffle=shuffle), self._images))
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
-
-    def labels(self):
-        return self.data()
-
-class ClassifyDataset(ImageryDataset):
-    """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
-
-    def __init__(self, dataset_config, image_file, chunk_size, chunk_stride=1): #pylint: disable=W0231
-        """Initialize the dataset based on the specified config values."""
-
-        # Record some of the config values
-        self._chunk_size = chunk_size
-        self._chunk_stride = chunk_stride
-
-        try:
-            # TODO: remove
-            self._data_scale_factor  = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
-        except KeyError:
-            print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
-                  + ', defaulting to 1.0 (no scaling)')
-            self._data_scale_factor  = 1.0
-
-        if dataset_config.file_type() not in IMAGE_CLASSES:
-            raise Exception('file_type %s not recognized.' % dataset_config.file_type())
-        self._image_class = IMAGE_CLASSES[dataset_config.file_type()]
-        self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
-        if not self._use_tfrecord:
-            raise NotImplementedError('Classification only supported for TFRecord images!')
-
-        self._image_files = [image_file]
-
-        # Load the first image to get the number of bands for the input files.
-        self._num_bands = self._image_class(self._image_files[0]).num_bands()
-
-        # Tell TF to use the functions above to load our data.
-        self._num_parallel_calls  = dataset_config.num_threads()
-
-
-    def dataset(self, filter_zero=True, shuffle=True):
-        """Return the underlying TensorFlow dataset object that this class creates"""
-        # Just classifying so we only need the input images
-        return self.data()
+    def __init__(self, dataset_config, chunk_size, chunk_stride=1, image_files=None):
+        if image_files is None:
+            (image_files, _) = dataset_config.images()
+        super(AutoencoderDataset, self).__init__(dataset_config, chunk_size, image_files=image_files,
+                                                 label_files=image_files, chunk_stride=chunk_stride)
