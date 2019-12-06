@@ -53,6 +53,8 @@ class DatasetConfig:
         self._num_threads = config_dict['num_input_threads']
         self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
         self._max_block_size = config_dict['max_block_size']
+        self._num_interleave_images = config_dict['num_interleave_images']
+        self._tile_ratio = config_dict['tile_ratio']
 
     def data_directory(self):
         return self._data_directory
@@ -70,6 +72,10 @@ class DatasetConfig:
         return self._shuffle_buffer_size
     def max_block_size(self):
         return self._max_block_size
+    def num_interleave_images(self):
+        return self._num_interleave_images
+    def tile_ratio(self):
+        return self._tile_ratio
 
     def _get_label(self, image_path):
         """Returns the path to the expected label for for the given input image file"""
@@ -110,7 +116,7 @@ class DatasetConfig:
 
                         if self._label_directory:
                             label_files.append(self._get_label(path))
-            if len(image_files) == 0:
+            if not image_files:
                 print('No images ending in %s found in %s.' % (self._image_extension, self._data_directory))
         elif self._data_file_list:
             with open(self._data_file_list, 'r') as f:

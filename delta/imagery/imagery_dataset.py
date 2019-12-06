@@ -3,6 +3,7 @@ Tools for loading input images into the TensorFlow Dataset class.
 """
 import functools
 import math
+import random
 import sys
 
 import numpy as np
@@ -36,8 +37,12 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, dataset_config, chunk_size, chunk_stride=1):
-        """Initialize the dataset based on the specified config values."""
+    def __init__(self, dataset_config, chunk_size, chunk_stride=1, image_files=None, label_files=None):
+        """
+        Initialize the dataset based on the specified config values.
+
+        If image_files is None, the images in dataset_config are overridden with image_files and label_files.
+        """
 
         # Record some of the config values
         self._chunk_size = chunk_size
@@ -62,7 +67,10 @@ class ImageryDataset:
             raise Exception('label_type %s not recognized.' % dataset_config.label_type())
         self._label_class = IMAGE_CLASSES[dataset_config.label_type()]
 
-        (self._image_files, self._label_files) = dataset_config.images()
+        if image_files is None:
+            (image_files, label_files) = dataset_config.images()
+        self._image_files = image_files
+        self._label_files = label_files
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = self._image_class(self._image_files[0]).num_bands()
@@ -70,6 +78,8 @@ class ImageryDataset:
         # Tell TF to use the functions above to load our data.
         self._num_parallel_calls  = dataset_config.num_threads()
         self._shuffle_buffer_size = dataset_config.shuffle_buffer_size()
+        self._num_interleave_images = dataset_config.num_interleave_images()
+        self._tile_ratio = dataset_config.tile_ratio()
 
     def _load_tensor_imagery(self, image_class, scale_factor, filename, bbox):
         """Loads a single image as a tensor."""
@@ -84,24 +94,41 @@ class ImageryDataset:
             r = r / np.float32(scale_factor)
         return r
 
-    def _tf_tiles(self, file_list, label_list=None):
+    def _tile_images(self, file_list, label_list=None):
         max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
         def tile_generator():
+            tgs = []
             for (i, f) in enumerate(file_list):
                 img = self._image_class(f)
                 # TODO: account for other data types properly
-                ratio = 5 # TODO: better way to figure this out? want more height because read is contiguous that way
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
-                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 / (self._chunk_size ** 2) / ratio))
-                tile_height = int(ratio * tile_width)
+                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
+                                           (self._chunk_size ** 2) / self._tile_ratio))
+                tile_height = int(self._tile_ratio * tile_width)
                 if tile_width < self._chunk_size * 2:
                     print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
                     tile_width = self._chunk_size * 2
                 if tile_height < self._chunk_size * 2:
                     print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
                     tile_height = self._chunk_size * 2
-                for t in img.tiles(tile_width, tile_height, overlap=self._chunk_size):
-                    yield (f if label_list is None else label_list[i], t.min_x, t.min_y, t.max_x, t.max_y)
+                tiles = img.tiles(tile_width, tile_height, overlap=self._chunk_size)
+                random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
+                tgs.append((f if label_list is None else label_list[i], tiles))
+            while tgs:
+                cur = tgs[:self._num_interleave_images]
+                tgs = tgs[self._num_interleave_images:]
+                done = False
+                while not done:
+                    done = True
+                    for it in cur:
+                        if not it[1]:
+                            continue
+                        t = it[1].pop(0)
+                        if t:
+                            done = False
+                            yield (it[0], t.min_x, t.min_y, t.max_x, t.max_y)
+                    if done:
+                        break
         return tf.data.Dataset.from_generator(tile_generator,
                                               (tf.string, tf.int32, tf.int32, tf.int32, tf.int32))
 
@@ -120,7 +147,7 @@ class ImageryDataset:
                 # TODO: remove this?
                 ret = ret.map(lambda x: tf.math.divide(x, self._data_scale_factor))
         else:
-            ds_input = self._tf_tiles(file_list, label_list)
+            ds_input = self._tile_images(file_list, label_list)
             def load_imagery_class(filename, x1, y1, x2, y2):
                 img = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                        self._image_class if label_list is None else self._label_class,
@@ -131,7 +158,7 @@ class ImageryDataset:
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
-    def _chunk_tf_image(self, num_bands, image):
+    def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
@@ -140,7 +167,7 @@ class ImageryDataset:
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
-        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, num_bands])
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
 
         return result
 
@@ -154,9 +181,7 @@ class ImageryDataset:
     def data(self):
         # TODO: other types?
         ret = self._load_images(self._image_files, self._num_bands, tf.float32)
-        ret = ret.map(functools.partial(self._chunk_tf_image, self._num_bands),
-                      num_parallel_calls=self._num_parallel_calls)
-        ret = ret.prefetch(tf.data.experimental.AUTOTUNE)
+        ret = ret.map(self._chunk_image, num_parallel_calls=self._num_parallel_calls)
 
         return ret.unbatch()
 
@@ -201,48 +226,8 @@ class ImageryDataset:
         return self._data_scale_factor
 
 
-
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
     def labels(self):
-        return self.data()
-
-class ClassifyDataset(ImageryDataset):
-    """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
-
-    def __init__(self, dataset_config, image_file, chunk_size, chunk_stride=1): #pylint: disable=W0231
-        """Initialize the dataset based on the specified config values."""
-
-        # Record some of the config values
-        self._chunk_size = chunk_size
-        self._chunk_stride = chunk_stride
-
-        try:
-            # TODO: remove
-            self._data_scale_factor  = PREPROCESS_APPROX_MAX_VALUE[dataset_config.image_type()]
-        except KeyError:
-            print('WARNING: No data scale factor defined for ' + dataset_config.image_type()
-                  + ', defaulting to 1.0 (no scaling)')
-            self._data_scale_factor  = 1.0
-
-        if dataset_config.file_type() not in IMAGE_CLASSES:
-            raise Exception('file_type %s not recognized.' % dataset_config.file_type())
-        self._image_class = IMAGE_CLASSES[dataset_config.file_type()]
-        self._use_tfrecord = self._image_class is tfrecord.TFRecordImage
-        if not self._use_tfrecord:
-            raise NotImplementedError('Classification only supported for TFRecord images!')
-
-        self._image_files = [image_file]
-
-        # Load the first image to get the number of bands for the input files.
-        self._num_bands = self._image_class(self._image_files[0]).num_bands()
-
-        # Tell TF to use the functions above to load our data.
-        self._num_parallel_calls  = dataset_config.num_threads()
-
-
-    def dataset(self, filter_zero=True, shuffle=True):
-        """Return the underlying TensorFlow dataset object that this class creates"""
-        # Just classifying so we only need the input images
         return self.data()
