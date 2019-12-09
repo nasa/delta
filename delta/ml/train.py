@@ -41,14 +41,14 @@ def get_distribution_strategy(devices):
         strategy = tf.distribute.MirroredStrategy(devices=devices)
     return strategy
 
-def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks=None,
-          num_epochs=70, validation_data=None, num_gpus=0):
+def train(model_fn, train_dataset, optimizer='adam', loss_fn='mse', callbacks=None,
+          validation_data=None, num_gpus=0):
     '''
-    Trains a model constructed by model_fn on datasaet constructed by train_dataset_fn
+    Trains a model constructed by model_fn on datasaet train_dataset
     '''
 
     assert model_fn is not None, "No model function supplied."
-    assert train_dataset_fn is not None, "No training dataset function supplied."
+    assert train_dataset is not None, "No training dataset supplied."
     assert num_gpus > -1, "Number of GPUs is negative."
 
     devs = get_devices(num_gpus)
@@ -59,8 +59,7 @@ def train(model_fn, train_dataset_fn, optimizer='adam', loss_fn='mse', callbacks
         model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
     ### end with
 
-    history = model.fit(train_dataset_fn(),
-                        epochs=num_epochs,
+    history = model.fit(train_dataset,
                         callbacks=callbacks,
                         validation_data=validation_data)
 
@@ -98,7 +97,7 @@ class Experiment:
         mlflow.end_run()
     ### end __del__
 
-    def train_keras(self, model_fn, train_dataset_fn, num_epochs=70,
+    def train_keras(self, model_fn, train_dataset,
                     validation_data=None, num_gpus=1):
         """
         Call that uses the Keras interface to train a network.
@@ -107,17 +106,14 @@ class Experiment:
 
         model_fn -- A zero-argument function that constructs the neural network to be
                     trained. model_fn() should return a Keras Model
-        train_dataset_fn -- A zero-argument function that constructs the dataset as a
-                            Tensorflow Dataset object.
-        num_epochs -- The number of epochs to train the network for.  Default value is
-                      70
+        train_dataset -- A Tensorflow Dataset object. All data is evaluted.
         validation_data -- The data used to validate the network.  Default None.
         num_gpus -- The number of GPUs used to train the network.  If GPU
 
 
         """
         assert model_fn is not None, "No model function supplied."
-        assert train_dataset_fn is not None, "No training dataset function supplied."
+        assert train_dataset is not None, "No training dataset supplied."
         assert num_gpus > -1, "Number of GPUs is negative."
 
         devs = get_devices(num_gpus)
@@ -143,8 +139,7 @@ class Experiment:
                 )
         ]
 
-        history = model.fit(train_dataset_fn(),
-                            epochs=num_epochs,
+        history = model.fit(train_dataset,
                             callbacks=callbacks,
                             validation_data=validation_data)
 

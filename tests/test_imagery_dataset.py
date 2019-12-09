@@ -114,10 +114,9 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
         return d
 
     # Ignoring returned model training history to keep pylint happy.
-    model, _ = train.train(model_fn, create_dataset,
+    model, _ = train.train(model_fn, create_dataset(),
                            optimizer=tf.optimizers.Adam(learning_rate=0.01),
                            loss_fn='mean_squared_logarithmic_error',
-                           num_epochs=1,
                            validation_data=None,
                            num_gpus=0)
     ret = model.evaluate(x=create_dataset())

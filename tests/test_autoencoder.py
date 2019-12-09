@@ -33,7 +33,7 @@ def dataset_fashion_mnist(batch_size=200, num_epochs=5, shuffle_buffer_size=10, 
     return d_s
 
 
-def test_dense_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.1):
+def test_dense_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.11):
     '''
     tests the performance of the dense autoencoder on the Fashion MNIST dataset
     '''
@@ -43,7 +43,7 @@ def test_dense_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.1):
                                  in_shape, encoding_size=32, encoder_type='dense')
     data_fn = functools.partial(dataset_fashion_mnist, num_epochs=num_epochs, reduce_by=reduce_by)
 
-    model, history = train.train(model_fn, data_fn, num_epochs=num_epochs)
+    model, history = train.train(model_fn, data_fn())
     assert model is not None
     assert history.history['loss'][-1] < err_thresh, "Terminal Loss was greater than %f" % err_thresh
 
@@ -57,6 +57,6 @@ def test_conv_autoencoder(reduce_by=16, num_epochs=2, err_thresh=0.1):
                                  in_shape, encoding_size=32, encoder_type='conv')
     data_fn = functools.partial(dataset_fashion_mnist, num_epochs=num_epochs, reduce_by=reduce_by)
 
-    model, history = train.train(model_fn, data_fn, num_epochs=num_epochs)
+    model, history = train.train(model_fn, data_fn())
     assert model is not None
     assert history.history['loss'][-1] < err_thresh, "Terminal Loss was greater than %f" % err_thresh

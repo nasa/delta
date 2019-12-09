@@ -15,17 +15,6 @@ from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
 from delta.ml.networks import make_task_specific
 
-# With TF 1.12, the dataset needs to be constructed inside a function passed in to
-# the estimator "train_and_evaluate" function to avoid getting a graph error!
-def assemble_dataset(config_vals):
-    # Use wrapper class to create a Tensorflow Dataset object.
-    ids = imagery_dataset.ImageryDataset(config_vals.dataset(), config_vals.chunk_size(), config_vals.chunk_stride())
-    ds = ids.dataset()
-    ds = ds.repeat(config_vals.num_epochs()).batch(config_vals.batch_size())
-    ds = ds.prefetch(None)
-
-    return ds
-
 def main(argsIn):
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
@@ -62,10 +51,10 @@ def main(argsIn):
 #    tf.logging.set_verbosity(tf.logging.INFO)
 
     model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
-    dataset_fn = functools.partial(assemble_dataset, config)
 
-    model, _ = experiment.train_keras(model_fn, dataset_fn,
-                                      num_epochs=config.num_epochs(),
+    ds = ids.dataset(filter_zero=False, shuffle=False)
+    ds = ds.batch(config.batch_size()).repeat(config.num_epochs())
+    model, _ = experiment.train_keras(model_fn, ds,
                                       num_gpus=config.num_gpus())
 
     print(model) # Need to do something with the estimator to appease the lint gods

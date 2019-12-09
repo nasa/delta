@@ -63,28 +63,11 @@ def main(args): #pylint: disable=R0914,R0912,R0915
 
     options = config.parse_args(parser, args)
 
-    # With TF 1.12, the dataset needs to be constructed inside a function passed in to
-    # the estimator "train_and_evaluate" function to avoid getting a graph error!
-    def assemble_dataset():
+    ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    ds = ids.dataset().batch(config.batch_size()).repeat(config.num_epochs())
 
-        # Use wrapper class to create a Tensorflow Dataset object.
-        # - The dataset will provide image chunks and corresponding labels.
-        ids = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
-        ds = ids.dataset()
-
-        #print("Num regions = " + str(ids.total_num_regions()))
-        #if ids.total_num_regions() < batch_size:
-        #    raise Exception('Batch size (%d) is too large for the number of input regions (%d)!'
-        #                    % (batch_size, ids.total_num_regions()))
-        ds = ds.batch(config.batch_size())
-
-        #dataset = dataset.shuffle(buffer_size=1000) # Use a random order
-        ds = ds.repeat(config.num_epochs()) # Need to be set here for use with train_and_evaluate
-
-        if options.test_limit:
-            ds = ds.take(options.test_limit)
-
-        return ds
+    if options.test_limit:
+        ds = ds.take(options.test_limit)
 
     print('Creating experiment')
     mlflow_tracking_dir = os.path.join(config.output_folder(), 'mlruns')
@@ -101,22 +84,20 @@ def main(args): #pylint: disable=R0914,R0912,R0915
     mlflow.log_param('chunk size',   config.chunk_size())
 
     # Get these values without initializing the dataset (v1.12)
-    ds_info = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
-    model = make_model(ds_info.num_bands(), config.chunk_size())
-    print('num images = ', ds_info.num_images())
+    model = make_model(ids.num_bands(), config.chunk_size())
+    print('num images = ', ids.num_images())
 
     out_filename = os.path.join(config.output_folder(), config.model_dest_name())
     if options.load_model:
         print('Loading model from ' + out_filename)
         model_fn = functools.partial(tf.keras.models.load_model, out_filename)
     else:
-        model_fn = functools.partial(make_model, ds_info.num_bands(),
+        model_fn = functools.partial(make_model, ids.num_bands(),
                                      config.chunk_size())
 
     # Estimator interface requires the dataset to be constructed within a function.
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO) # TODO 2.0
-    model, _ = experiment.train_keras(model_fn, assemble_dataset,
-                                      num_epochs=config.num_epochs(),
+    model, _ = experiment.train_keras(model_fn, ds,
                                       num_gpus=config.num_gpus())
     #model.evaluate(assemble_dataset(), steps=steps_per_epoch)
 

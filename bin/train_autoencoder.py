@@ -94,8 +94,7 @@ def main(argsIn): #pylint: disable=R0914
                                  encoding_size=int(config.num_hidden())
                                  )
 
-    model, _ = experiment.train_keras(model_fn, assemble_dataset,
-                                      num_epochs=config.num_epochs(),
+    model, _ = experiment.train_keras(model_fn, assemble_dataset(),
                                       num_gpus=config.num_gpus())
 
 
@@ -105,15 +104,14 @@ def main(argsIn): #pylint: disable=R0914
         print('Saving Model')
         out_filename = os.path.join(config.output_folder(), config.model_dest_name())
     if train_keras:
-        keras_model = experiment.train_keras(model, assemble_dataset,
-                                             num_epochs = config.num_epochs(),
+        keras_model = experiment.train_keras(model, assemble_dataset(),
                                              num_gpus=config.num_gpus())
         if out_filename is not None:
             tf.keras.models.save_model(keras_model, out_filename, overwrite=True,
                                        include_optimizer = True)
     else:
         raise NotImplementedError()
-        #estimator, distribution_scope = experiment.train_keras(model, assemble_dataset, test_fn,
+        #estimator, distribution_scope = experiment.train_keras(model, assemble_dataset(), test_fn,
         #                                                 model_folder=config.model_folder(),
         #                                                 log_model=False, num_gpus=config.num_gpus())
         #if out_filename is not None:
