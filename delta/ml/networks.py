@@ -90,14 +90,14 @@ def make_task_specific(in_shape, out_shape):
     # Define network
     model = keras.Sequential([
         keras.layers.Flatten(input_shape=in_shape),
-        keras.layers.Dense(fc2_size, activation=tf.nn.relu),
-        keras.layers.Dropout(rate=dropout_rate),
-        keras.layers.Dense(fc3_size, activation=tf.nn.relu),
-        keras.layers.Dropout(rate=dropout_rate),
-        keras.layers.Dense(fc4_size, activation=tf.nn.relu),
-        keras.layers.Dropout(rate=dropout_rate),
-        keras.layers.Dense(out_shape, activation=tf.nn.sigmoid),
-        keras.layers.Softmax()
+        keras.layers.Dense(fc1_size, activation=tf.nn.relu),
+#         keras.layers.Dense(fc2_size, activation=tf.nn.relu),
+#         keras.layers.Dropout(rate=dropout_rate),
+#         keras.layers.Dense(fc3_size, activation=tf.nn.relu),
+#         keras.layers.Dropout(rate=dropout_rate),
+#         keras.layers.Dense(fc4_size, activation=tf.nn.relu),
+#         keras.layers.Dropout(rate=dropout_rate),
+        keras.layers.Dense(out_shape, activation=tf.nn.softmax),
         ])
     return model
 ### end make_task_specific
