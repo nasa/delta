@@ -17,9 +17,9 @@ def recursive_update(d, u):
     """
     for k, v in u.items():
         dv = d.get(k, {})
-        if not isinstance(dv, collections.Mapping):
+        if not isinstance(dv, collections.abc.Mapping):
             d[k] = v
-        elif isinstance(v, collections.Mapping):
+        elif isinstance(v, collections.abc.Mapping):
             d[k] = recursive_update(dv, v)
         else:
             d[k] = v
@@ -30,7 +30,8 @@ class DatasetConfig:
         DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                               'worldview' : '.zip',
                               'tfrecord' : '.tfrecord',
-                              'landsat' : '.zip'
+                              'landsat' : '.zip',
+                              'npy' : '.npy'
                              }
 
         self._image_type = config_dict['image_type']
