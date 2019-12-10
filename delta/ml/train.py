@@ -127,7 +127,7 @@ class Experiment:
 
         callbacks = [
             tf.keras.callbacks.ModelCheckpoint(
-                filepath=os.path.join(self.output_dir, 'model_{batch}.h5'),
+                filepath=os.path.join(self.output_dir, 'model.ckpt.h5'),
                 monitor='val_loss',
                 verbose=0,
                 save_freq=self.save_freq,
