@@ -16,7 +16,7 @@ from delta.ml.train import Experiment
 from delta.ml.networks import make_task_specific
 
 def main(argsIn):
-    parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
+    parser = argparse.ArgumentParser(usage='train_task_specific.py [options]')
 
     config.parse_args(parser, argsIn)
 
