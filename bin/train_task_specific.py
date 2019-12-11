@@ -4,21 +4,21 @@ Script test out the image chunk generation calls.
 import sys
 import os
 import argparse
-import functools
 
 import mlflow
 
 import tensorflow as tf
+from tensorflow import keras
 
 from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
-from delta.ml.networks import make_task_specific
 
 def main(argsIn):
-    parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
+    parser = argparse.ArgumentParser(usage='train_task_specific.py [options]')
 
-    config.parse_args(parser, argsIn)
+    parser.add_argument('network_file', help='File to save the network to.')
+    options = config.parse_args(parser, argsIn)
 
     if not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())
@@ -50,20 +50,23 @@ def main(argsIn):
     # Estimator interface requires the dataset to be constructed within a function.
 #    tf.logging.set_verbosity(tf.logging.INFO)
 
-    model_fn = functools.partial(make_task_specific, in_data_shape, out_data_shape)
+    def make_dumb_network():
+        return keras.Sequential([
+            keras.layers.Flatten(input_shape=in_data_shape),
+            keras.layers.Dense(in_data_shape[0] * in_data_shape[1] * in_data_shape[2], activation=tf.nn.relu),
+            keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
+            ])
 
     ds = ids.dataset(filter_zero=False, shuffle=False)
-    ds = ds.batch(config.batch_size()).repeat(config.num_epochs())
-    model, _ = experiment.train_keras(model_fn, ds,
+    ds = ds.batch(config.batch_size()).repeat(config.num_epochs()).take(50000)
+    model, _ = experiment.train_keras(make_dumb_network, ds,
                                       num_gpus=config.num_gpus())
 
     print(model) # Need to do something with the estimator to appease the lint gods
     print('Saving Model')
-    if config.model_dest_name() is not None:
-        out_filename = os.path.join(config.output_folder(), config.model_dest_name())
-        tf.keras.models.save_model(model, out_filename, overwrite=True,
-                                   include_optimizer=True)
-        mlflow.log_artifact(out_filename)
+    tf.keras.models.save_model(model, options.network_file, overwrite=True,
+                               include_optimizer=True)
+    mlflow.log_artifact(options.network_file)
 
     return 0
 

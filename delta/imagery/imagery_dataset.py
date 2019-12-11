@@ -90,8 +90,10 @@ class ImageryDataset:
         rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
         r = image.read(rect)
         # TODO: remove this?
+        #if scale_factor:
+        #    r = r / np.float32(scale_factor)
         if scale_factor:
-            r = r / np.float32(scale_factor)
+            r = r / np.float32(1024.0)
         return r
 
     def _tile_images(self, file_list, label_list=None):
