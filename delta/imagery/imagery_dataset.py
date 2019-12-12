@@ -11,7 +11,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import rectangle
-from delta.imagery.sources import landsat, worldview, tiff, tfrecord
+from delta.imagery.sources import landsat, worldview, tiff, tfrecord, npy
 
 
 # Map text strings to the Image wrapper classes defined above
@@ -20,7 +20,8 @@ IMAGE_CLASSES = {
         'worldview' : worldview.WorldviewImage,
         'rgba' : tiff.RGBAImage,
         'tiff' : tiff.TiffImage,
-        'tfrecord' : tfrecord.TFRecordImage
+        'tfrecord' : tfrecord.TFRecordImage,
+        'npy' :  npy.NumpyImage
 }
 
 # TODO: Where is a good place for this?
@@ -31,7 +32,8 @@ IMAGE_CLASSES = {
 PREPROCESS_APPROX_MAX_VALUE = {'worldview': 120.0,
                                'landsat'  : 120.0, # TODO
                                'tiff'      : 255.0,
-                               'rgba'      : 255.0}
+                               'rgba'      : 255.0,
+                               'npy'       : 1.0}
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -184,7 +186,6 @@ class ImageryDataset:
         # TODO: other types?
         ret = self._load_images(self._image_files, self._num_bands, tf.float32)
         ret = ret.map(self._chunk_image, num_parallel_calls=self._num_parallel_calls)
-
         return ret.unbatch()
 
     def labels(self):
