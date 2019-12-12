@@ -149,12 +149,11 @@ def tfrecord_paths(mix_files, files, base_folder, output_folder, output_extensio
                                       output_folder=output_folder, output_extension=output_extension),
                     files))
 
-def write_config_file(output_folder, image_type):
+def write_config_file(output_folder):
     with open(os.path.join(output_folder, 'dataset.cfg'), 'w') as f:
         f.write('[input_dataset]\n\n')
         f.write('extension=.tfrecord\n')
-        f.write('file_type=tfrecord\n')
-        f.write('image_type=%s\n' % (image_type))
+        f.write('image_type=tfrecord\n')
         f.write('data_directory=.\n\n')
         f.write('label_extension=_label.tfrecord\n')
         f.write('label_type=tfrecord\n')
@@ -222,13 +221,13 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     print('Converting %s images and %s labels...' % (len(image_files), len(label_files)))
 
-    convert_images(image_files, output_paths, inputs.file_type(), options.tile_size, options.num_processes,
+    convert_images(image_files, output_paths, inputs.image_type(), options.tile_size, options.num_processes,
                    options.mix_outputs)
     if label_files:
         convert_images(label_files, output_label_paths, inputs.label_type(),
                        options.tile_size, options.num_processes, options.mix_outputs)
 
-    write_config_file(options.output_folder, inputs.file_type())
+    write_config_file(options.output_folder)
 
     return 0
 

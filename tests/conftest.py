@@ -106,5 +106,5 @@ def worldview_filenames(original_file):
 NUM_SOURCES = 2
 @pytest.fixture(scope="session")
 def all_sources(tfrecord_filenames, worldview_filenames):
-    return [(tfrecord_filenames, '.tfrecord', 'tfrecord', 'tfrecord', '.tfrecordlabel', 'tfrecord'),
-            (worldview_filenames, '.zip', 'tfrecord', 'worldview', '_label.tiff', 'tiff')]
+    return [(tfrecord_filenames, '.tfrecord', 'tfrecord', '.tfrecordlabel', 'tfrecord'),
+            (worldview_filenames, '.zip', 'worldview', '_label.tiff', 'tiff')]

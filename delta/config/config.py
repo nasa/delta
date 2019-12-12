@@ -34,15 +34,14 @@ class DatasetConfig:
                              }
 
         self._image_type = config_dict['image_type']
-        self._file_type = config_dict['file_type']
         self._label_type = config_dict['label_type']
 
         self._data_directory = config_dict['data_directory']
         self._image_extension = config_dict['extension']
         self._data_file_list = config_dict['data_file_list']
         if self._data_directory and self._image_extension is None:
-            if self._file_type in DEFAULT_EXTENSIONS:
-                self._image_extension = DEFAULT_EXTENSIONS[self._file_type]
+            if self._image_type in DEFAULT_EXTENSIONS:
+                self._image_extension = DEFAULT_EXTENSIONS[self._image_type]
 
         self._label_directory = config_dict['label_directory']
         self._label_extension = config_dict['label_extension']
@@ -51,10 +50,12 @@ class DatasetConfig:
                 self._label_extension = '_label' + DEFAULT_EXTENSIONS[self._label_type]
 
         self._num_threads = config_dict['num_input_threads']
-        self._shuffle_buffer_size = config_dict['shuffle_buffer_size']
         self._max_block_size = config_dict['max_block_size']
         self._num_interleave_images = config_dict['num_interleave_images']
         self._tile_ratio = config_dict['tile_ratio']
+        self._preprocess = config_dict['preprocess']
+
+        (self._images, self._labels) = self.__find_images()
 
     def data_directory(self):
         return self._data_directory
@@ -62,20 +63,18 @@ class DatasetConfig:
         return self._label_directory
     def image_type(self):
         return self._image_type
-    def file_type(self):
-        return self._file_type
     def label_type(self):
         return self._label_type
     def num_threads(self):
         return self._num_threads
-    def shuffle_buffer_size(self):
-        return self._shuffle_buffer_size
     def max_block_size(self):
         return self._max_block_size
     def num_interleave_images(self):
         return self._num_interleave_images
     def tile_ratio(self):
         return self._tile_ratio
+    def preprocess(self):
+        return self._preprocess
 
     def _get_label(self, image_path):
         """Returns the path to the expected label for for the given input image file"""
@@ -88,11 +87,10 @@ class DatasetConfig:
             raise Exception('Error: Expected label file to exist at path: ' + label_path)
         return label_path
 
-    def images(self):
+    def __find_images(self):
         """List all of the files specified by the configuration.
            If a label folder is provided, look for corresponding label files which
            have the same relative path in that folder but ending with "_label.tif".
-           Returns (image_files, label_files)
         """
 
         if self._label_directory:
@@ -127,16 +125,26 @@ class DatasetConfig:
                         label_files.append(parts[1])
 
         image_files = np.array(image_files)
-        indices = np.arange(len(image_files))
-        np.random.shuffle(indices)
-
-        shuffle_images = image_files[indices]
         if label_files:
             label_files = np.array(label_files)
-            shuffle_labels = label_files[indices]
-        else:
-            shuffle_labels = None
-        return (shuffle_images, shuffle_labels)
+        return (image_files, label_files)
+
+    def images(self):
+        """Returns (image_files, label_files)."""
+        return (self._images, self._labels)
+
+    def num_images(self):
+        return len(self._images)
+
+    def image(self, index):
+        if index < 0 or index >= self.num_images():
+            raise IndexError('Index %s out of range.' % (index))
+        return self._images[index]
+
+    def label(self, index):
+        if index < 0 or index >= len(self._labels):
+            raise IndexError('Index %s out of range.' % (index))
+        return self._labels[index]
 
 class DeltaConfig:
     def __init__(self):
@@ -245,8 +253,6 @@ class DeltaConfig:
                            help="Specify data folder instead of supplying config file.")
         group.add_argument("--image-type", dest="image_type", required=False,
                            help="Image type (tiff, worldview, landsat, etc.).")
-        group.add_argument("--file-type", dest="file_type", required=False,
-                           help="File type (tfrecord, tiff, worldview, landsat, etc.).")
         group.add_argument("--image-extension", dest="image_extension", required=False,
                            help="File type for images (.tfrecord, .tiff, .tar.gz, etc.).")
         if labels:
@@ -300,8 +306,6 @@ class DeltaConfig:
         if c['input_dataset']['image_type'] is None:
             print('Must specify an image_type.', file=sys.stderr)
             sys.exit(0)
-        if options.file_type:
-            c['input_dataset']['file_type'] = options.file_type
         if options.image_extension:
             c['input_dataset']['extension'] = options.image_extension
         if options.label_type:
