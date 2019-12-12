@@ -135,7 +135,6 @@ class ImageryDataset:
         # TODO: other types?
         ret = self._load_images(False, self._num_bands, tf.float32)
         ret = ret.map(self._chunk_image, num_parallel_calls=self._ds_config.num_threads())
-
         return ret.unbatch()
 
     def labels(self):

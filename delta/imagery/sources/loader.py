@@ -2,7 +2,7 @@ import functools
 
 import numpy as np
 
-from . import worldview, landsat, tiff, tfrecord
+from . import worldview, landsat, tiff, tfrecord, npy
 
 def _scale_preprocess(data, _, dummy, factor):#pylint:disable=unused-argument
     return data / np.float32(factor)
@@ -24,6 +24,8 @@ def load(filename, image_type, preprocess=False):
         img = tiff.TiffImage(filename)
         if preprocess:
             img.set_preprocess(functools.partial(_scale_preprocess, factor=255.0))
+    elif image_type == 'npy':
+        return npy.NumpyImage(filename)
     elif image_type == 'tfrecord':
         return tfrecord.TFRecordImage(filename)
     else:
