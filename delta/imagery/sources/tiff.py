@@ -314,14 +314,19 @@ def write_tiff(output_path, data, metadata=None):
         num_bands = data.shape[2]
     data_type = utilities.numpy_dtype_to_gdal_type(data.dtype)
 
+    TILE_SIZE=256
+
     with TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
-                    data_type=data_type, metadata=metadata, tile_width=data.shape[0],
-                    tile_height=data.shape[1]) as writer:
-        if len(data.shape) < 3:
-            writer.write_block(data[:, :], 0, 0, 0)
-        else:
-            for b in range(num_bands):
-                writer.write_block(data[:, :, b], 0, 0, b)
+                    data_type=data_type, metadata=metadata, tile_width=min(TILE_SIZE, data.shape[0]),
+                    tile_height=min(TILE_SIZE, data.shape[1])) as writer:
+        for x in range(0, data.shape[0], TILE_SIZE):
+            for y in range(0, data.shape[1], TILE_SIZE):
+                block = (x // TILE_SIZE, y // TILE_SIZE)
+                if len(data.shape) < 3:
+                    writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE], block[0], block[1], 0)
+                else:
+                    for b in range(num_bands):
+                        writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE, b], block[0], block[1], b)
 
 class TiffWriter:
     """Class to manage block writes to a Geotiff file.

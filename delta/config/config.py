@@ -39,6 +39,7 @@ class DatasetConfig:
         self._data_directory = config_dict['data_directory']
         self._image_extension = config_dict['extension']
         self._data_file_list = config_dict['data_file_list']
+        self._image = config_dict['image']
         if self._data_directory and self._image_extension is None:
             if self._image_type in DEFAULT_EXTENSIONS:
                 self._image_extension = DEFAULT_EXTENSIONS[self._image_type]
@@ -103,7 +104,11 @@ class DatasetConfig:
         else:
             label_files = None
 
-        if self._data_directory:
+        if self._image:
+            image_files.append(self._image)
+            if self._label_directory:
+                label_files.append(self._get_label(self._image))
+        elif self._data_directory:
             for root, dummy_directories, filenames in os.walk(self._data_directory):
                 for filename in filenames:
                     if filename.endswith(self._image_extension):
@@ -248,9 +253,11 @@ class DeltaConfig:
                            help='Dataset configuration file.')
 
         group.add_argument("--data-folder", dest="data_folder", required=False,
-                           help="Specify data folder instead of supplying config file.")
+                           help="Specify data folder to search for images.")
         group.add_argument("--data-file-list", dest="data_file_list", required=False,
-                           help="Specify data folder instead of supplying config file.")
+                           help="Specify data text file listing images.")
+        group.add_argument("--image", dest="image", required=False,
+                           help="Specify a single image file.")
         group.add_argument("--image-type", dest="image_type", required=False,
                            help="Image type (tiff, worldview, landsat, etc.).")
         group.add_argument("--image-extension", dest="image_extension", required=False,
@@ -291,16 +298,12 @@ class DeltaConfig:
                 config.load(options.ml_config)
 
         c = self.__config_dict
-        if options.label_folder:
-            c['input_dataset']['label_directory'] = options.label_folder
         if options.data_folder:
             c['input_dataset']['data_directory'] = options.data_folder
         if options.data_file_list:
             c['input_dataset']['data_file_list'] = options.data_file_list
-        if c['input_dataset']['data_directory'] is None != c['input_dataset']['data_file_list'] is None:
-            print('Must specify one of data_directory or data_file_list.', file=sys.stderr)
-            sys.exit(0)
-
+        if options.image:
+            c['input_dataset']['image'] = options.image
         if options.image_type:
             c['input_dataset']['image_type'] = options.image_type
         if c['input_dataset']['image_type'] is None:
@@ -308,10 +311,13 @@ class DeltaConfig:
             sys.exit(0)
         if options.image_extension:
             c['input_dataset']['extension'] = options.image_extension
-        if options.label_type:
-            c['input_dataset']['label_type'] = options.label_type
-        if options.label_extension:
-            c['input_dataset']['label_extension'] = options.label_extension
+        if labels:
+            if options.label_folder:
+                c['input_dataset']['label_directory'] = options.label_folder
+            if options.label_type:
+                c['input_dataset']['label_type'] = options.label_type
+            if options.label_extension:
+                c['input_dataset']['label_extension'] = options.label_extension
 
         if ml:
             if options.batch_size:

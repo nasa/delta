@@ -1,71 +1,44 @@
 """
 Script test out the image chunk generation calls.
 """
+import os.path
 import sys
 import argparse
 
-import numpy as np
 import tensorflow as tf
-from osgeo import gdal
+import numpy as np
 
 from delta.config import config
-from delta.imagery.sources.worldview import WorldviewImage
-from delta.imagery.sources.tiff import TiffWriter
-from delta.imagery import rectangle
+from delta.imagery.sources import tiff
+from delta.imagery.sources import loader
 from delta.ml.train import load_keras_model
+from delta.ml.predict import predict
 
-def main(argsIn):
+def main(args):
     parser = argparse.ArgumentParser(usage='classify.py [options]')
 
-    parser.add_argument("--keras-model", dest="keras_model", required=True,
+    parser.add_argument("--model", dest="model", required=True,
                         help="Path to the saved Keras model.")
 
-    parser.add_argument("--input-image", dest="input_image", required=True,
-                        help="Path to the input image file.")
-
-    options = config.parse_args(parser, argsIn)
+    options = config.parse_args(parser, args, labels=False, ml=True)
 
     try:
-        model = load_keras_model(options.keras_model, config.num_gpus())
+        model = load_keras_model(options.model, config.num_gpus())
     except AttributeError:
-        model = tf.keras.models.load_model(options.keras_model)
-    image = WorldviewImage(options.input_image)
+        model = tf.keras.models.load_model(options.model)
 
-    block_size_x = 256
-    block_size_y = 256
-    cs = config.chunk_size()
+    colors = np.array([[0x0, 0x0, 0x0],
+                       [0xf6, 0xef, 0xf7],
+                       [0x67, 0xa9, 0xcf],
+                       [0xbd, 0xc9, 0xe1],
+                       [0x02, 0x81, 0x8a]], dtype=np.uint8)
 
-    # Set up the output image
-    input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
-
-    with TiffWriter('out.tiff', input_bounds.width() - cs + 1, input_bounds.height() - cs + 1, 3,
-                    gdal.GDT_Byte, block_size_x, block_size_y,
-                    0, image.metadata()) as writer:
-        output_rois = input_bounds.make_tile_rois(block_size_x + cs - 1, block_size_y + cs - 1,
-                                                  include_partials=True, overlap_amount=cs - 1)
-
-        def callback_function(roi, data):
-            """Callback function to write the first channel to the output file."""
-
-            # Figure out some ROI positioning values
-            block_x = (roi.min_x - input_bounds.min_x) // block_size_x
-            block_y = (roi.min_y - input_bounds.min_y) // block_size_y
-            out_shape = (data.shape[0] - cs + 1, data.shape[1] - cs + 1)
-            chunks = np.lib.stride_tricks.as_strided(data, shape=(out_shape[0], out_shape[1], cs, cs, data.shape[2]),
-                                                     strides=(data.strides[0], data.strides[1], data.strides[0],
-                                                              data.strides[1], data.strides[2]),
-                                                     writeable=False)
-            chunks = np.reshape(chunks, (-1, cs, cs, data.shape[2]))
-            predictions = model.predict(chunks, verbose=0)
-            best = np.argmax(predictions, axis=1)
-            image = np.reshape(best, (out_shape[0], out_shape[1]))
-
-            # Loop on bands
-            for band in range(3):
-                writer.write_block(image * 75, block_x, block_y, band)
-
-        image.process_rois(output_rois, callback_function, show_progress=True)
-
+    ds_config = config.dataset()
+    for i in range(ds_config.num_images()):
+        image = loader.load_image(ds_config, i)
+        out_name = os.path.splitext(os.path.basename(ds_config.image(i)))[0] + '_predicted.tiff'
+        result = predict(model, config.chunk_size(), image, show_progress=True)
+        tiff.write_tiff(out_name, colors[result], metadata=image.metadata())
     return 0
 
 
