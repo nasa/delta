@@ -31,12 +31,12 @@ def main(argsIn):
         model = tf.keras.models.load_model(options.keras_model)
     image = WorldviewImage(options.input_image)
 
-    block_size_x = 1024
-    block_size_y = 1024
+    block_size_x = 256
+    block_size_y = 256
     cs = config.chunk_size()
 
     # Set up the output image
-    input_bounds = rectangle.Rectangle(3000, 5000, width=2000, height=2000)
+    input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
 
     with TiffWriter('out.tiff', input_bounds.width() - cs + 1, input_bounds.height() - cs + 1, 3,
                     gdal.GDT_Byte, block_size_x, block_size_y,
@@ -51,19 +51,14 @@ def main(argsIn):
             block_x = (roi.min_x - input_bounds.min_x) // block_size_x
             block_y = (roi.min_y - input_bounds.min_y) // block_size_y
             out_shape = (data.shape[0] - cs + 1, data.shape[1] - cs + 1)
-            print(data.shape)
             chunks = np.lib.stride_tricks.as_strided(data, shape=(out_shape[0], out_shape[1], cs, cs, data.shape[2]),
                                                      strides=(data.strides[0], data.strides[1], data.strides[0],
                                                               data.strides[1], data.strides[2]),
                                                      writeable=False)
-            print(chunks.shape)
             chunks = np.reshape(chunks, (-1, cs, cs, data.shape[2]))
-            print(chunks.shape)
             predictions = model.predict(chunks, verbose=0)
-            print(predictions.shape)
             best = np.argmax(predictions, axis=1)
             image = np.reshape(best, (out_shape[0], out_shape[1]))
-            print(np.unique(image))
 
             # Loop on bands
             for band in range(3):
