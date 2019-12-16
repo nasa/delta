@@ -25,7 +25,7 @@ def predict(model, cs, image, input_bounds=None, show_progress=False):
                                      data.strides[1], data.strides[2]),
                             writeable=False)
         chunks = np.reshape(chunks, (-1, cs, cs, data.shape[2]))
-        predictions = model.predict(chunks, verbose=0)
+        predictions = model.predict_on_batch(chunks)
         best = np.argmax(predictions, axis=1)
         image = np.reshape(best, (out_shape[0], out_shape[1]))
         result[block_x * block_size_x : block_x * block_size_x + out_shape[0],

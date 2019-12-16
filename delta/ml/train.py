@@ -27,10 +27,7 @@ def get_devices(num_gpus):
         assert len(devs) >= num_gpus,\
                "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
         devs = devs[:num_gpus]
-    ### end if num_gpus < 1
     return devs
-### end get_devices
-
 
 def get_distribution_strategy(devices):
     '''Given a list of TensorFlow Logical Devices, returns a distribution strategy.'''

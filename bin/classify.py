@@ -11,7 +11,6 @@ import numpy as np
 from delta.config import config
 from delta.imagery.sources import tiff
 from delta.imagery.sources import loader
-from delta.ml.train import load_keras_model
 from delta.ml.predict import predict
 
 def main(args):
@@ -22,14 +21,11 @@ def main(args):
 
     options = config.parse_args(parser, args, labels=False, ml=True)
 
-    try:
-        model = load_keras_model(options.model, config.num_gpus())
-    except AttributeError:
-        model = tf.keras.models.load_model(options.model)
+    model = tf.keras.models.load_model(options.model)
 
     colors = np.array([[0x0, 0x0, 0x0],
-                       [0xf6, 0xef, 0xf7],
                        [0x67, 0xa9, 0xcf],
+                       [0xf6, 0xef, 0xf7],
                        [0xbd, 0xc9, 0xe1],
                        [0x02, 0x81, 0x8a]], dtype=np.uint8)
 
