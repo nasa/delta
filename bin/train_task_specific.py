@@ -20,7 +20,7 @@ def main(argsIn):
     parser.add_argument('network_file', help='File to save the network to.')
     options = config.parse_args(parser, argsIn)
 
-    if not os.path.exists(config.output_folder()):
+    if config.output_folder() and not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())
 
     config_d = config.dataset()
@@ -33,7 +33,6 @@ def main(argsIn):
         os.mkdir(mlflow_tracking_dir)
     ### end if
 
-    print('Creating experiment')
     experiment = Experiment(mlflow_tracking_dir,
                             'task_specific_%s'%(config_d.image_type()),
                             loss_fn=config.loss_function(),
@@ -41,14 +40,8 @@ def main(argsIn):
     mlflow.log_param('image type',   config_d.image_type())
     mlflow.log_param('image folder', config_d.data_directory())
     mlflow.log_param('chunk size',   config.chunk_size())
-    print('Creating model')
     in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
     out_data_shape = config.num_classes()
-    print(out_data_shape)
-    print('Training')
-
-    # Estimator interface requires the dataset to be constructed within a function.
-#    tf.logging.set_verbosity(tf.logging.INFO)
 
     def make_dumb_network():
         return keras.Sequential([
@@ -57,15 +50,12 @@ def main(argsIn):
             keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
             ])
 
-    ds = ids.dataset(filter_zero=False, shuffle=False)
+    ds = ids.dataset(filter_zero=False)
     ds = ds.batch(config.batch_size()).repeat(config.num_epochs()).take(50000)
     model, _ = experiment.train_keras(make_dumb_network, ds,
                                       num_gpus=config.num_gpus())
 
-    print(model) # Need to do something with the estimator to appease the lint gods
-    print('Saving Model')
-    tf.keras.models.save_model(model, options.network_file, overwrite=True,
-                               include_optimizer=True)
+    model.save(options.network_file)
     mlflow.log_artifact(options.network_file)
 
     return 0
