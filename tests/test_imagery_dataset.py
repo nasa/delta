@@ -8,8 +8,10 @@ from tensorflow import keras
 
 from delta.config import config
 from delta.imagery import imagery_dataset
-from delta.imagery.sources import tfrecord
-from delta.ml import train
+from delta.imagery.sources import tfrecord, npy
+from delta.ml import train, predict
+
+import conftest
 
 @pytest.fixture(scope="function", params=range(2))
 def dataset(all_sources, request):
@@ -36,7 +38,7 @@ def test_tfrecord_write(tfrecord_filenames):
     images = tfrecord.create_dataset([tfrecord_filenames[0]], 1, tf.float32)
     labels = tfrecord.create_dataset([tfrecord_filenames[1]], 1, tf.uint8)
     ds = tf.data.Dataset.zip((images, labels))
-    for value in ds:
+    for value in ds.take(1000):
         image = tf.squeeze(value[0])
         label = tf.squeeze(value[1])
         assert image.shape == label.shape
@@ -62,9 +64,8 @@ def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
     for image in dataset.data():
         img = image.numpy()
         assert img.dtype == np.float32
-        for i in range(img.shape[0]):
-            for j in range(img.shape[1]):
-                assert img[i][j][0] == 1 or img[i][j][0] == 0
+        unique = np.unique(img)
+        assert (0 in unique or 1 in unique and len(unique) <= 2)
         num_data += 1
     num_label = 0
     for label in dataset.labels():
@@ -72,7 +73,7 @@ def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
     assert num_label == num_data
 
     ds = dataset.dataset()
-    for (image, label) in ds:
+    for (image, label) in ds.take(1000):
         if label:
             assert image[0][0][0] == 1
             assert image[0][1][0] == 1
@@ -99,21 +100,17 @@ def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
 
 def test_train(dataset): #pylint: disable=redefined-outer-name
     def model_fn():
-        return  keras.Sequential([
-            keras.layers.Conv2D(1, kernel_size=(3, 3),
-                                kernel_initializer=keras.initializers.Zeros(),
-                                activation='relu', data_format='channels_last',
-                                input_shape=(3, 3, 1))])
-    def create_dataset():
-        d = dataset.dataset()
-        d = d.batch(100).repeat(5)
-        return d
-
-    # Ignoring returned model training history to keep pylint happy.
-    model, _ = train.train(model_fn, create_dataset(),
-                           optimizer=tf.optimizers.Adam(learning_rate=0.01),
-                           loss_fn='mean_squared_logarithmic_error',
-                           validation_data=None,
-                           num_gpus=0)
-    ret = model.evaluate(x=create_dataset())
+        return keras.Sequential([
+            keras.layers.Flatten(input_shape=(3, 3, 1)),
+            keras.layers.Dense(3 * 3, activation=tf.nn.relu),
+            keras.layers.Dense(2, activation=tf.nn.softmax)
+            ])
+    model, _ = train.train(model_fn, dataset.dataset().batch(100).repeat(200),
+                           loss_fn='sparse_categorical_crossentropy')
+    ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.90
+
+    (test_image, test_label) = conftest.generate_tile()
+    test_label = test_label[1:-1, 1:-1]
+    result = predict.predict(model, 3, npy.NumpyImage(test_image))
+    assert sum(sum(np.logical_xor(result, test_label))) < 5

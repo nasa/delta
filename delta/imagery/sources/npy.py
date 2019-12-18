@@ -8,17 +8,22 @@ import numpy as np
 from . import basic_sources
 
 class NumpyImage(basic_sources.DeltaImage):
-    """Numpy image data tensorflow dataset wrapper (see imagery_dataset.py)"""
-    def __init__(self, path):
+    """
+    Numpy image data tensorflow dataset wrapper (see imagery_dataset.py).
+    Can set either path to load a file, or data to load a numpy array directly.
+    """
+    def __init__(self, data=None, path=None):
         super(NumpyImage, self).__init__()
-        self._size = None
-        self._num_bands = None
-        self._path = path
 
-        assert os.path.exists(path)
-        self._data = np.load(path)
-        if len(self._data.shape) == 2:
-            self._data = np.expand_dims(self._data, axis=2)
+        if path:
+            assert not data
+            assert os.path.exists(path)
+            self._data = np.load(path)
+            if len(self._data.shape) == 2:
+                self._data = np.expand_dims(self._data, axis=2)
+        else:
+            assert data is not None
+            self._data = data
 
     def _read(self, roi, bands, buf=None):
         """
@@ -34,12 +39,8 @@ class NumpyImage(basic_sources.DeltaImage):
 
     def size(self):
         """Return the size of this image in pixels, as (width, height)."""
-        if self._size is None:
-            self._size = (self._data.shape[1], self._data.shape[0])
-        return self._size
+        return (self._data.shape[1], self._data.shape[0])
 
     def num_bands(self):
         """Return the number of bands in the image."""
-        if self._num_bands is None:
-            self._num_bands = self._data.shape[2]
-        return self._num_bands
+        return self._data.shape[2]

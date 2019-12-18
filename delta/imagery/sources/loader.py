@@ -25,7 +25,7 @@ def load(filename, image_type, preprocess=False):
         if preprocess:
             img.set_preprocess(functools.partial(_scale_preprocess, factor=255.0))
     elif image_type == 'npy':
-        return npy.NumpyImage(filename)
+        return npy.NumpyImage(path=filename)
     elif image_type == 'tfrecord':
         return tfrecord.TFRecordImage(filename)
     else:

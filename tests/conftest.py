@@ -53,19 +53,7 @@ def tfrecord_filenames(original_file):
     label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
     tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[0]), [image_path], tile_size=(30, 30))
     tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[1]), [label_path], tile_size=(30, 30))
-    #image_writer = tfrecord.make_tfrecord_writer(image_path)
-    #label_writer = tfrecord.make_tfrecord_writer(label_path)
-    #width = 32
-    #height = 30
-    #for i in range(1):
-    #    for j in range(1):
-    #        (image, label) = generate_tile(width, height)
-    #        tfrecord.write_tfrecord_image(image, image_writer,
-    #                                      i * width, j * height)
-    #        tfrecord.write_tfrecord_image(label, label_writer,
-    #                                      i * width, j * height)
-    #image_writer.close()
-    #label_writer.close()
+
     yield (image_path, label_path)
 
     shutil.rmtree(tmpdir)
@@ -90,9 +78,6 @@ def worldview_filenames(original_file):
 
     tiff.TiffImage(original_file[0]).save(image_path)
     tiff.TiffImage(original_file[1]).save(label_path)
-    #(image, label) = generate_tile(width, height)
-    #tiff.write_tiff(image_path, image)
-    #tiff.write_tiff(label_path, label)
 
     z = zipfile.ZipFile(zip_path, mode='x')
     z.write(image_path, arcname=image_name + '.tif')

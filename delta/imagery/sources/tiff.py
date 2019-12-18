@@ -2,16 +2,13 @@
 Classes for block-aligned reading from multiple Geotiff files.
 """
 import os
-import concurrent.futures
-import copy
-import functools
 import math
 
 from osgeo import gdal
 import numpy as np
 
 from delta.config import config
-from delta.imagery import rectangle, utilities
+from delta.imagery import rectangle
 
 from . import basic_sources
 
@@ -161,7 +158,7 @@ class TiffImage(basic_sources.DeltaImage):
         data['metadata'] = h.GetMetadata()
         return data
 
-    def get_block_aligned_read_roi(self, desired_roi):
+    def block_aligned_roi(self, desired_roi):
         '''
         Returns the block aligned pixel region to read in a Rectangle format
         to get the requested data region while respecting block boundaries.
@@ -190,65 +187,6 @@ class TiffImage(basic_sources.DeltaImage):
         ans = rectangle.Rectangle(start_x, start_y, width=w, height=h)
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return ans.get_intersection(bounds)
-
-    def process_rois(self, requested_rois, callback_function, show_progress=False):
-        '''
-        Process the given region broken up into blocks using the callback function.
-        Each block will get the image data from each input image passed into the function.
-        Data reading takes place in a separate thread, but the callbacks are executed
-        in a consistent order on a single thread.
-        '''
-
-        self.__asert_open()
-
-        block_rois = copy.copy(requested_rois)
-
-        whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
-        for roi in requested_rois:
-            if not whole_bounds.contains_rect(roi):
-                raise Exception('Roi outside image bounds: ' + str(roi) + str(whole_bounds))
-
-        # gdal doesn't work reading multithreading. But this let's a thread
-        # take care of IO input while we do computation.
-        exe = concurrent.futures.ThreadPoolExecutor(1)
-        jobs = []
-
-        total_rois = len(block_rois)
-        while block_rois:
-            # For the next (output) block, figure out the (input block) aligned
-            # data read that we need to perform to get it.
-            read_roi = self.get_block_aligned_read_roi(block_rois[0])
-
-            applicable_rois = []
-
-            # Loop through the remaining ROIs and apply the callback function to each
-            # ROI that is contained in the section we read in.
-            index = 0
-            while index < len(block_rois):
-
-                if not read_roi.contains_rect(block_rois[index]):
-                    index += 1
-                    continue
-                applicable_rois.append(block_rois.pop(index))
-
-            buf = exe.submit(functools.partial(self.read, read_roi))
-            jobs.append((buf, read_roi, applicable_rois))
-
-        num_remaining = total_rois
-        for (buf_exe, read_roi, rois) in jobs:
-            buf = buf_exe.result()
-            for roi in rois:
-                x0 = roi.min_x - read_roi.min_x
-                y0 = roi.min_y - read_roi.min_y
-
-                callback_function(roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :])
-
-                num_remaining -= 1
-                if show_progress:
-                    utilities.progress_bar('%d / %d' % (total_rois - num_remaining, total_rois),
-                                           (total_rois - num_remaining) / total_rois, prefix='Blocks Processed:')
-        if show_progress:
-            print()
 
     def save(self, path, tile_size=(0,0), nodata_value=None, show_progress=False):
         """
