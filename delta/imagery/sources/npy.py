@@ -5,9 +5,9 @@ Functions to support reading data stored in the Binary Numpy format.
 import os
 import numpy as np
 
-from . import basic_sources
+from . import delta_image
 
-class NumpyImage(basic_sources.DeltaImage):
+class NumpyImage(delta_image.DeltaImage):
     """
     Numpy image data tensorflow dataset wrapper (see imagery_dataset.py).
     Can set either path to load a file, or data to load a numpy array directly.

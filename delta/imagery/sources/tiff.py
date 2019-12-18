@@ -10,9 +10,9 @@ import numpy as np
 from delta.config import config
 from delta.imagery import rectangle
 
-from . import basic_sources
+from . import delta_image
 
-class TiffImage(basic_sources.DeltaImage):
+class TiffImage(delta_image.DeltaImage):
     """For geotiffs."""
 
     def __init__(self, path):

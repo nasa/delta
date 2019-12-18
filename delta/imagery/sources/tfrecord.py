@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from delta.imagery import rectangle
 
-from . import basic_sources
+from . import delta_image
 
 # Create a dictionary describing the features.
 TFRECORD_COMPRESSION_TYPE = 'GZIP'
@@ -24,7 +24,7 @@ IMAGE_FEATURE_DESCRIPTION = {
     'bytes_per_num': tf.io.FixedLenFeature([], tf.int64)
 }
 
-class TFRecordImage(basic_sources.DeltaImage):
+class TFRecordImage(delta_image.DeltaImage):
     def __init__(self, path, compressed=True):
         super(TFRecordImage, self).__init__()
         self._compressed = compressed
