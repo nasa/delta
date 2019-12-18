@@ -4,3 +4,5 @@
 delta.egg-info
 data/
 mlruns
+.coverage
+htmlcov

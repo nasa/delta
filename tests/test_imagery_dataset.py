@@ -71,35 +71,31 @@ def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
         num_label += 1
     assert num_label == num_data
 
-    ds = dataset.dataset(filter_zero=False)
+    ds = dataset.dataset()
     for (image, label) in ds:
-        try:
-            if label:
-                assert image[0][0][0] == 1
-                assert image[0][1][0] == 1
-                assert image[0][2][0] == 1
-                assert image[1][0][0] == 1
-                assert image[1][2][0] == 1
-                assert image[2][0][0] == 1
-                assert image[2][1][0] == 1
-                assert image[2][2][0] == 1
-            v1 = image[0][0][0] == 0
-            v2 = image[0][1][0] == 0
-            v3 = image[0][2][0] == 0
-            if v1 or v2 or v3:
-                assert label == 0
-            v4 = image[1][0][0] == 0
-            v5 = image[1][2][0] == 0
-            if v4 or v5:
-                assert label == 0
-            v6 = image[2][0][0] == 0
-            v7 = image[2][1][0] == 0
-            v8 = image[2][2][0] == 0
-            if v6 or v7 or v8:
-                assert label == 0
-        except tf.errors.OutOfRangeError:
-            break
-
+        if label:
+            assert image[0][0][0] == 1
+            assert image[0][1][0] == 1
+            assert image[0][2][0] == 1
+            assert image[1][0][0] == 1
+            assert image[1][2][0] == 1
+            assert image[2][0][0] == 1
+            assert image[2][1][0] == 1
+            assert image[2][2][0] == 1
+        v1 = image[0][0][0] == 0
+        v2 = image[0][1][0] == 0
+        v3 = image[0][2][0] == 0
+        if v1 or v2 or v3:
+            assert label == 0
+        v4 = image[1][0][0] == 0
+        v5 = image[1][2][0] == 0
+        if v4 or v5:
+            assert label == 0
+        v6 = image[2][0][0] == 0
+        v7 = image[2][1][0] == 0
+        v8 = image[2][2][0] == 0
+        if v6 or v7 or v8:
+            assert label == 0
 
 def test_train(dataset): #pylint: disable=redefined-outer-name
     def model_fn():
@@ -109,7 +105,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
                                 activation='relu', data_format='channels_last',
                                 input_shape=(3, 3, 1))])
     def create_dataset():
-        d = dataset.dataset(filter_zero=False)
+        d = dataset.dataset()
         d = d.batch(100).repeat(5)
         return d
 

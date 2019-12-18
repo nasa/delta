@@ -50,7 +50,7 @@ def main(argsIn):
             keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
             ])
 
-    ds = ids.dataset(filter_zero=False)
+    ds = ids.dataset()
     ds = ds.batch(config.batch_size()).repeat(config.num_epochs()).take(50000)
     model, _ = experiment.train_keras(make_dumb_network, ds,
                                       num_gpus=config.num_gpus())

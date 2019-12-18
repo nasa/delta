@@ -5,6 +5,7 @@ Functions to support the Landsat satellites.
 import math
 import functools
 import os
+import os.path
 import numpy as np
 
 from delta.config import config
@@ -138,7 +139,7 @@ def _check_if_files_present(mtl_data, folder, bands_to_use=None):
 
     band_paths = _get_band_paths(mtl_data, folder, bands_to_use)
     for b in band_paths:
-        if not utilities.file_is_good(b):
+        if not os.path.exists(b):
             return False
     return True
 

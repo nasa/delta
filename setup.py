@@ -27,7 +27,6 @@ setuptools.setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        'psutil',
         'usgs',
         'numpy',
         'scipy',

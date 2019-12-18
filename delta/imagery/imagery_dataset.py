@@ -143,20 +143,11 @@ class ImageryDataset:
 
         return label_set.unbatch()
 
-    def dataset(self, filter_zero=True):
+    def dataset(self):
         """Return the underlying TensorFlow dataset object that this class creates"""
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
-
-        def is_chunk_non_zero(data, label):
-            """Return True if the chunk has no zeros (nodata) in the data or label"""
-            return tf.math.logical_and(tf.math.equal(tf.math.zero_fraction(data ), 0),
-                                       tf.math.equal(tf.math.zero_fraction(label), 0))
-
-        ## Filter out all chunks with zero (nodata) values
-        if filter_zero:
-            ds = ds.filter(is_chunk_non_zero)
 
         return ds
 

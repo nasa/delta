@@ -106,14 +106,32 @@ class TiffImage(basic_sources.DeltaImage):
 
     def numpy_type(self, band=0):
         self.__asert_open()
-        return utilities.gdal_dtype_to_numpy_type(self.data_type(band))
+        dtype = self.data_type(band)
+        if dtype == gdal.GDT_Byte:
+            return np.uint8
+        if dtype == gdal.GDT_UInt16:
+            return np.uint16
+        if dtype == gdal.GDT_UInt32:
+            return np.uint32
+        if dtype == gdal.GDT_Float32:
+            return np.float32
+        if dtype == gdal.GDT_Float64:
+            return np.float64
+        raise Exception('Unrecognized gdal data type: ' + str(dtype))
 
     def bytes_per_pixel(self, band=0):
         '''
         Returns the number of bytes per pixel
         '''
         self.__asert_open()
-        return utilities.get_num_bytes_from_gdal_type(self.data_type(band))
+        results = {
+            gdal.GDT_Byte:    1,
+            gdal.GDT_UInt16:  2,
+            gdal.GDT_UInt32:  4,
+            gdal.GDT_Float32: 4,
+            gdal.GDT_Float64: 8
+        }
+        return results.get(self.data_type(band))
 
     def block_info(self, band=0):
         """Returns ((block height, block width), (num blocks x, num blocks y))"""
@@ -284,26 +302,18 @@ class RGBAImage(TiffImage):
             os.system(cmd)
         return [output_path]
 
-
-def write_simple_image(output_path, data, data_type=gdal.GDT_Byte, metadata=None):
-    """Just dump 2D numpy data to a single channel image file"""
-
-    num_cols  = data.shape[1]
-    num_rows  = data.shape[0]
-    num_bands = 1
-
-    driver = gdal.GetDriverByName('GTiff')
-    handle = driver.Create(output_path, num_cols, num_rows, num_bands, data_type)
-    if metadata:
-        handle.SetProjection  (metadata['projection'  ])
-        handle.SetGeoTransform(metadata['geotransform'])
-        handle.SetMetadata    (metadata['metadata'    ])
-        handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
-
-    band   = handle.GetRasterBand(1)
-    band.WriteArray(data)
-    band.FlushCache()
-
+def numpy_dtype_to_gdal_type(dtype):
+    if dtype == np.uint8:
+        return gdal.GDT_Byte
+    if dtype == np.uint16:
+        return gdal.GDT_UInt16
+    if dtype == np.uint32:
+        return gdal.GDT_UInt32
+    if dtype == np.float32:
+        return gdal.GDT_Float32
+    if dtype == np.float64:
+        return gdal.GDT_Float64
+    raise Exception('Unrecognized numpy data type: ' + str(dtype))
 
 def write_tiff(output_path, data, metadata=None):
     """Try to write a tiff file"""
@@ -312,7 +322,7 @@ def write_tiff(output_path, data, metadata=None):
         num_bands = 1
     else:
         num_bands = data.shape[2]
-    data_type = utilities.numpy_dtype_to_gdal_type(data.dtype)
+    data_type = numpy_dtype_to_gdal_type(data.dtype)
 
     TILE_SIZE=256
 

@@ -13,7 +13,6 @@ import functools
 import tensorflow as tf
 
 from delta.config import config
-from delta.imagery import utilities
 from delta.imagery.sources import loader, tfrecord
 
 def compress_and_delete(input_path, output_path):
@@ -37,43 +36,28 @@ def compress_and_delete(input_path, output_path):
         os.remove(input_path)
     return count
 
+def __init_worker():
+    signal.signal(signal.SIGTERM, lambda x, y: os.kill(os.getpid(), signal.SIGINT))
+
 def parallel_compress_tfrecords(input_paths, output_paths, num_processes):
     """Use multiple processes to compress a list of TFrecord files"""
 
-    # Set up processing pool
-    if num_processes > 1:
-        print('Starting processing pool with ' + str(num_processes) +' processes.')
-        pool = multiprocessing.Pool(num_processes)
-        task_handles = []
+    pool = multiprocessing.Pool(num_processes, __init_worker)
+    try:
+        results = pool.starmap_async(compress_and_delete, zip(input_paths, output_paths))
+        results.get()
+    except:
+        pool.terminate()
+        pool.join()
+        raise
 
-    # Assign input files to the pool
-    count = 0
-    num_succeeded = 0
-    for input_path, output_path in zip(input_paths, output_paths):
+    pool.close()
+    pool.join()
+    if not results.successful():
+        print('Compression failed.')
+        sys.exit(0)
 
-        if num_processes > 1: # Add the command to the task pool
-            task_handles.append(pool.apply_async(compress_and_delete, (input_path, output_path)))
-        else:
-            result = compress_and_delete(input_path, output_path)
-            if result > 0:
-                num_succeeded += 1
-
-        count += 1
-
-    if num_processes > 1:
-        # Wait for all the tasks to complete
-        print('Finished adding ' + str(len(task_handles)) + ' tasks to the pool.')
-        utilities.waitForTaskCompletionOrKeypress(task_handles, interactive=False)
-
-        # All tasks should be finished, clean up the processing pool
-        utilities.stop_task_pool(pool)
-
-        num_succeeded = 0
-        for h in task_handles:
-            if h.get() > 0:
-                num_succeeded += 1
-
-    print('Successfully compressed ', num_succeeded, ' out of ', count, ' input files.')
+    print('Successfully compressed input files.')
 
 def convert_image(ds_config, is_label, output_paths, tile_size, mix_outputs, redo, image_id):
     if not redo and not mix_outputs:
@@ -93,15 +77,13 @@ def convert_image(ds_config, is_label, output_paths, tile_size, mix_outputs, red
     return (1, 2)
 
 def convert_images(ds_config, is_label, output_paths, tile_size, num_processes, mix_outputs, redo):
-    def init_worker():
-        signal.signal(signal.SIGTERM, lambda x, y: os.kill(os.getpid(), signal.SIGINT))
 
     # Set up processing pool
-    pool = multiprocessing.Pool(num_processes, init_worker)
+    pool = multiprocessing.Pool(num_processes, __init_worker)
 
     convert_function = functools.partial(convert_image, ds_config, is_label, output_paths, tile_size, mix_outputs, redo)
     try:
-        results = pool.starmap_async(convert_function, map(lambda x: [x], range(len(output_paths))))
+        results = pool.map_async(convert_function, range(len(output_paths)))
         results.get()
     except:
         pool.terminate()

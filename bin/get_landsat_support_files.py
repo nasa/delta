@@ -3,6 +3,7 @@
 Script to fetch support images from USGS corresponding to a given Landsat image.
 """
 import os
+import os.path
 import sys
 import argparse
 import subprocess
@@ -13,10 +14,11 @@ from osgeo import osr
 
 from usgs import api
 
-from delta.imagery import utilities
-
 #------------------------------------------------------------------------------
 
+def file_is_good(path):
+    '''Make sure file exists and is non-empty.'''
+    return os.path.exists(path) and (os.path.getsize(path) > 0)
 
 def unpack_inputs(tar_folder, unpack_folder):
     """Make sure all of the input label files are untarred.
@@ -44,7 +46,7 @@ def unpack_inputs(tar_folder, unpack_folder):
         label_path = os.path.join(tar_folder, name_out)
 
         # If we did not find the INWM file, untar.
-        if not utilities.file_is_good(label_path):
+        if not file_is_good(label_path):
             #utilities.unpack_to_folder(tar_path, unpack_folder)
             cmd = 'srtm_to_tif.sh ' + tar_path
             print(cmd)
@@ -54,7 +56,7 @@ def unpack_inputs(tar_folder, unpack_folder):
             except FileNotFoundError:
                 pass
             # Look again for a matching file
-            if not utilities.file_is_good(label_path):
+            if not file_is_good(label_path):
                 raise Exception('Failed to untar label file: ' + tar_path)
         file_list.append(label_path)
 
@@ -128,7 +130,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
         fname = scene['displayId'].replace('.SRTMGL1','') + '.hgt.zip'
         output_path = os.path.join(output_folder, fname)
 
-        if utilities.file_is_good(output_path):
+        if file_is_good(output_path):
             print('Already have image on disk!')
             continue
 
@@ -143,7 +145,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
         print(cmd)
         os.system(cmd)
 
-        if not utilities.file_is_good(output_path):
+        if not file_is_good(output_path):
             raise Exception('Failed to download file ' + output_path)
 
     print('Finished downloading files.')
