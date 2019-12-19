@@ -15,15 +15,21 @@ from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
 
 def main(argsIn):
-    parser = argparse.ArgumentParser(usage='train_task_specific.py [options]')
+    parser = argparse.ArgumentParser(usage='train_task_specific.py model.h5 [options]')
 
-    parser.add_argument('network_file', help='File to save the network to.')
+    parser.add_argument('model', help='File to save the network to.')
     options = config.parse_args(parser, argsIn)
 
     if config.output_folder() and not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())
 
     config_d = config.dataset()
+    if config_d.num_images() == 0:
+        print('No images specified.', file=sys.stderr)
+        return 1
+    if config_d.num_labels() == 0:
+        print('No labels specified.', file=sys.stderr)
+        return 1
     ids = imagery_dataset.ImageryDataset(config_d, config.chunk_size(), config.chunk_stride())
 
     # TF additions
@@ -55,8 +61,8 @@ def main(argsIn):
     model, _ = experiment.train_keras(make_dumb_network, ds,
                                       num_gpus=config.num_gpus())
 
-    model.save(options.network_file)
-    mlflow.log_artifact(options.network_file)
+    model.save(options.model)
+    mlflow.log_artifact(options.model)
 
     return 0
 

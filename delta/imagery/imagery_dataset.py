@@ -28,7 +28,6 @@ class ImageryDataset:
         self._chunk_stride = chunk_stride
 
         self._use_tfrecord = dataset_config.image_type() == 'tfrecord'
-        print(self._use_tfrecord, dataset_config.image_type(), dataset_config.label_type())
 
         if self._use_tfrecord and dataset_config.label_type() != 'tfrecord':
             raise NotImplementedError('tfrecord images only supported with tfrecord labels.')

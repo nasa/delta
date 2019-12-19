@@ -142,6 +142,9 @@ class DatasetConfig:
     def num_images(self):
         return len(self._images)
 
+    def num_labels(self):
+        return len(self._labels)
+
     def image(self, index):
         if index < 0 or index >= self.num_images():
             raise IndexError('Index %s out of range.' % (index))
