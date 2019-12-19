@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 """
 Script test out the image chunk generation calls.
 """
@@ -14,11 +15,11 @@ from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
 
-def main(argsIn):
-    parser = argparse.ArgumentParser(usage='train_task_specific.py model.h5 [options]')
+def main(args):
+    parser = argparse.ArgumentParser(description='Train a network to map images to labels.')
 
     parser.add_argument('model', help='File to save the network to.')
-    options = config.parse_args(parser, argsIn)
+    options = config.parse_args(parser, args)
 
     if config.output_folder() and not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())

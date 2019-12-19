@@ -1,5 +1,6 @@
+#!/usr/bin/python3
 """
-Script test out the image chunk generation calls.
+Classify input images given a model.
 """
 import os.path
 import sys
@@ -14,7 +15,7 @@ from delta.imagery.sources import loader
 from delta.ml import predict
 
 def main(args):
-    parser = argparse.ArgumentParser(usage='classify.py [options]')
+    parser = argparse.ArgumentParser(description='Classify images given a model.')
 
     parser.add_argument("--model", dest="model", required=True,
                         help="Path to the saved Keras model.")
@@ -48,7 +49,6 @@ def main(args):
             result = predict.predict(model, cs, image, show_progress=True)
         tiff.write_tiff(base_name + '_predicted.tiff', colors[result], metadata=image.metadata())
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

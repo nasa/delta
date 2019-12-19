@@ -1,7 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
-Take an input folder of image files and
-convert them to a Tensorflow friendly format in the output folder.
+Take a set of images and convert them to a Tensorflow friendly format.
 """
 import os
 import sys
@@ -149,10 +148,8 @@ def write_config_file(output_folder):
         f.write('label_type=tfrecord\n')
         f.write('label_directory=.\n')
 
-def main(argsIn): #pylint: disable=R0914,R0912
-
-    usage  = "usage: convert_input_image_folder.py [options]"
-    parser = argparse.ArgumentParser(usage=usage)
+def main(args):
+    parser = argparse.ArgumentParser(description='Convert images to tfrecord files.')
 
     parser.add_argument("--output-folder", dest="output_folder", required=True,
                         help="Where to write the converted output images.")
@@ -170,7 +167,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
     parser.add_argument("--num-processes", dest="num_processes", type=int, default=1,
                         help="Number of parallel processes to use.")
 
-    options = config.parse_args(parser, argsIn, ml=False)
+    options = config.parse_args(parser, args, ml=False)
 
     # Make sure the output folder exists
     if not os.path.exists(options.output_folder):
