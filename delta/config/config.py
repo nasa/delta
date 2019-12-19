@@ -25,7 +25,7 @@ def recursive_update(d, u):
             d[k] = v
     return d
 
-class DatasetConfig:
+class DatasetConfig:#pylint:disable=too-many-instance-attributes
     def __init__(self, config_dict):
         DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                               'worldview' : '.zip',
@@ -45,6 +45,7 @@ class DatasetConfig:
             if self._image_type in DEFAULT_EXTENSIONS:
                 self._image_extension = DEFAULT_EXTENSIONS[self._image_type]
 
+        self._label = config_dict['label']
         self._label_directory = config_dict['label_directory']
         self._label_extension = config_dict['label_extension']
         if self._label_directory and self._label_extension is None:
@@ -100,14 +101,16 @@ class DatasetConfig:
                 raise Exception('Supplied label folder does not exist: ' + self._label_directory)
 
         image_files = []
-        if self._label_directory:
+        if self._label_directory or self._label:
             label_files = []
         else:
             label_files = None
 
         if self._image:
             image_files.append(self._image)
-            if self._label_directory:
+            if self._label:
+                label_files.append(self._label)
+            elif self._label_directory:
                 label_files.append(self._get_label(self._image))
         elif self._data_directory:
             for root, dummy_directories, filenames in os.walk(self._data_directory):
@@ -209,6 +212,11 @@ class DeltaConfig:
                 config_data[section][name] = value
 
         self.__config_dict = recursive_update(self.__config_dict, config_data)
+        self.__validate()
+
+    def __validate(self):
+        if self.__config_dict['ml']['chunk_size'] % 2 == 0:
+            raise ValueError('chunk_size must be odd.')
 
     def set_value(self, group, name, value):
         self.__config_dict[group][name] = value
@@ -256,17 +264,19 @@ class DeltaConfig:
         group.add_argument('--data-config', dest='data_config', required=False,
                            help='Dataset configuration file.')
 
+        group.add_argument("--image", dest="image", required=False,
+                           help="Specify a single image file.")
         group.add_argument("--data-folder", dest="data_folder", required=False,
                            help="Specify data folder to search for images.")
         group.add_argument("--data-file-list", dest="data_file_list", required=False,
                            help="Specify data text file listing images.")
-        group.add_argument("--image", dest="image", required=False,
-                           help="Specify a single image file.")
         group.add_argument("--image-type", dest="image_type", required=False,
                            help="Image type (tiff, worldview, landsat, etc.).")
         group.add_argument("--image-extension", dest="image_extension", required=False,
                            help="File type for images (.tfrecord, .tiff, .tar.gz, etc.).")
         if labels:
+            group.add_argument("--label", dest="label", required=False,
+                               help="Specify a single label file.")
             group.add_argument("--label-folder", dest="label_folder", required=False,
                                help="Specify label folder instead of supplying config file.")
             group.add_argument("--label-type", dest="label_type", required=False,
@@ -316,6 +326,8 @@ class DeltaConfig:
         if options.image_extension:
             c['input_dataset']['extension'] = options.image_extension
         if labels:
+            if options.label:
+                c['input_dataset']['label'] = options.label
             if options.label_folder:
                 c['input_dataset']['label_directory'] = options.label_folder
             if options.label_type:
@@ -335,6 +347,7 @@ class DeltaConfig:
             if options.output_folder:
                 c['ml']['output_folder'] = options.output_folder
 
+        self.__validate()
         return options
 
 config = DeltaConfig()
