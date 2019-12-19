@@ -1,16 +1,16 @@
 #!/usr/bin/python
 """
-Apply convert_input_image_folder.py using multiple PBS nodes to divide up the work.
+Apply tfrecord_convert.py using multiple PBS nodes to divide up the work.
 """
 import os
 import sys
 import argparse
-import traceback
+#import traceback
 import getpass
 import numpy as np
 
 from delta import pbs_functions
-import convert_input_image_folder
+#import tfrecord_convert
 
 bin_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath
 
@@ -101,7 +101,7 @@ def submitBatchJobs(list_files, options, pass_along_args):
     print( ("Num batches: %d, tasks per job: %d" % (numBatches, tasksPerJob) ) )
 
     this_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath
-    scriptPath  = os.path.join(this_folder, 'convert_input_image_folder.py')
+    scriptPath  = os.path.join(this_folder, 'tfrecord_convert.py')
 
     # TODO: How to get this information?
     setup_commands = ['source /home1/smcmich1/software_build_dir/miniconda3/bin/activate',
@@ -180,7 +180,7 @@ def main(argsIn):
     except argparse.ArgumentError as msg:
         parser.error(msg)
 
-#    if not utilities.checkIfToolExists('convert_input_image_folder.py'):
+#    if not utilities.checkIfToolExists('tfrecord_convert.py'):
 #        print("ERROR: Cannot run on PBS if the desired tool is not on $PATH")
 #        return -1
     user_name = getpass.getuser()
@@ -195,45 +195,46 @@ def main(argsIn):
                         '--image-type',   options.image_type,
                         '--mix-outputs',  str(options.mix_outputs)]
 
-    input_file_list = convert_input_image_folder.get_input_files(options)
-    print('Found ', len(input_file_list), ' input files to convert')
-    if not input_file_list:
-        return -1
+    raise NotImplementedError()
+    #input_file_list = tfrecord_convert.get_input_files(options)
+    #print('Found ', len(input_file_list), ' input files to convert')
+    #if not input_file_list:
+    #    return -1
 
-    # Create input list files for each job
-    if not os.path.exists(options.output_folder):
-        os.mkdir(options.output_folder)
-    list_file_prefix = os.path.join(options.output_folder, 'job_list_file-')
-    os.system('rm ' + list_file_prefix + '*')
-    files_per_job = getParallelParams(options.node_type)[1]
-    job_inputs_file_list = write_input_files(input_file_list, files_per_job, list_file_prefix)
-    print('Wrote ', len(job_inputs_file_list), ' input file lists')
+    ## Create input list files for each job
+    #if not os.path.exists(options.output_folder):
+    #    os.mkdir(options.output_folder)
+    #list_file_prefix = os.path.join(options.output_folder, 'job_list_file-')
+    #os.system('rm ' + list_file_prefix + '*')
+    #files_per_job = getParallelParams(options.node_type)[1]
+    #job_inputs_file_list = write_input_files(input_file_list, files_per_job, list_file_prefix)
+    #print('Wrote ', len(job_inputs_file_list), ' input file lists')
 
-    print("Disabling core dumps.") # these just take a lot of room
-    os.system("ulimit -c 0")
-    os.system("umask 022") # enforce files be readable by others
+    #print("Disabling core dumps.") # these just take a lot of room
+    #os.system("ulimit -c 0")
+    #os.system("umask 022") # enforce files be readable by others
 
-    try:
+    #try:
 
-        # Call multi_process_command_runner.py through PBS for each chunk.
-        jobIDs = submitBatchJobs(job_inputs_file_list, options, pass_along_args)
+    #    # Call multi_process_command_runner.py through PBS for each chunk.
+    #    jobIDs = submitBatchJobs(job_inputs_file_list, options, pass_along_args)
 
-        # Wait for everything to finish.
-        pbs_functions.waitForJobCompletion(jobIDs, user_name)
+    #    # Wait for everything to finish.
+    #    pbs_functions.waitForJobCompletion(jobIDs, user_name)
 
-        resultText = 'All jobs are finished.'
+    #    resultText = 'All jobs are finished.'
 
-    except Exception as e: #pylint: disable=W0703
-        resultText = 'Caught exception: ' + str(e) + '\n' + traceback.format_exc()
-    print('Result = ' + resultText)
+    #except Exception as e: #pylint: disable=W0703
+    #    resultText = 'Caught exception: ' + str(e) + '\n' + traceback.format_exc()
+    #print('Result = ' + resultText)
 
-    # Send a summary email.
-    emailAddress = getEmailAddress(user_name)
-    print("Sending email to: " + emailAddress)
-    pbs_functions.send_email(emailAddress, 'PBS convert script finished!', resultText)
+    ## Send a summary email.
+    #emailAddress = getEmailAddress(user_name)
+    #print("Sending email to: " + emailAddress)
+    #pbs_functions.send_email(emailAddress, 'PBS convert script finished!', resultText)
 
-    print('Done with PBS batch convert script!')
-    return 0
+    #print('Done with PBS batch convert script!')
+    #return 0
 
 
 # Run main function if file used from shell

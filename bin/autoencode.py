@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
 Script test out the image chunk generation calls.
 """
@@ -51,14 +51,14 @@ def assemble_dataset_for_predict():
     return ds
 
 
-def main(argsIn): #pylint: disable=R0914
+def main(args): #pylint: disable=R0914
     parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
 
     parser.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
 
-    options = config.parse_args(parser, argsIn, labels=False)
+    options = config.parse_args(parser, args, labels=False)
 
     if not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())
@@ -128,7 +128,8 @@ def main(argsIn): #pylint: disable=R0914
     ds = assemble_dataset_for_predict()
     iterator = iter(ds)
 
-    scale = aeds.scale_factor()
+    #scale = aeds.scale_factor()
+    scale = 1.0
     num_bands = data_shape[-1]
 #     debug_bands = get_debug_bands(config_values['input_dataset']['image_type'])
 #     print('debug_bands = ' + str(debug_bands))
