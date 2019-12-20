@@ -24,6 +24,7 @@ def predict_validate(model, cs, image, label, input_bounds=None, show_progress=F
         input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
 
     result = np.zeros((input_bounds.width() - cs + 1, input_bounds.height() - cs + 1), dtype=np.uint8)
+    errors = None
     if label:
         errors = np.zeros((input_bounds.width() - cs + 1, input_bounds.height() - cs + 1), dtype=np.bool)
 
