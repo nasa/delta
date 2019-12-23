@@ -1,6 +1,6 @@
 import argparse
 import collections
-import configparser
+import yaml
 import os
 import os.path
 import sys
@@ -26,7 +26,7 @@ def recursive_update(d, u):
     return d
 
 class DatasetConfig:#pylint:disable=too-many-instance-attributes
-    def __init__(self, config_dict):
+    def __init__(self, images_dict, labels_dict):
         DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                               'worldview' : '.zip',
                               'tfrecord' : '.tfrecord',
@@ -34,23 +34,28 @@ class DatasetConfig:#pylint:disable=too-many-instance-attributes
                               'npy' : '.npy'
                              }
 
-        self._image_type = config_dict['image_type']
-        self._label_type = config_dict['label_type']
+        self._image_type = images_dict['type']
+        self._image_directory = images_dict['directory']
+        self._image_extension = images_dict['extension']
+        self._image_file_list = images_dict['file_list']
+        self._image_files = images_dict['files']
 
-        self._data_directory = config_dict['data_directory']
-        self._image_extension = config_dict['extension']
-        self._data_file_list = config_dict['data_file_list']
-        self._image = config_dict['image']
-        if self._data_directory and self._image_extension is None:
+        self._label_type = labels_dict['type']
+        self._label_directory = labels_dict['directory']
+        self._label_extension = labels_dict['extension']
+        self._label_file_list = labels_dict['file_list']
+        self._label_files = labels_dict['files']
+
+        if self._image_directory and self._image_extension is None:
             if self._image_type in DEFAULT_EXTENSIONS:
                 self._image_extension = DEFAULT_EXTENSIONS[self._image_type]
+        if self._label_directory and self._label_extension is None:
+            if self._label_type in DEFAULT_EXTENSIONS:
+                self._label_extension = '_label' + DEFAULT_EXTENSIONS[self._label_type]
 
         self._label = config_dict['label']
         self._label_directory = config_dict['label_directory']
         self._label_extension = config_dict['label_extension']
-        if self._label_directory and self._label_extension is None:
-            if self._label_type in DEFAULT_EXTENSIONS:
-                self._label_extension = '_label' + DEFAULT_EXTENSIONS[self._label_type]
 
         self._num_threads = config_dict['num_input_threads']
         self._max_block_size = config_dict['max_block_size']
@@ -68,14 +73,6 @@ class DatasetConfig:#pylint:disable=too-many-instance-attributes
         return self._image_type
     def label_type(self):
         return self._label_type
-    def num_threads(self):
-        return self._num_threads
-    def max_block_size(self):
-        return self._max_block_size
-    def num_interleave_images(self):
-        return self._num_interleave_images
-    def tile_ratio(self):
-        return self._tile_ratio
     def preprocess(self):
         return self._preprocess
 
@@ -169,9 +166,10 @@ class DeltaConfig:
         Restores the config file to the default state specified in defaults.cfg.
         """
         self.__config_dict = {}
-        self.__config_dict['cache'] = {}
-        self.__config_dict['cache']['cache_dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
-        self.load(pkg_resources.resource_filename('delta', 'config/delta.cfg'), ignore_new=True)
+        self.__config_dict['general'] = {}
+        self.__config_dict['general']['cache'] = {}
+        self.__config_dict['general']['cache']['cache_dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
+        self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
         self._cache_manager = None
 
     def load(self, config_path, ignore_new=False):
@@ -181,35 +179,19 @@ class DeltaConfig:
         """
         if not os.path.exists(config_path):
             raise Exception('Config file does not exist: ' + config_path)
-        config_reader = configparser.ConfigParser()
 
-        try:
-            config_reader.read(config_path)
-        except IndexError:
-            raise Exception('Failed to read config file: ' + config_path)
-
-        # Convert to a dictionary
-        config_data = {s:dict(config_reader.items(s)) for s in config_reader.sections()}
-
-        # Make sure all sections are there
-        for section, items in config_data.items():
-            for name, value in items.items():
-                if not ignore_new and (section not in self.__config_dict or name not in self.__config_dict[section]):
-                    print('Unrecognized key %s:%s in config file %s.' % (section, name, config_path), file=sys.stderr)
-                    sys.exit(1)
-                value = os.path.expandvars(value)
-                if value.lower() == 'none' or value == '': # Useful in some cases
-                    value = None
-                elif 'folder' in name or 'directory' in name:
-                    value = os.path.expanduser(value)
-                    # make relative paths relative to this config file
-                    value = os.path.normpath(os.path.join(os.path.dirname(config_path), value))
+        config_data = yaml.safe_load(config_path)
+        # expand paths to use relative ones to this config file
+        def recurse_normalize(d):
+            for k, v in d.items():
+                if isinstance(v, collections.abc.Mapping):
+                    __recurse_normalize(v)
                 else:
-                    try: # Convert eligible values to integers
-                        value = int(value)
-                    except (ValueError, TypeError):
-                        pass
-                config_data[section][name] = value
+                    if ('dir' in k or 'file' in k) and isinstance(v, str):
+                        v = os.path.expanduser(v)
+                        # make relative paths relative to this config file
+                        d[k] = os.path.normpath(os.path.join(os.path.dirname(config_path), v))
+        recursive_normalize(config_data)
 
         self.__config_dict = recursive_update(self.__config_dict, config_data)
         self.__validate()
@@ -217,15 +199,25 @@ class DeltaConfig:
     def __validate(self):
         if self.__config_dict['ml']['chunk_size'] % 2 == 0:
             raise ValueError('chunk_size must be odd.')
+        if self.__config_dict['images']['type'] is None:
+            raise ValueError('Must specify a valid image type.')
 
     def set_value(self, group, name, value):
         self.__config_dict[group][name] = value
 
     def num_gpus(self):
         return self.__config_dict['general']['num_gpus']
+    def num_threads(self):
+        return self.__config_dict['general']['threads']
+    def block_size_mb(self):
+        return self.__config_dict['general']['block_size_mb']
+    def interleave_images(self):
+        return self.__config_dict['general']['interleave_images']
+    def tile_ratio(self):
+        return self.__config_dict['general']['tile_ratio']
 
     def dataset(self):
-        return DatasetConfig(self.__config_dict['input_dataset'])
+        return DatasetConfig(self.__config_dict['images'], self.__config_dict['labels'])
 
     def chunk_size(self):
         return self.__config_dict['ml']['chunk_size']
@@ -235,14 +227,12 @@ class DeltaConfig:
         return self.__config_dict['ml']['batch_size']
     def num_epochs(self):
         return self.__config_dict['ml']['num_epochs']
-    def output_folder(self):
-        return self.__config_dict['ml']['output_folder']
-    def model_folder(self):
-        return self.__config_dict['ml']['model_folder']
+    def output_dir(self):
+        return self.__config_dict['ml']['output_dir']
+    def model_dir(self):
+        return self.__config_dict['ml']['model_dir']
     def model_dest_name(self):
         return self.__config_dict['ml']['model_dest_name']
-    def num_hidden(self):
-        return self.__config_dict['ml']['num_hidden']
     def num_classes(self):
         return self.__config_dict['ml']['num_classes']
     def loss_function(self):
@@ -250,8 +240,8 @@ class DeltaConfig:
 
     def cache_manager(self):
         if self._cache_manager is None:
-            self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['cache']['cache_dir'],
-                                                              self.__config_dict['cache']['cache_limit'])
+            self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['general']['cache']['cache_dir'],
+                                                              self.__config_dict['general']['cache']['cache_limit'])
         return self._cache_manager
 
     def parse_args(self, parser, args, labels=True, ml=True):#pylint:disable=too-many-branches
@@ -266,9 +256,9 @@ class DeltaConfig:
 
         group.add_argument("--image", dest="image", required=False,
                            help="Specify a single image file.")
-        group.add_argument("--data-folder", dest="data_folder", required=False,
+        group.add_argument("--image-dir", dest="image_dir", required=False,
                            help="Specify data folder to search for images.")
-        group.add_argument("--data-file-list", dest="data_file_list", required=False,
+        group.add_argument("--image-file-list", dest="image_file_list", required=False,
                            help="Specify data text file listing images.")
         group.add_argument("--image-type", dest="image_type", required=False,
                            help="Image type (tiff, worldview, landsat, etc.).")
@@ -277,7 +267,7 @@ class DeltaConfig:
         if labels:
             group.add_argument("--label", dest="label", required=False,
                                help="Specify a single label file.")
-            group.add_argument("--label-folder", dest="label_folder", required=False,
+            group.add_argument("--label-dir", dest="label_dir", required=False,
                                help="Specify label folder instead of supplying config file.")
             group.add_argument("--label-type", dest="label_type", required=False,
                                help="Label file type.")
@@ -296,7 +286,7 @@ class DeltaConfig:
                                help="Number of features in a batch.")
             group.add_argument("--num-epochs", dest="num_epochs", required=False, type=int,
                                help="Number of times to run through all the features.")
-            group.add_argument("--output-folder", dest="output_folder", required=False,
+            group.add_argument("--output-dir", dest="output_dir", required=False,
                                help="Folder to store all output in.")
 
         try:
@@ -312,28 +302,25 @@ class DeltaConfig:
                 config.load(options.ml_config)
 
         c = self.__config_dict
-        if options.data_folder:
-            c['input_dataset']['data_directory'] = options.data_folder
-        if options.data_file_list:
-            c['input_dataset']['data_file_list'] = options.data_file_list
         if options.image:
-            c['input_dataset']['image'] = options.image
+            c['images']['files'] = [options.image]
+        if options.image_dir:
+            c['images']['directory'] = options.image_dir
+        if options.image_file_list:
+            c['images']['file_list'] = options.image_file_list
         if options.image_type:
-            c['input_dataset']['image_type'] = options.image_type
-        if c['input_dataset']['image_type'] is None:
-            print('Must specify an image_type.', file=sys.stderr)
-            sys.exit(0)
+            c['images']['type'] = options.image_type
         if options.image_extension:
-            c['input_dataset']['extension'] = options.image_extension
+            c['images']['extension'] = options.image_extension
         if labels:
             if options.label:
-                c['input_dataset']['label'] = options.label
-            if options.label_folder:
-                c['input_dataset']['label_directory'] = options.label_folder
+                c['labels']['files'] = [options.label]
+            if options.label_dir:
+                c['labels']['directory'] = options.label_dir
             if options.label_type:
-                c['input_dataset']['label_type'] = options.label_type
+                c['labels']['type'] = options.label_type
             if options.label_extension:
-                c['input_dataset']['label_extension'] = options.label_extension
+                c['labels']['extension'] = options.label_extension
 
         if ml:
             if options.batch_size:
@@ -344,8 +331,8 @@ class DeltaConfig:
                 c['ml']['chunk_stride'] = options.chunk_stride
             if options.num_epochs:
                 c['ml']['num_epochs'] = options.num_epochs
-            if options.output_folder:
-                c['ml']['output_folder'] = options.output_folder
+            if options.output_dir:
+                c['ml']['output_dir'] = options.output_dir
 
         self.__validate()
         return options
@@ -356,8 +343,8 @@ def __load_initial_config():
     # only contains things not in default config file
     global config #pylint: disable=global-statement
     dirs = appdirs.AppDirs('delta', 'nasa')
-    DEFAULT_CONFIG_FILES = [os.path.join(dirs.site_config_dir, 'delta.cfg'),
-                            os.path.join(dirs.user_config_dir, 'delta.cfg')]
+    DEFAULT_CONFIG_FILES = [os.path.join(dirs.site_config_dir, 'delta.yaml'),
+                            os.path.join(dirs.user_config_dir, 'delta.yaml')]
 
     for filename in DEFAULT_CONFIG_FILES:
         if os.path.exists(filename):

@@ -51,7 +51,7 @@ class ImageryDataset:
         return r
 
     def _tile_images(self):
-        max_block_bytes = config.dataset().max_block_size() * 1024 * 1024
+        max_block_bytes = config.block_size_mb() * 1024 * 1024
         def tile_generator():
             tgs = []
             for i in range(self._ds_config.num_images()):
@@ -59,8 +59,8 @@ class ImageryDataset:
                 # TODO: account for other data types properly
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
-                                           (self._chunk_size ** 2) / self._ds_config.tile_ratio()))
-                tile_height = int(self._ds_config.tile_ratio() * tile_width)
+                                           (self._chunk_size ** 2) / config.tile_ratio()))
+                tile_height = int(config.tile_ratio() * tile_width)
                 if tile_width < self._chunk_size * 2:
                     print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
                     tile_width = self._chunk_size * 2
@@ -71,8 +71,8 @@ class ImageryDataset:
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
             while tgs:
-                cur = tgs[:self._ds_config.num_interleave_images()]
-                tgs = tgs[self._ds_config.num_interleave_images():]
+                cur = tgs[:config.interleave_images()]
+                tgs = tgs[config.interleave_images():]
                 done = False
                 while not done:
                     done = True
@@ -96,7 +96,7 @@ class ImageryDataset:
         if self._use_tfrecord:
             (image_list, label_list) = self._ds_config.images()
             ret = tfrecord.create_dataset(label_list if is_labels else image_list,
-                                          num_bands, data_type, self._ds_config.num_threads())
+                                          num_bands, data_type, config.num_threads())
             # ignore images that are too small to use
             ret = ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
         else:
@@ -106,7 +106,7 @@ class ImageryDataset:
                                                        is_labels),
                                      [image_index, [x1, y1, x2, y2]], data_type)
                 return img
-            ret = ds_input.map(load_tile, num_parallel_calls=self._ds_config.num_threads())
+            ret = ds_input.map(load_tile, num_parallel_calls=config.num_threads())
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -133,7 +133,7 @@ class ImageryDataset:
     def data(self):
         # TODO: other types?
         ret = self._load_images(False, self._num_bands, tf.float32)
-        ret = ret.map(self._chunk_image, num_parallel_calls=self._ds_config.num_threads())
+        ret = ret.map(self._chunk_image, num_parallel_calls=config.num_threads())
         return ret.unbatch()
 
     def labels(self):
