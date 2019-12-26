@@ -89,7 +89,7 @@ def main(args): #pylint: disable=R0914
                                  )
 
     model, _ = experiment.train_keras(model_fn, assemble_dataset(),
-                                      num_gpus=config.num_gpus())
+                                      num_gpus=config.gpus())
 
 
     out_filename = None
@@ -98,7 +98,7 @@ def main(args): #pylint: disable=R0914
     out_filename = os.path.join(config.output_folder(), options.model)
     if train_keras:
         keras_model = experiment.train_keras(model, assemble_dataset(),
-                                             num_gpus=config.num_gpus())
+                                             num_gpus=config.gpus())
         if out_filename is not None:
             tf.keras.models.save_model(keras_model, out_filename, overwrite=True,
                                        include_optimizer = True)
@@ -106,7 +106,7 @@ def main(args): #pylint: disable=R0914
         raise NotImplementedError()
         #estimator, distribution_scope = experiment.train_keras(model, assemble_dataset(), test_fn,
         #                                                 model_folder=config.model_folder(),
-        #                                                 log_model=False, num_gpus=config.num_gpus())
+        #                                                 log_model=False, num_gpus=config.gpus())
         #if out_filename is not None:
         #    with distribution_scope:
         #        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)

@@ -35,14 +35,14 @@ def main(args):
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
 
     cs = config.chunk_size()
-    ds_config = config.dataset()
-    for i in range(ds_config.num_images()):
-        image = loader.load_image(ds_config, i)
-        base_name = os.path.splitext(os.path.basename(ds_config.image(i)))[0]
+    images = config.images()
+    for (path, i) in enumerate(images):
+        image = loader.load_image(images, i)
+        base_name = os.path.splitext(os.path.basename(path))[0]
         if options.validate:
-            label = loader.load_label(ds_config, i)
+            label = loader.load_image(config.labels(), i)
             (result, error_image, accuracy) = predict.predict_validate(model, cs, image, label, show_progress=True)
-            print('%.2g%% Correct: %s' % (accuracy * 100, ds_config.image(i)))
+            print('%.2g%% Correct: %s' % (accuracy * 100, path))
             colored_error = error_colors[error_image.astype('uint8')]
             tiff.write_tiff(base_name + '_errors.tiff', colored_error, metadata=image.metadata())
         else:

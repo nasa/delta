@@ -18,17 +18,17 @@ def get_devices(num_gpus):
 
     Arguments
 
-    num_gpus -- Number of GPUs to use.  If zero, will use all CPUs available.
+    num_gpus -- Number of GPUs to use.  If negative, will use all CPUs available.
     '''
-    assert num_gpus > -1, "Requested negative GPUs"
     devs = None
-    if num_gpus < 1:
+    if num_gpus == 0:
         devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
     else:
         devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
         assert len(devs) >= num_gpus,\
                "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
-        devs = devs[:num_gpus]
+        if num_gpus > 0:
+            devs = devs[:num_gpus]
     return devs
 
 def get_distribution_strategy(devices):
@@ -105,13 +105,12 @@ class Experiment:
                     trained. model_fn() should return a Keras Model
         train_dataset -- A Tensorflow Dataset object. All data is evaluted.
         validation_data -- The data used to validate the network.  Default None.
-        num_gpus -- The number of GPUs used to train the network.  If GPU
+        num_gpus -- The number of GPUs used to train the network.  If negative, use all.
 
 
         """
         assert model_fn is not None, "No model function supplied."
         assert train_dataset is not None, "No training dataset supplied."
-        assert num_gpus > -1, "Number of GPUs is negative."
 
         devs = get_devices(num_gpus)
         strategy = get_distribution_strategy(devs)

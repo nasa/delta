@@ -126,32 +126,32 @@ def _config_to_image_label_sets(images_dict, labels_dict):
 _CONFIG_ENTRIES = [
         (['general', 'gpus'],              'gpus',              int,                None,
          'gpus', 'Number of gpus to use.'),
-        (['general', 'threads'],           'threads',           int,                lambda x : x > 0,
+        (['general', 'threads'],           'threads',           int,                lambda x : x is None or x > 0,
          'threads', 'Number of threads to use.'),
         (['general', 'block_size_mb'],     'block_size_mb',     int,                lambda x : x > 0, None, None),
         (['general', 'interleave_images'], 'interleave_images', int,                lambda x : x > 0, None, None),
         (['general', 'tile_ratio'],        'tile_ratio',        float,              lambda x : x > 0, None, None),
-        (['general', 'cache', 'dir'],      None,                (type(None), str),  None,             None, None),
+        (['general', 'cache', 'dir'],      None,                str,                None,             None, None),
         (['general', 'cache', 'limit'],    None,                int,                lambda x : x > 0, None, None),
         # images and labels validated when finding the files
         (['images', 'type'],               None,                str,                None,
          'image-type', 'Image type (tiff, worldview, landsat, etc.).'),
-        (['images', 'files'],               None,               (type(None), list), None,             None, None),
-        (['images', 'file_list'],           None,               (type(None), str),  None,
+        (['images', 'files'],               None,               list,               None, None),
+        (['images', 'file_list'],           None,               str,                None,
          'image-file-list', 'Data text file listing images.'),
-        (['images', 'directory'],           None,               (type(None), str),  None,
+        (['images', 'directory'],           None,               str,                None,
          'image-dir', 'Directory to search for images of given extension.'),
-        (['images', 'extension'],           None,               (type(None), str),  None,
+        (['images', 'extension'],           None,               str,                None,
          'image-extension', 'File extension to search for images in given directory.'),
         (['images', 'preprocess'],          None,               bool,               None,            None, None),
         (['labels', 'type'],                None,               str,                None,
          'label-type', 'Label type (tiff, worldview, landsat, etc.).'),
-        (['labels', 'files'],               None,               (type(None), list), None,             None, None),
-        (['labels', 'file_list'],           None,               (type(None), str),  None,
+        (['labels', 'files'],               None,               list,               None, None),
+        (['labels', 'file_list'],           None,               str,                None,
          'label-file-list', 'Data text file listing images.'),
-        (['labels', 'directory'],           None,               (type(None), str),  None,
+        (['labels', 'directory'],           None,               str,                None,
          'labels-dir', 'Directory to search for images of given extension.'),
-        (['labels', 'extension'],           None,               (type(None), str),  None,
+        (['labels', 'extension'],           None,               str,                None,
          'label-extension', 'File extension to search for images in given directory.'),
         (['labels', 'preprocess'],          None,               bool,               None,            None, None),
         (['ml', 'chunk_size'],              'chunk_size',       int,                lambda x: x > 0 and x % 2 == 1,
@@ -166,9 +166,9 @@ _CONFIG_ENTRIES = [
          'num-classes', 'Number of label classes.'),
         (['ml', 'loss_function'],           'loss_function',    str,                None,
          'loss-fn', 'Tensorflow loss function to use.'),
-        (['ml', 'mlflow_dir'],              'mlflow_dir',       (type(None), str),  None,            None, None),
-        (['ml', 'tb_dir'],                  'tb_dir',           (type(None), str),  None,            None, None),
-        (['ml', 'checkpoint_dir'],          'checkpoint_dir',   (type(None), str),  None,            None, None)
+        (['ml', 'mlflow_dir'],              'mlflow_dir',       str,                None,            None, None),
+        (['ml', 'tb_dir'],                  'tb_dir',           str,                None,            None, None),
+        (['ml', 'checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
 ]
 
 class DeltaConfig:
@@ -233,7 +233,7 @@ class DeltaConfig:
     def _validate(self):
         for e in _CONFIG_ENTRIES:
             v = self._get_entry(e[0])
-            if not isinstance(v, e[2]):
+            if v is not None and not isinstance(v, e[2]):
                 raise TypeError('%s must be of type %s, is %s.' % (e[0][-1], e[2], v))
             if e[3] and not e[3](v):
                 raise ValueError('Value %s for %s is invalid.' % (v, e[0][-1]))
@@ -265,7 +265,7 @@ class DeltaConfig:
         '''Add command line arguments for the given group.'''
         for e in _CONFIG_ENTRIES:
             if e[0][0] == group_key and e[4] is not None:
-                group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[3], help=e[5])
+                group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
     def parse_args(self, parser, args, labels=True, ml=True):
         group = parser.add_argument_group('General')
@@ -309,6 +309,8 @@ class DeltaConfig:
             if not hasattr(options, name):
                 continue
             v = getattr(options, name)
+            if v is None:
+                continue
             a = self.__config_dict
             for k in e[0][:-1]:
                 a = a[k]

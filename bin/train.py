@@ -20,19 +20,19 @@ def main(args):
     parser.add_argument('model', help='File to save the network to.')
     options = config.parse_args(parser, args)
 
-    config_d = config.dataset()
-    if config_d.num_images() == 0:
+    images = config.images()
+    labels = config.labels()
+    if len(images) == 0:#pylint:disable=len-as-condition
         print('No images specified.', file=sys.stderr)
         return 1
-    if config_d.num_labels() == 0:
+    if len(labels) == 0:#pylint:disable=len-as-condition
         print('No labels specified.', file=sys.stderr)
         return 1
-    ids = imagery_dataset.ImageryDataset(config_d, config.chunk_size(), config.chunk_stride())
+    ids = imagery_dataset.ImageryDataset(images, labels, config.chunk_size(), config.chunk_stride())
 
-    experiment = Experiment('task_specific_%s'%(config_d.image_type()),
+    experiment = Experiment('task_specific_%s'%(images.type()),
                             loss_fn=config.loss_function())
-    mlflow.log_param('image type',   config_d.image_type())
-    mlflow.log_param('image folder', config_d.data_directory())
+    mlflow.log_param('image type',   images.type())
     mlflow.log_param('chunk size',   config.chunk_size())
     in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
     out_data_shape = config.num_classes()
@@ -47,7 +47,7 @@ def main(args):
     ds = ids.dataset()
     ds = ds.batch(config.batch_size()).repeat(config.num_epochs()).take(50000)
     model, _ = experiment.train_keras(make_dumb_network, ds,
-                                      num_gpus=config.num_gpus())
+                                      num_gpus=config.gpus())
 
     model.save(options.model)
     mlflow.log_artifact(options.model)
