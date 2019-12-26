@@ -1,9 +1,4 @@
-#!/usr/bin/python3
-"""
-Script test out the image chunk generation calls.
-"""
 import sys
-import argparse
 
 import mlflow
 
@@ -14,12 +9,13 @@ from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
 
-def main(args):
-    parser = argparse.ArgumentParser(description='Train a network to map images to labels.')
+def setup_parser(subparsers):
+    sub = subparsers.add_parser('train', description='Train a task-specific classifier.')
+    sub.add_argument('model', help='File to save the network to.')
+    sub.set_defaults(function=main)
+    config.setup_arg_parser(sub)
 
-    parser.add_argument('model', help='File to save the network to.')
-    options = config.parse_args(parser, args)
-
+def main(options):
     images = config.images()
     labels = config.labels()
     if len(images) == 0:#pylint:disable=len-as-condition
@@ -53,7 +49,3 @@ def main(args):
     mlflow.log_artifact(options.model)
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))

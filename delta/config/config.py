@@ -1,8 +1,6 @@
-import argparse
 import collections
 import os
 import os.path
-import sys
 
 import yaml
 import pkg_resources
@@ -267,9 +265,9 @@ class DeltaConfig:
             if e[0][0] == group_key and e[4] is not None:
                 group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
-    def parse_args(self, parser, args, labels=True, ml=True):
+    def setup_arg_parser(self, parser, labels=True, ml=True):
         group = parser.add_argument_group('General')
-        group.add_argument('--config', dest='config', action='append', required=False,
+        group.add_argument('--config', dest='config', action='append', required=False, default=[],
                            help='Load configuration file (can pass multiple times).')
         self.__add_arg_group(group, 'general')
 
@@ -286,21 +284,15 @@ class DeltaConfig:
             group = parser.add_argument_group('Machine Learning')
             self.__add_arg_group(group, 'ml')
 
-        try:
-            options = parser.parse_args(args[1:])
-        except argparse.ArgumentError:
-            parser.print_help(sys.stderr)
-            sys.exit(1)
-
+    def parse_args(self, options):
         for c in options.config:
             self.load(c)
 
         c = self.__config_dict
-        if options.image:
+        if hasattr(options, 'image') and options.image:
             c['images']['files'] = [options.image]
-        if labels:
-            if options.label:
-                c['labels']['files'] = [options.label]
+        if hasattr(options, 'lable') and options.label:
+            c['labels']['files'] = [options.label]
         # load all the command line arguments into the config_dict
         for e in _CONFIG_ENTRIES:
             if e[4] is None:

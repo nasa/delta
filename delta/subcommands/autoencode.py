@@ -1,11 +1,8 @@
-#!/usr/bin/python3
 """
-Script test out the image chunk generation calls.
+Autoencoder.
 """
-import sys
 import os
 
-import argparse
 import functools
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +14,6 @@ from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.ml.train import Experiment
 from delta.ml.networks import make_autoencoder
-
 
 
 # TODO: Move this function!
@@ -50,17 +46,17 @@ def assemble_dataset_for_predict():
     ds  = ids.dataset().batch(1) # Batch needed to match the original format
     return ds
 
+def setup_parser(subparsers):
+    sub = subparsers.add_parser('autoencode', description='Train an autoencder.')
+    sub.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
+                     help="Run this many images through the AE after training and write the "
+                     "input/output pairs to disk.")
+    sub.add_argument("--model", dest="model", required=True,
+                     help="Location to save the model.")
+    sub.set_defaults(function=main)
+    config.setup_arg_parser(sub, labels=False)
 
-def main(args): #pylint: disable=R0914
-    parser = argparse.ArgumentParser(usage='train_autoencoder.py [options]')
-
-    parser.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
-                        help="Run this many images through the AE after training and write the "
-                        "input/output pairs to disk.")
-    parser.add_argument("--model", dest="model", required=True,
-                        help="Location to save the model.")
-
-    options = config.parse_args(parser, args, labels=False)
+def main(options):
 
     if not os.path.exists(config.output_folder()):
         os.mkdir(config.output_folder())
@@ -157,7 +153,3 @@ def main(args): #pylint: disable=R0914
         mlflow.log_artifact(debug_image_filename)
 
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

@@ -1,10 +1,7 @@
-#!/usr/bin/python3
 """
 Classify input images given a model.
 """
 import os.path
-import sys
-import argparse
 
 import tensorflow as tf
 import numpy as np
@@ -14,16 +11,19 @@ from delta.imagery.sources import tiff
 from delta.imagery.sources import loader
 from delta.ml import predict
 
-def main(args):
-    parser = argparse.ArgumentParser(description='Classify images given a model.')
+def setup_parser(subparsers):
+    sub = subparsers.add_parser('classify', description='Classify images given a model.')
 
-    parser.add_argument("--model", dest="model", required=True,
-                        help="Path to the saved Keras model.")
-    parser.add_argument("--validate", dest="validate", required=False, default=False,
-                        action="store_true", help="Compare to specified labels.")
+    sub.add_argument('model', help='File to save the network to.')
+    sub.add_argument("--model", dest="model", required=True,
+                     help="Path to the saved Keras model.")
+    sub.add_argument("--validate", dest="validate", required=False, default=False,
+                     action="store_true", help="Compare to specified labels.")
 
-    options = config.parse_args(parser, args, labels=True, ml=True)
+    sub.set_defaults(function=main)
+    config.setup_arg_parser(sub, labels=True, ml=True)
 
+def main(options):
     model = tf.keras.models.load_model(options.model)
 
     colors = np.array([[0x0, 0x0, 0x0],
@@ -49,6 +49,3 @@ def main(args):
             result = predict.predict(model, cs, image, show_progress=True)
         tiff.write_tiff(base_name + '_predicted.tiff', colors[result], metadata=image.metadata())
     return 0
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv))
