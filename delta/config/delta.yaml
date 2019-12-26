@@ -1,3 +1,18 @@
+general:
+ # negative is all
+ gpus:              -1
+ threads:           1
+# size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
+ block_size_mb:     512
+# number of different images to interleave at a time when loading
+ interleave_images: 5
+# ratio of tile width and height when loading images
+ tile_ratio:        5.0
+ cache:
+  # default is OS-specific, in Linux, ~/.cache/delta
+  dir:              ~
+  limit:            8
+
 images:
  type:             tiff
 # preprocess the images when loading (i.e., scaling)
@@ -15,28 +30,15 @@ labels:
  file_list:        ~
  files:            ~
 
-general:
- # default is all
- num_gpus:         ~
- threads:          1
-# size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
- block_size_mb:    512
-# number of different images to interleave at a time when loading
- interleave_images: 5
-# ratio of tile width and height when loading images
- tile_ratio:       5
- cache:
-  # default is OS-specific, in Linux, ~/.cache/delta
-  dir:              ~
-  limit:            8
-
 ml:
  chunk_size:      17
  chunk_stride:    1
  num_epochs:      5
  batch_size:      1000
  num_classes:     4
- loss_fn:         sparse_categorical_crossentropy
- model_dir:    ~
- model_dest_name: ~
- output_dir:   ~
+ loss_function:   sparse_categorical_crossentropy
+# default to ~/.local/share/delta/{mlflow,tensorboard}
+ mlflow_dir:      ~
+ tb_dir:          ~
+# defauls to None, saves no checkpoints
+ checkpoint_dir:  ~

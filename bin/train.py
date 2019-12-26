@@ -3,7 +3,6 @@
 Script test out the image chunk generation calls.
 """
 import sys
-import os
 import argparse
 
 import mlflow
@@ -21,9 +20,6 @@ def main(args):
     parser.add_argument('model', help='File to save the network to.')
     options = config.parse_args(parser, args)
 
-    if config.output_folder() and not os.path.exists(config.output_folder()):
-        os.mkdir(config.output_folder())
-
     config_d = config.dataset()
     if config_d.num_images() == 0:
         print('No images specified.', file=sys.stderr)
@@ -33,17 +29,8 @@ def main(args):
         return 1
     ids = imagery_dataset.ImageryDataset(config_d, config.chunk_size(), config.chunk_stride())
 
-    # TF additions
-    # If the mlfow directory doesn't exist, create it.
-    mlflow_tracking_dir = os.path.join(config.output_folder(),'mlruns')
-    if not os.path.exists(mlflow_tracking_dir):
-        os.mkdir(mlflow_tracking_dir)
-    ### end if
-
-    experiment = Experiment(mlflow_tracking_dir,
-                            'task_specific_%s'%(config_d.image_type()),
-                            loss_fn=config.loss_function(),
-                            output_dir=config.output_folder())
+    experiment = Experiment('task_specific_%s'%(config_d.image_type()),
+                            loss_fn=config.loss_function())
     mlflow.log_param('image type',   config_d.image_type())
     mlflow.log_param('image folder', config_d.data_directory())
     mlflow.log_param('chunk size',   config.chunk_size())

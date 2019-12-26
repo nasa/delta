@@ -9,6 +9,8 @@ import tensorflow as tf
 import mlflow
 import mlflow.tensorflow
 
+from delta.config import config
+
 
 def get_devices(num_gpus):
     '''
@@ -76,17 +78,15 @@ def load_keras_model(file_path, num_gpus=1):
 class Experiment:
     """TODO"""
 
-    def __init__(self, tracking_uri, experiment_name, output_dir='./',
+    def __init__(self, experiment_name,
                  loss_fn='mean_squared_error', save_freq=100000):
         self.experiment_name = experiment_name
-        self.output_dir = output_dir
         self.loss_fn = loss_fn
         self.save_freq = save_freq # Checkpoint the model every save_freq samples.
 
-        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_tracking_uri(config.mlflow_dir())
         mlflow.set_experiment(experiment_name)
         mlflow.start_run()
-        mlflow.log_param('output_dir', self.output_dir)
 
     ### end __init__
 
@@ -123,18 +123,20 @@ class Experiment:
         ### end with
 
         callbacks = [
-            tf.keras.callbacks.ModelCheckpoint(
-                filepath=os.path.join(self.output_dir, 'model.ckpt.h5'),
-                monitor='val_loss',
-                verbose=0,
-                save_freq=self.save_freq,
-                save_best_only=False,
-                ),
             tf.keras.callbacks.TensorBoard(
-                log_dir=os.path.join(self.output_dir, 'tb_logs'),
+                log_dir=config.tb_dir(),
                 update_freq=self.save_freq,
                 )
         ]
+        if config.checkpoint_dir():
+            cb = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(config.checkpoint_dir(),
+                                                                          'model.ckpt.h5'),
+                                                    monitor='val_loss',
+                                                    verbose=0,
+                                                    save_freq=self.save_freq,
+                                                    save_best_only=False,
+                                                    )
+            callbacks.append(cb)
 
         history = model.fit(train_dataset,
                             callbacks=callbacks,

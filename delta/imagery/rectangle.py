@@ -20,9 +20,6 @@ class Rectangle:
             self.max_y = min_y + height
         else:
             self.max_y = max_y
-        #
-        #if not self.hasArea(): # Debug helper
-        #    print 'RECTANGLE WARNING: ' + str(self)
 
     def __str__(self):
         if isinstance(self.min_x, int):

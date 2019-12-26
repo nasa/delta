@@ -51,4 +51,4 @@ def predict_validate(model, cs, image, label, input_bounds=None, show_progress=F
 
 def predict(model, cs, image, input_bounds=None, show_progress=False):
     """Returns the predicted image given a model, chunk size, and image."""
-    return predict_validate(model, cs, image, None, input_bounds, show_progress)
+    return predict_validate(model, cs, image, None, input_bounds, show_progress)[0]

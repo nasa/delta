@@ -4,7 +4,6 @@ Tools for loading input images into the TensorFlow Dataset class.
 import functools
 import math
 import random
-import sys
 
 import tensorflow as tf
 
@@ -16,34 +15,31 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, dataset_config, chunk_size, chunk_stride=1):
+    def __init__(self, images, labels, chunk_size, chunk_stride=1):
         """
-        Initialize the dataset based on the specified config values.
-
-        If image_files is None, the images in dataset_config are overridden with image_files and label_files.
+        Initialize the dataset based on the specified image and label ImageSets
         """
 
         # Record some of the config values
         self._chunk_size = chunk_size
         self._chunk_stride = chunk_stride
 
-        self._use_tfrecord = dataset_config.image_type() == 'tfrecord'
+        self._use_tfrecord = images.type() == 'tfrecord'
 
-        if self._use_tfrecord and dataset_config.label_type() != 'tfrecord':
+        if self._use_tfrecord and labels.type() != 'tfrecord':
             raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
 
-        self._ds_config = dataset_config
+        assert len(images) == len(labels)
+        self._images = images
+        self._labels = labels
 
         # Load the first image to get the number of bands for the input files.
-        self._num_bands = loader.load_image(dataset_config, 0).num_bands()
+        self._num_bands = loader.load_image(images, 0).num_bands()
 
     def _load_tensor_imagery(self, is_labels, image_index, bbox):
         """Loads a single image as a tensor."""
         assert not self._use_tfrecord
-        if is_labels:
-            image = loader.load_label(self._ds_config, image_index.numpy())
-        else:
-            image = loader.load_image(self._ds_config, image_index.numpy())
+        image = loader.load_image(self._labels if is_labels else self._images, image_index.numpy())
         w = int(bbox[2])
         h = int(bbox[3])
         rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
@@ -54,19 +50,17 @@ class ImageryDataset:
         max_block_bytes = config.block_size_mb() * 1024 * 1024
         def tile_generator():
             tgs = []
-            for i in range(self._ds_config.num_images()):
-                img = loader.load_image(self._ds_config, i)
+            for i in range(len(self._images)):
+                img = loader.load_image(self._images, i)
                 # TODO: account for other data types properly
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
                                            (self._chunk_size ** 2) / config.tile_ratio()))
                 tile_height = int(config.tile_ratio() * tile_width)
                 if tile_width < self._chunk_size * 2:
-                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
-                    tile_width = self._chunk_size * 2
+                    raise ValueError('max_block_size is too low.')
                 if tile_height < self._chunk_size * 2:
-                    print('Warning: max_block_size is too low. Ignoring.', file=sys.stderr)
-                    tile_height = self._chunk_size * 2
+                    raise ValueError('max_block_size is too low.')
                 tiles = img.tiles(tile_width, tile_height, overlap=self._chunk_size)
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
@@ -94,9 +88,8 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         if self._use_tfrecord:
-            (image_list, label_list) = self._ds_config.images()
-            ret = tfrecord.create_dataset(label_list if is_labels else image_list,
-                                          num_bands, data_type, config.num_threads())
+            ret = tfrecord.create_dataset(list(self._labels if is_labels else self._images),
+                                          num_bands, data_type, config.threads())
             # ignore images that are too small to use
             ret = ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
         else:
@@ -106,7 +99,7 @@ class ImageryDataset:
                                                        is_labels),
                                      [image_index, [x1, y1, x2, y2]], data_type)
                 return img
-            ret = ds_input.map(load_tile, num_parallel_calls=config.num_threads())
+            ret = ds_input.map(load_tile, num_parallel_calls=config.threads())
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -133,7 +126,7 @@ class ImageryDataset:
     def data(self):
         # TODO: other types?
         ret = self._load_images(False, self._num_bands, tf.float32)
-        ret = ret.map(self._chunk_image, num_parallel_calls=config.num_threads())
+        ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
         return ret.unbatch()
 
     def labels(self):
@@ -159,7 +152,7 @@ class ImageryDataset:
 
     def num_images(self):
         """Return the number of images in the data set"""
-        return len(self._ds_config.images()[0])
+        return len(self._images)
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""

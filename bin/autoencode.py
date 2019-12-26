@@ -57,6 +57,8 @@ def main(args): #pylint: disable=R0914
     parser.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
                         help="Run this many images through the AE after training and write the "
                         "input/output pairs to disk.")
+    parser.add_argument("--model", dest="model", required=True,
+                        help="Location to save the model.")
 
     options = config.parse_args(parser, args, labels=False)
 
@@ -66,16 +68,8 @@ def main(args): #pylint: disable=R0914
     config_d = config.dataset()
     aeds = imagery_dataset.AutoencoderDataset(config_d, config.chunk_size(), config.chunk_stride())
 
-    # TF additions
-    # If the mlfow directory doesn't exist, create it.
-    mlflow_tracking_dir = os.path.join(config.output_folder(),'mlruns')
-    if not os.path.exists(mlflow_tracking_dir):
-        os.mkdir(mlflow_tracking_dir)
-
     print('Creating experiment')
-    experiment = Experiment(mlflow_tracking_dir,
-                            'conv_autoencoder_%s'%(config_d.image_type()),
-                            output_dir=config.output_folder())
+    experiment = Experiment('conv_autoencoder_%s'%(config_d.image_type()))
     mlflow.log_param('image type',   config_d.image_type())
     mlflow.log_param('image folder', config_d.data_directory())
     mlflow.log_param('chunk size',   config.chunk_size())
@@ -100,9 +94,8 @@ def main(args): #pylint: disable=R0914
 
     out_filename = None
     keras_model = None
-    if config.model_dest_name() is not None:
-        print('Saving Model')
-        out_filename = os.path.join(config.output_folder(), config.model_dest_name())
+    print('Saving Model')
+    out_filename = os.path.join(config.output_folder(), options.model)
     if train_keras:
         keras_model = experiment.train_keras(model, assemble_dataset(),
                                              num_gpus=config.num_gpus())

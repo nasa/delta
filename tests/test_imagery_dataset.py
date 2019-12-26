@@ -18,16 +18,28 @@ def dataset(all_sources, request):
     source = all_sources[request.param]
     config.reset() # don't load any user files
     (image_path, label_path) = source[0]
-    config.set_value('input_dataset', 'extension', source[1])
-    config.set_value('input_dataset', 'image_type', source[2])
-    config.set_value('input_dataset', 'label_extension', source[3])
-    config.set_value('input_dataset', 'label_type', source[4])
-    config.set_value('input_dataset', 'data_directory', os.path.dirname(image_path))
-    config.set_value('input_dataset', 'label_directory', os.path.dirname(label_path))
-    config.set_value('input_dataset', 'preprocess', False)
-    config.set_value('ml', 'chunk_size', 3)
-    config.set_value('cache', 'cache_dir', os.path.dirname(image_path))
-    dataset = imagery_dataset.ImageryDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    config.load(yaml_str=
+                '''
+                general:
+                  cache:
+                    dir: %s
+                images:
+                  type: %s
+                  directory: %s
+                  extension: %s
+                  preprocess: False
+                labels:
+                  type: %s
+                  directory: %s
+                  extension: %s
+                  preprocess: False
+                ml:
+                  chunk_size: 3''' %
+                (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
+                 source[4], os.path.dirname(label_path), source[3]))
+
+    dataset = imagery_dataset.ImageryDataset(config.images(), config.labels(),
+                                             config.chunk_size(), config.chunk_stride())
     return dataset
 
 def test_tfrecord_write(tfrecord_filenames):
@@ -113,4 +125,4 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
     result = predict.predict(model, 3, npy.NumpyImage(test_image))
-    assert sum(sum(np.logical_xor(result, test_label))) < 5
+    assert sum(sum(np.logical_xor(result, test_label))) < 10

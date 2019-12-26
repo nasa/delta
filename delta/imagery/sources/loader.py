@@ -32,8 +32,5 @@ def load(filename, image_type, preprocess=False):
         raise ValueError('Unexpected image_type %s.' % (image_type))
     return img
 
-def load_image(ds_config, index):
-    return load(ds_config.image(index), ds_config.image_type(), preprocess=ds_config.preprocess())
-
-def load_label(ds_config, index):
-    return load(ds_config.label(index), ds_config.label_type(), preprocess=False)
+def load_image(image_set, index):
+    return load(image_set[index], image_set.type(), preprocess=image_set.preprocess())

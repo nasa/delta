@@ -28,7 +28,10 @@ class TiffImage(delta_image.DeltaImage):
         for p in paths:
             if not os.path.exists(p):
                 raise Exception('Image file does not exist: ' + p)
-            self._handles.append(gdal.Open(p))
+            result = gdal.Open(p)
+            if result is None:
+                raise Exception('Failed to open tiff file %s.' % (p))
+            self._handles.append(result)
         self._band_map = []
         for i, h in enumerate(self._handles):
             if h.RasterXSize != self._handles[0].RasterXSize or h.RasterYSize != self._handles[0].RasterYSize:
