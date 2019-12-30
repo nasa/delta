@@ -37,8 +37,13 @@ ml:
  batch_size:      1000
  num_classes:     4
  loss_function:   sparse_categorical_crossentropy
-# default to ~/.local/share/delta/{mlflow,tensorboard}
- mlflow_dir:      ~
- tb_dir:          ~
+ mlflow:
+  # default to ~/.local/share/delta/mlflow
+  enabled:        true
+  uri:            ~
+ tensorboard:
+  enabled:        true
+# default to ~/.local/share/delta/tensorboard
+  dir:            ~
 # defauls to None, saves no checkpoints
  checkpoint_dir:  ~

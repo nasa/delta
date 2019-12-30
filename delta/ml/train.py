@@ -7,10 +7,8 @@ provides Experiment class for tracking network parameters and performance.
 import os.path
 import tensorflow as tf
 import mlflow
-import mlflow.tensorflow
 
 from delta.config import config
-
 
 def get_devices(num_gpus):
     '''
@@ -84,7 +82,7 @@ class Experiment:
         self.loss_fn = loss_fn
         self.save_freq = save_freq # Checkpoint the model every save_freq samples.
 
-        mlflow.set_tracking_uri(config.mlflow_dir())
+        mlflow.set_tracking_uri(config.mlflow_uri())
         mlflow.set_experiment(experiment_name)
         mlflow.start_run()
 
@@ -121,12 +119,12 @@ class Experiment:
             model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
         ### end with
 
-        callbacks = [
-            tf.keras.callbacks.TensorBoard(
-                log_dir=config.tb_dir(),
-                update_freq=self.save_freq,
-                )
-        ]
+        callbacks = []
+        if config.tb_enabled():
+            cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
+                                                update_freq=self.save_freq,
+                                               )
+            callbacks.append(cb)
         if config.checkpoint_dir():
             cb = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(config.checkpoint_dir(),
                                                                           'model.ckpt.h5'),

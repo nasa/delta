@@ -164,8 +164,10 @@ _CONFIG_ENTRIES = [
          'num-classes', 'Number of label classes.'),
         (['ml', 'loss_function'],           'loss_function',    str,                None,
          'loss-fn', 'Tensorflow loss function to use.'),
-        (['ml', 'mlflow_dir'],              'mlflow_dir',       str,                None,            None, None),
-        (['ml', 'tb_dir'],                  'tb_dir',           str,                None,            None, None),
+        (['ml', 'mlflow', 'enabled'],       'mlflow_enabled',   bool,               None,            None, None),
+        (['ml', 'mlflow', 'uri'],           'mlflow_uri',       str,                None,            None, None),
+        (['ml', 'tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
+        (['ml', 'tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
         (['ml', 'checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
 ]
 
@@ -197,7 +199,8 @@ class DeltaConfig:
 
         # set a few special defaults
         self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
-        self.__config_dict['ml']['mlflow_dir'] = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
+        self.__config_dict['ml']['mlflow_uri'] = 'file://' + \
+                       os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
         self.__config_dict['ml']['tb_dir'] = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
 
     def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
@@ -265,16 +268,18 @@ class DeltaConfig:
             if e[0][0] == group_key and e[4] is not None:
                 group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
-    def setup_arg_parser(self, parser, labels=True, ml=True):
+    def setup_arg_parser(self, parser, general=True, images=True, labels=True, ml=True):
         group = parser.add_argument_group('General')
         group.add_argument('--config', dest='config', action='append', required=False, default=[],
                            help='Load configuration file (can pass multiple times).')
-        self.__add_arg_group(group, 'general')
+        if general:
+            self.__add_arg_group(group, 'general')
 
-        group = parser.add_argument_group('Input Data')
-        self.__add_arg_group(group, 'images')
-        group.add_argument("--image", dest="image", required=False,
-                           help="Specify a single image file.")
+        if images:
+            group = parser.add_argument_group('Input Data')
+            self.__add_arg_group(group, 'images')
+            group.add_argument("--image", dest="image", required=False,
+                               help="Specify a single image file.")
         if labels:
             self.__add_arg_group(group, 'labels')
             group.add_argument("--label", dest="label", required=False,
