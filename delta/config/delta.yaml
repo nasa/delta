@@ -1,49 +1,70 @@
 general:
- # negative is all
- gpus:              -1
- threads:           1
-# size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
- block_size_mb:     512
-# number of different images to interleave at a time when loading
- interleave_images: 5
-# ratio of tile width and height when loading images
- tile_ratio:        5.0
- cache:
-  # default is OS-specific, in Linux, ~/.cache/delta
-  dir:              ~
-  limit:            8
+  # negative is all
+  gpus:              -1
+  threads:           1
+  # size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
+  block_size_mb:     512
+  # number of different images to interleave at a time when loading
+  interleave_images: 5
+  # ratio of tile width and height when loading images
+  tile_ratio:        5.0
+  cache:
+    # default is OS-specific, in Linux, ~/.cache/delta
+    dir:              ~
+    limit:            8
 
 images:
- type:             tiff
-# preprocess the images when loading (i.e., scaling)
- preprocess:       true
- directory:        ~
- extension:        ~
- file_list:        ~
- files:            ~
+  type:             tiff
+  # preprocess the images when loading (i.e., scaling)
+  preprocess:       true
+  directory:        ~
+  extension:        ~
+  file_list:        ~
+  files:            ~
 
 labels:
- type:             tiff
- preprocess:       true
- directory:        ~
- extension:        ~
- file_list:        ~
- files:            ~
+  type:             tiff
+  preprocess:       true
+  directory:        ~
+  extension:        ~
+  file_list:        ~
+  files:            ~
 
-ml:
- chunk_size:      17
- chunk_stride:    1
- num_epochs:      5
- batch_size:      1000
- num_classes:     4
- loss_function:   sparse_categorical_crossentropy
- mlflow:
-  # default to ~/.local/share/delta/mlflow
-  enabled:        true
-  uri:            ~
- tensorboard:
-  enabled:        true
-# default to ~/.local/share/delta/tensorboard
-  dir:            ~
-# defauls to None, saves no checkpoints
- checkpoint_dir:  ~
+train:
+  chunk_size:      17
+  chunk_stride:    1
+  epochs:          5
+  batch_size:      1000
+  steps:           ~ # number of batches to train on (or ~ for all)
+  classes:         4
+  loss_function:   sparse_categorical_crossentropy
+  validation:
+    steps:         1000
+    # if true, skips the first steps from the training set to use for validation instead
+    from_training: true
+    # otherwise uses the first samples from this dataset:
+    images:
+      type:        tiff
+      preprocess:  true
+      directory:   ~
+      extension:   ~
+      file_list:   ~
+      files:       ~
+    labels:
+      type:        tiff
+      preprocess:  true
+      directory:   ~
+      extension:   ~
+      file_list:   ~
+      files:       ~
+ 
+  mlflow:
+    # default to ~/.local/share/delta/mlflow
+    enabled:        true
+    uri:            ~
+  tensorboard:
+    enabled:        true
+    # default to ~/.local/share/delta/tensorboard
+    dir:            ~
+  # defauls to None, saves no checkpoints
+  checkpoint_dir:  ~

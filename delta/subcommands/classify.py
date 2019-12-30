@@ -12,7 +12,7 @@ from delta.imagery.sources import loader
 from delta.ml import predict
 
 def setup_parser(subparsers):
-    sub = subparsers.add_parser('classify', description='Classify images given a model.')
+    sub = subparsers.add_parser('classify', help='Classify images given a model.')
 
     sub.add_argument('model', help='File to save the network to.')
     sub.add_argument("--model", dest="model", required=True,
@@ -21,7 +21,8 @@ def setup_parser(subparsers):
                      action="store_true", help="Compare to specified labels.")
 
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub, labels=True, ml=True)
+    # TODO: move chunk_size into model somehow
+    config.setup_arg_parser(sub, labels=True, train=True)
 
 def main(options):
     model = tf.keras.models.load_model(options.model)

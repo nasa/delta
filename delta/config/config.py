@@ -118,58 +118,61 @@ def _config_to_image_label_sets(images_dict, labels_dict):
 
     return (image_set, ImageSet(labels, labels_dict['type'], labels_dict['preprocess']))
 
+# images validated when finding the files
+def __image_entries(keys, cpre):
+    return [
+        (keys + ['type'],               None,                str,                None,
+         cpre + '-type' if cpre else None, 'Image type (tiff, worldview, landsat, etc.).'),
+        (keys + ['files'],               None,               list,               None, None),
+        (keys + ['file_list'],           None,               str,                None,
+         cpre + '-file-list' if cpre else None, 'Data text file listing images.'),
+        (keys + ['directory'],           None,               str,                None,
+         cpre + '-dir' if cpre else None, 'Directory to search for images of given extension.'),
+        (keys + ['extension'],           None,               str,                None,
+         cpre + '-extension' if cpre else None, 'File extension to search for images in given directory.'),
+        (keys + ['preprocess'],          None,               bool,               None,            None, None)
+    ]
+
+
 # This list contains all the entries expected in the config file, as well as how they are given command line arguments,
 # validated and accessed.
 #   dictionary entry, method_name, type, validation function, command line, description
 _CONFIG_ENTRIES = [
-        (['general', 'gpus'],              'gpus',              int,                None,
-         'gpus', 'Number of gpus to use.'),
-        (['general', 'threads'],           'threads',           int,                lambda x : x is None or x > 0,
-         'threads', 'Number of threads to use.'),
-        (['general', 'block_size_mb'],     'block_size_mb',     int,                lambda x : x > 0, None, None),
-        (['general', 'interleave_images'], 'interleave_images', int,                lambda x : x > 0, None, None),
-        (['general', 'tile_ratio'],        'tile_ratio',        float,              lambda x : x > 0, None, None),
-        (['general', 'cache', 'dir'],      None,                str,                None,             None, None),
-        (['general', 'cache', 'limit'],    None,                int,                lambda x : x > 0, None, None),
-        # images and labels validated when finding the files
-        (['images', 'type'],               None,                str,                None,
-         'image-type', 'Image type (tiff, worldview, landsat, etc.).'),
-        (['images', 'files'],               None,               list,               None, None),
-        (['images', 'file_list'],           None,               str,                None,
-         'image-file-list', 'Data text file listing images.'),
-        (['images', 'directory'],           None,               str,                None,
-         'image-dir', 'Directory to search for images of given extension.'),
-        (['images', 'extension'],           None,               str,                None,
-         'image-extension', 'File extension to search for images in given directory.'),
-        (['images', 'preprocess'],          None,               bool,               None,            None, None),
-        (['labels', 'type'],                None,               str,                None,
-         'label-type', 'Label type (tiff, worldview, landsat, etc.).'),
-        (['labels', 'files'],               None,               list,               None, None),
-        (['labels', 'file_list'],           None,               str,                None,
-         'label-file-list', 'Data text file listing images.'),
-        (['labels', 'directory'],           None,               str,                None,
-         'labels-dir', 'Directory to search for images of given extension.'),
-        (['labels', 'extension'],           None,               str,                None,
-         'label-extension', 'File extension to search for images in given directory.'),
-        (['labels', 'preprocess'],          None,               bool,               None,            None, None),
-        (['ml', 'chunk_size'],              'chunk_size',       int,                lambda x: x > 0 and x % 2 == 1,
-         'chunk-size', 'Width of an image chunk to process at once.'),
-        (['ml', 'chunk_stride'],            'chunk_stride',     int,                lambda x: x > 0,
-         'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
-        (['ml', 'num_epochs'],              'num_epochs',       int,                lambda x: x > 0,
-         'num-epochs', 'Number of times to repeat training on the dataset.'),
-        (['ml', 'batch_size'],              'batch_size',       int,                lambda x: x > 0,
-         'batch-size', 'Features to group into each batch for training.'),
-        (['ml', 'num_classes'],             'num_classes',      int,                lambda x: x > 0,
-         'num-classes', 'Number of label classes.'),
-        (['ml', 'loss_function'],           'loss_function',    str,                None,
-         'loss-fn', 'Tensorflow loss function to use.'),
-        (['ml', 'mlflow', 'enabled'],       'mlflow_enabled',   bool,               None,            None, None),
-        (['ml', 'mlflow', 'uri'],           'mlflow_uri',       str,                None,            None, None),
-        (['ml', 'tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-        (['ml', 'tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
-        (['ml', 'checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
+    (['general', 'gpus'],              'gpus',              int,                None,
+     'gpus', 'Number of gpus to use.'),
+    (['general', 'threads'],           'threads',           int,                lambda x : x is None or x > 0,
+     'threads', 'Number of threads to use.'),
+    (['general', 'block_size_mb'],     'block_size_mb',     int,                lambda x : x > 0, None, None),
+    (['general', 'interleave_images'], 'interleave_images', int,                lambda x : x > 0, None, None),
+    (['general', 'tile_ratio'],        'tile_ratio',        float,              lambda x : x > 0, None, None),
+    (['general', 'cache', 'dir'],      None,                str,                None,             None, None),
+    (['general', 'cache', 'limit'],    None,                int,                lambda x : x > 0, None, None),
+    (['train', 'chunk_size'],          'chunk_size',        int,                lambda x: x > 0 and x % 2 == 1,
+     'chunk-size', 'Width of an image chunk to process at once.'),
+    (['train', 'chunk_stride'],        'chunk_stride',      int,                lambda x: x > 0,
+     'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
+    (['train', 'epochs'],              'epochs',            int,                lambda x: x > 0,
+     'num-epochs', 'Number of times to repeat training on the dataset.'),
+    (['train', 'batch_size'],          'batch_size',        int,                lambda x: x > 0,
+     'batch-size', 'Features to group into each batch for training.'),
+    (['train', 'classes'],             'classes',           int,                lambda x: x > 0,
+     'classes', 'Number of label classes.'),
+    (['train', 'loss_function'],       'loss_function',     str,                None,
+     'loss-fn', 'Tensorflow loss function to use.'),
+    (['train', 'steps'],               'train_steps',       int,                None,
+     'steps', 'Number of steps to train for.'),
+    (['train', 'validation', 'steps'], 'validation_steps',  int,                lambda x: x > 0, None, None),
+    (['train', 'validation', 'from_training'],   'validate_from_training', bool, None,           None, None),
+    (['train', 'mlflow', 'enabled'],   'mlflow_enabled',    bool,               None,            None, None),
+    (['train', 'mlflow', 'uri'],       'mlflow_uri',        str,                None,            None, None),
+    (['train', 'tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
+    (['train', 'tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
+    (['train', 'checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
 ]
+_CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
+_CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
+_CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'images'], None))
+_CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'labels'], None))
 
 class DeltaConfig:
     def __init__(self):
@@ -177,6 +180,8 @@ class DeltaConfig:
         self._cache_manager = None
         self.__images = None
         self.__labels = None
+        self.__validation_images = None
+        self.__validation_labels = None
 
         self.reset()
 
@@ -199,9 +204,10 @@ class DeltaConfig:
 
         # set a few special defaults
         self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
-        self.__config_dict['ml']['mlflow_uri'] = 'file://' + \
+        self.__config_dict['train']['mlflow']['uri'] = 'file://' + \
                        os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
-        self.__config_dict['ml']['tb_dir'] = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
+        self.__config_dict['train']['tensorboard']['dir'] = \
+                os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
 
     def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
         """
@@ -248,19 +254,32 @@ class DeltaConfig:
                                                               self.__config_dict['general']['cache']['limit'])
         return self._cache_manager
 
-    def __load_images_labels(self):
-        (self.__images, self.__labels) = _config_to_image_label_sets(self.__config_dict['images'],
-                                                                     self.__config_dict['labels'])
+    def __load_images_labels(self, image_keys, label_keys):
+        images = self._get_entry(image_keys)
+        labels = self._get_entry(label_keys)
+        return _config_to_image_label_sets(images, labels)
 
     def images(self):
         if self.__images is None:
-            self.__load_images_labels()
+            (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__images
 
     def labels(self):
         if self.__labels is None:
-            self.__load_images_labels()
+            (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
+
+    def validation_images(self):
+        if self.__validation_images is None:
+            (self.__validation_images, self.__validation_labels) = \
+                    self.__load_images_labels(['train', 'validation', 'images'], ['train', 'validation', 'labels'])
+        return self.__validation_images
+
+    def validation_labels(self):
+        if self.__validation_labels is None:
+            (self.__validation_images, self.__validation_labels) = \
+                    self.__load_images_labels(['train', 'validation', 'images'], ['train', 'validation', 'labels'])
+        return self.__validation_labels
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
         '''Add command line arguments for the given group.'''
@@ -268,7 +287,7 @@ class DeltaConfig:
             if e[0][0] == group_key and e[4] is not None:
                 group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
-    def setup_arg_parser(self, parser, general=True, images=True, labels=True, ml=True):
+    def setup_arg_parser(self, parser, general=True, images=True, labels=True, train=False):
         group = parser.add_argument_group('General')
         group.add_argument('--config', dest='config', action='append', required=False, default=[],
                            help='Load configuration file (can pass multiple times).')
@@ -285,9 +304,9 @@ class DeltaConfig:
             group.add_argument("--label", dest="label", required=False,
                                help="Specify a single label file.")
 
-        if ml:
+        if train:
             group = parser.add_argument_group('Machine Learning')
-            self.__add_arg_group(group, 'ml')
+            self.__add_arg_group(group, 'train')
 
     def parse_args(self, options):
         for c in options.config:

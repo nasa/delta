@@ -47,14 +47,14 @@ def assemble_dataset_for_predict():
     return ds
 
 def setup_parser(subparsers):
-    sub = subparsers.add_parser('autoencode', description='Train an autoencder.')
+    sub = subparsers.add_parser('autoencode', help='Train an autoencder.')
     sub.add_argument("--num-debug-images", dest="num_debug_images", default=30, type=int,
                      help="Run this many images through the AE after training and write the "
                      "input/output pairs to disk.")
     sub.add_argument("--model", dest="model", required=True,
                      help="Location to save the model.")
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub, labels=False)
+    config.setup_arg_parser(sub, labels=False, train=True)
 
 def main(options):
 
