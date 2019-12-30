@@ -1,16 +1,11 @@
-'''
-Functions for training neural networks using the tensorflow 2.0 Keras api.  Also
-provides Experiment class for tracking network parameters and performance.
-'''
-
-#pylint: disable=no-self-use,unused-argument,too-many-arguments,unexpected-keyword-arg
 import os.path
 import tensorflow as tf
 import mlflow
 
 from delta.config import config
+from delta.imagery.imagery_dataset import ImageryDataset
 
-def get_devices(num_gpus):
+def _devices(num_gpus):
     '''
     Takes a number of GPUs and returns a list of TensorFlow LogicalDevices.
 
@@ -29,7 +24,7 @@ def get_devices(num_gpus):
             devs = devs[:num_gpus]
     return devs
 
-def get_distribution_strategy(devices):
+def _strategy(devices):
     '''Given a list of TensorFlow Logical Devices, returns a distribution strategy.'''
     strategy = None
     if len(devices) == 1:
@@ -38,132 +33,90 @@ def get_distribution_strategy(devices):
         strategy = tf.distribute.MirroredStrategy(devices=devices)
     return strategy
 
-def train(model_fn, train_dataset, optimizer='adam', loss_fn='mse', callbacks=None,
-          validation_data=None, num_gpus=0):
-    '''
-    Trains a model constructed by model_fn on datasaet train_dataset
-    '''
+def _prep_datasets(ids, tc, chunk_size):
+    ds = ids.dataset()
+    ds = ds.batch(tc.batch_size)
+    if tc.validation.from_training:
+        validation = ds.take(tc.validation.steps)
+        ds = ds.skip(tc.validation.steps)
+    else:
+        vimg = tc.validation.images
+        vlabel = tc.validation.labels
+        if not vimg or not vlabel:
+            validation = None
+        else:
+            vimagery = ImageryDataset(vimg, vlabel, chunk_size, tc.chunk_stride)
+            validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+    ds = ds.repeat(tc.epochs)
+    if tc.steps:
+        ds = ds.take(tc.steps)
+    return (ds, validation)
 
-    assert model_fn is not None, "No model function supplied."
-    assert train_dataset is not None, "No training dataset supplied."
-    assert num_gpus > -1, "Number of GPUs is negative."
+def _log_mlflow_params(model, dataset, training_spec):
+    images = dataset.image_set()
+    #labels = dataset.label_set()
+    mlflow.log_param('Image Type',   images.type())
+    mlflow.log_param('Preprocess',   images.preprocess())
+    mlflow.log_param('Number of Images',   len(images))
+    mlflow.log_param('Chunk Size',   dataset.chunk_size())
+    mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
+    mlflow.log_param('Steps', training_spec.steps)
+    mlflow.log_param('Loss Function', training_spec.loss_function)
+    mlflow.log_param('Epochs', training_spec.epochs)
+    mlflow.log_param('Batch Size', training_spec.batch_size)
+    mlflow.log_param('Model Layers', len(model.layers))
 
-    devs = get_devices(num_gpus)
-    strategy = get_distribution_strategy(devs)
-    with strategy.scope():
+def train(model_fn, dataset, training_spec, experiment_name=None):
+    '''
+    Trains the specified model given the images, corresponding labels, and training specification.
+    '''
+    with _strategy(_devices(config.gpus())).scope():
         model = model_fn()
-        assert isinstance(model, tf.keras.models.Model), "Model is not a Tensorflow Keras model"
-        model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
-    ### end with
+        assert isinstance(model, tf.keras.models.Model),\
+               "Model is not a Tensorflow Keras model"
+        model.compile(optimizer='adam', loss=training_spec.loss_function, metrics=['accuracy'])
 
-    history = model.fit(train_dataset,
-                        callbacks=callbacks,
-                        validation_data=validation_data)
+    input_shape = model.layers[0].input_shape
+    assert len(input_shape) == 4, 'Input to network is wrong shape.'
+    assert input_shape[0] is None, 'Input is not batched.'
+    assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
+    chunk_size = input_shape[1]
+
+    assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
+
+    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size)
+
+    callbacks = []
+    if config.tb_enabled():
+        cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
+                                            update_freq=1000,
+                                           )
+        callbacks.append(cb)
+    if config.checkpoint_dir():
+        cb = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(config.checkpoint_dir(),
+                                                                      'model.ckpt.h5'),
+                                                monitor='val_loss',
+                                                verbose=0,
+                                                save_freq=1000,
+                                                save_best_only=False,
+                                                )
+        callbacks.append(cb)
+
+    if config.mlflow_enabled():
+        mlflow.set_tracking_uri(config.mlflow_uri())
+        mlflow.start_run(experiment_id=experiment_name)
+        _log_mlflow_params(model, dataset, training_spec)
+
+    try:
+        history = model.fit(ds,
+                            callbacks=callbacks,
+                            validation_data=validation,
+                            validation_steps=training_spec.validation.steps)
+    except:
+        if config.mlflow_enabled():
+            mlflow.end_run('FAILED')
+        raise
+    if config.mlflow_enabled():
+        mlflow.end_run()
 
     return model, history
-### end train
-
-def load_keras_model(file_path, num_gpus=1):
-    """Loads a saved keras model from disk ready to use multiple_GPUs.
-       This function is NOT compatible with the Experiment class!"""
-    devices  = get_devices(num_gpus)
-    strategy = get_distribution_strategy(devices)
-    with strategy.scope():
-        model = tf.keras.models.load_model(file_path)
-        return model
-
-
-class Experiment:
-    """TODO"""
-
-    def __init__(self, experiment_name,
-                 loss_fn='mean_squared_error', save_freq=100000):
-        self.experiment_name = experiment_name
-        self.loss_fn = loss_fn
-        self.save_freq = save_freq # Checkpoint the model every save_freq samples.
-
-        mlflow.set_tracking_uri(config.mlflow_uri())
-        mlflow.set_experiment(experiment_name)
-        mlflow.start_run()
-
-    ### end __init__
-
-    def __del__(self):
-        mlflow.end_run()
-    ### end __del__
-
-    def train_keras(self, model_fn, train_dataset,
-                    validation_data=None, num_gpus=1):
-        """
-        Call that uses the Keras interface to train a network.
-
-        Arguments
-
-        model_fn -- A zero-argument function that constructs the neural network to be
-                    trained. model_fn() should return a Keras Model
-        train_dataset -- A Tensorflow Dataset object. All data is evaluted.
-        validation_data -- The data used to validate the network.  Default None.
-        num_gpus -- The number of GPUs used to train the network.  If negative, use all.
-
-
-        """
-        assert model_fn is not None, "No model function supplied."
-        assert train_dataset is not None, "No training dataset supplied."
-
-        devs = get_devices(num_gpus)
-        strategy = get_distribution_strategy(devs)
-        with strategy.scope():
-            model = model_fn()
-            assert isinstance(model, tf.keras.models.Model),\
-                   "Model is not a Tensorflow Keras model"
-            model.compile(optimizer='adam', loss=self.loss_fn, metrics=['accuracy'])
-        ### end with
-
-        callbacks = []
-        if config.tb_enabled():
-            cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
-                                                update_freq=self.save_freq,
-                                               )
-            callbacks.append(cb)
-        if config.checkpoint_dir():
-            cb = tf.keras.callbacks.ModelCheckpoint(filepath=os.path.join(config.checkpoint_dir(),
-                                                                          'model.ckpt.h5'),
-                                                    monitor='val_loss',
-                                                    verbose=0,
-                                                    save_freq=self.save_freq,
-                                                    save_best_only=False,
-                                                    )
-            callbacks.append(cb)
-
-        history = model.fit(train_dataset,
-                            callbacks=callbacks,
-                            validation_data=validation_data)
-
-        return model, history
-        ### end train
-
-    def test(self, model, test_data, test_labels):
-        """Evaluate the model on the input dataset"""
-        assert model is not None
-        assert test_data is not None
-        assert test_labels is not None
-        assert isinstance(test_data, type(test_labels))
-
-        # This probably won't work with multiple GPUs in 1.12
-        scores = model.evaluate(test_data, test_labels)
-        return scores
-    ### end def test
-
-    #def load_model(self, src):
-    #    """TODO"""
-    #    raise NotImplementedError('loading models is not yet implemented')
-
-    def log_parameters(self, params):
-        """
-        Takes a dictionary of parameters and logs each named parameter.
-        """
-        assert isinstance(params, dict)
-        for k in params.keys():
-            mlflow.log_param(k, params[k])
-        ### end for
-    ### end log_parameters

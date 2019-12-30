@@ -150,9 +150,10 @@ class ImageryDataset:
     def chunk_size(self):
         return self._chunk_size
 
-    def num_images(self):
-        """Return the number of images in the data set"""
-        return len(self._images)
+    def image_set(self):
+        return self._images
+    def label_set(self):
+        return self._labels
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""

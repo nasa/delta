@@ -4,23 +4,6 @@ purpose: A file which tests running tensorflow on the MNIST dataset.
 date: 2019.03.18
 """
 import tensorflow as tf
-from delta.ml import train
-
-def test_find_cpus():
-    '''
-    Tests that tensorflow can find the available CPUs.
-    '''
-    assert train.get_devices(0), "Could not find any CPU Logical Devices"
-
-# disable this tests so tests can pass without gpu
-#def test_find_gpus():
-#    '''
-#    Tests that tensorflow can find the available GPUs.
-#    Note: this will fail if tested on a computer without a GPU that Tensorflow
-#    recognizes.
-#    '''
-#    assert len(train.get_devices(1)) > 0, "Could not find any GPU Logical Devices"
-
 
 def test_mnist_train():
     """ Tests the tensorflow library on the MNIST data set. """

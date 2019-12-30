@@ -1,37 +1,33 @@
 import sys
 
-import mlflow
-
 import tensorflow as tf
 from tensorflow import keras
 
 from delta.config import config
-from delta.imagery import imagery_dataset
-from delta.ml.train import Experiment
+from delta.imagery.imagery_dataset import ImageryDataset
+from delta.ml.train import train
 
 def setup_parser(subparsers):
-    sub = subparsers.add_parser('train', description='Train a task-specific classifier.')
+    sub = subparsers.add_parser('train', help='Train a task-specific classifier.')
     sub.add_argument('model', help='File to save the network to.')
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub)
+    config.setup_arg_parser(sub, train=True)
 
 def main(options):
     images = config.images()
     labels = config.labels()
-    if len(images) == 0:#pylint:disable=len-as-condition
+    if not images:
         print('No images specified.', file=sys.stderr)
         return 1
-    if len(labels) == 0:#pylint:disable=len-as-condition
+    if not labels:
         print('No labels specified.', file=sys.stderr)
         return 1
-    ids = imagery_dataset.ImageryDataset(images, labels, config.chunk_size(), config.chunk_stride())
+    tc = config.training()
 
-    experiment = Experiment('task_specific_%s'%(images.type()),
-                            loss_fn=config.loss_function())
-    mlflow.log_param('image type',   images.type())
-    mlflow.log_param('chunk size',   config.chunk_size())
-    in_data_shape = (ids.chunk_size(), ids.chunk_size(), ids.num_bands())
-    out_data_shape = config.num_classes()
+    ids = ImageryDataset(images, labels, config.chunk_size(), tc.chunk_stride)
+
+    in_data_shape = (config.chunk_size(), config.chunk_size(), ids.num_bands())
+    out_data_shape = config.classes()
 
     def make_dumb_network():
         return keras.Sequential([
@@ -40,12 +36,8 @@ def main(options):
             keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
             ])
 
-    ds = ids.dataset()
-    ds = ds.batch(config.batch_size()).repeat(config.num_epochs()).take(50000)
-    model, _ = experiment.train_keras(make_dumb_network, ds,
-                                      num_gpus=config.gpus())
+    model, _ = train(make_dumb_network, ids, tc, config.experiment())
 
     model.save(options.model)
-    mlflow.log_artifact(options.model)
 
     return 0

@@ -12,7 +12,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import imagery_dataset
-from delta.ml.train import Experiment
+from delta.ml.train import train
 from delta.ml.networks import make_autoencoder
 
 
@@ -65,7 +65,6 @@ def main(options):
     aeds = imagery_dataset.AutoencoderDataset(config_d, config.chunk_size(), config.chunk_stride())
 
     print('Creating experiment')
-    experiment = Experiment('conv_autoencoder_%s'%(config_d.image_type()))
     mlflow.log_param('image type',   config_d.image_type())
     mlflow.log_param('image folder', config_d.data_directory())
     mlflow.log_param('chunk size',   config.chunk_size())
@@ -76,7 +75,6 @@ def main(options):
     # Estimator interface requires the dataset to be constructed within a function.
 #     tf.logging.set_verbosity(tf.logging.INFO) # TODO 2.0
 
-    train_keras = True
     # To do distribution of training with TF2/Keras, we need to create the model
     # in the scope of the distribution strategy (occurrs in the training function)
     model_fn = functools.partial(make_autoencoder,
@@ -84,29 +82,12 @@ def main(options):
                                  encoding_size=int(config.num_hidden())
                                  )
 
-    model, _ = experiment.train_keras(model_fn, assemble_dataset(),
-                                      num_gpus=config.gpus())
+    model, _ = train(model_fn, assemble_dataset(), config.training(), config.experiment_name())
 
 
-    out_filename = None
-    keras_model = None
     print('Saving Model')
     out_filename = os.path.join(config.output_folder(), options.model)
-    if train_keras:
-        keras_model = experiment.train_keras(model, assemble_dataset(),
-                                             num_gpus=config.gpus())
-        if out_filename is not None:
-            tf.keras.models.save_model(keras_model, out_filename, overwrite=True,
-                                       include_optimizer = True)
-    else:
-        raise NotImplementedError()
-        #estimator, distribution_scope = experiment.train_keras(model, assemble_dataset(), test_fn,
-        #                                                 model_folder=config.model_folder(),
-        #                                                 log_model=False, num_gpus=config.gpus())
-        #if out_filename is not None:
-        #    with distribution_scope:
-        #        tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer=True)
-    ### end if
+    tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer = True)
     mlflow.log_artifact(out_filename)
 
     # Write input/output image pairs to the current working folder.

@@ -7,6 +7,41 @@ import pkg_resources
 import appdirs
 from delta.imagery import disk_folder_cache
 
+class ImageSet:
+    def __init__(self, images, image_type, preprocess=False):
+        self._images = images
+        self._image_type = image_type
+        self._preprocess = preprocess
+
+    def type(self):
+        return self._image_type
+    def preprocess(self):
+        return self._preprocess
+    def __len__(self):
+        return len(self._images)
+    def __getitem__(self, index):
+        if index < 0 or index >= len(self):
+            raise IndexError('Index %s out of range.' % (index))
+        return self._images[index]
+    def __iter__(self):
+        return self._images.__iter__()
+
+class ValidationSet:#pylint:disable=too-few-public-methods
+    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+        self.images = images
+        self.labels = labels
+        self.from_training = from_training
+        self.steps = steps
+
+class TrainingSpec:#pylint:disable=too-few-public-methods
+    def __init__(self, batch_size, epochs, loss_function, validation=None, steps=None, chunk_stride=1):
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.loss_function = loss_function
+        self.validation = validation
+        self.steps = steps
+        self.chunk_stride = chunk_stride
+
 def recursive_update(d, u, ignore_new):
     """
     Like dict.update, but recursively updates only
@@ -33,25 +68,6 @@ def __extension(conf):
     if conf['extension'] is None:
         return __DEFAULT_EXTENSIONS.get(conf['type'])
     return conf['extension']
-
-class ImageSet:
-    def __init__(self, images, image_type, preprocess=False):
-        self._images = images
-        self._image_type = image_type
-        self._preprocess = preprocess
-
-    def type(self):
-        return self._image_type
-    def preprocess(self):
-        return self._preprocess
-    def __len__(self):
-        return len(self._images)
-    def __getitem__(self, index):
-        if index < 0 or index >= len(self):
-            raise IndexError('Index %s out of range.' % (index))
-        return self._images[index]
-    def __iter__(self):
-        return self._images.__iter__()
 
 def __find_images(conf, matching_images=None, matching_conf=None):
     '''
@@ -147,27 +163,29 @@ _CONFIG_ENTRIES = [
     (['general', 'tile_ratio'],        'tile_ratio',        float,              lambda x : x > 0, None, None),
     (['general', 'cache', 'dir'],      None,                str,                None,             None, None),
     (['general', 'cache', 'limit'],    None,                int,                lambda x : x > 0, None, None),
-    (['train', 'chunk_size'],          'chunk_size',        int,                lambda x: x > 0 and x % 2 == 1,
+    (['network', 'chunk_size'],        'chunk_size',        int,                lambda x: x > 0 and x % 2 == 1,
      'chunk-size', 'Width of an image chunk to process at once.'),
-    (['train', 'chunk_stride'],        'chunk_stride',      int,                lambda x: x > 0,
-     'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
-    (['train', 'epochs'],              'epochs',            int,                lambda x: x > 0,
-     'num-epochs', 'Number of times to repeat training on the dataset.'),
-    (['train', 'batch_size'],          'batch_size',        int,                lambda x: x > 0,
-     'batch-size', 'Features to group into each batch for training.'),
-    (['train', 'classes'],             'classes',           int,                lambda x: x > 0,
+    (['network', 'classes'],           'classes',           int,                lambda x: x > 0,
      'classes', 'Number of label classes.'),
-    (['train', 'loss_function'],       'loss_function',     str,                None,
+    (['train', 'chunk_stride'],        None,                int,                lambda x: x > 0,
+     'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
+    (['train', 'epochs'],              None,                int,                lambda x: x > 0,
+     'num-epochs', 'Number of times to repeat training on the dataset.'),
+    (['train', 'batch_size'],          None,                int,                lambda x: x > 0,
+     'batch-size', 'Features to group into each batch for training.'),
+    (['train', 'loss_function'],       None,                str,                None,
      'loss-fn', 'Tensorflow loss function to use.'),
-    (['train', 'steps'],               'train_steps',       int,                None,
+    (['train', 'steps'],               None,                int,                None,
      'steps', 'Number of steps to train for.'),
-    (['train', 'validation', 'steps'], 'validation_steps',  int,                lambda x: x > 0, None, None),
-    (['train', 'validation', 'from_training'],   'validate_from_training', bool, None,           None, None),
-    (['train', 'mlflow', 'enabled'],   'mlflow_enabled',    bool,               None,            None, None),
-    (['train', 'mlflow', 'uri'],       'mlflow_uri',        str,                None,            None, None),
-    (['train', 'tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-    (['train', 'tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
-    (['train', 'checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
+    (['train', 'validation', 'steps'], None,                int,                lambda x: x > 0, None, None),
+    (['train', 'validation', 'from_training'],        None, bool,               None,            None, None),
+    (['train', 'experiment_name'],     'experiment',        str,                None,
+     'name', 'Experiment name used for tracking tools.'),
+    (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None, None),
+    (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None, None),
+    (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
+    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
+    (['checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
@@ -180,8 +198,7 @@ class DeltaConfig:
         self._cache_manager = None
         self.__images = None
         self.__labels = None
-        self.__validation_images = None
-        self.__validation_labels = None
+        self.__training = None
 
         self.reset()
 
@@ -199,14 +216,15 @@ class DeltaConfig:
         self._cache_manager = None
         self.__images = None
         self.__labels = None
+        self.__training = None
         self.__config_dict = {}
         self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
         # set a few special defaults
         self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
-        self.__config_dict['train']['mlflow']['uri'] = 'file://' + \
+        self.__config_dict['mlflow']['uri'] = 'file://' + \
                        os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
-        self.__config_dict['train']['tensorboard']['dir'] = \
+        self.__config_dict['tensorboard']['dir'] = \
                 os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
 
     def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
@@ -269,17 +287,23 @@ class DeltaConfig:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
 
-    def validation_images(self):
-        if self.__validation_images is None:
-            (self.__validation_images, self.__validation_labels) = \
-                    self.__load_images_labels(['train', 'validation', 'images'], ['train', 'validation', 'labels'])
-        return self.__validation_images
-
-    def validation_labels(self):
-        if self.__validation_labels is None:
-            (self.__validation_images, self.__validation_labels) = \
-                    self.__load_images_labels(['train', 'validation', 'images'], ['train', 'validation', 'labels'])
-        return self.__validation_labels
+    def training(self):
+        if self.__training is not None:
+            return self.__training
+        from_training = self._get_entry(['train', 'validation', 'from_training'])
+        vsteps = self._get_entry(['train', 'validation', 'steps'])
+        (vimg, vlabels) = (None, None)
+        if not from_training:
+            (vimg, vlabels) = self.__load_images_labels(['train', 'validation', 'images'],
+                                                        ['train', 'validation', 'labels'])
+        validation = ValidationSet(vimg, vlabels, from_training, vsteps)
+        self.__training = TrainingSpec(batch_size=self._get_entry(['train', 'batch_size']),
+                                       epochs=self._get_entry(['train', 'epochs']),
+                                       loss_function=self._get_entry(['train', 'loss_function']),
+                                       validation=validation,
+                                       steps=self._get_entry(['train', 'steps']),
+                                       chunk_stride=self._get_entry(['train', 'chunk_stride']))
+        return self.__training
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
         '''Add command line arguments for the given group.'''
