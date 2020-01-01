@@ -36,7 +36,7 @@ def main(options):
             keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
             ])
 
-    model, _ = train(make_dumb_network, ids, tc, config.experiment())
+    model, _ = train(make_dumb_network, ids, tc)
 
     model.save(options.model)
 

@@ -40,7 +40,10 @@ train:
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5
   loss_function:   sparse_categorical_crossentropy
+  metrics:
+    - sparse_categorical_accuracy
   experiment_name: ~ # used in tracking tools
+  optimizer:       adam
   validation:
     steps:         1000
     # if true, skips the first steps from the training set to use for validation instead
@@ -65,9 +68,11 @@ mlflow:
   # default to ~/.local/share/delta/mlflow
   enabled:        true
   uri:            ~
+  # rate in batches to save metrics
+  frequency:      100
+  # rate in batches to save model checkpoints
+  checkpoint_frequency:     ~
 tensorboard:
-  enabled:        true
+  enabled:        false
   # default to ~/.local/share/delta/tensorboard
   dir:            ~
-# defauls to None, saves no checkpoints
-checkpoint_dir:  ~

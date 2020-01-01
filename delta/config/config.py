@@ -33,14 +33,18 @@ class ValidationSet:#pylint:disable=too-few-public-methods
         self.from_training = from_training
         self.steps = steps
 
-class TrainingSpec:#pylint:disable=too-few-public-methods
-    def __init__(self, batch_size, epochs, loss_function, validation=None, steps=None, chunk_stride=1):
+class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments,dangerous-default-value
+    def __init__(self, batch_size, epochs, loss_function, validation=None, steps=None,
+                 metrics=['accuracy'], chunk_stride=1, optimizer='adam', experiment_name='Default'):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss_function = loss_function
         self.validation = validation
         self.steps = steps
+        self.metrics = metrics
         self.chunk_stride = chunk_stride
+        self.optimizer = optimizer
+        self.experiment = experiment_name
 
 def recursive_update(d, u, ignore_new):
     """
@@ -154,38 +158,39 @@ def __image_entries(keys, cpre):
 # validated and accessed.
 #   dictionary entry, method_name, type, validation function, command line, description
 _CONFIG_ENTRIES = [
-    (['general', 'gpus'],              'gpus',              int,                None,
+    (['general', 'gpus'],              'gpus',              int,          None,
      'gpus', 'Number of gpus to use.'),
-    (['general', 'threads'],           'threads',           int,                lambda x : x is None or x > 0,
+    (['general', 'threads'],           'threads',           int,          lambda x : x is None or x > 0,
      'threads', 'Number of threads to use.'),
-    (['general', 'block_size_mb'],     'block_size_mb',     int,                lambda x : x > 0, None, None),
-    (['general', 'interleave_images'], 'interleave_images', int,                lambda x : x > 0, None, None),
-    (['general', 'tile_ratio'],        'tile_ratio',        float,              lambda x : x > 0, None, None),
-    (['general', 'cache', 'dir'],      None,                str,                None,             None, None),
-    (['general', 'cache', 'limit'],    None,                int,                lambda x : x > 0, None, None),
-    (['network', 'chunk_size'],        'chunk_size',        int,                lambda x: x > 0 and x % 2 == 1,
+    (['general', 'block_size_mb'],     'block_size_mb',     int,          lambda x : x > 0, None, None),
+    (['general', 'interleave_images'], 'interleave_images', int,          lambda x : x > 0, None, None),
+    (['general', 'tile_ratio'],        'tile_ratio',        float,        lambda x : x > 0, None, None),
+    (['general', 'cache', 'dir'],      None,                str,          None,             None, None),
+    (['general', 'cache', 'limit'],    None,                int,          lambda x : x > 0, None, None),
+    (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0 and x % 2 == 1,
      'chunk-size', 'Width of an image chunk to process at once.'),
-    (['network', 'classes'],           'classes',           int,                lambda x: x > 0,
+    (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
-    (['train', 'chunk_stride'],        None,                int,                lambda x: x > 0,
+    (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
-    (['train', 'epochs'],              None,                int,                lambda x: x > 0,
+    (['train', 'epochs'],              None,                int,          lambda x: x > 0,
      'num-epochs', 'Number of times to repeat training on the dataset.'),
-    (['train', 'batch_size'],          None,                int,                lambda x: x > 0,
+    (['train', 'batch_size'],          None,                int,          lambda x: x > 0,
      'batch-size', 'Features to group into each batch for training.'),
-    (['train', 'loss_function'],       None,                str,                None,
-     'loss-fn', 'Tensorflow loss function to use.'),
-    (['train', 'steps'],               None,                int,                None,
+    (['train', 'loss_function'],       None,                str,          None,            None, None),
+    (['train', 'metrics'],             None,                list,         None,            None, None),
+    (['train', 'steps'],               None,                int,          None,
      'steps', 'Number of steps to train for.'),
-    (['train', 'validation', 'steps'], None,                int,                lambda x: x > 0, None, None),
-    (['train', 'validation', 'from_training'],        None, bool,               None,            None, None),
-    (['train', 'experiment_name'],     'experiment',        str,                None,
-     'name', 'Experiment name used for tracking tools.'),
+    (['train', 'validation', 'steps'], None,                int,          lambda x: x > 0, None, None),
+    (['train', 'validation', 'from_training'],        None, bool,         None,            None, None),
+    (['train', 'experiment_name'],     None,                str,          None,            None, None),
+    (['train', 'optimizer'],           None,                str,          None,            None, None),
     (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None, None),
     (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None, None),
+    (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None, None),
+    (['mlflow', 'checkpoint_frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
-    (['checkpoint_dir'],          'checkpoint_dir',   str,                None,            None, None)
+    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None)
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
@@ -302,7 +307,9 @@ class DeltaConfig:
                                        loss_function=self._get_entry(['train', 'loss_function']),
                                        validation=validation,
                                        steps=self._get_entry(['train', 'steps']),
-                                       chunk_stride=self._get_entry(['train', 'chunk_stride']))
+                                       metrics=self._get_entry(['train', 'metrics']),
+                                       chunk_stride=self._get_entry(['train', 'chunk_stride']),
+                                       optimizer=self._get_entry(['train', 'optimizer']))
         return self.__training
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
