@@ -140,7 +140,7 @@ def train(model_fn, dataset, training_spec):
                             steps_per_epoch=training_spec.steps)
         if config.mlflow_enabled():
             model_path = os.path.join(temp_dir, 'final_model.h5')
-            self.model.save(model_path, save_format='h5')
+            model.save(model_path, save_format='h5')
             mlflow.log_artifact(model_path)
             os.remove(model_path)
     except:

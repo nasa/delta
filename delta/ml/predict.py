@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.lib.stride_tricks import as_strided
 
+import tensorflow as tf
+
 from delta.imagery import rectangle
 
 def predict_array(model, cs, data):
@@ -14,7 +16,7 @@ def predict_array(model, cs, data):
     best = np.argmax(predictions, axis=1)
     return np.reshape(best, (out_shape[0], out_shape[1]))
 
-def predict_validate(model, cs, image, label, input_bounds=None, show_progress=False):
+def predict_validate(model, cs, image, label, num_classes, input_bounds=None, show_progress=False):
     """Like predict but returns (predicted image, error image, percent correct)."""
     block_size_x = 256
     block_size_y = 256
@@ -25,10 +27,11 @@ def predict_validate(model, cs, image, label, input_bounds=None, show_progress=F
 
     result = np.zeros((input_bounds.width() - cs + 1, input_bounds.height() - cs + 1), dtype=np.uint8)
     errors = None
+    confusion_matrix = None
     if label:
         errors = np.zeros((input_bounds.width() - cs + 1, input_bounds.height() - cs + 1), dtype=np.bool)
+        confusion_matrix = np.zeros((num_classes, num_classes), dtype=np.int32)
 
-    num_wrong = []
     def callback_function(roi, data):
         image = predict_array(model, cs, data)
 
@@ -39,16 +42,17 @@ def predict_validate(model, cs, image, label, input_bounds=None, show_progress=F
         if label:
             label_roi = rectangle.Rectangle(roi.min_x + (cs // 2), roi.min_y + (cs // 2),
                                             roi.max_x - (cs // 2), roi.max_y - (cs // 2))
-            wrong = np.squeeze(label.read(label_roi)) != image
-            errors[sx : sx + image.shape[0], sy : sy + image.shape[1]] = wrong
-            num_wrong.append(np.sum(wrong))
+            labels = np.squeeze(label.read(label_roi))
+            errors[sx : sx + image.shape[0], sy : sy + image.shape[1]] = labels != image
+            cm = tf.math.confusion_matrix(np.ndarray.flatten(labels), np.ndarray.flatten(image), num_classes)
+            confusion_matrix[:, :] += cm
 
     output_rois = input_bounds.make_tile_rois(block_size_x + cs - 1, block_size_y + cs - 1,
                                               include_partials=True, overlap_amount=cs - 1)
 
     image.process_rois(output_rois, callback_function, show_progress=show_progress)
-    return (result, errors, 1.0 - sum(num_wrong) / (result.shape[0] * result.shape[1]))#pylint:disable=unsubscriptable-object
+    return (result, errors, confusion_matrix)
 
-def predict(model, cs, image, input_bounds=None, show_progress=False):
+def predict(model, cs, image, num_classes, input_bounds=None, show_progress=False):
     """Returns the predicted image given a model, chunk size, and image."""
-    return predict_validate(model, cs, image, None, input_bounds, show_progress)[0]
+    return predict_validate(model, cs, image, None, num_classes, input_bounds, show_progress)[0]

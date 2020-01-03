@@ -244,17 +244,23 @@ class DeltaConfig:
                 config_data = yaml.safe_load(f)
         else:
             config_data = yaml.safe_load(yaml_str)
+        def normalize_path(path):
+            path = os.path.expanduser(path)
+            # make relative paths relative to this config file
+            if yaml_file:
+                path = os.path.normpath(os.path.join(os.path.dirname(yaml_file), path))
+            return path
         # expand paths to use relative ones to this config file
         def recursive_normalize(d):
             for k, v in d.items():
                 if isinstance(v, collections.abc.Mapping):
                     recursive_normalize(v)
                 else:
-                    if ('dir' in k or 'file' in k) and isinstance(v, str):
-                        v = os.path.expanduser(v)
-                        # make relative paths relative to this config file
-                        if yaml_file:
-                            d[k] = os.path.normpath(os.path.join(os.path.dirname(yaml_file), v))
+                    if ('dir' in k or 'file' in k):
+                        if isinstance(v, str):
+                            d[k] = normalize_path(v)
+                        elif isinstance(v, list):
+                            d[k] = [normalize_path(item) for item in v]
         recursive_normalize(config_data)
 
         self.__config_dict = recursive_update(self.__config_dict, config_data, ignore_new)
@@ -346,7 +352,7 @@ class DeltaConfig:
         c = self.__config_dict
         if hasattr(options, 'image') and options.image:
             c['images']['files'] = [options.image]
-        if hasattr(options, 'lable') and options.label:
+        if hasattr(options, 'label') and options.label:
             c['labels']['files'] = [options.label]
         # load all the command line arguments into the config_dict
         for e in _CONFIG_ENTRIES:

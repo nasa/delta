@@ -24,7 +24,7 @@ images:
 
 labels:
   type:             tiff
-  preprocess:       true
+  preprocess:       false
   directory:        ~
   extension:        ~
   file_list:        ~
