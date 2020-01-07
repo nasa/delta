@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 Apply tfrecord_convert.py using multiple PBS nodes to divide up the work.
 """

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 Take an input folder of image files and
 convert them to a Tensorflow friendly format in the output folder.
