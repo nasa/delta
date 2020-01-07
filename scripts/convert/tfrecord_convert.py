@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 """
 Take a set of images and convert them to a Tensorflow friendly format.
 """
