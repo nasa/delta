@@ -39,17 +39,20 @@ def _strategy(devices):
 def _prep_datasets(ids, tc, chunk_size):
     ds = ids.dataset()
     ds = ds.batch(tc.batch_size)
-    if tc.validation.from_training:
-        validation = ds.take(tc.validation.steps)
-        ds = ds.skip(tc.validation.steps)
-    else:
-        vimg = tc.validation.images
-        vlabel = tc.validation.labels
-        if not vimg or not vlabel:
-            validation = None
+    if tc.validation:
+        if tc.validation.from_training:
+            validation = ds.take(tc.validation.steps)
+            ds = ds.skip(tc.validation.steps)
         else:
-            vimagery = ImageryDataset(vimg, vlabel, chunk_size, tc.chunk_stride)
-            validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+            vimg = tc.validation.images
+            vlabel = tc.validation.labels
+            if not vimg or not vlabel:
+                validation = None
+            else:
+                vimagery = ImageryDataset(vimg, vlabel, chunk_size, tc.chunk_stride)
+                validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+    else:
+        validation = None
     ds = ds.repeat(tc.epochs)
     if tc.steps:
         ds = ds.take(tc.steps)
@@ -136,7 +139,7 @@ def train(model_fn, dataset, training_spec):
         history = model.fit(ds,
                             callbacks=callbacks,
                             validation_data=validation,
-                            validation_steps=training_spec.validation.steps,
+                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
                             steps_per_epoch=training_spec.steps)
         if config.mlflow_enabled():
             model_path = os.path.join(temp_dir, 'final_model.h5')
