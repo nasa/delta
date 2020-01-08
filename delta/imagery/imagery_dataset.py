@@ -26,10 +26,10 @@ class ImageryDataset:
 
         self._use_tfrecord = images.type() == 'tfrecord'
 
-        if self._use_tfrecord and labels.type() != 'tfrecord':
-            raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
-
-        assert len(images) == len(labels)
+        if labels:
+            if self._use_tfrecord and labels.type() != 'tfrecord':
+                raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
+            assert len(images) == len(labels)
         self._images = images
         self._labels = labels
 
