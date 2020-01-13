@@ -38,3 +38,5 @@ Note that DELTA requires python3 and tensorflow2.
 
 `get_landsat_support_files.py` - Use to programmatically fetch SRTM files from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer AND URS login.
 
+
+# Example Use Cases
