@@ -31,7 +31,7 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow-gpu>=2.0',
+        'tensorflow>=2.1',
         'mlflow',
         'portalocker',
         'appdirs'
