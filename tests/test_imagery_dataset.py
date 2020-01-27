@@ -6,7 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from delta.config import config
+from delta.config import config, TrainingSpec
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import tfrecord, npy
 from delta.ml import train, predict
@@ -33,13 +33,13 @@ def dataset(all_sources, request):
                   directory: %s
                   extension: %s
                   preprocess: False
-                ml:
+                network:
                   chunk_size: 3''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 
     dataset = imagery_dataset.ImageryDataset(config.images(), config.labels(),
-                                             config.chunk_size(), config.chunk_stride())
+                                             config.chunk_size(), config.training().chunk_stride)
     return dataset
 
 def test_tfrecord_write(tfrecord_filenames):
@@ -117,12 +117,43 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
             keras.layers.Dense(3 * 3, activation=tf.nn.relu),
             keras.layers.Dense(2, activation=tf.nn.softmax)
             ])
-    model, _ = train.train(model_fn, dataset.dataset().batch(100).repeat(200),
-                           loss_fn='sparse_categorical_crossentropy')
+    model, _ = train.train(model_fn, dataset,
+                           TrainingSpec(100, 200, 'sparse_categorical_crossentropy'))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.90
 
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
-    result = predict.predict(model, 3, npy.NumpyImage(test_image))
+    result = predict.predict(model, 3, npy.NumpyImage(test_image), 2)
     assert sum(sum(np.logical_xor(result, test_label))) < 10
+
+@pytest.fixture(scope="function")
+def autoencoder(all_sources):
+    source = all_sources[0]
+    config.reset() # don't load any user files
+    (image_path, _) = source[0]
+    config.load(yaml_str=
+                '''
+                general:
+                  cache:
+                    dir: %s
+                images:
+                  type: %s
+                  directory: %s
+                  extension: %s
+                  preprocess: False
+                network:
+                  chunk_size: 3''' %
+                (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
+
+    dataset = imagery_dataset.AutoencoderDataset(config.images(), config.labels(),
+                                                 config.chunk_size(), config.training().chunk_stride)
+    return dataset
+
+def test_autoencoder(autoencoder): #pylint: disable=redefined-outer-name
+    """
+    Test that the inputs and outputs of the dataset are the same.
+    """
+    ds = autoencoder.dataset()
+    for (image, label) in ds.take(1000):
+        assert (image.numpy() == label.numpy()).all()
