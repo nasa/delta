@@ -40,3 +40,7 @@ Note that DELTA requires python3 and tensorflow2.
 
 
 # Example Use Cases
+
+Train a classifier on a dataset.  First specify a config file, `your_config.yaml'
+
+> `bin/delta train --config $PATH_TO_CONFIG/your_config.yaml name_of_model.h5`
