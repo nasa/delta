@@ -343,6 +343,7 @@ class DeltaConfig:
 
         if train:
             group = parser.add_argument_group('Machine Learning')
+            self.__add_arg_group(group, 'network')
             self.__add_arg_group(group, 'train')
 
     def parse_args(self, options):
