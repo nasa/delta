@@ -7,6 +7,8 @@ import pkg_resources
 import appdirs
 from delta.imagery import disk_folder_cache
 
+#pylint: disable=W0108
+
 class ImageSet:
     def __init__(self, images, image_type, preprocess=False):
         self._images = images
@@ -171,6 +173,8 @@ _CONFIG_ENTRIES = [
      'chunk-size', 'Width of an image chunk to process at once.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
+    (['network', 'model_description'], 'model_description', str,          lambda x: os.path.exists(x),
+     'model_description', 'A YAML file holding a description of the network to train.'),
     (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
     (['train', 'epochs'],              None,                int,          lambda x: x > 0,
