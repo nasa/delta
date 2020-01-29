@@ -33,6 +33,7 @@ labels:
 network:
   chunk_size:      17
   classes:         4
+  model_decription: ~
 
 train:
   chunk_stride:    1
