@@ -33,7 +33,7 @@ labels:
 network:
   chunk_size:      17
   classes:         4
-  model_decription: ~
+  model_description: ~/example_model.yaml
 
 train:
   chunk_stride:    1
