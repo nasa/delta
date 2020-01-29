@@ -77,6 +77,7 @@ def train(model_fn, dataset, training_spec):
     '''
     Trains the specified model given the images, corresponding labels, and training specification.
     '''
+    # TODO: Check that this checks the training spec for desired devices to run on.
     with _strategy(_devices(config.gpus())).scope():
         model = model_fn()
         assert isinstance(model, tf.keras.models.Model),\
@@ -88,8 +89,9 @@ def train(model_fn, dataset, training_spec):
     input_shape = model.layers[0].input_shape
     chunk_size = input_shape[1]
 
-    assert len(input_shape) == 4, 'Input to network is wrong shape.'
+    assert len(input_shape) == 4, 'Input to network is wrong shape.' # TODO: Hard coding 4 a bad idea?
     assert input_shape[0] is None, 'Input is not batched.'
+    # The below may no longer be valid if we move to convolutional architectures.
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
     assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
 
@@ -99,7 +101,7 @@ def train(model_fn, dataset, training_spec):
     callbacks = []
     if config.tb_enabled():
         cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
-                                            update_freq=1000,
+                                            update_freq=1000, # TODO: get update frequency out of the configuration
                                            )
         callbacks.append(cb)
 
@@ -142,7 +144,7 @@ def train(model_fn, dataset, training_spec):
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
                             steps_per_epoch=training_spec.steps)
         if config.mlflow_enabled():
-            model_path = os.path.join(temp_dir, 'final_model.h5')
+            model_path = os.path.join(temp_dir, 'final_model.h5') # TODO: get this out of the config file?
             model.save(model_path, save_format='h5')
             mlflow.log_artifact(model_path)
             os.remove(model_path)
