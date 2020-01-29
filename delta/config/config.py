@@ -227,8 +227,7 @@ class DeltaConfig:
         self.__labels = None
         self.__training = None
         self.__config_dict = {}
-        #self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
-        self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=False)
+        self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
         # set a few special defaults
         self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
