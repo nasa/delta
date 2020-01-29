@@ -190,7 +190,8 @@ _CONFIG_ENTRIES = [
     (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None, None),
     (['mlflow', 'checkpoint_frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None)
+    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
+    (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None, None)
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
