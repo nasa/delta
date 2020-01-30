@@ -10,7 +10,7 @@ def predict_array(model, cs, data, num_classes, probabilities):
     image = tf.expand_dims(image, 0)
     chunks = tf.image.extract_patches(image, [1, cs, cs, 1], [1, 1, 1, 1], [1, 1, 1, 1], padding='VALID')
     chunks = tf.reshape(chunks, [-1, cs, cs, data.shape[2]])
-    best = np.zeros((chunks.shape[0], num_classes), dtype=np.int32)
+    best = np.zeros((chunks.shape[0], num_classes), dtype=np.float32)
     ## TODO: other data types, configurable batch size
     BATCH_SIZE=1000
     for i in range(0, chunks.shape[0], BATCH_SIZE):
