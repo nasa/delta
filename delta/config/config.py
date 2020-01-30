@@ -215,6 +215,9 @@ class DeltaConfig:
             a = a[k]
         return a
 
+    def export(self):
+        return yaml.dump(self.__config_dict)
+
     def reset(self):
         """
         Restores the config file to the default state specified in defaults.cfg.
@@ -344,6 +347,7 @@ class DeltaConfig:
 
         if train:
             group = parser.add_argument_group('Machine Learning')
+            self.__add_arg_group(group, 'network')
             self.__add_arg_group(group, 'train')
 
     def parse_args(self, options):

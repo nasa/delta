@@ -127,6 +127,12 @@ def train(model_fn, dataset, training_spec):
                                                            on_test_batch_end=log_metrics_validate))
 
         temp_dir = tempfile.mkdtemp()
+        fname = os.path.join(temp_dir, 'config.yaml')
+        with open(fname, 'w') as f:
+            f.write(config.export())
+        mlflow.log_artifact(fname)
+        os.remove(fname)
+
         if config.mlflow_checkpoint_freq():
             class MLFlowCheckpointCallback(tf.keras.callbacks.Callback):
                 def on_train_batch_end(self, batch, _):

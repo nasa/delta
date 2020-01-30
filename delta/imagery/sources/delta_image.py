@@ -86,14 +86,7 @@ class DeltaImage(ABC):
         return input_bounds.make_tile_rois(width, height,
                                            include_partials=True, overlap_amount=overlap)
 
-    def process_rois(self, requested_rois, callback_function, show_progress=False):
-        '''
-        Process the given region broken up into blocks using the callback function.
-        Each block will get the image data from each input image passed into the function.
-        Data reading takes place in a separate thread, but the callbacks are executed
-        in a consistent order on a single thread.
-        '''
-
+    def roi_generator(self, requested_rois):
         block_rois = copy.copy(requested_rois)
 
         whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
@@ -133,12 +126,20 @@ class DeltaImage(ABC):
             for roi in rois:
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
-
-                callback_function(roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :])
-
+                yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
+                       (total_rois - num_remaining, total_rois))
                 num_remaining -= 1
-                if show_progress:
-                    utilities.progress_bar('%d / %d' % (total_rois - num_remaining, total_rois),
-                                           (total_rois - num_remaining) / total_rois, prefix='Blocks Processed:')
+
+    def process_rois(self, requested_rois, callback_function, show_progress=False):
+        '''
+        Process the given region broken up into blocks using the callback function.
+        Each block will get the image data from each input image passed into the function.
+        Data reading takes place in a separate thread, but the callbacks are executed
+        in a consistent order on a single thread.
+        '''
+        for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
+            callback_function(roi, buf)
+            if show_progress:
+                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix='Blocks Processed:')
         if show_progress:
             print()
