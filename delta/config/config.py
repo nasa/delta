@@ -215,6 +215,9 @@ class DeltaConfig:
             a = a[k]
         return a
 
+    def export(self):
+        return yaml.dump(self.__config_dict)
+
     def reset(self):
         """
         Restores the config file to the default state specified in defaults.cfg.
