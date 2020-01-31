@@ -158,5 +158,14 @@ class ImageryDataset:
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
+    def __init__(self, images, chunk_size, chunk_stride=1):
+        '''
+        AutoencoderDataset constructor.
+        @param images The images which are being used to create the autoencoder.
+        @param chunk_size The size of the square chucks the autoencoder is trained on.
+        @param chunk_stride The stride which are used for extracting chunks.
+        '''
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_stride=chunk_stride)
+
     def labels(self):
         return self.data()

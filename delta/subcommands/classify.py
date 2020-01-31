@@ -15,6 +15,7 @@ from delta.ml import predict
 def setup_parser(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
 
+    sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main)
@@ -62,12 +63,16 @@ def main(options):
         if labels:
             label = loader.load_image(config.labels(), i)
             (result, error_image, cm) = predict.predict_validate(model, cs, image, label,
-                                                                 config.classes(), show_progress=True)
+                                                                 config.classes(), probabilities=options.prob,
+                                                                 show_progress=True)
             print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
             colored_error = error_colors[error_image.astype('uint8')]
             tiff.write_tiff(base_name + '_errors.tiff', colored_error, metadata=image.metadata())
             save_confusion(cm, base_name + '_confusion.pdf')
         else:
-            result = predict.predict(model, cs, image, config.classes(), show_progress=True)
-        tiff.write_tiff(base_name + '_predicted.tiff', colors[result], metadata=image.metadata())
+            result = predict.predict(model, cs, image, config.classes(), probabilities=options.prob, show_progress=True)
+        if options.prob:
+            tiff.write_tiff(base_name + '_prob.tiff', result, metadata=image.metadata())
+        else:
+            tiff.write_tiff(base_name + '_predicted.tiff', colors[result], metadata=image.metadata())
     return 0

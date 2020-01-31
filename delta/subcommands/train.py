@@ -34,22 +34,12 @@ def main(options):
     in_data_shape = (config.chunk_size(), config.chunk_size(), ids.num_bands())
     out_data_shape = config.classes()
 
-    #def make_dumb_network():
-    #    return keras.Sequential([
-    #        keras.layers.Flatten(input_shape=in_data_shape),
-    #        keras.layers.Dense(in_data_shape[0] * in_data_shape[1] * in_data_shape[2], activation=tf.nn.relu),
-    #        keras.layers.Dense(out_data_shape, activation=tf.nn.softmax)
-    #        ])
-
     params_exposed = { 'out_shape' : out_data_shape, 'in_shape' : in_data_shape}
 
     model_fn = functools.partial(model_from_yaml,
                                  model_desc_string,
                                  params_exposed
                                  )
-
-
-    #model = model_from_yaml(model_desc_string, params_exposed)
 
     #model, _ = train(make_dumb_network, ids, tc)
     model, _ = train(model_fn, ids, tc)

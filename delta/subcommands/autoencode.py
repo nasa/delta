@@ -32,9 +32,11 @@ def assemble_dataset():
 
     # Use wrapper class to create a Tensorflow Dataset object.
     # - The dataset will provide image chunks and corresponding labels.
-    ids = imagery_dataset.AutoencoderDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    tc = config.training()
+    images = config.images()
+    ids = imagery_dataset.AutoencoderDataset(images, config.chunk_size(), tc.chunk_stride)
     ds = ids.dataset()
-    ds = ds.repeat(config.num_epochs()).batch(config.batch_size())
+    ds = ds.repeat(config.epochs()).batch(config.batch_size())
     ds = ds.prefetch(None)
 
     return ds
@@ -42,7 +44,9 @@ def assemble_dataset():
 
 def assemble_dataset_for_predict():
     # Slightly simpler version of the previous function
-    ids = imagery_dataset.AutoencoderDataset(config.dataset(), config.chunk_size(), config.chunk_stride())
+    tc = config.training()
+    images = config.images()
+    ids = imagery_dataset.AutoencoderDataset(images, config.chunk_size(), tc.chunk_stride)
     ds  = ids.dataset().batch(1) # Batch needed to match the original format
     return ds
 
@@ -58,16 +62,14 @@ def setup_parser(subparsers):
 
 def main(options):
 
-    if not os.path.exists(config.output_folder()):
-        os.mkdir(config.output_folder())
-
-    config_d = config.dataset()
-    aeds = imagery_dataset.AutoencoderDataset(config_d, config.chunk_size(), config.chunk_stride())
+    tc = config.training()
+    images = config.images()
+    aeds = imagery_dataset.AutoencoderDataset(images, config.chunk_size(), tc.chunk_stride)
 
     print('Creating experiment')
-    mlflow.log_param('image type',   config_d.image_type())
-    mlflow.log_param('image folder', config_d.data_directory())
-    mlflow.log_param('chunk size',   config.chunk_size())
+#    mlflow.log_param('image type',   config.image_type())
+#    mlflow.log_param('image folder', config.data_directory())
+#    mlflow.log_param('chunk size',   config.chunk_size())
     print('Creating model')
     data_shape = (aeds.chunk_size(), aeds.chunk_size(), aeds.num_bands())
 
@@ -79,15 +81,17 @@ def main(options):
     # in the scope of the distribution strategy (occurrs in the training function)
     model_fn = functools.partial(make_autoencoder,
                                  data_shape,
-                                 encoding_size=int(config.num_hidden())
+                                 #encoding_size=int(config.num_hidden())
+                                 encoding_size=32
                                  )
 
-    model, _ = train(model_fn, assemble_dataset(), config.training(), config.experiment_name())
+    #model, _ = train(model_fn, assemble_dataset(), config.training(), config.experiment_name())
+    model, _ = train(model_fn, aeds, tc)
 
 
     print('Saving Model')
     out_filename = os.path.join(config.output_folder(), options.model)
-    tf.keras.models.save_model(model, out_filename, overwrite=True, include_optimizer = True)
+    tf.keras.models.save_model(model, options.model, overwrite=True, include_optimizer = True)
     mlflow.log_artifact(out_filename)
 
     # Write input/output image pairs to the current working folder.
