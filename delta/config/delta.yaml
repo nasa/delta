@@ -33,7 +33,10 @@ labels:
 network:
   chunk_size:      17
   classes:         4
-  model_description: ~/example_model.yaml
+  model:
+    yaml_file:     networks/convpool.yaml
+    params:        ~
+    layers:        ~
 
 train:
   chunk_stride:    1

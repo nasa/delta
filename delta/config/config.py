@@ -173,7 +173,7 @@ _CONFIG_ENTRIES = [
      'chunk-size', 'Width of an image chunk to process at once.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
-    (['network', 'model_description'], 'model_description', str,          lambda x: os.path.exists(x),
+    (['network', 'model', 'yaml_file'], None,               str,          lambda x: x is None or os.path.exists(x),
      'model_description', 'A YAML file holding a description of the network to train.'),
     (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
@@ -209,6 +209,7 @@ class DeltaConfig:
         self.__images = None
         self.__labels = None
         self.__training = None
+        self._dirs = appdirs.AppDirs('delta', 'nasa')
 
         self.reset()
 
@@ -234,11 +235,11 @@ class DeltaConfig:
         self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
         # set a few special defaults
-        self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
+        self.__config_dict['general']['cache']['dir'] = self._dirs.user_cache_dir
         self.__config_dict['mlflow']['uri'] = 'file://' + \
-                       os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
+                       os.path.join(self._dirs.user_data_dir, 'mlflow')
         self.__config_dict['tensorboard']['dir'] = \
-                os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
+                os.path.join(self._dirs.user_data_dir, 'tensorboard')
 
     def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
         """
@@ -272,6 +273,12 @@ class DeltaConfig:
         recursive_normalize(config_data)
 
         self.__config_dict = recursive_update(self.__config_dict, config_data, ignore_new)
+
+        # overwrite model entirely if updated (don't want combined layers from multiple files)
+        if 'network' in config_data and 'model' in config_data['network']:
+            m = config_data['network']['model']
+            self.__config_dict['network']['model'] = m
+
         self._validate()
 
     def _validate(self):
@@ -305,6 +312,21 @@ class DeltaConfig:
         if self.__labels is None:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
+
+    def model_dict(self):
+        model = self._get_entry(['network', 'model'])
+        yaml_file = model['yaml_file']
+        if yaml_file is not None:
+            if model['layers'] is not None:
+                raise ValueError('Specified both yaml file and layers in model.')
+
+            if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', yaml_file):
+                yaml_file = pkg_resources.resource_filename('delta', yaml_file)
+            if not os.path.exists(yaml_file):
+                raise ValueError('Model yaml_file does not exist: ' + yaml_file)
+            with open(yaml_file, 'r') as f:
+                return yaml.safe_load(f)
+        return model
 
     def training(self):
         if self.__training is not None:

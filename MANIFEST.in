@@ -1,1 +1,2 @@
 include delta/config/delta.yaml
+include delta/config/networks/*.yaml
