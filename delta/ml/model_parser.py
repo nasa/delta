@@ -8,7 +8,9 @@ given in the Tensorflow API documentation.
 '''
 import functools
 
-import tensorflow as tf
+import tensorflow
+import tensorflow.keras.models
+import tensorflow.keras.layers
 
 from delta.config import config
 
@@ -16,7 +18,7 @@ def _layer_func(layer_type):
     '''
     gets the class object from the keras layers for the specified layer type.
     '''
-    return getattr(tf.keras.layers, layer_type)
+    return getattr(tensorflow.keras.layers, layer_type)
 
 def _make_layer(layer_dict, param_dict):
     '''
@@ -45,7 +47,7 @@ def _make_model(model_dict, exposed_params):
 
     params = {**exposed_params, **defined_params}
     layer_objs = [_make_layer(l, params) for l in layer_list]
-    return tf.keras.models.Sequential(layer_objs)
+    return tensorflow.keras.models.Sequential(layer_objs)
 
 def model_from_dict(model_dict, exposed_params):
     '''
