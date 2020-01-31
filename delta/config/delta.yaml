@@ -74,5 +74,6 @@ mlflow:
   checkpoint_frequency:     ~
 tensorboard:
   enabled:        false
+  frequency:      1000
   # default to ~/.local/share/delta/tensorboard
   dir:            ~

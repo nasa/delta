@@ -125,7 +125,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
     result = predict.predict(model, 3, npy.NumpyImage(test_image), 2)
-    assert sum(sum(np.logical_xor(result, test_label))) < 10
+    assert sum(sum(np.logical_xor(result, test_label))) < 20
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
@@ -146,7 +146,7 @@ def autoencoder(all_sources):
                   chunk_size: 3''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
-    dataset = imagery_dataset.AutoencoderDataset(config.images(), config.labels(),
+    dataset = imagery_dataset.AutoencoderDataset(config.images(),
                                                  config.chunk_size(), config.training().chunk_stride)
     return dataset
 

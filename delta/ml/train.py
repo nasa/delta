@@ -101,7 +101,7 @@ def train(model_fn, dataset, training_spec):
     callbacks = []
     if config.tb_enabled():
         cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
-                                            update_freq=1000, # TODO: get update frequency out of the configuration
+                                            update_freq=config.tb_freq(),
                                            )
         callbacks.append(cb)
 
