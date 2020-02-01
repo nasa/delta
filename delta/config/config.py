@@ -173,7 +173,7 @@ _CONFIG_ENTRIES = [
      'chunk-size', 'Width of an image chunk to process at once.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
-    (['network', 'model', 'yaml_file'], None,               str,          lambda x: x is None or os.path.exists(x),
+    (['network', 'model', 'yaml_file'], None,               str,          None,
      'model_description', 'A YAML file holding a description of the network to train.'),
     (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
@@ -277,6 +277,10 @@ class DeltaConfig:
         # overwrite model entirely if updated (don't want combined layers from multiple files)
         if 'network' in config_data and 'model' in config_data['network']:
             m = config_data['network']['model']
+            if not 'yaml_file' in m:
+                m['yaml_file'] = None
+            if not 'layers' in m:
+                m['layers'] = None
             self.__config_dict['network']['model'] = m
 
         self._validate()
@@ -320,8 +324,9 @@ class DeltaConfig:
             if model['layers'] is not None:
                 raise ValueError('Specified both yaml file and layers in model.')
 
-            if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', yaml_file):
-                yaml_file = pkg_resources.resource_filename('delta', yaml_file)
+            resource = os.path.join('config', yaml_file)
+            if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
+                yaml_file = pkg_resources.resource_filename('delta', resource)
             if not os.path.exists(yaml_file):
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
@@ -345,7 +350,8 @@ class DeltaConfig:
                                        steps=self._get_entry(['train', 'steps']),
                                        metrics=self._get_entry(['train', 'metrics']),
                                        chunk_stride=self._get_entry(['train', 'chunk_stride']),
-                                       optimizer=self._get_entry(['train', 'optimizer']))
+                                       optimizer=self._get_entry(['train', 'optimizer']),
+                                       experiment_name=self._get_entry(['train', 'experiment_name']))
         return self.__training
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
