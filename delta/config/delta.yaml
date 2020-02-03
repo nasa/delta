@@ -33,6 +33,10 @@ labels:
 network:
   chunk_size:      17
   classes:         4
+  model:
+    yaml_file:     networks/convpool.yaml
+    params:        ~
+    layers:        ~
 
 train:
   chunk_stride:    1
@@ -74,5 +78,6 @@ mlflow:
   checkpoint_frequency:     ~
 tensorboard:
   enabled:        false
+  frequency:      1000
   # default to ~/.local/share/delta/tensorboard
   dir:            ~

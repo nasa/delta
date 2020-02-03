@@ -50,7 +50,7 @@ def test_tfrecord_write(tfrecord_filenames):
     images = tfrecord.create_dataset([tfrecord_filenames[0]], 1, tf.float32)
     labels = tfrecord.create_dataset([tfrecord_filenames[1]], 1, tf.uint8)
     ds = tf.data.Dataset.zip((images, labels))
-    for value in ds.take(1000):
+    for value in ds.take(100):
         image = tf.squeeze(value[0])
         label = tf.squeeze(value[1])
         assert image.shape == label.shape
@@ -85,7 +85,7 @@ def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
     assert num_label == num_data
 
     ds = dataset.dataset()
-    for (image, label) in ds.take(1000):
+    for (image, label) in ds.take(100):
         if label:
             assert image[0][0][0] == 1
             assert image[0][1][0] == 1
@@ -118,14 +118,14 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
             keras.layers.Dense(2, activation=tf.nn.softmax)
             ])
     model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 200, 'sparse_categorical_crossentropy'))
+                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy'))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.90
 
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
     result = predict.predict(model, 3, npy.NumpyImage(test_image), 2)
-    assert sum(sum(np.logical_xor(result, test_label))) < 10
+    assert sum(sum(np.logical_xor(result, test_label))) < 200 # very easy test since we don't train much
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
@@ -146,7 +146,7 @@ def autoencoder(all_sources):
                   chunk_size: 3''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
-    dataset = imagery_dataset.AutoencoderDataset(config.images(), config.labels(),
+    dataset = imagery_dataset.AutoencoderDataset(config.images(),
                                                  config.chunk_size(), config.training().chunk_stride)
     return dataset
 

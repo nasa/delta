@@ -9,7 +9,7 @@ import mlflow
 import tensorflow as tf
 from tensorflow import keras
 
-def make_autoencoder(in_shape, encoding_size=32, encoder_type='conv'):
+def make_autoencoder(in_shape, encoding_size=32, encoder_type='dense'):
     '''
     Factory method for creating autoencoders.  At the moment does not provide a lot
     of flexibility.

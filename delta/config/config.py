@@ -7,6 +7,8 @@ import pkg_resources
 import appdirs
 from delta.imagery import disk_folder_cache
 
+#pylint: disable=W0108
+
 class ImageSet:
     def __init__(self, images, image_type, preprocess=False):
         self._images = images
@@ -171,6 +173,8 @@ _CONFIG_ENTRIES = [
      'chunk-size', 'Width of an image chunk to process at once.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
+    (['network', 'model', 'yaml_file'], None,               str,          None,
+     'model_description', 'A YAML file holding a description of the network to train.'),
     (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
     (['train', 'epochs'],              None,                int,          lambda x: x > 0,
@@ -190,7 +194,8 @@ _CONFIG_ENTRIES = [
     (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None, None),
     (['mlflow', 'checkpoint_frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None)
+    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
+    (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None, None)
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
@@ -204,6 +209,7 @@ class DeltaConfig:
         self.__images = None
         self.__labels = None
         self.__training = None
+        self._dirs = appdirs.AppDirs('delta', 'nasa')
 
         self.reset()
 
@@ -213,6 +219,9 @@ class DeltaConfig:
         for k in key_list:
             a = a[k]
         return a
+
+    def export(self):
+        return yaml.dump(self.__config_dict)
 
     def reset(self):
         """
@@ -226,11 +235,11 @@ class DeltaConfig:
         self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
         # set a few special defaults
-        self.__config_dict['general']['cache']['dir'] = appdirs.AppDirs('delta', 'nasa').user_cache_dir
+        self.__config_dict['general']['cache']['dir'] = self._dirs.user_cache_dir
         self.__config_dict['mlflow']['uri'] = 'file://' + \
-                       os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
+                       os.path.join(self._dirs.user_data_dir, 'mlflow')
         self.__config_dict['tensorboard']['dir'] = \
-                os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
+                os.path.join(self._dirs.user_data_dir, 'tensorboard')
 
     def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
         """
@@ -264,6 +273,16 @@ class DeltaConfig:
         recursive_normalize(config_data)
 
         self.__config_dict = recursive_update(self.__config_dict, config_data, ignore_new)
+
+        # overwrite model entirely if updated (don't want combined layers from multiple files)
+        if 'network' in config_data and 'model' in config_data['network']:
+            m = config_data['network']['model']
+            if not 'yaml_file' in m:
+                m['yaml_file'] = None
+            if not 'layers' in m:
+                m['layers'] = None
+            self.__config_dict['network']['model'] = m
+
         self._validate()
 
     def _validate(self):
@@ -298,6 +317,22 @@ class DeltaConfig:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
 
+    def model_dict(self):
+        model = self._get_entry(['network', 'model'])
+        yaml_file = model['yaml_file']
+        if yaml_file is not None:
+            if model['layers'] is not None:
+                raise ValueError('Specified both yaml file and layers in model.')
+
+            resource = os.path.join('config', yaml_file)
+            if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
+                yaml_file = pkg_resources.resource_filename('delta', resource)
+            if not os.path.exists(yaml_file):
+                raise ValueError('Model yaml_file does not exist: ' + yaml_file)
+            with open(yaml_file, 'r') as f:
+                return yaml.safe_load(f)
+        return model
+
     def training(self):
         if self.__training is not None:
             return self.__training
@@ -315,7 +350,8 @@ class DeltaConfig:
                                        steps=self._get_entry(['train', 'steps']),
                                        metrics=self._get_entry(['train', 'metrics']),
                                        chunk_stride=self._get_entry(['train', 'chunk_stride']),
-                                       optimizer=self._get_entry(['train', 'optimizer']))
+                                       optimizer=self._get_entry(['train', 'optimizer']),
+                                       experiment_name=self._get_entry(['train', 'experiment_name']))
         return self.__training
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
@@ -343,6 +379,7 @@ class DeltaConfig:
 
         if train:
             group = parser.add_argument_group('Machine Learning')
+            self.__add_arg_group(group, 'network')
             self.__add_arg_group(group, 'train')
 
     def parse_args(self, options):
