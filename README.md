@@ -7,35 +7,41 @@ It is currently under active development.
 ## Installation
 
 1. Run ./scripts/setup.sh to install DELTA's dependencies in Ubuntu.
+2. From the top directory, run `pip install --user -e .` to install for your user in
+editable mode (linking to this directory). This will also install all dependencies with pip.
 
-Note that DELTA uses python3.
+Note that DELTA requires python3 and tensorflow2.
 
-## Running Example Programs
+## Tools
 
-1. Download landsat data to $PROJECT_HOME/data/in/toy_data/
-3. python $PROJECT_HOME/bin/chunk_and_tensorflow_test.py --image-path $PROJECT_HOME/data/in/toy_data/landsat/<image.tiff> --output-folder $PROJECT_HOME/data/out/test
+### Machine Learning Tools
 
-And the program should execute.  After execution to see the results using MLFlow:
+`classify.py` - Classify and display a single image given a neural network.
 
-1. cd $PROJECT_HOME/data/out/
-2. mlflow ui
-3. Open a web browser to http://localhost:5000
+`train_task_specific.py` - Train a classifier from a set of imagery and labels.
 
-## Scott's Old Install Directions (don't use)
+`convert_input_image_folder.py` - Convert input images into a .tfrecord format that other DELTA tools will read.  Converts all images in a folder to the output folder.  Sample call:
 
--- miniconda3 installation instructions (tensorflow v1.13):
--- (for Scott's use only)
+> `python bin/convert_input_image_folder.py --input-folder data/delta/worldview/  --output-folder data/delta/worldview_tfrecord  --image-type worldview  --num-processes 2  --mix-outputs`
 
-conda install numpy
-conda install gdal
-conda install matplotlib
-conda install 'tensorflow=*=mkl*'    <--- CPU version!
-conda install -c conda-forge mlflow
-pip install psutil
+`train_autoencoder.py` - Train an autoencoder network from tfrecord inputs.  All of the inputs to this are defined in a configuration file, see the sample config file for details.  Sample call:
+
+> `python bin/train_autoencoder.py --config-file sample_config.txt`
+
+### Data Fetching Tools
+
+`fetch_hdds_images.py` - Use to programmatically fetch WorldView images from the USGS HDDS dataset.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
 
 
-# Bugs and fixes
+`get_landsat_dswe_labels.py`  - Use to programmatically fetch DSWE from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
 
-# 01-08-2019
 
-- Was getting error "was expecting input of shape (8, 17, 17) but instead got (None, 8, 17, 17)".  This was because I was giving the wrong input size to the autoencoder.  This is because the imagery dataset was reporting the wrong image size, just giving the height and width, not the number of channels.  This was masked by the fact that the number of steps per epoch was set to be the same as the number of channels"
+`get_landsat_support_files.py` - Use to programmatically fetch SRTM files from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer AND URS login.
+
+
+# Example Use Cases
+
+Train a classifier on a dataset.  First specify a config file, `your_config.yaml'
+
+> `bin/delta train --config $PATH_TO_CONFIG/your_config.yaml name_of_model.h5`
+>>>>>>> develop

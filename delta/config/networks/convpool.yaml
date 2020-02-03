@@ -1,0 +1,28 @@
+params:
+  dropout_rate: 0.3
+  num_filters: 100
+layers:
+  - InputLayer:
+      input_shape: in_shape
+  - Conv2D:
+       filters: num_filters
+       kernel_size: [5, 5]
+       activation: relu
+       padding: same
+  - Dropout:
+       rate: dropout_rate
+  - MaxPooling2D:
+       pool_size: [2, 2]
+  - Conv2D:
+       filters: num_filters
+       kernel_size: [3, 3]
+       activation: relu
+       padding: same
+  - Dropout:
+       rate: dropout_rate
+  - MaxPooling2D:
+       pool_size: [2, 2]
+  - Flatten:
+  - Dense:
+       units: out_shape
+       activation: softmax

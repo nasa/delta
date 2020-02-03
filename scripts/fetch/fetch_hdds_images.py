@@ -17,6 +17,7 @@
 #  limitations under the License.
 # __END_LICENSE__
 
+#pylint: disable=R0915,R0914,R0912
 """
 Script to fetch all of the flood images from the USGS HDDS website.
 """
@@ -24,6 +25,7 @@ import os
 import sys
 import argparse
 import pickle
+import json
 
 # WARNING: In order for this script to work, the api.py file in this module
 #          must be modified so it uses the download URL:
@@ -106,7 +108,7 @@ def get_dataset_list(options):
 def get_dataset_fields(dataset_list):
     """Code to look through available fields for datasets"""
 
-    for (dataset, full_name) in dataset_list: #pylint: disable=W0612
+    for (dataset, _) in dataset_list: #pylint: disable=W0612
 
         # Get the available filters for this data set
         print('----->  For DS = ' + dataset)
@@ -195,12 +197,17 @@ def main(argsIn): #pylint: disable=R0914,R0912
         #if counter == 1:
         #    continue
 
-        print('--> Search scenes for: ' + full_name)
-
         dataset_folder  = os.path.join(options.output_folder, full_name)
         scene_list_path = os.path.join(dataset_folder, 'scene_list.dat')
+        done_flag_path  = os.path.join(dataset_folder, 'done.flag')
         if not os.path.exists(dataset_folder):
             os.mkdir(dataset_folder)
+
+        if os.path.exists(done_flag_path) and not options.refetch_scenes:
+            print('Skipping completed dataset ' + full_name)
+            continue
+
+        print('--> Search scenes for: ' + full_name)
 
         if not os.path.exists(scene_list_path) or options.refetch_scenes:
             # Request the scene list from USGS
@@ -225,6 +232,17 @@ def main(argsIn): #pylint: disable=R0914,R0912
         for scene in results['data']['results']:
 
             #print(scene)
+
+            fail = False
+            REQUIRED_PARTS = ['displayId', 'summary']
+            for p in REQUIRED_PARTS:
+                if (p not in scene) or (not scene[p]):
+                    print('scene object is missing element: ' + p)
+                    print(scene)
+                    fail = True
+            if fail:
+                continue
+
 
             # Figure out the downloaded file path for this image
             file_name   = scene['displayId'] + '.zip'
@@ -255,7 +273,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
             PLATFORM_BAND_COUNTS = {'worldview':8, 'TODO':1}
             min_num_bands = PLATFORM_BAND_COUNTS[platform]
             num_bands = None
-            meta = api.metadata(dataset, CATALOG, scene['entityId'])
+            try:
+                meta = api.metadata(dataset, CATALOG, scene['entityId'])
+            except json.decoder.JSONDecodeError:
+                print('Error fetching metadata for dataset = ' + dataset +
+                      ', entity = ' + scene['entityId'])
+                continue
             try:
                 for m in meta['data'][0]['metadataFields']:
                     if m['fieldName'] == 'Number of bands':
@@ -271,7 +294,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 print(meta)
 
             # Make sure we know which file option to download
-            types = api.download_options(dataset, CATALOG, scene['entityId'])
+            try:
+                types = api.download_options(dataset, CATALOG, scene['entityId'])
+            except json.decoder.JSONDecodeError:
+                print('Error decoding download options!')
+                continue
+
             if not types['data'] or not types['data'][0]:
                 raise Exception('Need to handle types: ' + str(types))
             ready = False
@@ -301,6 +329,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             #raise Exception('DEBUG')
 
         print('Finished processing dataset: ' + full_name)
+        os.system('touch ' + done_flag_path) # Mark this dataset as finished
         #raise Exception('DEBUG')
 
         #if not os.path.exists(output_path):

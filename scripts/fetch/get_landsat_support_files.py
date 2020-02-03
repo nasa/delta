@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 """
-Script to fetch DSWE (label) images from USGS corresponding to a given Landsat image.
+Script to fetch support images from USGS corresponding to a given Landsat image.
 """
 import os
+import os.path
 import sys
 import argparse
 import subprocess
@@ -12,26 +14,11 @@ from osgeo import osr
 
 from usgs import api
 
-# TODO: Clean this up
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../delta')))
-
-# TODO: Why is the path not being set correctly???
-os.environ['PATH'] = os.environ['PATH'].replace('/nobackup/smcmich1/code/anaconda3\\Library\\bin;','').replace('\\','/')
-
-
-os.environ['PATH'] += os.pathsep + os.path.dirname(os.path.realpath(__file__))
-print('PATH = ' + str(os.environ['PATH']))
-
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
-from imagery import utilities  #pylint: disable=C0413
-#from imagery import landsat #pylint: disable=C0413
-
 #------------------------------------------------------------------------------
 
+def file_is_good(path):
+    '''Make sure file exists and is non-empty.'''
+    return os.path.exists(path) and (os.path.getsize(path) > 0)
 
 def unpack_inputs(tar_folder, unpack_folder):
     """Make sure all of the input label files are untarred.
@@ -59,7 +46,7 @@ def unpack_inputs(tar_folder, unpack_folder):
         label_path = os.path.join(tar_folder, name_out)
 
         # If we did not find the INWM file, untar.
-        if not utilities.file_is_good(label_path):
+        if not file_is_good(label_path):
             #utilities.unpack_to_folder(tar_path, unpack_folder)
             cmd = 'srtm_to_tif.sh ' + tar_path
             print(cmd)
@@ -69,7 +56,7 @@ def unpack_inputs(tar_folder, unpack_folder):
             except FileNotFoundError:
                 pass
             # Look again for a matching file
-            if not utilities.file_is_good(label_path):
+            if not file_is_good(label_path):
                 raise Exception('Failed to untar label file: ' + tar_path)
         file_list.append(label_path)
 
@@ -119,7 +106,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
     if options.force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
         dummy_result = api.login(options.user_ee, options.password_ee,
-                                 save=True, catalogId=CATALOG) #pylint: disable=W0612
+                                 save=True, catalogId=CATALOG)
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')
@@ -143,7 +130,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
         fname = scene['displayId'].replace('.SRTMGL1','') + '.hgt.zip'
         output_path = os.path.join(output_folder, fname)
 
-        if utilities.file_is_good(output_path):
+        if file_is_good(output_path):
             print('Already have image on disk!')
             continue
 
@@ -158,7 +145,7 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
         print(cmd)
         os.system(cmd)
 
-        if not utilities.file_is_good(output_path):
+        if not file_is_good(output_path):
             raise Exception('Failed to download file ' + output_path)
 
     print('Finished downloading files.')
@@ -212,9 +199,6 @@ def main(argsIn):
     if output_folder and not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
-    # Extract information about the landsat file
-    #date = landsat.get_date_from_filename(options.landsat_path)
-    #date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
 

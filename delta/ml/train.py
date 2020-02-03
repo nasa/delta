@@ -1,86 +1,168 @@
+import os
+import tempfile
+import shutil
+
 import mlflow
-import mlflow.tensorflow
-import os.path
+import tensorflow as tf
 
-class Experiment(object):
+from delta.config import config
+from delta.imagery.imagery_dataset import ImageryDataset
 
-    def __init__(self, tracking_uri, experiment_name, output_dir='./', loss_func='mean_squared_error'):
-        self.experiment_name = experiment_name
-        self.output_dir = output_dir
-        self._loss_func = loss_func
+def _devices(num_gpus):
+    '''
+    Takes a number of GPUs and returns a list of TensorFlow LogicalDevices.
 
-        mlflow.set_tracking_uri(tracking_uri)
-        experiment_id = mlflow.set_experiment(experiment_name)
-        run = mlflow.start_run()
-        mlflow.log_param('output_dir', self.output_dir)
-        
-    ### end __init__
+    Arguments
 
-    def __del__(self):
+    num_gpus -- Number of GPUs to use.  If negative, will use all CPUs available.
+    '''
+    devs = None
+    if num_gpus == 0:
+        devs = [x.name for x in tf.config.list_logical_devices('CPU')]
+    else:
+        devs = [x.name for x in tf.config.list_logical_devices('GPU')]
+        assert len(devs) >= num_gpus,\
+               "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
+        if num_gpus > 0:
+            devs = devs[:num_gpus]
+    return devs
+
+def _strategy(devices):
+    '''Given a list of TensorFlow Logical Devices, returns a distribution strategy.'''
+    strategy = None
+    if len(devices) == 1:
+        strategy = tf.distribute.OneDeviceStrategy(device=devices[0])
+    else:
+        strategy = tf.distribute.MirroredStrategy(devices=devices)
+    return strategy
+
+def _prep_datasets(ids, tc, chunk_size):
+    ds = ids.dataset()
+    ds = ds.batch(tc.batch_size)
+    if tc.validation:
+        if tc.validation.from_training:
+            validation = ds.take(tc.validation.steps)
+            ds = ds.skip(tc.validation.steps)
+        else:
+            vimg = tc.validation.images
+            vlabel = tc.validation.labels
+            if not vimg or not vlabel:
+                validation = None
+            else:
+                vimagery = ImageryDataset(vimg, vlabel, chunk_size, tc.chunk_stride)
+                validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+    else:
+        validation = None
+    ds = ds.repeat(tc.epochs)
+    if tc.steps:
+        ds = ds.take(tc.steps)
+    return (ds, validation)
+
+def _log_mlflow_params(model, dataset, training_spec):
+    images = dataset.image_set()
+    #labels = dataset.label_set()
+    mlflow.log_param('Image Type',   images.type())
+    mlflow.log_param('Preprocess',   images.preprocess())
+    mlflow.log_param('Number of Images',   len(images))
+    mlflow.log_param('Chunk Size',   dataset.chunk_size())
+    mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
+    mlflow.log_param('Steps', training_spec.steps)
+    mlflow.log_param('Loss Function', training_spec.loss_function)
+    mlflow.log_param('Epochs', training_spec.epochs)
+    mlflow.log_param('Batch Size', training_spec.batch_size)
+    mlflow.log_param('Optimizer', training_spec.optimizer)
+    mlflow.log_param('Model Layers', len(model.layers))
+
+def train(model_fn, dataset, training_spec):
+    '''
+    Trains the specified model given the images, corresponding labels, and training specification.
+    '''
+    # TODO: Check that this checks the training spec for desired devices to run on.
+    with _strategy(_devices(config.gpus())).scope():
+        model = model_fn()
+        assert isinstance(model, tf.keras.models.Model),\
+               "Model is not a Tensorflow Keras model"
+        # TODO: specify learning rate and optimizer parameters, change learning rate over time
+        model.compile(optimizer=training_spec.optimizer, loss=training_spec.loss_function,
+                      metrics=training_spec.metrics)
+
+    input_shape = model.layers[0].input_shape
+    chunk_size = input_shape[1]
+
+    assert len(input_shape) == 4, 'Input to network is wrong shape.' # TODO: Hard coding 4 a bad idea?
+    assert input_shape[0] is None, 'Input is not batched.'
+    # The below may no longer be valid if we move to convolutional architectures.
+    assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
+    assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
+
+    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size)
+
+    temp_dir = None
+    callbacks = []
+    if config.tb_enabled():
+        cb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
+                                            update_freq=config.tb_freq(),
+                                           )
+        callbacks.append(cb)
+
+    if config.mlflow_enabled():
+        mlflow.set_tracking_uri(config.mlflow_uri())
+        mlflow.set_experiment(training_spec.experiment)
+        mlflow.start_run()
+        _log_mlflow_params(model, dataset, training_spec)
+
+        def log_metrics_batch(batch, logs):
+            if batch % config.mlflow_freq() != 0:
+                return
+            for k in logs.keys():
+                if k in ('batch', 'size'):
+                    continue
+                mlflow.log_metric(k, logs[k], step=batch)
+        def log_metrics_validate(_, logs):
+            for k in logs.keys():
+                if k in ('batch', 'size'):
+                    continue
+                mlflow.log_metric('validation_' + k, logs[k])
+        callbacks.append(tf.keras.callbacks.LambdaCallback(on_batch_end=log_metrics_batch,
+                                                           on_test_batch_end=log_metrics_validate))
+
+        temp_dir = tempfile.mkdtemp()
+        fname = os.path.join(temp_dir, 'config.yaml')
+        with open(fname, 'w') as f:
+            f.write(config.export())
+        mlflow.log_artifact(fname)
+        os.remove(fname)
+
+        if config.mlflow_checkpoint_freq():
+            class MLFlowCheckpointCallback(tf.keras.callbacks.Callback):
+                def on_train_batch_end(self, batch, _):
+                    if batch % config.mlflow_checkpoint_freq() == 0:
+                        filename = os.path.join(temp_dir, '%d.h5' % (batch))
+                        self.model.save(filename, save_format='h5')
+                        mlflow.log_artifact(filename, 'checkpoints')
+                        os.remove(filename)
+            callbacks.append(MLFlowCheckpointCallback())
+
+    try:
+        history = model.fit(ds,
+                            callbacks=callbacks,
+                            validation_data=validation,
+                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
+                            steps_per_epoch=training_spec.steps)
+        if config.mlflow_enabled():
+            model_path = os.path.join(temp_dir, 'final_model.h5') # TODO: get this out of the config file?
+            model.save(model_path, save_format='h5')
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
+    except:
+        if config.mlflow_enabled():
+            mlflow.end_run('FAILED')
+        raise
+    finally:
+        if temp_dir:
+            shutil.rmtree(temp_dir)
+
+    if config.mlflow_enabled():
         mlflow.end_run()
-    ### end __del__
 
-    def train(self, model, train_dataset, num_epochs=70, steps_per_epoch=2024, validation_data=None, log_model=False):
-        assert(model is not None)
-        assert(train_dataset is not None)
-
-        mlflow.log_param('num_epochs', num_epochs)
-        mlflow.log_param('steps_per_epoch', steps_per_epoch)
-        mlflow.log_param('model summary', model.summary())
- 
-        # debugging
-#         ds = ds.take(1)
-#         mlflow.log_param('test_samples', train_labels.shape[0])
-
-        model.compile(optimizer='adam', loss=self._loss_func, metrics=['accuracy'])
-        history = model.fit(train_dataset, epochs=num_epochs, 
-                        steps_per_epoch=steps_per_epoch,
-                        validation_data=validation_data)
-
-        for i in range(num_epochs):
-            mlflow.log_metric('loss', history.history['loss'][i])
-            mlflow.log_metric('acc',  history.history['acc' ][i])
-        ### end for
-        if log_model:
-            model.save('model.h5')
-            mlflow.log_artifact('model.h5')
-        ### end log_model
-
-        return history
-    ### end train
-
-
-    def test(self, model, test_data, test_labels):
-        assert(model is not None)
-        assert(test_data is not None)
-        assert(test_labels is not None)
-        assert(type(test_data) == type(test_labels))
-
-        scores = model.evaluate(test_data, test_lables)
-        pass
-
-    def load_model(self, src):
-        raise NotImplementedError('loading models is not yet implemented')
-
-    def log_parameters(self, params):
-        assert(type(params) is dict)
-        for k in params.keys():
-            mlflow.log_param(k,params[k])
-        ### end for
-    ### end log_parameters
-
-    def log_training_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    def log_testing_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    def log_validation_set(self, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
-
-    def log_dataset(self, prefix, dataset):
-        import sys
-        raise NotImplementedError('%s is not yet implemented' %(sys._getframe().f_code.co_name,))
+    return model, history

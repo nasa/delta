@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Script to fetch DSWE (label) images from USGS corresponding to a given Landsat image.
 """
@@ -11,19 +12,8 @@ from osgeo import osr
 
 from usgs import api
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# TODO: Why is the path not being set correctly???
-os.environ['PATH'] = os.environ['PATH'].replace('/nobackup/smcmich1/code/anaconda3\\Library\\bin;','').replace('\\','/')
-#print('PATH = ' + str(os.environ['PATH']))
-
-# TODO: Make sure this goes everywhere!
-if sys.version_info < (3, 0, 0):
-    print('\nERROR: Must use Python version >= 3.0.')
-    sys.exit(1)
-
-from delta.imagery import utilities  #pylint: disable=C0413
-from delta.imagery.sources import landsat #pylint: disable=C0413
+from delta.imagery import utilities
+from delta.imagery.sources import landsat
 
 #------------------------------------------------------------------------------
 
@@ -122,7 +112,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
     # Only log in if our session expired (ugly function use to check!)
     if force_login or (not api._get_api_key(None)): #pylint: disable=W0212
         print('Logging in to USGS EarthExplorer...')
-        dummy_result = api.login(user, password, save=True, catalogId=CATALOG) #pylint: disable=W0612
+        dummy_result = api.login(user, password, save=True, catalogId=CATALOG)
 
         #print(api._get_api_key(None))
         #raise Exception('DEBUG')
@@ -203,12 +193,8 @@ def main(argsIn):
         print(usage)
         return -1
 
-    output_folder = os.path.dirname(options.output_path)
-    if output_folder and not os.path.exists(output_folder):
-        os.mkdir(output_folder)
-
     # Extract information about the landsat file
-    date = landsat.get_date_from_filename(options.landsat_path)
+    date = landsat.get_scene_info(options.landsat_path)['date']
     date = date[0:4] + '-' + date[4:6] + '-' + date[6:8]#  '2018-12-26'
     (ll_coord, ur_coord) = get_bounding_coordinates(options.landsat_path,
                                                     convert_to_lonlat=True)
