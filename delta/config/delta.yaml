@@ -46,7 +46,7 @@ train:
   loss_function:   sparse_categorical_crossentropy
   metrics:
     - sparse_categorical_accuracy
-  experiment_name: ~ # used in tracking tools
+  experiment_name: Default # used in tracking tools
   optimizer:       adam
   validation:
     steps:         1000
