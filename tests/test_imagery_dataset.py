@@ -32,7 +32,9 @@ def load_dataset(source, output_size):
                   extension: %s
                   preprocess: False
                 network:
-                  chunk_size: 3''' %
+                  chunk_size: 3
+                mlflow:
+                  enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 
@@ -193,7 +195,9 @@ def autoencoder(all_sources):
                   extension: %s
                   preprocess: False
                 network:
-                  chunk_size: 3''' %
+                  chunk_size: 3
+                mlflow:
+                  enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.images(),
