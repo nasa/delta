@@ -31,8 +31,8 @@ labels:
   files:            ~
 
 network:
-  chunk_size:      15
-  output_size:     1
+  chunk_size:      32
+  output_size:     16
   classes:         4
   model:
     yaml_file:     networks/convpool.yaml

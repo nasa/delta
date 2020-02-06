@@ -129,8 +129,6 @@ class ImageryDataset:
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding='VALID')
-        if self._output_size == 1:
-            return tf.reshape(labels, [-1, 1])
         return tf.reshape(labels, [-1, self._output_size, self._output_size])
 
 

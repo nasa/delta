@@ -25,8 +25,8 @@ layers:
   - Flatten:
   - Dense:
        units: out_dims
-       activation: relu
+       activation: linear
   - Reshape:
        target_shape: out_shape
   - Softmax:
-       axis: 2
+       axis: 3
