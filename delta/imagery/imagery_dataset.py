@@ -15,13 +15,15 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, chunk_size, chunk_stride=1):
+    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
 
         # Record some of the config values
+        assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
         self._chunk_size = chunk_size
+        self._output_size = output_size
         self._chunk_stride = chunk_stride
 
         self._use_tfrecord = images.type() == 'tfrecord'
@@ -55,13 +57,14 @@ class ImageryDataset:
                 # TODO: account for other data types properly
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
-                                           (self._chunk_size ** 2) / config.tile_ratio()))
+                                           config.tile_ratio()))
                 tile_height = int(config.tile_ratio() * tile_width)
                 if tile_width < self._chunk_size * 2:
                     raise ValueError('max_block_size is too low.')
                 if tile_height < self._chunk_size * 2:
                     raise ValueError('max_block_size is too low.')
-                tiles = img.tiles(tile_width, tile_height, overlap=self._chunk_size)
+                tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
+                                  overlap=self._chunk_size - 1)
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
             while tgs:
@@ -118,10 +121,17 @@ class ImageryDataset:
 
     def _reshape_labels(self, labels):
         """Reshape the labels to account for the chunking process."""
-        w = self._chunk_size // 2
+        w = (self._chunk_size - self._output_size) // 2
         labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w, tf.shape(labels)[1] - 2 * w)
-        labels = labels[::self._chunk_stride, ::self._chunk_stride]
-        return tf.reshape(labels, [-1, 1])
+
+        ksizes  = [1, self._output_size, self._output_size, 1]
+        strides = [1, self._chunk_stride, self._chunk_stride, 1]
+        rates   = [1, 1, 1, 1]
+        labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
+                                          padding='VALID')
+        if self._output_size == 1:
+            return tf.reshape(labels, [-1, 1])
+        return tf.reshape(labels, [-1, self._output_size, self._output_size])
 
     def data(self):
         # TODO: other types?
@@ -149,6 +159,8 @@ class ImageryDataset:
 
     def chunk_size(self):
         return self._chunk_size
+    def output_size(self):
+        return self._output_size
 
     def image_set(self):
         return self._images
@@ -165,7 +177,7 @@ class AutoencoderDataset(ImageryDataset):
         @param chunk_size The size of the square chucks the autoencoder is trained on.
         @param chunk_stride The stride which are used for extracting chunks.
         '''
-        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_stride=chunk_stride)
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
 
     def labels(self):
         return self.data()

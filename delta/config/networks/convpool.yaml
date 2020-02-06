@@ -24,5 +24,9 @@ layers:
        pool_size: [2, 2]
   - Flatten:
   - Dense:
-       units: out_shape
-       activation: softmax
+       units: out_dims
+       activation: relu
+  - Reshape:
+       target_shape: out_shape
+  - Softmax:
+       axis: 2
