@@ -60,8 +60,10 @@ def config_model(num_bands):
     Creates the model specified in the configuration.
     '''
     in_data_shape = (config.chunk_size(), config.chunk_size(), num_bands)
-    out_data_shape = config.classes()
+    out_data_shape = (config.output_size(), config.output_size(), config.classes())
 
-    params_exposed = { 'out_shape' : out_data_shape, 'in_shape' : in_data_shape}
+    params_exposed = {'out_shape' : out_data_shape,
+                      'out_dims' : out_data_shape[0] * out_data_shape[1] * out_data_shape[2],
+                      'in_shape' : in_data_shape}
 
     return model_from_dict(config.model_dict(), params_exposed)

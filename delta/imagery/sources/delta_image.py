@@ -80,10 +80,10 @@ class DeltaImage(ABC):
         """Return the number of rows."""
         return self.size()[1]
 
-    def tiles(self, width, height, overlap=0):
+    def tiles(self, width, height, min_width=0, min_height=0, overlap=0):
         """Generator to yield ROIs for the image."""
         input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
-        return input_bounds.make_tile_rois(width, height,
+        return input_bounds.make_tile_rois(width, height, min_width=min_width, min_height=min_height,
                                            include_partials=True, overlap_amount=overlap)
 
     def roi_generator(self, requested_rois):

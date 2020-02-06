@@ -140,8 +140,8 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_width, tile_height, include_partials=True,
-                       overlap_amount=0):
+    def make_tile_rois(self, tile_width, tile_height, min_width=0, min_height=0,
+                       include_partials=True, overlap_amount=0):
         '''Return a list of tiles encompassing the entire area of this Rectangle'''
 
         # TODO: Can simplify this a bit!
@@ -159,6 +159,8 @@ class Rectangle:
 
                 if include_partials: # Crop the tile to the valid area and use it
                     tile = tile.get_intersection(self)
+                    if tile.width() < min_width or tile.height() < min_height:
+                        continue
                     output_tiles.append(tile)
                 else: # Only use it if the uncropped tile fits entirely in this Rectangle
                     if self.contains_rect(tile):
