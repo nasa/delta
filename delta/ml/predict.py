@@ -79,7 +79,6 @@ def predict_validate(model, image, label, input_bounds=None, probabilities=False
 
         if not probabilities:
             result[sx : sx + pred_image.shape[0], sy : sy + pred_image.shape[1]] = pred_image
-        print(np.unique(pred_image))
 
         if label:
             start_x = roi.min_x + (roi.width() - pred_image.shape[0]) // 2
