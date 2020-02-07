@@ -22,7 +22,7 @@ def main(options):
         return 1
     tc = config.training()
 
-    ids = ImageryDataset(images, labels, config.chunk_size(), tc.chunk_stride)
+    ids = ImageryDataset(images, labels, config.chunk_size(), config.output_size(), tc.chunk_stride)
 
     model, _ = train(config_model(ids.num_bands()), ids, tc)
 
