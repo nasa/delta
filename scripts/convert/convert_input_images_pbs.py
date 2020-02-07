@@ -9,7 +9,7 @@ import argparse
 import getpass
 import numpy as np
 
-from delta import pbs_functions
+import pbs_functions
 #import tfrecord_convert
 
 bin_folder = os.path.dirname(os.path.realpath(__file__)) # won't change, unlike syspath

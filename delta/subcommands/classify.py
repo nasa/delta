@@ -3,9 +3,9 @@ Classify input images given a model.
 """
 import os.path
 
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.sources import tiff
@@ -20,7 +20,7 @@ def setup_parser(subparsers):
 
     sub.set_defaults(function=main)
     # TODO: move chunk_size into model somehow
-    config.setup_arg_parser(sub, labels=True, train=True)
+    config.setup_arg_parser(sub, labels=True, train=False)
 
 def save_confusion(cm, filename):
     f = plt.figure()
@@ -54,7 +54,6 @@ def main(options):
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
 
-    cs = config.chunk_size()
     images = config.images()
     labels = config.labels()
     for (i, path) in enumerate(images):
@@ -62,15 +61,15 @@ def main(options):
         base_name = os.path.splitext(os.path.basename(path))[0]
         if labels:
             label = loader.load_image(config.labels(), i)
-            (result, error_image, cm) = predict.predict_validate(model, cs, image, label,
-                                                                 config.classes(), probabilities=options.prob,
+            (result, error_image, cm) = predict.predict_validate(model, image, label,
+                                                                 probabilities=options.prob,
                                                                  show_progress=True)
             print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
             colored_error = error_colors[error_image.astype('uint8')]
             tiff.write_tiff(base_name + '_errors.tiff', colored_error, metadata=image.metadata())
             save_confusion(cm, base_name + '_confusion.pdf')
         else:
-            result = predict.predict(model, cs, image, config.classes(), probabilities=options.prob, show_progress=True)
+            result = predict.predict(model, image, probabilities=options.prob, show_progress=True)
         if options.prob:
             tiff.write_tiff(base_name + '_prob.tiff', result, metadata=image.metadata())
         else:

@@ -2,8 +2,8 @@ import os
 import tempfile
 import shutil
 
-import tensorflow as tf
 import mlflow
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset

@@ -160,6 +160,7 @@ def _find_mtl_file(folder):
 class LandsatImage(tiff.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
 
+
     def _prep(self, paths):
         """Prepares a Landsat file from the archive for processing.
            Returns [band, paths, in, order, ...]
