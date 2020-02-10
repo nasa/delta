@@ -102,13 +102,14 @@ def test_network_file():
     assert config.classes() == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.chunk_size(), config.chunk_size(), 2)
-    assert model.output_shape == (None, config.classes())
+    assert model.output_shape == (None, config.output_size(), config.output_size(), config.classes())
 
 def test_network_inline():
     config.reset()
     test_str = '''
     network:
       chunk_size: 5
+      output_size: 1
       classes: 3
       model:
         params:
@@ -120,7 +121,7 @@ def test_network_inline():
             units: v1
             activation : relu
         - Dense:
-            units: out_shape
+            units: out_dims
             activation : softmax
     '''
     config.load(yaml_str=test_str)
@@ -185,12 +186,12 @@ def test_tensorboard():
 
     test_str = '''
     tensorboard:
-      enabled: true
+      enabled: false
       dir: nonsense
       frequency: 5
     '''
     config.load(yaml_str=test_str)
 
-    assert config.tb_enabled()
+    assert not config.tb_enabled()
     assert config.tb_dir() == 'nonsense'
     assert config.tb_freq() == 5

@@ -132,7 +132,9 @@ def image_to_tfrecord(image, record_paths, tile_size=None, bands_to_use=None,
 
     # Make a list of output ROIs, only keeping whole ROIs because TF requires them all to be the same size.
     input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
-    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1], include_partials, overlap_amount)
+    output_rois = input_bounds.make_tile_rois(tile_size[0], tile_size[1],
+                                              include_partials=include_partials,
+                                              overlap_amount=overlap_amount)
 
     write_compressed = (len(record_paths) == 1)
     if write_compressed:
