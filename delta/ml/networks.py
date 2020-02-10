@@ -9,7 +9,7 @@ import mlflow
 import tensorflow as tf
 from tensorflow import keras
 
-def make_autoencoder(in_shape, encoding_size=32, encoder_type='dense'):
+def make_autoencoder(in_shape, encoding_size=16, encoder_type='dense'):
     '''
     Factory method for creating autoencoders.  At the moment does not provide a lot
     of flexibility.
@@ -54,15 +54,15 @@ def make_convolutional_autoencoder(in_shape, encoding_size=None):
         keras.layers.InputLayer(input_shape=in_shape),
         keras.layers.Conv2D(encoding_size, (3, 3), activation='relu', padding='same'),
         keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras.layers.Conv2D(encoding_size*2, (3, 3), activation='relu', padding='same'),
+        keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         keras.layers.MaxPooling2D(pool_size=(2, 2)),
-        keras.layers.Conv2D(encoding_size*4, (3, 3), activation='relu', padding='same'),
+        keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         # Decoder
-        keras.layers.Conv2D(encoding_size*4, (3, 3), activation='relu', padding='same'),
+        keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         keras.layers.UpSampling2D((2, 2)),
-        keras.layers.Conv2D(encoding_size*2, (3, 3), activation='relu', padding='same'),
+        keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         keras.layers.UpSampling2D((2, 2)),
-        keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')
+        keras.layers.Conv2D(1, (3, 3), activation='relu', padding='same')
         ])
     return model
 ### end make_convolutional_autoencoder
