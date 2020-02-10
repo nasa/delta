@@ -171,6 +171,8 @@ _CONFIG_ENTRIES = [
     (['general', 'cache', 'limit'],    None,                int,          lambda x : x > 0, None, None),
     (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0,
      'chunk-size', 'Width of an image chunk to process at once.'),
+    (['network', 'output_size'],       'output_size',        int,          lambda x: x > 0,
+     'output-size', 'Width of an image chunk to output from the neural network.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
     (['network', 'model', 'yaml_file'], None,               str,          None,

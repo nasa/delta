@@ -36,8 +36,8 @@ def predict_array(model, data):
 
     retval = np.zeros(out_shape + (net_output_shape[-1],))
     for chunk_idx in range(0, best.shape[0]):
-        r = (chunk_idx // (  data.shape[1] // net_output_shape[1])) * net_output_shape[0]
-        c = (chunk_idx  % ( data.shape[1] // net_output_shape[1])) * net_output_shape[1]
+        r = (chunk_idx // (  out_shape[1] // net_output_shape[1])) * net_output_shape[0]
+        c = (chunk_idx  % ( out_shape[1] // net_output_shape[1])) * net_output_shape[1]
         retval[r:r+net_output_shape[0],c:c+net_output_shape[1],:] = best[chunk_idx,:,:,:]
 
     return retval
@@ -81,10 +81,10 @@ def predict_validate(model, image, label, input_bounds=None, probabilities=False
             result[sx : sx + pred_image.shape[0], sy : sy + pred_image.shape[1]] = pred_image
 
         if label:
-            half_cs_r = net_input_shape[0] // 2
-            half_cs_c = net_input_shape[0] // 2
-            label_roi = rectangle.Rectangle(roi.min_x + half_cs_r, roi.min_y + half_cs_c,
-                                            roi.max_x - half_cs_r, roi.max_y - half_cs_c)
+            start_x = roi.min_x + (roi.width() - pred_image.shape[0]) // 2
+            start_y = roi.min_y + (roi.height() - pred_image.shape[1]) // 2
+            label_roi = rectangle.Rectangle(start_x, start_y,
+                                            start_x + pred_image.shape[0], start_y + pred_image.shape[1])
             labels = np.squeeze(label.read(label_roi))
             errors[sx : sx + pred_image.shape[0], sy : sy + pred_image.shape[1]] = labels != pred_image
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
@@ -100,8 +100,6 @@ def predict_validate(model, image, label, input_bounds=None, probabilities=False
     return (result, errors, confusion_matrix)
 
 # TODO: Save data as we progress through it
-def predict(model, cs, image, num_classes, input_bounds=None, probabilities=False, show_progress=False):
+def predict(model, image, input_bounds=None, probabilities=False, show_progress=False):
     """Returns the predicted image given a model, chunk size, and image."""
-    type(cs)
-    type(num_classes)
     return predict_validate(model, image, None, input_bounds, probabilities, show_progress)[0]
