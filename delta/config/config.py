@@ -169,7 +169,7 @@ _CONFIG_ENTRIES = [
     (['general', 'tile_ratio'],        'tile_ratio',        float,        lambda x : x > 0, None, None),
     (['general', 'cache', 'dir'],      None,                str,          None,             None, None),
     (['general', 'cache', 'limit'],    None,                int,          lambda x : x > 0, None, None),
-    (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0 and x % 2 == 1,
+    (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0,
      'chunk-size', 'Width of an image chunk to process at once.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
