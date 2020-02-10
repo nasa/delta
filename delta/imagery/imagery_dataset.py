@@ -131,7 +131,6 @@ class ImageryDataset:
                                           padding='VALID')
         return tf.reshape(labels, [-1, self._output_size, self._output_size])
 
-
     def data(self):
         # TODO: other types?
         ret = self._load_images(False, self._num_bands, tf.float32)
