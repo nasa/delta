@@ -188,7 +188,8 @@ def test_mlflow():
       enabled: false
       uri: nonsense
       frequency: 5
-      checkpoint_frequency: 10
+      checkpoints:
+        frequency: 10
     '''
     config.load(yaml_str=test_str)
 

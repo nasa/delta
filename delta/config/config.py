@@ -194,7 +194,8 @@ _CONFIG_ENTRIES = [
     (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None, None),
     (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None, None),
     (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None, None),
-    (['mlflow', 'checkpoint_frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
+    (['mlflow', 'checkpoints', 'frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
+    (['mlflow', 'checkpoints', 'save_latest'], 'mlflow_checkpoint_latest', bool,   None,            None, None),
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
     (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
     (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None, None)

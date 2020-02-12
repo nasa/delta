@@ -142,6 +142,10 @@ def train(model_fn, dataset, training_spec):
                     if batch % config.mlflow_checkpoint_freq() == 0:
                         filename = os.path.join(temp_dir, '%d.h5' % (batch))
                         self.model.save(filename, save_format='h5')
+                        if config.mlflow_checkpoint_latest():
+                            old = filename
+                            filename = os.path.join(temp_dir, 'latest.h5')
+                            os.rename(old, filename)
                         mlflow.log_artifact(filename, 'checkpoints')
                         os.remove(filename)
             callbacks.append(MLFlowCheckpointCallback())
