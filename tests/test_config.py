@@ -32,6 +32,7 @@ def test_general():
     cache = config.cache_manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2
+    os.rmdir('nonsense')
 
 def test_images_dir():
     config.reset()
