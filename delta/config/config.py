@@ -295,9 +295,6 @@ class DeltaConfig:
             if e[3] and not e[3](v):
                 raise ValueError('Value %s for %s is invalid.' % (v, e[0][-1]))
 
-    def set_value(self, group, name, value):
-        self.__config_dict[group][name] = value
-
     def cache_manager(self):
         if self._cache_manager is None:
             self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['general']['cache']['dir'],
