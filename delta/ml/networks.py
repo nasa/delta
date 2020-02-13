@@ -58,11 +58,11 @@ def make_convolutional_autoencoder(in_shape, encoding_size=None):
         keras.layers.MaxPooling2D(pool_size=(2, 2)),
         keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         # Decoder
-        keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
+        keras.layers.Conv2D(encoding_size // 4, (3, 3), activation='relu', padding='same'),
         keras.layers.UpSampling2D((2, 2)),
         keras.layers.Conv2D(encoding_size // 2, (3, 3), activation='relu', padding='same'),
         keras.layers.UpSampling2D((2, 2)),
-        keras.layers.Conv2D(1, (3, 3), activation='relu', padding='same')
+        keras.layers.Conv2D(in_shape[2], (3, 3), activation='relu', padding='same'),
         ])
     return model
 ### end make_convolutional_autoencoder
