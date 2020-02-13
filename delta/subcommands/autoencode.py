@@ -68,8 +68,8 @@ def main(options):
     # in the scope of the distribution strategy (occurrs in the training function)
     model_fn = functools.partial(make_autoencoder,
                                  data_shape,
-                                 encoding_size=200,
-                                 encoder_type='dense',
+                                 encoding_size=300,
+                                 encoder_type='conv',
                                  )
 
     model, _ = train(model_fn, aeds, tc)
