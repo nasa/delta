@@ -1,4 +1,6 @@
+import argparse
 import os
+import pytest
 import yaml
 
 from delta.config import config
@@ -30,6 +32,7 @@ def test_general():
     cache = config.cache_manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2
+    os.rmdir('nonsense')
 
 def test_images_dir():
     config.reset()
@@ -102,13 +105,30 @@ def test_network_file():
     assert config.classes() == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.chunk_size(), config.chunk_size(), 2)
-    assert model.output_shape == (None, config.classes())
+    assert model.output_shape == (None, config.output_size(), config.output_size(), config.classes())
+
+def test_validate():
+    config.reset()
+    test_str = '''
+    network:
+      chunk_size: -1
+    '''
+    with pytest.raises(ValueError):
+        config.load(yaml_str=test_str)
+    config.reset()
+    test_str = '''
+    network:
+      chunk_size: string
+    '''
+    with pytest.raises(TypeError):
+        config.load(yaml_str=test_str)
 
 def test_network_inline():
     config.reset()
     test_str = '''
     network:
       chunk_size: 5
+      output_size: 1
       classes: 3
       model:
         params:
@@ -120,7 +140,7 @@ def test_network_inline():
             units: v1
             activation : relu
         - Dense:
-            units: out_shape
+            units: out_dims
             activation : softmax
     '''
     config.load(yaml_str=test_str)
@@ -169,7 +189,8 @@ def test_mlflow():
       enabled: false
       uri: nonsense
       frequency: 5
-      checkpoint_frequency: 10
+      checkpoints:
+        frequency: 10
     '''
     config.load(yaml_str=test_str)
 
@@ -185,12 +206,34 @@ def test_tensorboard():
 
     test_str = '''
     tensorboard:
-      enabled: true
+      enabled: false
       dir: nonsense
       frequency: 5
     '''
     config.load(yaml_str=test_str)
 
-    assert config.tb_enabled()
+    assert not config.tb_enabled()
     assert config.tb_dir() == 'nonsense'
     assert config.tb_freq() == 5
+
+def test_argparser():
+    config.reset()
+
+    parser = argparse.ArgumentParser()
+    config.setup_arg_parser(parser, general=True, images=True, labels=True, train=True)
+
+    options = parser.parse_args(('--chunk-size 5 --image-type tiff --image data/landsat.tiff' +
+                                 ' --label-type tiff --label data/landsat.tiff').split())
+    config.parse_args(options)
+
+    assert config.chunk_size() == 5
+    im = config.images()
+    assert im.preprocess()
+    assert im.type() == 'tiff'
+    assert len(im) == 1
+    assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
+    im = config.labels()
+    assert not im.preprocess()
+    assert im.type() == 'tiff'
+    assert len(im) == 1
+    assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])

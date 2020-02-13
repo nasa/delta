@@ -24,8 +24,12 @@ def main(options):
 
     ids = ImageryDataset(images, labels, config.chunk_size(), config.output_size(), tc.chunk_stride)
 
-    model, _ = train(config_model(ids.num_bands()), ids, tc)
+    try:
+        model, _ = train(config_model(ids.num_bands()), ids, tc)
 
-    model.save(options.model)
+        model.save(options.model)
+    except KeyboardInterrupt:
+        print()
+        print('Training cancelled.')
 
     return 0

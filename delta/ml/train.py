@@ -73,6 +73,50 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Batch Size', training_spec.batch_size)
     mlflow.log_param('Optimizer', training_spec.optimizer)
     mlflow.log_param('Model Layers', len(model.layers))
+    mlflow.log_param('Status', 'Running')
+
+def _mlflow_train_setup(model, dataset, training_spec, callbacks):
+    mlflow.set_tracking_uri(config.mlflow_uri())
+    mlflow.set_experiment(training_spec.experiment)
+    mlflow.start_run()
+    _log_mlflow_params(model, dataset, training_spec)
+
+    def log_metrics_batch(batch, logs):
+        if batch % config.mlflow_freq() != 0:
+            return
+        for k in logs.keys():
+            if k in ('batch', 'size'):
+                continue
+            mlflow.log_metric(k, logs[k], step=batch)
+    def log_metrics_validate(_, logs):
+        for k in logs.keys():
+            if k in ('batch', 'size'):
+                continue
+            mlflow.log_metric('validation_' + k, logs[k])
+    callbacks.append(tf.keras.callbacks.LambdaCallback(on_batch_end=log_metrics_batch,
+                                                       on_test_batch_end=log_metrics_validate))
+
+    temp_dir = tempfile.mkdtemp()
+    fname = os.path.join(temp_dir, 'config.yaml')
+    with open(fname, 'w') as f:
+        f.write(config.export())
+    mlflow.log_artifact(fname)
+    os.remove(fname)
+
+    if config.mlflow_checkpoint_freq():
+        class MLFlowCheckpointCallback(tf.keras.callbacks.Callback):
+            def on_train_batch_end(self, batch, _):
+                if batch % config.mlflow_checkpoint_freq() == 0:
+                    filename = os.path.join(temp_dir, '%d.h5' % (batch))
+                    self.model.save(filename, save_format='h5')
+                    if config.mlflow_checkpoint_latest():
+                        old = filename
+                        filename = os.path.join(temp_dir, 'latest.h5')
+                        os.rename(old, filename)
+                    mlflow.log_artifact(filename, 'checkpoints')
+                    os.remove(filename)
+        callbacks.append(MLFlowCheckpointCallback())
+    return temp_dir
 
 def train(model_fn, dataset, training_spec):
     '''
@@ -109,42 +153,7 @@ def train(model_fn, dataset, training_spec):
         callbacks.append(cb)
 
     if config.mlflow_enabled():
-        mlflow.set_tracking_uri(config.mlflow_uri())
-        mlflow.set_experiment(training_spec.experiment)
-        mlflow.start_run()
-        _log_mlflow_params(model, dataset, training_spec)
-
-        def log_metrics_batch(batch, logs):
-            if batch % config.mlflow_freq() != 0:
-                return
-            for k in logs.keys():
-                if k in ('batch', 'size'):
-                    continue
-                mlflow.log_metric(k, logs[k], step=batch)
-        def log_metrics_validate(_, logs):
-            for k in logs.keys():
-                if k in ('batch', 'size'):
-                    continue
-                mlflow.log_metric('validation_' + k, logs[k])
-        callbacks.append(tf.keras.callbacks.LambdaCallback(on_batch_end=log_metrics_batch,
-                                                           on_test_batch_end=log_metrics_validate))
-
-        temp_dir = tempfile.mkdtemp()
-        fname = os.path.join(temp_dir, 'config.yaml')
-        with open(fname, 'w') as f:
-            f.write(config.export())
-        mlflow.log_artifact(fname)
-        os.remove(fname)
-
-        if config.mlflow_checkpoint_freq():
-            class MLFlowCheckpointCallback(tf.keras.callbacks.Callback):
-                def on_train_batch_end(self, batch, _):
-                    if batch % config.mlflow_checkpoint_freq() == 0:
-                        filename = os.path.join(temp_dir, '%d.h5' % (batch))
-                        self.model.save(filename, save_format='h5')
-                        mlflow.log_artifact(filename, 'checkpoints')
-                        os.remove(filename)
-            callbacks.append(MLFlowCheckpointCallback())
+        temp_dir = _mlflow_train_setup(model, dataset, training_spec, callbacks)
 
     try:
         history = model.fit(ds,
@@ -153,12 +162,14 @@ def train(model_fn, dataset, training_spec):
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
                             steps_per_epoch=training_spec.steps)
         if config.mlflow_enabled():
-            model_path = os.path.join(temp_dir, 'final_model.h5') # TODO: get this out of the config file?
+            model_path = os.path.join(temp_dir, 'final_model.h5')
             model.save(model_path, save_format='h5')
             mlflow.log_artifact(model_path)
             os.remove(model_path)
+            mlflow.log_param('Status', 'Completed')
     except:
         if config.mlflow_enabled():
+            mlflow.log_param('Status', 'Aborted')
             mlflow.end_run('FAILED')
         raise
     finally:

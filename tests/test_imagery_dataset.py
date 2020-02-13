@@ -167,7 +167,8 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
         return keras.Sequential([
             keras.layers.Flatten(input_shape=(3, 3, 1)),
             keras.layers.Dense(3 * 3, activation=tf.nn.relu),
-            keras.layers.Dense(2, activation=tf.nn.softmax)
+            keras.layers.Dense(2, activation=tf.nn.softmax),
+            keras.layers.Reshape((1, 1, 2))
             ])
     model, _ = train.train(model_fn, dataset,
                            TrainingSpec(100, 5, 'sparse_categorical_crossentropy'))
@@ -176,7 +177,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
 
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
-    result = predict.predict(model, 3, npy.NumpyImage(test_image), 2)
+    result = predict.predict(model, npy.NumpyImage(test_image))
     assert sum(sum(np.logical_xor(result, test_label))) < 200 # very easy test since we don't train much
 
 @pytest.fixture(scope="function")

@@ -76,7 +76,9 @@ mlflow:
   # rate in batches to save metrics
   frequency:      100
   # rate in batches to save model checkpoints
-  checkpoint_frequency:     ~
+  checkpoints:
+    frequency:     10000
+    save_latest:   true
 tensorboard:
   enabled:        false
   frequency:      1000
