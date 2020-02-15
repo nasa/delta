@@ -16,6 +16,7 @@ def setup_parser(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
 
     sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
+    sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main)
@@ -56,22 +57,38 @@ def main(options):
 
     images = config.images()
     labels = config.labels()
+    if options.autoencoder:
+        labels = None
+        predictor = predict.ImagePredictor(model, True)
+    else:
+        predictor = predict.LabelPredictor(model, True, options.prob)
     for (i, path) in enumerate(images):
         image = loader.load_image(images, i)
         base_name = os.path.splitext(os.path.basename(path))[0]
+        label = None
         if labels:
             label = loader.load_image(config.labels(), i)
-            (result, error_image, cm) = predict.predict_validate(model, image, label,
-                                                                 probabilities=options.prob,
-                                                                 show_progress=True)
+        if options.autoencoder:
+            label = image
+        predictor.predict(image, label)
+        if labels:
+            cm = predictor.confusion_matrix()
+            error_image = predictor.errors()
             print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
             colored_error = error_colors[error_image.astype('uint8')]
             tiff.write_tiff(base_name + '_errors.tiff', colored_error, metadata=image.metadata())
             save_confusion(cm, base_name + '_confusion.pdf')
+        if options.autoencoder:
+            tiff.write_tiff(base_name + '_predicted.tiff',
+                            (predictor.output()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
+                            metadata=image.metadata())
+            tiff.write_tiff(base_name + '_errors.tiff',
+                            (predictor.errors()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
+                            metadata=image.metadata())
+            tiff.write_tiff(base_name + '_orig.tiff',      (image.read()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
+                            metadata=image.metadata())
+        elif options.prob:
+            tiff.write_tiff(base_name + '_prob.tiff', predictor.output(), metadata=image.metadata())
         else:
-            result = predict.predict(model, image, probabilities=options.prob, show_progress=True)
-        if options.prob:
-            tiff.write_tiff(base_name + '_prob.tiff', result, metadata=image.metadata())
-        else:
-            tiff.write_tiff(base_name + '_predicted.tiff', colors[result], metadata=image.metadata())
+            tiff.write_tiff(base_name + '_predicted.tiff', colors[predictor.output()], metadata=image.metadata())
     return 0
