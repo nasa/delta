@@ -177,7 +177,8 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
 
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
-    result = predict.predict(model, npy.NumpyImage(test_image))
+    predictor = predict.LabelPredictor(model)
+    result = predictor.predict(npy.NumpyImage(test_image))
     assert sum(sum(np.logical_xor(result, test_label))) < 200 # very easy test since we don't train much
 
 @pytest.fixture(scope="function")

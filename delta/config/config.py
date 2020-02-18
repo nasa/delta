@@ -268,6 +268,8 @@ class DeltaConfig:
                 if isinstance(v, collections.abc.Mapping):
                     recursive_normalize(v)
                 else:
+                    if k == 'yaml_file' and pkg_resources.resource_exists('delta', os.path.join('config', v)):
+                        continue
                     if ('dir' in k or 'file' in k):
                         if isinstance(v, str):
                             d[k] = normalize_path(v)
@@ -280,10 +282,9 @@ class DeltaConfig:
         # overwrite model entirely if updated (don't want combined layers from multiple files)
         if 'network' in config_data and 'model' in config_data['network']:
             m = config_data['network']['model']
-            if not 'yaml_file' in m:
-                m['yaml_file'] = None
-            if not 'layers' in m:
-                m['layers'] = None
+            for k in ['yaml_file', 'layers', 'params']:
+                if not k in m:
+                    m[k] = None
             self.__config_dict['network']['model'] = m
 
         self._validate()

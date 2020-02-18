@@ -1,0 +1,11 @@
+layers:
+  - Flatten:
+      input_shape: in_shape
+  - Dense:
+      units: 300
+      activation: relu
+  - Dense:
+      units: in_dims
+      activation: relu
+  - Reshape:
+      target_shape: in_shape
