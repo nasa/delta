@@ -53,9 +53,9 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
     else:
         validation = None
-    ds = ds.repeat(tc.epochs)
     if tc.steps:
         ds = ds.take(tc.steps)
+    ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -157,6 +157,7 @@ def train(model_fn, dataset, training_spec):
 
     try:
         history = model.fit(ds,
+                            epochs=training_spec.epochs,
                             callbacks=callbacks,
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
