@@ -126,9 +126,9 @@ class DeltaImage(ABC):
             for roi in rois:
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
+                num_remaining -= 1
                 yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
                        (total_rois - num_remaining, total_rois))
-                num_remaining -= 1
 
     def process_rois(self, requested_rois, callback_function, show_progress=False):
         '''
