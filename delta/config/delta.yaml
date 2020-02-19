@@ -17,6 +17,7 @@ images:
   type:             tiff
   # preprocess the images when loading (i.e., scaling)
   preprocess:       true
+  nodata_value:     ~
   directory:        ~
   extension:        ~
   file_list:        ~
@@ -25,6 +26,7 @@ images:
 labels:
   type:             tiff
   preprocess:       false
+  nodata_value:     ~
   directory:        ~
   extension:        ~
   file_list:        ~
@@ -57,6 +59,7 @@ train:
     images:
       type:        tiff
       preprocess:  true
+      nodata_value: ~
       directory:   ~
       extension:   ~
       file_list:   ~
@@ -64,6 +67,7 @@ train:
     labels:
       type:        tiff
       preprocess:  true
+      nodata_value: ~
       directory:   ~
       extension:   ~
       file_list:   ~
@@ -74,7 +78,7 @@ mlflow:
   enabled:        true
   uri:            ~
   # rate in batches to save metrics
-  frequency:      100
+  frequency:      10000
   # rate in batches to save model checkpoints
   checkpoints:
     frequency:     10000

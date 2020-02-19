@@ -10,15 +10,18 @@ from delta.imagery import disk_folder_cache
 #pylint: disable=W0108
 
 class ImageSet:
-    def __init__(self, images, image_type, preprocess=False):
+    def __init__(self, images, image_type, preprocess=False, nodata_value=None):
         self._images = images
         self._image_type = image_type
         self._preprocess = preprocess
+        self._nodata_value = nodata_value
 
     def type(self):
         return self._image_type
     def preprocess(self):
         return self._preprocess
+    def nodata_value(self):
+        return self._nodata_value
     def __len__(self):
         return len(self._images)
     def __getitem__(self, index):
@@ -128,7 +131,7 @@ def _config_to_image_label_sets(images_dict, labels_dict):
                 label_extension = __extension(labels_dict)
                 images = [img for img in images if not img.endswith(label_extension)]
 
-    image_set = ImageSet(images, images_dict['type'], images_dict['preprocess'])
+    image_set = ImageSet(images, images_dict['type'], images_dict['preprocess'], images_dict['nodata_value'])
 
     if (labels_dict['files'] is None) and (labels_dict['file_list'] is None) and (labels_dict['directory'] is None):
         return (image_set, None)
@@ -138,7 +141,7 @@ def _config_to_image_label_sets(images_dict, labels_dict):
     if len(labels) != len(images):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
-    return (image_set, ImageSet(labels, labels_dict['type'], labels_dict['preprocess']))
+    return (image_set, ImageSet(labels, labels_dict['type'], labels_dict['preprocess'], labels_dict['nodata_value']))
 
 # images validated when finding the files
 def __image_entries(keys, cpre):
@@ -152,7 +155,8 @@ def __image_entries(keys, cpre):
          cpre + '-dir' if cpre else None, 'Directory to search for images of given extension.'),
         (keys + ['extension'],           None,               str,                None,
          cpre + '-extension' if cpre else None, 'File extension to search for images in given directory.'),
-        (keys + ['preprocess'],          None,               bool,               None,            None, None)
+        (keys + ['preprocess'],          None,               bool,               None,            None, None),
+        (keys + ['nodata_value'],        None,               float,              None,            None, None)
     ]
 
 

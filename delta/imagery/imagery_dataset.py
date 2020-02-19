@@ -148,6 +148,9 @@ class ImageryDataset:
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        # ignore labels with no data
+        if self._labels.nodata_value():
+            ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
 
         return ds
 
@@ -176,6 +179,7 @@ class AutoencoderDataset(ImageryDataset):
         @param chunk_stride The stride which are used for extracting chunks.
         '''
         super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
+        self._labels = self._images
 
     def labels(self):
         return self.data()
