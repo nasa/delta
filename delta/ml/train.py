@@ -181,8 +181,8 @@ def train(model_fn, dataset, training_spec):
         if config.mlflow_enabled():
             mlflow.log_param('Epoch', mcb.epoch)
             mlflow.log_param('Batch', mcb.batch)
-        if mcb and mcb.temp_dir:
-            shutil.rmtree(mcb.temp_dir)
+            if mcb and mcb.temp_dir:
+                shutil.rmtree(mcb.temp_dir)
 
     if config.mlflow_enabled():
         mlflow.end_run()
