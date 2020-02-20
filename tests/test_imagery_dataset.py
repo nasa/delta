@@ -6,10 +6,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
-from delta.config import config, TrainingSpec
+from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import tfrecord, npy
 from delta.ml import train, predict
+from delta.ml.ml_config import TrainingSpec
 
 import conftest
 

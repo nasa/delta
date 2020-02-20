@@ -6,50 +6,10 @@ import yaml
 import pkg_resources
 import appdirs
 from delta.imagery import disk_folder_cache
+from delta.imagery.sources import image_set
+from delta.ml import ml_config
 
 #pylint: disable=W0108
-
-class ImageSet:
-    def __init__(self, images, image_type, preprocess=False, nodata_value=None):
-        self._images = images
-        self._image_type = image_type
-        self._preprocess = preprocess
-        self._nodata_value = nodata_value
-
-    def type(self):
-        return self._image_type
-    def preprocess(self):
-        return self._preprocess
-    def nodata_value(self):
-        return self._nodata_value
-    def __len__(self):
-        return len(self._images)
-    def __getitem__(self, index):
-        if index < 0 or index >= len(self):
-            raise IndexError('Index %s out of range.' % (index))
-        return self._images[index]
-    def __iter__(self):
-        return self._images.__iter__()
-
-class ValidationSet:#pylint:disable=too-few-public-methods
-    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
-        self.images = images
-        self.labels = labels
-        self.from_training = from_training
-        self.steps = steps
-
-class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments,dangerous-default-value
-    def __init__(self, batch_size, epochs, loss_function, validation=None, steps=None,
-                 metrics=['accuracy'], chunk_stride=1, optimizer='adam', experiment_name='Default'):
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.loss_function = loss_function
-        self.validation = validation
-        self.steps = steps
-        self.metrics = metrics
-        self.chunk_stride = chunk_stride
-        self.optimizer = optimizer
-        self.experiment = experiment_name
 
 def recursive_update(d, u, ignore_new):
     """
@@ -131,17 +91,18 @@ def _config_to_image_label_sets(images_dict, labels_dict):
                 label_extension = __extension(labels_dict)
                 images = [img for img in images if not img.endswith(label_extension)]
 
-    image_set = ImageSet(images, images_dict['type'], images_dict['preprocess'], images_dict['nodata_value'])
+    imageset = image_set.ImageSet(images, images_dict['type'], images_dict['preprocess'], images_dict['nodata_value'])
 
     if (labels_dict['files'] is None) and (labels_dict['file_list'] is None) and (labels_dict['directory'] is None):
-        return (image_set, None)
+        return (imageset, None)
 
     labels = __find_images(labels_dict, images, images_dict)
 
     if len(labels) != len(images):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
-    return (image_set, ImageSet(labels, labels_dict['type'], labels_dict['preprocess'], labels_dict['nodata_value']))
+    return (imageset, image_set.ImageSet(labels, labels_dict['type'],
+                                         labels_dict['preprocess'], labels_dict['nodata_value']))
 
 # images validated when finding the files
 def __image_entries(keys, cpre):
@@ -347,16 +308,16 @@ class DeltaConfig:
         if not from_training:
             (vimg, vlabels) = self.__load_images_labels(['train', 'validation', 'images'],
                                                         ['train', 'validation', 'labels'])
-        validation = ValidationSet(vimg, vlabels, from_training, vsteps)
-        self.__training = TrainingSpec(batch_size=self._get_entry(['train', 'batch_size']),
-                                       epochs=self._get_entry(['train', 'epochs']),
-                                       loss_function=self._get_entry(['train', 'loss_function']),
-                                       validation=validation,
-                                       steps=self._get_entry(['train', 'steps']),
-                                       metrics=self._get_entry(['train', 'metrics']),
-                                       chunk_stride=self._get_entry(['train', 'chunk_stride']),
-                                       optimizer=self._get_entry(['train', 'optimizer']),
-                                       experiment_name=self._get_entry(['train', 'experiment_name']))
+        validation = ml_config.ValidationSet(vimg, vlabels, from_training, vsteps)
+        self.__training = ml_config.TrainingSpec(batch_size=self._get_entry(['train', 'batch_size']),
+                                                 epochs=self._get_entry(['train', 'epochs']),
+                                                 loss_function=self._get_entry(['train', 'loss_function']),
+                                                 validation=validation,
+                                                 steps=self._get_entry(['train', 'steps']),
+                                                 metrics=self._get_entry(['train', 'metrics']),
+                                                 chunk_stride=self._get_entry(['train', 'chunk_stride']),
+                                                 optimizer=self._get_entry(['train', 'optimizer']),
+                                                 experiment_name=self._get_entry(['train', 'experiment_name']))
         return self.__training
 
     def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
