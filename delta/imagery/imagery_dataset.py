@@ -132,19 +132,27 @@ class ImageryDataset:
         return tf.reshape(labels, [-1, self._output_size, self._output_size])
 
     def data(self):
+        """
+        Unbatched dataset of image chunks.
+        """
         # TODO: other types?
         ret = self._load_images(False, self._num_bands, tf.float32)
         ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
         return ret.unbatch()
 
     def labels(self):
+        """
+        Unbatched dataset of labels.
+        """
         label_set = self._load_images(True, 1, tf.uint8)
         label_set = label_set.map(self._reshape_labels)
 
         return label_set.unbatch()
 
     def dataset(self):
-        """Return the underlying TensorFlow dataset object that this class creates"""
+        """
+        Return the underlying TensorFlow dataset object that this class creates.
+        """
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
@@ -155,29 +163,39 @@ class ImageryDataset:
         return ds
 
     def num_bands(self):
-        """Return the number of bands in each image of the data set"""
+        """
+        Return the number of bands in each image of the data set.
+        """
         return self._num_bands
 
     def chunk_size(self):
-        return self._chunk_size
+        """
+        Size of chunks used for inputs.
+        """
     def output_size(self):
+        """
+        Output size of blocks of labels.
+        """
         return self._output_size
 
     def image_set(self):
+        """
+        Returns set of images.
+        """
         return self._images
     def label_set(self):
+        """
+        Returns set of label images.
+        """
         return self._labels
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
     def __init__(self, images, chunk_size, chunk_stride=1):
-        '''
-        AutoencoderDataset constructor.
-        @param images The images which are being used to create the autoencoder.
-        @param chunk_size The size of the square chucks the autoencoder is trained on.
-        @param chunk_stride The stride which are used for extracting chunks.
-        '''
+        """
+        The images are used as labels as well.
+        """
         super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
         self._labels = self._images
 

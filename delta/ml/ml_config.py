@@ -1,3 +1,7 @@
+"""
+Configuration options specific to machine learning.
+"""
+
 class ValidationSet:#pylint:disable=too-few-public-methods
     """
     Specifies the images and labels in a validation set.

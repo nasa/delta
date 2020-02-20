@@ -1,5 +1,5 @@
 """
-Support for TIFF imagery.
+Base class for loading images.
 """
 
 from abc import ABC, abstractmethod
@@ -10,19 +10,20 @@ import functools
 from delta.imagery import rectangle, utilities
 
 class DeltaImage(ABC):
-    """Base class used for wrapping input images in a way that they can be passed
-       to Tensorflow dataset objects.
+    """
+    Base class used for wrapping input images in a way that they can be passed
+    to Tensorflow dataset objects.
     """
     def __init__(self):
         self.__preprocess_function = None
 
     def read(self, roi=None, bands=None, buf=None):
         """
-        Reads in the requested region of the image.
+        Reads the image in [row, col, band] indexing.
 
-        If roi is not specified, reads the entire image.
-        If buf is specified, writes the image to buf.
-        If bands is not specified, reads all bands in [row, col, band] indexing. Otherwise
+        If `roi` is not specified, reads the entire image.
+        If `buf` is specified, writes the image to buf.
+        If `bands` is not specified, reads all bands, otherwise
         only the listed bands are read.
         If bands is a single integer, drops the band dimension.
         """
@@ -87,6 +88,9 @@ class DeltaImage(ABC):
                                            include_partials=True, overlap_amount=overlap)
 
     def roi_generator(self, requested_rois):
+        """
+        Generator that yields ROIs of blocks in the requested region.
+        """
         block_rois = copy.copy(requested_rois)
 
         whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
@@ -131,12 +135,12 @@ class DeltaImage(ABC):
                        (total_rois - num_remaining, total_rois))
 
     def process_rois(self, requested_rois, callback_function, show_progress=False):
-        '''
+        """
         Process the given region broken up into blocks using the callback function.
         Each block will get the image data from each input image passed into the function.
         Data reading takes place in a separate thread, but the callbacks are executed
         in a consistent order on a single thread.
-        '''
+        """
         for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
             callback_function(roi, buf)
             if show_progress:

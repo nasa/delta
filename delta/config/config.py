@@ -11,7 +11,7 @@ from delta.ml import ml_config
 
 #pylint: disable=W0108
 
-def recursive_update(d, u, ignore_new):
+def _recursive_update(d, u, ignore_new):
     """
     Like dict.update, but recursively updates only
     values that have changed in sub-dictionaries.
@@ -23,7 +23,7 @@ def recursive_update(d, u, ignore_new):
         if not isinstance(dv, collections.abc.Mapping):
             d[k] = v
         elif isinstance(v, collections.abc.Mapping):
-            d[k] = recursive_update(dv, v, ignore_new)
+            d[k] = _recursive_update(dv, v, ignore_new)
         else:
             d[k] = v
     return d
@@ -129,19 +129,22 @@ _CONFIG_ENTRIES = [
      'gpus', 'Number of gpus to use.'),
     (['general', 'threads'],           'threads',           int,          lambda x : x is None or x > 0,
      'threads', 'Number of threads to use.'),
-    (['general', 'block_size_mb'],     'block_size_mb',     int,          lambda x : x > 0, None, None),
-    (['general', 'interleave_images'], 'interleave_images', int,          lambda x : x > 0, None, None),
-    (['general', 'tile_ratio'],        'tile_ratio',        float,        lambda x : x > 0, None, None),
+    (['general', 'block_size_mb'],     'block_size_mb',     int,          lambda x : x > 0, None,
+     'Size of an image block to load in memory at once.'),
+    (['general', 'interleave_images'], 'interleave_images', int,          lambda x : x > 0, None,
+     'Number of images to interleave at a time when training.'),
+    (['general', 'tile_ratio'],        'tile_ratio',        float,        lambda x : x > 0, None,
+     'Width to height ratio of blocks to load in images.'),
     (['general', 'cache', 'dir'],      None,                str,          None,             None, None),
     (['general', 'cache', 'limit'],    None,                int,          lambda x : x > 0, None, None),
     (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0,
-     'chunk-size', 'Width of an image chunk to process at once.'),
+     'chunk-size', 'Width of an image chunk to input to the neural network.'),
     (['network', 'output_size'],       'output_size',        int,          lambda x: x > 0,
      'output-size', 'Width of an image chunk to output from the neural network.'),
     (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
      'classes', 'Number of label classes.'),
     (['network', 'model', 'yaml_file'], None,               str,          None,
-     'model_description', 'A YAML file holding a description of the network to train.'),
+     'model_description', 'A YAML file describing the network to train.'),
     (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
      'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
     (['train', 'epochs'],              None,                int,          lambda x: x > 0,
@@ -156,14 +159,22 @@ _CONFIG_ENTRIES = [
     (['train', 'validation', 'from_training'],        None, bool,         None,            None, None),
     (['train', 'experiment_name'],     None,                str,          None,            None, None),
     (['train', 'optimizer'],           None,                str,          None,            None, None),
-    (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None, None),
-    (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None, None),
-    (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None, None),
-    (['mlflow', 'checkpoints', 'frequency'], 'mlflow_checkpoint_freq', int,   None,            None, None),
-    (['mlflow', 'checkpoints', 'save_latest'], 'mlflow_checkpoint_latest', bool,   None,            None, None),
-    (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None, None),
-    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None, None),
-    (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None, None)
+    (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None,
+     'Enable MLFlow.'),
+    (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None,
+     'URI to store MLFlow data.'),
+    (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None,
+     'Frequency to store metrics to MLFlow.'),
+    (['mlflow', 'checkpoints', 'frequency'], 'mlflow_checkpoint_freq', int,   None,            None,
+     'Frequency in batches to store neural network checkpoints in MLFlow.'),
+    (['mlflow', 'checkpoints', 'save_latest'], 'mlflow_checkpoint_latest', bool,   None,            None,
+     'If true, only store the latest checkpoint.'),
+    (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None,
+     'Enable tensorboard.'),
+    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None,
+     'Directory to store tensorboard data.'),
+    (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None,
+     'Frequency of updates to tensorboard.')
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
@@ -171,7 +182,16 @@ _CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'images'], None))
 _CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'labels'], None))
 
 class DeltaConfig:
+    """
+    DELTA configuration manager.
+
+    Access and control all configuration parameters.
+    """
     def __init__(self):
+        """
+        Do not create a new instance, only the `delta.config.config`
+        singleton should be used.
+        """
         self.__config_dict = None
         self._cache_manager = None
         self.__images = None
@@ -189,18 +209,21 @@ class DeltaConfig:
         return a
 
     def export(self):
+        """
+        Returns a YAML string of all configuration options.
+        """
         return yaml.dump(self.__config_dict)
 
     def reset(self):
         """
-        Restores the config file to the default state specified in defaults.cfg.
+        Restores the config file to the default state specified in `delta/config/defaults.cfg`.
         """
         self._cache_manager = None
         self.__images = None
         self.__labels = None
         self.__training = None
         self.__config_dict = {}
-        self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
+        self._load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
         # set a few special defaults
         self.__config_dict['general']['cache']['dir'] = self._dirs.user_cache_dir
@@ -209,11 +232,14 @@ class DeltaConfig:
         self.__config_dict['tensorboard']['dir'] = \
                 os.path.join(self._dirs.user_data_dir, 'tensorboard')
 
-    def load(self, yaml_file=None, yaml_str=None, ignore_new=False):
+    def load(self, yaml_file=None, yaml_str=None):
         """
         Loads a config file, then updates the default configuration
-        with the loaded values. Can be passed as either a file or a string.
+        with the loaded values.
         """
+        self._load(yaml_file, yaml_str)
+
+    def _load(self, yaml_file=None, yaml_str=None, ignore_new=False):
         if yaml_file:
             if not os.path.exists(yaml_file):
                 raise Exception('Config file does not exist: ' + yaml_file)
@@ -242,7 +268,7 @@ class DeltaConfig:
                             d[k] = [normalize_path(item) for item in v]
         recursive_normalize(config_data)
 
-        self.__config_dict = recursive_update(self.__config_dict, config_data, ignore_new)
+        self.__config_dict = _recursive_update(self.__config_dict, config_data, ignore_new)
 
         # overwrite model entirely if updated (don't want combined layers from multiple files)
         if 'network' in config_data and 'model' in config_data['network']:
@@ -274,16 +300,27 @@ class DeltaConfig:
         return _config_to_image_label_sets(images, labels)
 
     def images(self):
+        """
+        Returns an `delta.imagery.sources.image_set.ImageSet` of the
+        training images.
+        """
         if self.__images is None:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__images
 
     def labels(self):
+        """
+        Returns an `delta.imagery.sources.image_set.ImageSet` of the
+        label images.
+        """
         if self.__labels is None:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
 
     def model_dict(self):
+        """
+        Returns a dictionary representing the network model for use by `delta.ml.model_parser`.
+        """
         model = self._get_entry(['network', 'model'])
         yaml_file = model['yaml_file']
         if yaml_file is not None:
@@ -300,6 +337,9 @@ class DeltaConfig:
         return model
 
     def training(self):
+        """
+        Returns the `delta.ml.ml_config.TrainingSpec` configuring training.
+        """
         if self.__training is not None:
             return self.__training
         from_training = self._get_entry(['train', 'validation', 'from_training'])
@@ -327,6 +367,14 @@ class DeltaConfig:
                 group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
     def setup_arg_parser(self, parser, general=True, images=True, labels=True, train=False):
+        """
+        Setup the ArgParser parser to allow the specified options.
+
+         * **general**: General options which don't fit in another group.
+         * **images**: Specify input images.
+         * **labels**: Specify labels corresponding to the images.
+         * **train**: Specify options for training a neural network.
+        """
         group = parser.add_argument_group('General')
         group.add_argument('--config', dest='config', action='append', required=False, default=[],
                            help='Load configuration file (can pass multiple times).')
@@ -349,6 +397,11 @@ class DeltaConfig:
             self.__add_arg_group(group, 'train')
 
     def parse_args(self, options):
+        """
+        Parse an options extracted from an ArgParser configured with
+        `setup_arg_parser` and override the appropriate
+        configuration values.
+        """
         for c in options.config:
             self.load(c)
 

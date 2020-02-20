@@ -1,3 +1,7 @@
+"""
+Load images given configuration.
+"""
+
 import functools
 
 import numpy as np
@@ -8,6 +12,9 @@ def _scale_preprocess(data, _, dummy, factor):#pylint:disable=unused-argument
     return data / np.float32(factor)
 
 def load(filename, image_type, preprocess=False):
+    """
+    Load an image of the appropriate type and parameters.
+    """
     if image_type == 'worldview':
         img = worldview.WorldviewImage(filename)
         if preprocess:
@@ -33,4 +40,7 @@ def load(filename, image_type, preprocess=False):
     return img
 
 def load_image(image_set, index):
+    """
+    Load the specified image in the ImageSet.
+    """
     return load(image_set[index], image_set.type(), preprocess=image_set.preprocess())

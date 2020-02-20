@@ -1,5 +1,5 @@
 """
-Functions to support reading data stored in the Binary Numpy format.
+Read data in numpy arrays.
 """
 
 import os

@@ -1,5 +1,5 @@
 """
-Functions to support the Landsat satellites.
+Read Landsat images.
 """
 
 import math

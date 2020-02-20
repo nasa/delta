@@ -1,5 +1,5 @@
 """
-Classify input images given a model.
+Run the MLFlow UI to visualize the history of training runs.
 """
 import os
 

@@ -1,20 +1,19 @@
 """
-Class to cap the number of unpacked images kept on disk at a fixed level.
+Caches large images.
 """
 import os
 
-
-#============================================================================
-# Classes
-
 class DiskCache:
-    """Class for caching folders and files on disk with limits on how much is kept.
-       It is safe to mix different datasets in the cache folder, though all items in
-       the folder will count towards the limit.
     """
-
+    Caches folders and files on disk with limits on how much is kept.
+    It is safe to mix different datasets in the cache folder, though all items in
+    the folder will count towards the limit.
+    """
     def __init__(self, top_folder, limit):
-
+        """
+        The top level folder to store cached items in and the number to store
+        are specified.
+        """
         if limit < 1:
             raise Exception('Illegal limit passed to Disk Cache: ' + str(limit))
 
@@ -30,18 +29,28 @@ class DiskCache:
         self._item_list = []
         self._update_items()
 
-
     def limit(self):
+        """
+        The number of items to store in the cache.
+        """
         return self._limit
 
     def folder(self):
+        """
+        The directory to store cached items in.
+        """
         return self._folder
 
     def num_cached(self):
+        """
+        The number of items currently cached.
+        """
         return len(self._item_list)
 
     def register_item(self, name):
-        """Register a new item with the cache manager and return the full path to it"""
+        """
+        Register a new item with the cache manager and return the full path to it.
+        """
 
         # If we already have the name just move it to the back of the list
         try:
@@ -67,8 +76,9 @@ class DiskCache:
 
 
     def _update_items(self):
-        """Update the list of all files and folders contained in the folder.
-           Currently these items are not ordered.
+        """
+        Update the list of all files and folders contained in the folder.
+        Currently these items are not ordered.
         """
 
         self._item_list = []
