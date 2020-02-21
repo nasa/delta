@@ -8,7 +8,7 @@ import zipfile
 import numpy as np
 import pytest
 
-from delta.imagery.sources import tiff, tfrecord
+from delta.imagery.sources import tiff
 
 def generate_tile(width=32, height=32, blocks=50):
     """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
@@ -47,18 +47,6 @@ def original_file():
     shutil.rmtree(tmpdir)
 
 @pytest.fixture(scope="session")
-def tfrecord_filenames(original_file):
-    tmpdir = tempfile.mkdtemp()
-    image_path = os.path.join(tmpdir, 'test.tfrecord')
-    label_path = os.path.join(tmpdir, 'test.tfrecordlabel')
-    tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[0]), [image_path], tile_size=(30, 30))
-    tfrecord.image_to_tfrecord(tiff.TiffImage(original_file[1]), [label_path], tile_size=(30, 30))
-
-    yield (image_path, label_path)
-
-    shutil.rmtree(tmpdir)
-
-@pytest.fixture(scope="session")
 def worldview_filenames(original_file):
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
@@ -88,8 +76,7 @@ def worldview_filenames(original_file):
 
     shutil.rmtree(tmpdir)
 
-NUM_SOURCES = 2
+NUM_SOURCES = 1
 @pytest.fixture(scope="session")
-def all_sources(tfrecord_filenames, worldview_filenames):
-    return [(tfrecord_filenames, '.tfrecord', 'tfrecord', '.tfrecordlabel', 'tfrecord'),
-            (worldview_filenames, '.zip', 'worldview', '_label.tiff', 'tiff')]
+def all_sources(worldview_filenames):
+    return [(worldview_filenames, '.zip', 'worldview', '_label.tiff', 'tiff')]

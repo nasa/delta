@@ -9,7 +9,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import rectangle
-from delta.imagery.sources import loader, tfrecord
+from delta.imagery.sources import loader
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -26,11 +26,7 @@ class ImageryDataset:
         self._output_size = output_size
         self._chunk_stride = chunk_stride
 
-        self._use_tfrecord = images.type() == 'tfrecord'
-
         if labels:
-            if self._use_tfrecord and labels.type() != 'tfrecord':
-                raise NotImplementedError('tfrecord images only supported with tfrecord labels.')
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
@@ -40,7 +36,6 @@ class ImageryDataset:
 
     def _load_tensor_imagery(self, is_labels, image_index, bbox):
         """Loads a single image as a tensor."""
-        assert not self._use_tfrecord
         image = loader.load_image(self._labels if is_labels else self._images, image_index.numpy())
         w = int(bbox[2])
         h = int(bbox[3])
@@ -85,24 +80,18 @@ class ImageryDataset:
         return tf.data.Dataset.from_generator(tile_generator,
                                               (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32))
 
-    def _load_images(self, is_labels, num_bands, data_type):
+    def _load_images(self, is_labels, data_type):
         """
         Loads a list of images as tensors.
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
-        if self._use_tfrecord:
-            ret = tfrecord.create_dataset(list(self._labels if is_labels else self._images),
-                                          num_bands, data_type, config.threads())
-            # ignore images that are too small to use
-            ret = ret.filter(lambda x: tf.shape(x)[0] >= self._chunk_size and tf.shape(x)[1] >= self._chunk_size)
-        else:
-            ds_input = self._tile_images()
-            def load_tile(image_index, x1, y1, x2, y2):
-                img = tf.py_function(functools.partial(self._load_tensor_imagery,
-                                                       is_labels),
-                                     [image_index, [x1, y1, x2, y2]], data_type)
-                return img
-            ret = ds_input.map(load_tile, num_parallel_calls=config.threads())
+        ds_input = self._tile_images()
+        def load_tile(image_index, x1, y1, x2, y2):
+            img = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                   is_labels),
+                                 [image_index, [x1, y1, x2, y2]], data_type)
+            return img
+        ret = ds_input.map(load_tile, num_parallel_calls=config.threads())
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -136,7 +125,7 @@ class ImageryDataset:
         Unbatched dataset of image chunks.
         """
         # TODO: other types?
-        ret = self._load_images(False, self._num_bands, tf.float32)
+        ret = self._load_images(False, tf.float32)
         ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
         return ret.unbatch()
 
@@ -144,7 +133,7 @@ class ImageryDataset:
         """
         Unbatched dataset of labels.
         """
-        label_set = self._load_images(True, 1, tf.uint8)
+        label_set = self._load_images(True, tf.uint8)
         label_set = label_set.map(self._reshape_labels)
 
         return label_set.unbatch()

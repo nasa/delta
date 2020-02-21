@@ -30,7 +30,6 @@ def _recursive_update(d, u, ignore_new):
 
 __DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                         'worldview' : '.zip',
-                        'tfrecord' : '.tfrecord',
                         'landsat' : '.zip',
                         'npy' : '.npy'}
 def __extension(conf):

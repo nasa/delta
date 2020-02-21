@@ -8,7 +8,7 @@ from tensorflow import keras
 
 from delta.config import config
 from delta.imagery import imagery_dataset
-from delta.imagery.sources import tfrecord, npy
+from delta.imagery.sources import npy
 from delta.ml import train, predict
 from delta.ml.ml_config import TrainingSpec
 
@@ -44,7 +44,7 @@ def load_dataset(source, output_size):
                                              config.training().chunk_stride)
     return dataset
 
-@pytest.fixture(scope="function", params=range(2))
+@pytest.fixture(scope="function", params=range(conftest.NUM_SOURCES))
 def dataset(all_sources, request):
     source = all_sources[request.param]
     return load_dataset(source, 1)
@@ -52,74 +52,6 @@ def dataset(all_sources, request):
 @pytest.fixture(scope="function")
 def dataset_block_label(all_sources):
     return load_dataset(all_sources[0], 3)
-
-def test_tfrecord_write(tfrecord_filenames):
-    """
-    Write and read from disks, but only reading full images, not chunked data
-    from ImageryDataset.
-    """
-    images = tfrecord.create_dataset([tfrecord_filenames[0]], 1, tf.float32)
-    labels = tfrecord.create_dataset([tfrecord_filenames[1]], 1, tf.uint8)
-    ds = tf.data.Dataset.zip((images, labels))
-    for value in ds.take(100):
-        image = tf.squeeze(value[0])
-        label = tf.squeeze(value[1])
-        assert image.shape == label.shape
-        for x in range(1, image.shape[0] - 1):
-            for y in range(1, image.shape[1] - 1):
-                if label[x][y]:
-                    assert image[x-1][y-1] == 1
-                    assert image[x-1][y  ] == 1
-                    assert image[x-1][y+1] == 1
-                    assert image[x  ][y-1] == 1
-                    assert image[x  ][y+1] == 1
-                    assert image[x+1][y-1] == 1
-                    assert image[x+1][y  ] == 1
-                    assert image[x+1][y+1] == 1
-                assert image[x][y] == 1 or image[x][y] == 0
-
-def test_tfrecord_write_read(dataset): #pylint: disable=redefined-outer-name
-    """
-    Writes and reads from disks, then checks if what is read is valid according to the
-    generation procedure.
-    """
-    num_data = 0
-    for image in dataset.data():
-        img = image.numpy()
-        assert img.dtype == np.float32
-        unique = np.unique(img)
-        assert (0 in unique or 1 in unique and len(unique) <= 2)
-        num_data += 1
-    num_label = 0
-    for label in dataset.labels():
-        num_label += 1
-    assert num_label == num_data
-
-    ds = dataset.dataset()
-    for (image, label) in ds.take(100):
-        if label:
-            assert image[0][0][0] == 1
-            assert image[0][1][0] == 1
-            assert image[0][2][0] == 1
-            assert image[1][0][0] == 1
-            assert image[1][2][0] == 1
-            assert image[2][0][0] == 1
-            assert image[2][1][0] == 1
-            assert image[2][2][0] == 1
-        v1 = image[0][0][0] == 0
-        v2 = image[0][1][0] == 0
-        v3 = image[0][2][0] == 0
-        if v1 or v2 or v3:
-            assert label == 0
-        v4 = image[1][0][0] == 0
-        v5 = image[1][2][0] == 0
-        if v4 or v5:
-            assert label == 0
-        v6 = image[2][0][0] == 0
-        v7 = image[2][1][0] == 0
-        v8 = image[2][2][0] == 0
-        if v6 or v7 or v8:
-            assert label == 0
 
 def test_block_label(dataset_block_label): #pylint: disable=redefined-outer-name
     """
