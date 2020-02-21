@@ -4,6 +4,7 @@ dictionaries.  Assumes that the names of the parameters for the layer constructo
 given in the Tensorflow API documentation.
 """
 import functools
+from typing import Callable
 
 import tensorflow
 import tensorflow.keras.models
@@ -46,13 +47,13 @@ def _make_model(model_dict, exposed_params):
     layer_objs = [_make_layer(l, params) for l in layer_list]
     return tensorflow.keras.models.Sequential(layer_objs)
 
-def model_from_dict(model_dict, exposed_params):
+def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
     Creates a function that returns a sequential model from a dictionary.
     """
     return functools.partial(_make_model, model_dict, exposed_params)
 
-def config_model(num_bands):
+def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
     Creates the model specified in the configuration.
     """

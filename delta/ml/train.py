@@ -130,7 +130,7 @@ def _mlflow_train_setup(model, dataset, training_spec):
 
     return _MLFlowCallback(temp_dir)
 
-def train(model_fn, dataset, training_spec):
+def train(model_fn, dataset : ImageryDataset, training_spec):
     """
     Trains the specified model on a dataset according to a training
     specification.

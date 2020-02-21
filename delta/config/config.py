@@ -208,13 +208,13 @@ class DeltaConfig:
             a = a[k]
         return a
 
-    def export(self):
+    def export(self) -> str:
         """
         Returns a YAML string of all configuration options.
         """
         return yaml.dump(self.__config_dict)
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Restores the config file to the default state specified in `delta/config/defaults.cfg`.
         """
@@ -232,7 +232,7 @@ class DeltaConfig:
         self.__config_dict['tensorboard']['dir'] = \
                 os.path.join(self._dirs.user_data_dir, 'tensorboard')
 
-    def load(self, yaml_file=None, yaml_str=None):
+    def load(self, yaml_file: str = None, yaml_str: str = None):
         """
         Loads a config file, then updates the default configuration
         with the loaded values.
@@ -288,7 +288,7 @@ class DeltaConfig:
             if e[3] and not e[3](v):
                 raise ValueError('Value %s for %s is invalid.' % (v, e[0][-1]))
 
-    def cache_manager(self):
+    def cache_manager(self) -> disk_folder_cache.DiskCache:
         if self._cache_manager is None:
             self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['general']['cache']['dir'],
                                                               self.__config_dict['general']['cache']['limit'])
@@ -299,25 +299,23 @@ class DeltaConfig:
         labels = self._get_entry(label_keys)
         return _config_to_image_label_sets(images, labels)
 
-    def images(self):
+    def images(self) -> image_set.ImageSet:
         """
-        Returns an `delta.imagery.sources.image_set.ImageSet` of the
-        training images.
+        Returns the training images.
         """
         if self.__images is None:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__images
 
-    def labels(self):
+    def labels(self) -> image_set.ImageSet:
         """
-        Returns an `delta.imagery.sources.image_set.ImageSet` of the
-        label images.
+        Returns the label images.
         """
         if self.__labels is None:
             (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
         return self.__labels
 
-    def model_dict(self):
+    def model_dict(self) -> dict:
         """
         Returns a dictionary representing the network model for use by `delta.ml.model_parser`.
         """
@@ -336,9 +334,9 @@ class DeltaConfig:
                 return yaml.safe_load(f)
         return model
 
-    def training(self):
+    def training(self) -> ml_config.TrainingSpec:
         """
-        Returns the `delta.ml.ml_config.TrainingSpec` configuring training.
+        Returns the options configuring training.
         """
         if self.__training is not None:
             return self.__training
@@ -366,7 +364,7 @@ class DeltaConfig:
             if e[0][0] == group_key and e[4] is not None:
                 group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
-    def setup_arg_parser(self, parser, general=True, images=True, labels=True, train=False):
+    def setup_arg_parser(self, parser, general=True, images=True, labels=True, train=False) -> None:
         """
         Setup the ArgParser parser to allow the specified options.
 
@@ -429,8 +427,8 @@ class DeltaConfig:
         return options
 
 # make accessor functions for DeltaConfig based on list
-def _create_accessor(key_list, name, doc):
-    def accessor(self):
+def _create_accessor(key_list, name, doc, return_type):
+    def accessor(self) -> return_type:
         return self._get_entry(key_list)#pylint:disable=protected-access
     accessor.__name__ = name
     accessor.__doc__ = doc
@@ -440,7 +438,7 @@ def __initialize_delta_config():
     for e in _CONFIG_ENTRIES:
         if e[1] is None:
             continue
-        _create_accessor(e[0], e[1], e[5])
+        _create_accessor(e[0], e[1], e[5], e[2])
 
 __initialize_delta_config()
 config = DeltaConfig()
