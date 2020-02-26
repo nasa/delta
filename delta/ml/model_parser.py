@@ -14,7 +14,7 @@ import tensorflow.keras.layers
 
 from delta.config import config
 
-def _pretrained_model(filename=None, encoding_layer=None):
+def _pretrained_model(filename=None, encoding_layer=None, trainable=False):
     '''
     Loads a pretrained model and extracts the enocoding layers.
     '''
@@ -27,11 +27,11 @@ def _pretrained_model(filename=None, encoding_layer=None):
     if isinstance(encoding_layer, int):
         break_point = lambda x, y: x == encoding_layer
     elif isinstance(encoding_layer, str):
-        break_point = lambda x, y: y == encoding_layer
+        break_point = lambda x, y: y.name == encoding_layer
 
     for idx, l in enumerate(temp_model.layers):
         output_layers.append(l)
-        output_layers[-1].trainable = False
+        output_layers[-1].trainable = trainable
         if break_point(idx, l):
             break
         ### end if
