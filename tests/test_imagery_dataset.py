@@ -97,12 +97,12 @@ def test_block_label(dataset_block_label): #pylint: disable=redefined-outer-name
 
 def test_train(dataset): #pylint: disable=redefined-outer-name
     def model_fn():
-        return keras.Sequential([
-            keras.layers.Flatten(input_shape=(3, 3, 1)),
-            keras.layers.Dense(3 * 3, activation=tf.nn.relu),
-            keras.layers.Dense(2, activation=tf.nn.softmax),
-            keras.layers.Reshape((1, 1, 2))
-            ])
+        kerasinput = keras.layers.Input((3, 3, 1))
+        flat = keras.layers.Flatten()(kerasinput)
+        dense2 = keras.layers.Dense(3 * 3, activation=tf.nn.relu)(flat)
+        dense1 = keras.layers.Dense(2, activation=tf.nn.softmax)(dense2)
+        reshape = keras.layers.Reshape((1, 1, 2))(dense1)
+        return keras.Model(inputs=kerasinput, outputs=reshape)
     model, _ = train.train(model_fn, dataset,
                            TrainingSpec(100, 5, 'sparse_categorical_crossentropy'))
     ret = model.evaluate(x=dataset.dataset().batch(1000))

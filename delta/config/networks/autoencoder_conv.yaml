@@ -1,6 +1,6 @@
 layers:
-  - InputLayer:
-      input_shape: in_shape
+  - Input:
+      shape: in_shape
   - Conv2D:
       filters: 300
       kernel_size: [3, 3]

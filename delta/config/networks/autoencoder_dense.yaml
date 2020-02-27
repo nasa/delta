@@ -1,4 +1,6 @@
 layers:
+  - Input:
+      shape: in_shape
   - Flatten:
       input_shape: in_shape
   - Dense:

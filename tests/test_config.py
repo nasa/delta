@@ -89,7 +89,7 @@ def test_model_from_dict():
 
     assert model.input_shape[1:] == input_shape
     assert model.output_shape[1] == output_shape
-    assert len(model.layers) == 3
+    assert len(model.layers) == 4 # Input layer is added behind the scenes
 
 def test_network_file():
     config.reset()

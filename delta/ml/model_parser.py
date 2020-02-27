@@ -12,17 +12,53 @@ import tensorflow.keras.layers
 
 from delta.config import config
 
-def _layer_func(layer_type):
-    """
-    Gets the class object from the keras layers for the specified layer type.
-    """
-    return getattr(tensorflow.keras.layers, layer_type)
+class _LayerWrapper:
+    def __init__(self, layer_type, layer_name, inputs, params):
+        self._layer_type = layer_type
+        self._layer_name = layer_name
+        self._inputs = inputs
+        layer_class = getattr(tensorflow.keras.layers, self._layer_type)
+        self._layer_constructor = layer_class(**params)
+        self._layer = None
 
-def _make_layer(layer_dict, param_dict):
+    def is_input(self):
+        return self._layer_type == 'Input'
+
+    # TODO: will crash if there is a cycle in the graph
+    def layer(self, layer_dict):
+        """
+        Constructs the layers with preceding layers as inputs. layer_dict is a name
+        indexed dictionary of LayerWrappers for all the layers.
+        """
+        if self._layer is not None:
+            return self._layer
+        inputs = []
+        for k in self._inputs:
+            if isinstance(k, tensorflow.Tensor):
+                inputs.append(k)
+                continue
+            if k not in layer_dict:
+                raise ValueError('Input layer ' + str(k) + ' not found.')
+            inputs.append(layer_dict[k].layer(layer_dict))
+        if inputs:
+            if len(inputs) == 1:
+                inputs = inputs[0]
+            self._layer = self._layer_constructor(inputs)
+        else:
+            self._layer = self._layer_constructor
+        return self._layer
+
+def _make_layer(layer_dict, layer_id, param_dict):
     """
     Constructs a layer specified in layer_dict, possibly using parameters specified in
-    param_dict.  Assumes layer_dict only contains the properly named parameters for constructing
-    the layer, and the additional field 'type', that specifies the type of keras layer.
+    param_dict.  layer_id is the order in the order in the config file.
+    Assumes layer_dict only contains the properly named parameters for constructing
+    the layer, and the additional fields:
+
+     * `type`: the type of keras layer.
+     * `name` (optional): a name to refer to the layer by
+     * `inputs` (optional): the name or a list of names of
+       the preceding layers (defaults to previous in list)
     """
     if len(layer_dict.keys()) > 1:
         raise ValueError('Layer with multiple types.')
@@ -35,7 +71,19 @@ def _make_layer(layer_dict, param_dict):
         if isinstance(v, str) and v in param_dict.keys():
             l[k] = param_dict[v]
 
-    return _layer_func(layer_type)(**l)
+    inputs = [layer_id - 1]
+    if layer_type == 'Input':
+        inputs = []
+    if 'name' in l:
+        layer_id = l['name']
+        del l['name']
+    if 'inputs' in l:
+        inputs = l['inputs']
+        del l['inputs']
+        if isinstance(inputs, (int, str)):
+            inputs = [inputs]
+
+    return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
 
 def _make_model(model_dict, exposed_params):
     layer_list = model_dict['layers']
@@ -44,8 +92,23 @@ def _make_model(model_dict, exposed_params):
         defined_params = model_dict['params']
 
     params = {**exposed_params, **defined_params}
-    layer_objs = [_make_layer(l, params) for l in layer_list]
-    return tensorflow.keras.models.Sequential(layer_objs)
+    layer_dict = {}
+    last = None
+    first_layer_type = next(layer_list[0].keys().__iter__())
+    if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
+        layer_list = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
+    #if layer_list[0]['type'] != 'Input' and 'input' not in layer_list[0]:
+    for (i, l) in enumerate(layer_list):
+        (layer_id, layer) = _make_layer(l, i, params)
+        last = layer
+        layer_dict[layer_id] = layer
+
+    outputs = last.layer(layer_dict)
+    inputs = [l.layer(layer_dict) for l in layer_dict.values() if l.is_input()]
+
+    if len(inputs) == 1:
+        inputs = inputs[0]
+    return tensorflow.keras.models.Model(inputs=inputs, outputs=outputs)
 
 def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras.models.Sequential]:
     """

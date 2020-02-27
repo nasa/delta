@@ -144,7 +144,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         model.compile(optimizer=training_spec.optimizer, loss=training_spec.loss_function,
                       metrics=training_spec.metrics)
 
-    input_shape = model.layers[0].input_shape
+    input_shape = model.layers[0].input_shape[0]
     output_shape = model.layers[-1].output_shape
     chunk_size = input_shape[1]
 
