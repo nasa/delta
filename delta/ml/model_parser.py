@@ -12,12 +12,18 @@ import tensorflow.keras.layers
 
 from delta.config import config
 
+from . import layers
+
 class _LayerWrapper:
     def __init__(self, layer_type, layer_name, inputs, params):
         self._layer_type = layer_type
         self._layer_name = layer_name
         self._inputs = inputs
-        layer_class = getattr(tensorflow.keras.layers, self._layer_type)
+        layer_class = getattr(tensorflow.keras.layers, self._layer_type, None)
+        if layer_class is None:
+            layer_class = getattr(layers, self._layer_type, None)
+        if layer_class is None:
+            raise ValueError('Unknown layer type %s.' % (self._layer_type))
         self._layer_constructor = layer_class(**params)
         self._layer = None
 
@@ -76,7 +82,6 @@ def _make_layer(layer_dict, layer_id, param_dict):
         inputs = []
     if 'name' in l:
         layer_id = l['name']
-        del l['name']
     if 'inputs' in l:
         inputs = l['inputs']
         del l['inputs']

@@ -11,6 +11,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
+from . import losses
 
 def _devices(num_gpus):
     '''
@@ -140,12 +141,19 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         model = model_fn()
         assert isinstance(model, tf.keras.models.Model),\
                "Model is not a Tensorflow Keras model"
+        loss = training_spec.loss_function
+        if loss in losses.ALL_LOSSES:
+            loss_list = losses.ALL_LOSSES[loss](model)
+            for (l, name) in loss_list:
+                model.add_loss(l)
+                model.add_metric(l, name=name, aggregation='mean')
+            loss = None
         # TODO: specify learning rate and optimizer parameters, change learning rate over time
-        model.compile(optimizer=training_spec.optimizer, loss=training_spec.loss_function,
+        model.compile(optimizer=training_spec.optimizer, loss=loss,
                       metrics=training_spec.metrics)
 
-    input_shape = model.layers[0].input_shape[0]
-    output_shape = model.layers[-1].output_shape
+    input_shape = model.get_input_at(0).shape
+    output_shape = model.get_output_at(0).shape
     chunk_size = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.' # TODO: Hard coding 4 a bad idea?
