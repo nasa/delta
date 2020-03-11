@@ -1,47 +1,58 @@
-# DELTA
-
 DELTA (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery.
 
-It is currently under active development.
+DELTA is currently under active development by the [NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/).
 
 ## Installation
 
-1. Run ./scripts/setup.sh to install DELTA's dependencies in Ubuntu.
-2. From the top directory, run `pip install --user -e .` to install for your user in
+1. Install python3 and GDAL. In Ubuntu, you can run `./scripts/setup.sh` to do this (GDAL in the Ubuntu package manager is / was broken).
+2. From the top directory, containing `setup.py`, run `pip install --user -e .` to install for your user in
 editable mode (linking to this directory). This will also install all dependencies with pip.
 
-Note that DELTA requires python3 and tensorflow2.
+## Using DELTA
 
-## Tools
+### Training
 
-### Machine Learning Tools
+Train a neural network with::
 
-`classify.py` - Classify and display a single image given a neural network.
+```
+  delta train [ --config config.yaml ... ] output.h5
+```
 
-`train_task_specific.py` - Train a classifier from a set of imagery and labels.
+Both images and corresponding labels must be specified. The trained network will attempt to map the input images
+to the given labels. 
 
-`convert_input_image_folder.py` - Convert input images into a .tfrecord format that other DELTA tools will read.  Converts all images in a folder to the output folder.  Sample call:
+### Classification
 
-> `python bin/convert_input_image_folder.py --input-folder data/delta/worldview/  --output-folder data/delta/worldview_tfrecord  --image-type worldview  --num-processes 2  --mix-outputs`
+Classify an image using a previously trained neural network with::
 
-`train_autoencoder.py` - Train an autoencoder network from tfrecord inputs.  All of the inputs to this are defined in a configuration file, see the sample config file for details.  Sample call:
+```
+  delta classify [ --config config.yaml ... ] output.h5
+```
 
-> `python bin/train_autoencoder.py --config-file sample_config.txt`
+For each input image, a tiff file with the extension `_predicted.tiff` will
+be output. If labels are also provided, an error image showing incorrectly labeled
+pixels and a confusion matrix pdf file will be generated as well.
 
-### Data Fetching Tools
+### MLFlow
 
-`fetch_hdds_images.py` - Use to programmatically fetch WorldView images from the USGS HDDS dataset.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
+DELTA integrates with [MLFlow](http://mlflow.org) to track training. MLFlow options can
+be specified in the corresponding area of the configuration file. By default, training and
+validation metrics are logged, along with all configuration parameters. The most recent neural
+network is saved to a file when the training program is interrupted or completes.
 
+View all the logged training information through mlflow by running::
 
-`get_landsat_dswe_labels.py`  - Use to programmatically fetch DSWE from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer login.
+```
+  delta mlflow_ui
+```
 
+and navigating to the printed URL in a browser.
 
-`get_landsat_support_files.py` - Use to programmatically fetch SRTM files from the USGS that correspond to a given landsat file.  Requires special (machine to machine) privileges from the website as well as an EarthExplorer AND URS login.
+## Configuration Files
 
+DELTA is configured with YAML files. Some options can be overwritten with command line options (use `--help` to see which).
 
-# Example Use Cases
+All available configuration options and their default values are shown [here](./delta/config/delta.yaml).
+We suggest that users create one reusable configuration file to describe each dataset, and a separate configuration file to train
+on or classify that dataset.
 
-Train a classifier on a dataset.  First specify a config file, `your_config.yaml'
-
-> `bin/delta train --config $PATH_TO_CONFIG/your_config.yaml name_of_model.h5`
->>>>>>> develop

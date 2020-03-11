@@ -1,28 +1,32 @@
 """
-Support for TIFF imagery.
+Base class for loading images.
 """
 
 from abc import ABC, abstractmethod
 import concurrent.futures
 import copy
 import functools
+from typing import Callable, Iterator, List, Tuple
+
+import numpy as np
 
 from delta.imagery import rectangle, utilities
 
 class DeltaImage(ABC):
-    """Base class used for wrapping input images in a way that they can be passed
-       to Tensorflow dataset objects.
+    """
+    Base class used for wrapping input images in a way that they can be passed
+    to Tensorflow dataset objects.
     """
     def __init__(self):
         self.__preprocess_function = None
 
-    def read(self, roi=None, bands=None, buf=None):
+    def read(self, roi: rectangle.Rectangle=None, bands: List[int]=None, buf: np.ndarray=None) -> np.ndarray:
         """
-        Reads in the requested region of the image.
+        Reads the image in [row, col, band] indexing.
 
-        If roi is not specified, reads the entire image.
-        If buf is specified, writes the image to buf.
-        If bands is not specified, reads all bands in [row, col, band] indexing. Otherwise
+        If `roi` is not specified, reads the entire image.
+        If `buf` is specified, writes the image to buf.
+        If `bands` is not specified, reads all bands, otherwise
         only the listed bands are read.
         If bands is a single integer, drops the band dimension.
         """
@@ -43,7 +47,7 @@ class DeltaImage(ABC):
             return self.__preprocess_function(result, roi, bands)
         return result
 
-    def set_preprocess(self, callback):
+    def set_preprocess(self, callback: Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]) -> None:
         """
         Set a preproprocessing function callback to be applied to the results of all reads on the image.
 
@@ -61,32 +65,36 @@ class DeltaImage(ABC):
         """
 
     @abstractmethod
-    def size(self):
+    def size(self) -> Tuple[int, int]:
         """Return the size of this image in pixels, as (width, height)."""
 
     @abstractmethod
-    def num_bands(self):
+    def num_bands(self) -> int:
         """Return the number of bands in the image."""
 
-    def block_aligned_roi(self, desired_roi):#pylint:disable=no-self-use
+    def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -> rectangle.Rectangle:#pylint:disable=no-self-use
         """Return the block-aligned roi containing this image region, if applicable."""
         return desired_roi
 
-    def width(self):
+    def width(self) -> int:
         """Return the number of columns."""
         return self.size()[0]
 
-    def height(self):
+    def height(self) -> int:
         """Return the number of rows."""
         return self.size()[1]
 
-    def tiles(self, width, height, min_width=0, min_height=0, overlap=0):
+    def tiles(self, width: int, height: int, min_width: int=0, min_height: int=0,
+              overlap: int=0) -> Iterator[rectangle.Rectangle]:
         """Generator to yield ROIs for the image."""
         input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return input_bounds.make_tile_rois(width, height, min_width=min_width, min_height=min_height,
                                            include_partials=True, overlap_amount=overlap)
 
-    def roi_generator(self, requested_rois):
+    def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -> Iterator[rectangle.Rectangle]:
+        """
+        Generator that yields ROIs of blocks in the requested region.
+        """
         block_rois = copy.copy(requested_rois)
 
         whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
@@ -130,13 +138,15 @@ class DeltaImage(ABC):
                 yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
                        (total_rois - num_remaining, total_rois))
 
-    def process_rois(self, requested_rois, callback_function, show_progress=False):
-        '''
+    def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
+                     callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
+                     show_progress: bool=False) -> None:
+        """
         Process the given region broken up into blocks using the callback function.
         Each block will get the image data from each input image passed into the function.
         Data reading takes place in a separate thread, but the callbacks are executed
         in a consistent order on a single thread.
-        '''
+        """
         for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
             callback_function(roi, buf)
             if show_progress:

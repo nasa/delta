@@ -1,3 +1,8 @@
+"""
+Module to run prediction according to learned neural networks
+on images.
+"""
+
 from abc import ABC, abstractmethod
 import numpy as np
 
@@ -69,7 +74,11 @@ class Predictor(ABC):
         return retval
 
     def predict(self, image, label=None, input_bounds=None):
-        """Like predict but returns (predicted image, error image, percent correct)."""
+        """
+        Runs the model on `image`, comparing the results to `label` if specified.
+        Results are limited to `input_bounds`. Returns output, the meaning of which
+        depends on the subclass.
+        """
         TILE_SIZE = 256
         net_input_shape = self._model.get_input_shape_at(0)[1:]
         net_output_shape = self._model.get_output_shape_at(0)[1:]
@@ -151,12 +160,21 @@ class LabelPredictor(Predictor):
             self._confusion_matrix[:, :] += cm
 
     def output(self):
+        """
+        Returns an image of integer pixel labels.
+        """
         return self._buffer
 
     def confusion_matrix(self):
+        """
+        Returns a matrix counting true labels matched to predicted labels.
+        """
         return self._confusion_matrix
 
     def errors(self):
+        """
+        Returns an image showing where prediction was incorrect.
+        """
         return self._errors
 
 class ImagePredictor(Predictor):

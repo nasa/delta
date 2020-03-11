@@ -1,5 +1,5 @@
 """
-Classes for block-aligned reading from multiple Geotiff files.
+Block-aligned reading from multiple Geotiff files.
 """
 import os
 import math

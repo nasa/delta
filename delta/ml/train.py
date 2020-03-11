@@ -1,3 +1,7 @@
+"""
+Train neural networks.
+"""
+
 import os
 import tempfile
 import shutil
@@ -75,9 +79,12 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Model Layers', len(model.layers))
     mlflow.log_param('Status', 'Running')
 
-class MLFlowCallback(tf.keras.callbacks.Callback):
+class _MLFlowCallback(tf.keras.callbacks.Callback):
+    """
+    Callback to log everything for MLFlow.
+    """
     def __init__(self, temp_dir):
-        super(MLFlowCallback, self).__init__()
+        super(_MLFlowCallback, self).__init__()
         self.epoch = 0
         self.batch = 0
         self.temp_dir = temp_dir
@@ -121,12 +128,13 @@ def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.log_artifact(fname)
     os.remove(fname)
 
-    return MLFlowCallback(temp_dir)
+    return _MLFlowCallback(temp_dir)
 
-def train(model_fn, dataset, training_spec):
-    '''
-    Trains the specified model given the images, corresponding labels, and training specification.
-    '''
+def train(model_fn, dataset : ImageryDataset, training_spec):
+    """
+    Trains the specified model on a dataset according to a training
+    specification.
+    """
     # TODO: Check that this checks the training spec for desired devices to run on.
     with _strategy(_devices(config.gpus())).scope():
         model = model_fn()
@@ -181,8 +189,8 @@ def train(model_fn, dataset, training_spec):
         if config.mlflow_enabled():
             mlflow.log_param('Epoch', mcb.epoch)
             mlflow.log_param('Batch', mcb.batch)
-        if mcb and mcb.temp_dir:
-            shutil.rmtree(mcb.temp_dir)
+            if mcb and mcb.temp_dir:
+                shutil.rmtree(mcb.temp_dir)
 
     if config.mlflow_enabled():
         mlflow.end_run()

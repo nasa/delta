@@ -1,3 +1,7 @@
+"""
+Lists all avaiable commands.
+"""
+
 from . import classify, train, mlflow_ui
 
 SETUP_COMMANDS = [train.setup_parser,

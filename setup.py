@@ -34,7 +34,8 @@ setuptools.setup(
         'tensorflow>=2.1',
         'mlflow',
         'portalocker',
-        'appdirs'
+        'appdirs',
+        'gdal'
     ],
     scripts=scripts,
     include_package_data = True,

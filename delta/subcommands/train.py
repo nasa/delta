@@ -1,3 +1,7 @@
+"""
+Train a neural network.
+"""
+
 import sys
 
 from delta.config import config
