@@ -208,13 +208,11 @@ def test_tensorboard():
     tensorboard:
       enabled: false
       dir: nonsense
-      frequency: 5
     '''
     config.load(yaml_str=test_str)
 
     assert not config.tb_enabled()
     assert config.tb_dir() == 'nonsense'
-    assert config.tb_freq() == 5
 
 def test_argparser():
     config.reset()

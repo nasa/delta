@@ -171,9 +171,7 @@ _CONFIG_ENTRIES = [
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None,
      'Enable tensorboard.'),
     (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None,
-     'Directory to store tensorboard data.'),
-    (['tensorboard', 'frequency'], 'tb_freq',         int,                lambda x: x > 0, None,
-     'Frequency of updates to tensorboard.')
+     'Directory to store tensorboard data.')
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
 _CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))

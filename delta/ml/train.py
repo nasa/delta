@@ -11,7 +11,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
-from . import losses
+from .layers import DeltaLayer
 
 def _devices(num_gpus):
     '''
@@ -142,12 +142,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         assert isinstance(model, tf.keras.models.Model),\
                "Model is not a Tensorflow Keras model"
         loss = training_spec.loss_function
-        if loss in losses.ALL_LOSSES:
-            loss_list = losses.ALL_LOSSES[loss](model)
-            for (l, name) in loss_list:
-                model.add_loss(l)
-                model.add_metric(l, name=name, aggregation='mean')
-            loss = None
         # TODO: specify learning rate and optimizer parameters, change learning rate over time
         model.compile(optimizer=training_spec.optimizer, loss=loss,
                       metrics=training_spec.metrics)
@@ -166,9 +160,18 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
 
     callbacks = []
+    # add callbacks from DeltaLayers
+    for l in model.layers:
+        if isinstance(l, DeltaLayer):
+            c = l.callback()
+            if c:
+                callbacks.append(c)
     if config.tb_enabled():
         tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
-                                             update_freq=config.tb_freq())
+                                             update_freq='epoch',
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
         callbacks.append(tcb)
 
     if config.mlflow_enabled():

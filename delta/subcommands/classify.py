@@ -11,6 +11,7 @@ from delta.config import config
 from delta.imagery.sources import tiff
 from delta.imagery.sources import loader
 from delta.ml import predict
+import delta.ml.layers
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
@@ -45,7 +46,7 @@ def save_confusion(cm, filename):
     f.savefig(filename)
 
 def main(options):
-    model = tf.keras.models.load_model(options.model)
+    model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
 
     colors = np.array([[0x0, 0x0, 0x0],
                        [0x67, 0xa9, 0xcf],
