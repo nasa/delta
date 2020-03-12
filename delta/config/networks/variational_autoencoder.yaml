@@ -4,31 +4,53 @@ layers:
   - Conv2D:
       filters: 300
       kernel_size: [3, 3]
-      activation: relu
       padding: same
+      use_bias: false
+  - BatchNormalization:
+  - Activation:
+      activation: relu
   - MaxPooling2D:
       pool_size: [2, 2]
+  - Dropout:
+       rate: 0.3
   - Conv2D:
       filters: 150
       kernel_size: [3, 3]
-      activation: relu
       padding: same
+      use_bias: false
+  - BatchNormalization:
+  - Activation:
+      activation: relu
   - MaxPooling2D:
       pool_size: [2, 2]
+  - Dropout:
+       rate: 0.3
+  - Conv2D:
+      filters: 75
+      kernel_size: [3, 3]
+      padding: same
+      use_bias: false
+  - BatchNormalization:
+  - Activation:
+      activation: relu
       name: last_down
-  - Conv2D:
-      filters: 75
-      kernel_size: [3, 3]
-      activation: linear
-      padding: same
+  - Dense:
+      units: 75
       inputs: last_down
+      use_bias: false
+  - BatchNormalization:
+  - ReLU:
+      threshold: -10.0
+      max_value: 10.0
       name: mean
-  - Conv2D:
-      filters: 75
-      kernel_size: [3, 3]
-      activation: linear
-      padding: same
+  - Dense:
+      units: 75
       inputs: last_down
+      use_bias: false
+  - BatchNormalization:
+  - ReLU:
+      threshold: -10.0
+      max_value: 10.0
       name: log_var
   - GaussianSample:
       inputs: [mean, log_var]
@@ -37,8 +59,13 @@ layers:
   - Conv2D:
       filters: 150
       kernel_size: [3, 3]
-      activation: relu
       padding: same
+      use_bias: false
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Dropout:
+       rate: 0.3
   - UpSampling2D:
       size: [2, 2]
   - Conv2D:

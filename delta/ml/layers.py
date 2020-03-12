@@ -45,6 +45,9 @@ class GaussianSample(DeltaLayer):
             kl_loss = K.sum(kl_loss, axis=-1)
             kl_loss = 0.5 * K.mean(kl_loss)
 
+            # reduce relative weight compared to mean squared error
+            kl_loss /= batch * dim[0] * dim[1] * dim[2]
+
             kl_loss *= self._kl_enabled
 
             self.add_loss(kl_loss)
