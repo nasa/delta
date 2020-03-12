@@ -1,0 +1,12 @@
+layers:
+  - Pretrained:
+       filename: /home/pfurlong/models/2020-02-11-conv-ae-worldview.h5
+       encoding_layer: 5
+  - Flatten:
+  - Dense:
+       units: out_dims
+       activation: linear
+  - Reshape:
+       target_shape: out_shape
+  - Softmax:
+       axis: 3

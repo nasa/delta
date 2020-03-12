@@ -1,10 +1,13 @@
 import argparse
 import os
+import tempfile
 import pytest
 import yaml
 
 from delta.config import config
 from delta.ml import model_parser
+
+#pylint: disable=import-outside-toplevel
 
 def test_general():
     config.reset()
@@ -90,6 +93,58 @@ def test_model_from_dict():
     assert model.input_shape[1:] == input_shape
     assert model.output_shape[1] == output_shape
     assert len(model.layers) == 3
+
+def test_pretrained_layer():
+    import tensorflow as tf
+    config.reset()
+    base_model = '''
+    params:
+        v1 : 10
+    layers:
+    - Flatten:
+        input_shape: in_shape
+    - Dense:
+        units: v1
+        activation : relu
+        name: encoding
+    - Dense:
+        units: out_shape
+        activation : softmax
+    '''
+    input_shape = (17, 17, 8)
+    output_shape = 3
+    params_exposed = { 'out_shape' : output_shape, 'in_shape' : input_shape}
+    m1 = model_parser.model_from_dict(yaml.safe_load(base_model), params_exposed)()
+    m1.compile(optimizer='adam', loss='mse')
+    _, tmp_filename = tempfile.mkstemp(suffix='.h5')
+
+    tf.keras.models.save_model(m1, tmp_filename)
+
+    pretrained_model = '''
+    params:
+        v1 : 10
+    layers:
+    - Pretrained:
+        filename: %s 
+        encoding_layer: encoding
+    - Dense:
+        units: 100
+        activation: relu 
+    - Dense:
+        units: out_shape
+        activation: softmax
+    ''' % tmp_filename
+    m2 = model_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
+    m2.compile(optimizer='adam', loss='mse')
+    assert len(m2.layers[0].layers) == (len(m1.layers) - 1)
+    for i in range(len(m1.layers)):
+        assert isinstance(m1.layers[i], type(m2.layers[0].layers[i]))
+        if m1.layers[i].name == 'encoding':
+            break
+    ### end for
+    os.remove(tmp_filename)
+
+
 
 def test_network_file():
     config.reset()
