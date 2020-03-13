@@ -2,6 +2,7 @@
 DELTA specific network layers.
 """
 
+import tensorflow.keras.models
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.callbacks import Callback
@@ -55,6 +56,29 @@ class GaussianSample(DeltaLayer):
 
         return result
 
+def pretrained_model(filename, encoding_layer, trainable=False, **kwargs):
+    '''
+    Loads a pretrained model and extracts the enocoding layers.
+    '''
+    assert filename is not None, 'Did not specify pre-trained model.'
+    assert encoding_layer is not None, 'Did not specify encoding layer point.'
+
+    temp_model = tensorflow.keras.models.load_model(filename, compile=False)
+
+    output_layers = []
+    if isinstance(encoding_layer, int):
+        break_point = lambda x, y: x == encoding_layer
+    elif isinstance(encoding_layer, str):
+        break_point = lambda x, y: y.name == encoding_layer
+
+    for idx, l in enumerate(temp_model.layers):
+        output_layers.append(l)
+        output_layers[-1].trainable = trainable
+        if break_point(idx, l):
+            break
+    return tensorflow.keras.models.Sequential(output_layers, **kwargs)
+
 ALL_LAYERS = {
-    'GaussianSample' : GaussianSample
+    'GaussianSample' : GaussianSample,
+    'Pretrained' : pretrained_model
 }

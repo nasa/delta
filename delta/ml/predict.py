@@ -137,7 +137,12 @@ class LabelPredictor(Predictor):
         else:
             self._errors = None
             self._confusion_matrix = None
-        self._buffer = np.zeros(shape, dtype=np.float32)
+        if self._probabilities:
+            self._buffer = np.zeros(shape + (self._num_classes, ), dtype=np.float32)
+        else:
+            self._buffer = np.zeros(shape, dtype=np.int8)
+        #buffer_shape = shape + (self._num_classes, ) if self._probabilities else shape
+        #self._buffer = np.zeros(buffer_shape, dtype=np.float32)
 
     def _process_block(self, pred_image, x, y, labels):
         if self._probabilities:

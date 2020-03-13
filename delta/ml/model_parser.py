@@ -20,8 +20,8 @@ class _LayerWrapper:
         self._layer_name = layer_name
         self._inputs = inputs
         layer_class = getattr(tensorflow.keras.layers, self._layer_type, None)
-        if layer_class is None:
-            layer_class = getattr(layers, self._layer_type, None)
+        if layer_class is None and self._layer_type in layers.ALL_LAYERS:
+            layer_class = layers.ALL_LAYERS[self._layer_type]
         if layer_class is None:
             raise ValueError('Unknown layer type %s.' % (self._layer_type))
         self._layer_constructor = layer_class(**params)
@@ -39,6 +39,8 @@ class _LayerWrapper:
         if self._layer is not None:
             return self._layer
         inputs = []
+        print(self._inputs)
+        print(layer_dict)
         for k in self._inputs:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
@@ -54,7 +56,7 @@ class _LayerWrapper:
             self._layer = self._layer_constructor
         return self._layer
 
-def _make_layer(layer_dict, layer_id, param_dict):
+def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
     """
     Constructs a layer specified in layer_dict, possibly using parameters specified in
     param_dict.  layer_id is the order in the order in the config file.
@@ -77,7 +79,7 @@ def _make_layer(layer_dict, layer_id, param_dict):
         if isinstance(v, str) and v in param_dict.keys():
             l[k] = param_dict[v]
 
-    inputs = [layer_id - 1]
+    inputs = [prev_layer]
     if layer_type == 'Input':
         inputs = []
     if 'name' in l:
@@ -88,6 +90,7 @@ def _make_layer(layer_dict, layer_id, param_dict):
         if isinstance(inputs, (int, str)):
             inputs = [inputs]
 
+    print(layer_id, inputs)
     return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
 
 def _make_model(model_dict, exposed_params):
@@ -103,10 +106,12 @@ def _make_model(model_dict, exposed_params):
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
         layer_list = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
     #if layer_list[0]['type'] != 'Input' and 'input' not in layer_list[0]:
+    prev_layer = 0
     for (i, l) in enumerate(layer_list):
-        (layer_id, layer) = _make_layer(l, i, params)
+        (layer_id, layer) = _make_layer(l, i, prev_layer, params)
         last = layer
         layer_dict[layer_id] = layer
+        prev_layer = layer_id
 
     outputs = last.layer(layer_dict)
     inputs = [l.layer(layer_dict) for l in layer_dict.values() if l.is_input()]

@@ -6,3 +6,5 @@ data/
 mlruns
 .coverage
 htmlcov
+/scripts/my_tests/
+.idea/
