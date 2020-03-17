@@ -44,7 +44,9 @@ def __find_images(conf, matching_images=None, matching_conf=None):
     '''
     images = []
     if (conf['files'] is None) != (conf['file_list'] is None) != (conf['directory'] is None):
-        raise  ValueError('Too many image specification methods used.')
+        raise  ValueError('''Too many image specification methods used.\n
+                             Choose one of "files", "file_list" and "directory" when indicating 
+                             file locations.''')
     if conf['type'] not in __DEFAULT_EXTENSIONS:
         raise ValueError('Unexpected image type %s.' % (conf['type']))
 
