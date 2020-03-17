@@ -39,8 +39,6 @@ class _LayerWrapper:
         if self._layer is not None:
             return self._layer
         inputs = []
-        print(self._inputs)
-        print(layer_dict)
         for k in self._inputs:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
@@ -90,7 +88,6 @@ def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
         if isinstance(inputs, (int, str)):
             inputs = [inputs]
 
-    print(layer_id, inputs)
     return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
 
 def _make_model(model_dict, exposed_params):
