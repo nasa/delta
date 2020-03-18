@@ -288,6 +288,7 @@ class TiffWriter:
         self._height = height
         self._tile_height = tile_height
         self._tile_width  = tile_width
+        self._handle = None
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
@@ -371,3 +372,18 @@ class TiffWriter:
         assert gdal_band
 
         gdal_band.WriteArray(data, block_y * self._tile_height, block_x * self._tile_width)
+
+    def write_region(self, data, x, y):
+        assert 0 <= y < self._height
+        assert 0 <= x < self._width
+
+        if len(data.shape) < 3:
+            gdal_band = self._handle.GetRasterBand(1)
+            assert gdal_band
+            gdal_band.WriteArray(data, y, x)
+            return
+
+        for band in range(data.shape[2]):
+            gdal_band = self._handle.GetRasterBand(band+1)
+            assert gdal_band
+            gdal_band.WriteArray(data[:, :, band], y, x)

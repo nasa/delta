@@ -45,6 +45,9 @@ def save_confusion(cm, filename):
     ax.set_xlabel('Predicated Label')
     f.savefig(filename)
 
+def ae_convert(data):
+    return (data[:, :, [4, 2, 1]] * 256.0).astype(np.uint8)
+
 def main(options):
     model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
 
@@ -58,38 +61,42 @@ def main(options):
 
     images = config.images()
     labels = config.labels()
+
     if options.autoencoder:
         labels = None
-        predictor = predict.ImagePredictor(model, True)
-    else:
-        predictor = predict.LabelPredictor(model, True, options.prob)
     for (i, path) in enumerate(images):
         image = loader.load_image(images, i)
         base_name = os.path.splitext(os.path.basename(path))[0]
+        output_image = 'predicted_' + base_name + '.tiff'
+        prob_image = None
+        if options.prob:
+            prob_image = 'prob_' + base_name + '.tiff'
+        error_image = None
+        if labels:
+            error_image = 'errors_' + base_name + '.tiff'
+
         label = None
         if labels:
             label = loader.load_image(config.labels(), i)
         if options.autoencoder:
             label = image
-        predictor.predict(image, label)
+            predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
+        else:
+            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors, prob_image=prob_image,
+                                               error_image=error_image, error_colors=error_colors)
+
+        try:
+            predictor.predict(image, label)
+        except KeyboardInterrupt:
+            print('\nAborted.')
+            return 0
+
         if labels:
             cm = predictor.confusion_matrix()
-            error_image = predictor.errors()
             print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
-            colored_error = error_colors[error_image.astype('uint8')]
-            tiff.write_tiff(base_name + '_errors.tiff', colored_error, metadata=image.metadata())
-            save_confusion(cm, base_name + '_confusion.pdf')
+            save_confusion(cm, 'confusion_' + base_name + '.pdf')
+
         if options.autoencoder:
-            tiff.write_tiff(base_name + '_predicted.tiff',
-                            (predictor.output()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
+            tiff.write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
                             metadata=image.metadata())
-            tiff.write_tiff(base_name + '_errors.tiff',
-                            (predictor.errors()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
-                            metadata=image.metadata())
-            tiff.write_tiff(base_name + '_orig.tiff',      (image.read()[:, :, [4, 2, 1]] * 256.0).astype(np.uint8),
-                            metadata=image.metadata())
-        elif options.prob:
-            tiff.write_tiff(base_name + '_prob.tiff', predictor.output(), metadata=image.metadata())
-        else:
-            tiff.write_tiff(base_name + '_predicted.tiff', colors[predictor.output()], metadata=image.metadata())
     return 0
