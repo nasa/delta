@@ -99,7 +99,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
             for k in logs.keys():
                 if k in ('batch', 'size'):
                     continue
-                mlflow.log_metric(k, logs[k], step=batch)
+                mlflow.log_metric(k, logs[k].item(), step=batch)
         if config.mlflow_checkpoint_freq() and batch % config.mlflow_checkpoint_freq() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')
@@ -114,7 +114,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         for k in logs.keys():
             if k in ('batch', 'size'):
                 continue
-            mlflow.log_metric('validation_' + k, logs[k])
+            mlflow.log_metric('validation_' + k, logs[k].item())
 
 def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.set_tracking_uri(config.mlflow_uri())
