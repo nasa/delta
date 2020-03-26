@@ -136,15 +136,18 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     Trains the specified model on a dataset according to a training
     specification.
     """
-    # TODO: Check that this checks the training spec for desired devices to run on.
-    with _strategy(_devices(config.gpus())).scope():
-        model = model_fn()
-        assert isinstance(model, tf.keras.models.Model),\
-               "Model is not a Tensorflow Keras model"
-        loss = training_spec.loss_function
-        # TODO: specify learning rate and optimizer parameters, change learning rate over time
-        model.compile(optimizer=training_spec.optimizer, loss=loss,
-                      metrics=training_spec.metrics)
+    if isinstance(model_fn, tf.keras.Model):
+        model = model_fn
+    else:
+        # TODO: Check that this checks the training spec for desired devices to run on.
+        with _strategy(_devices(config.gpus())).scope():
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model),\
+                   "Model is not a Tensorflow Keras model"
+            loss = training_spec.loss_function
+            # TODO: specify learning rate and optimizer parameters, change learning rate over time
+            model.compile(optimizer=training_spec.optimizer, loss=loss,
+                          metrics=training_spec.metrics)
 
     input_shape = model.get_input_at(0).shape
     output_shape = model.get_output_at(0).shape
@@ -187,6 +190,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                             steps_per_epoch=training_spec.steps)
         if config.mlflow_enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
+            print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
             model.save(model_path, save_format='h5')
             mlflow.log_artifact(model_path)
             os.remove(model_path)
@@ -195,6 +199,11 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         if config.mlflow_enabled():
             mlflow.log_param('Status', 'Aborted')
             mlflow.end_run('FAILED')
+            model_path = os.path.join(mcb.temp_dir, 'aborted_model.h5')
+            print('\nAborting, saving current model to %s.' % (mlflow.get_artifact_uri() + '/aborted_model.h5'))
+            model.save(model_path, save_format='h5')
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
         raise
     finally:
         if config.mlflow_enabled():
