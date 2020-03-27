@@ -387,3 +387,37 @@ class TiffWriter:
             gdal_band = self._handle.GetRasterBand(band+1)
             assert gdal_band
             gdal_band.WriteArray(data[:, :, band], y, x)
+
+class DeltaTiffWriter(delta_image.DeltaImageWriter):
+    def __init__(self, filename):
+        self._filename = filename
+        self._tiff_w = None
+
+    def initialize(self, size, numpy_dtype, metadata=None):
+        """
+        Prepare for writing with the given size and dtype.
+        """
+        assert len(size) == 3
+        TILE_SIZE = 256
+        self._tiff_w = TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
+                                  data_type=numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
+                                  tile_width=min(TILE_SIZE, size[0]), tile_height=min(TILE_SIZE, size[1]))
+
+    def write(self, data, x, y):
+        """
+        Writes the data as a rectangular block starting at the given coordinates.
+        """
+        self._tiff_w.write_region(data, x, y)
+
+    def close(self):
+        """
+        Finish writing.
+        """
+        self._tiff_w.close()
+
+    def abort(self):
+        self.close()
+        try:
+            os.remove(self._filename)
+        except OSError:
+            pass

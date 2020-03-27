@@ -67,13 +67,13 @@ def main(options):
     for (i, path) in enumerate(images):
         image = loader.load_image(images, i)
         base_name = os.path.splitext(os.path.basename(path))[0]
-        output_image = 'predicted_' + base_name + '.tiff'
+        output_image = tiff.DeltaTiffWriter('predicted_' + base_name + '.tiff')
         prob_image = None
         if options.prob:
-            prob_image = 'prob_' + base_name + '.tiff'
+            prob_image = tiff.DeltaTiffWriter('prob_' + base_name + '.tiff')
         error_image = None
         if labels:
-            error_image = 'errors_' + base_name + '.tiff'
+            error_image = tiff.DeltaTiffWriter('errors_' + base_name + '.tiff')
 
         label = None
         if labels:

@@ -3,28 +3,18 @@ Module to run prediction according to learned neural networks
 on images.
 """
 
-import os
 from abc import ABC, abstractmethod
 import numpy as np
 
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.imagery.sources.tiff import TiffWriter, numpy_dtype_to_gdal_type
 
 #pylint: disable=unsubscriptable-object
 # Pylint was barfing lines 32 and 76. See relevant bug report
 # https://github.com/PyCQA/pylint/issues/1498
 
 _TILE_SIZE = 256
-
-def _clean_delete(filename):
-    if filename is None:
-        return
-    try:
-        os.remove(filename)
-    except OSError:
-        pass
 
 class Predictor(ABC):
     """
@@ -137,6 +127,10 @@ class LabelPredictor(Predictor):
     """
     def __init__(self, model, output_image=None, show_progress=False,
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
+        """
+        output_image, prob_image, and error_image are all DeltaImageWriter's.
+        colormap and error_colors are all numpy arrays mapping classes to colors.
+        """
         super(LabelPredictor, self).__init__(model, show_progress)
         self._confusion_matrix = None
         self._num_classes = None
@@ -145,8 +139,6 @@ class LabelPredictor(Predictor):
         self._prob_image = prob_image
         self._error_image = error_image
         self._error_colors = error_colors
-        if self._output_image:
-            assert self._colormap is not None, 'Must specify colormap.'
         if self._error_image:
             assert self._error_colors is not None, 'Must specify error_colors.'
         self._output = None
@@ -163,43 +155,43 @@ class LabelPredictor(Predictor):
             self._errors = None
             self._confusion_matrix = None
         if self._output_image:
-            self._output = TiffWriter(self._output_image, shape[0], shape[1], num_bands=self._colormap.shape[1],
-                                      data_type=numpy_dtype_to_gdal_type(self._colormap.dtype),
-                                      metadata=image.metadata(),
-                                      tile_width=_TILE_SIZE, tile_height=_TILE_SIZE)
+            if self._colormap:
+                self._output_image.initialize((shape[0], shape[1], self._colormap.shape[1]),
+                                              self._colormap.dtype, image.metadata())
+            else:
+                self._output_image.initialize((shape[0], shape[1]), np.int32, image.metadata())
         if self._prob_image:
-            self._prob_o = TiffWriter(self._prob_image, shape[0], shape[1], num_bands=self._num_classes,
-                                      data_type=numpy_dtype_to_gdal_type(np.float32), metadata=image.metadata(),
-                                      tile_width=_TILE_SIZE, tile_height=_TILE_SIZE)
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
         if self._error_image:
-            self._errors = TiffWriter(self._error_image, shape[0], shape[1], num_bands=self._num_classes,
-                                      data_type=numpy_dtype_to_gdal_type(np.float32), metadata=image.metadata(),
-                                      tile_width=_TILE_SIZE, tile_height=_TILE_SIZE)
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
 
     def _complete(self):
-        if self._output:
-            self._output.close()
-        if self._prob_o:
-            self._prob_o.close()
-        if self._errors:
-            self._errors.close()
+        if self._output_image:
+            self._output_image.close()
+        if self._prob_image:
+            self._prob_image.close()
+        if self._error_image:
+            self._error_image.close()
 
     def _abort(self):
         self._complete()
-        _clean_delete(self._output_image)
-        _clean_delete(self._prob_image)
-        _clean_delete(self._error_image)
+        self._output_image.abort()
+        self._prob_image.abort()
+        self._error_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
-        if self._prob_o is not None:
-            self._prob_o.write_region(pred_image, x, y)
+        if self._prob_image is not None:
+            self._prob_image.write(pred_image, x, y)
         pred_image = np.argmax(pred_image, axis=2)
 
-        if self._output is not None:
-            self._output.write_region(self._colormap[pred_image], x, y)
+        if self._output_image is not None:
+            if self._colormap:
+                self._output_image.write(self._colormap[pred_image], x, y)
+            else:
+                self._output_image.write(pred_image, x, y)
 
         if labels is not None:
-            self._errors.write_region(labels != pred_image, x, y)
+            self._error_image.write(labels != pred_image, x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
                                           np.ndarray.flatten(pred_image),
                                           self._num_classes)
@@ -217,7 +209,7 @@ class ImagePredictor(Predictor):
     """
     def __init__(self, model, output_image=None, show_progress=False, transform=None):
         """
-        Trains on model, outputs to output_image.
+        Trains on model, outputs to output_image, which is a DeltaImageWriter.
 
         transform is a tuple (function, output numpy type, number of bands) applied
         to the output image.
@@ -232,21 +224,19 @@ class ImagePredictor(Predictor):
         if self._output_image is not None:
             dtype = np.float32 if self._transform is None else self._transform[1]
             bands = net_output_shape[-1] if self._transform is None else self._transform[2]
-            self._output = TiffWriter(self._output_image, shape[0], shape[1], num_bands=bands,
-                                      data_type=numpy_dtype_to_gdal_type(dtype), metadata=image.metadata(),
-                                      tile_width=_TILE_SIZE, tile_height=_TILE_SIZE)
+            self._output_image.initialize((shape[0], shape[1], bands), dtype, image.metadata())
 
     def _complete(self):
-        if self._output:
-            self._output.close()
+        if self._output_image:
+            self._output_image.close()
 
     def _abort(self):
         self._complete()
-        _clean_delete(self._output_image)
+        self._output_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
-        if self._output is not None:
+        if self._output_image is not None:
             im = pred_image
             if self._transform is not None:
                 im = self._transform[0](im)
-            self._output.write_region(im, x, y)
+            self._output_image.write(im, x, y)
