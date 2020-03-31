@@ -39,8 +39,6 @@ class _LayerWrapper:
         if self._layer is not None:
             return self._layer
         inputs = []
-        print(self._inputs)
-        print(layer_dict)
         for k in self._inputs:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
