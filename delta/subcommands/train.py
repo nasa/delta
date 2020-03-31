@@ -4,16 +4,20 @@ Train a neural network.
 
 import sys
 
+import tensorflow as tf
+
 from delta.config import config
 from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.model_parser import config_model
+from delta.ml.layers import ALL_LAYERS
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('train', help='Train a task-specific classifier.')
     sub.add_argument('--autoencoder', action='store_true',
                      help='Train autoencoder (ignores labels).')
-    sub.add_argument('model', help='File to save the network to.')
+    sub.add_argument('--resume', help='Use the model as a starting point for the training.')
+    sub.add_argument('model', nargs='?', default=None, help='File to save the network to.')
     sub.set_defaults(function=main)
     config.setup_arg_parser(sub, train=True)
 
@@ -34,9 +38,14 @@ def main(options):
                                              config.output_size(), tc.chunk_stride)
 
     try:
-        model, _ = train(config_model(ids.num_bands()), ids, tc)
+        if options.resume is not None:
+            model = tf.keras.models.load_model(options.resume, custom_objects=ALL_LAYERS)
+        else:
+            model = config_model(ids.num_bands())
+        model, _ = train(model, ids, tc)
 
-        model.save(options.model)
+        if options.model is not None:
+            model.save(options.model)
     except KeyboardInterrupt:
         print()
         print('Training cancelled.')

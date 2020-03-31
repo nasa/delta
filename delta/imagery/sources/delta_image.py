@@ -64,6 +64,12 @@ class DeltaImage(ABC):
         This function is intended to be overwritten by subclasses.
         """
 
+    def metadata(self): #pylint:disable=no-self-use
+        """
+        Returns a dictionary of metadata, in the format used by GDAL.
+        """
+        return {}
+
     @abstractmethod
     def size(self) -> Tuple[int, int]:
         """Return the size of this image in pixels, as (width, height)."""
@@ -153,3 +159,38 @@ class DeltaImage(ABC):
                 utilities.progress_bar('%d / %d' % (i, total), i / total, prefix='Blocks Processed:')
         if show_progress:
             print()
+
+class DeltaImageWriter(ABC):
+    @abstractmethod
+    def initialize(self, size, numpy_dtype, metadata=None):
+        """
+        Prepare for writing with the given size and dtype.
+        """
+
+    @abstractmethod
+    def write(self, data, x, y):
+        """
+        Writes the data as a rectangular block starting at the given coordinates.
+        """
+
+    @abstractmethod
+    def close(self):
+        """
+        Finish writing.
+        """
+
+    @abstractmethod
+    def abort(self):
+        """
+        Cancel writing before finished.
+        """
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        self.close()
+        return False

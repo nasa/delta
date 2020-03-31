@@ -14,6 +14,8 @@ from delta.imagery import rectangle
 # Pylint was barfing lines 32 and 76. See relevant bug report
 # https://github.com/PyCQA/pylint/issues/1498
 
+_TILE_SIZE = 256
+
 class Predictor(ABC):
     """
     Abstract class to run prediction for an image given a model.
@@ -23,11 +25,17 @@ class Predictor(ABC):
         self._show_progress = show_progress
 
     @abstractmethod
-    def _initialize(self, shape, label):
+    def _initialize(self, shape, label, image):
         """
         Called at the start of a new prediction.
-        The output shape and the label image are passed as inputs.
+        The output shape, label image, and image being read are passed as inputs.
         """
+
+    def _complete(self):
+        """Called to do any cleanup if needed."""
+
+    def _abort(self):
+        """Cancel the operation and cleanup neatly."""
 
     @abstractmethod
     def _process_block(self, pred_image, x, y, labels):
@@ -35,12 +43,6 @@ class Predictor(ABC):
         Processes a predicted block. The predictions are in pred_image,
         (sx, sy) is the starting coordinates of the block, and the corresponding labels
         if available are passed as labels.
-        """
-
-    @abstractmethod
-    def output(self):
-        """
-        Returns the predicted output.
         """
 
     def _predict_array(self, data):
@@ -79,19 +81,18 @@ class Predictor(ABC):
         Results are limited to `input_bounds`. Returns output, the meaning of which
         depends on the subclass.
         """
-        TILE_SIZE = 256
         net_input_shape = self._model.get_input_shape_at(0)[1:]
         net_output_shape = self._model.get_output_shape_at(0)[1:]
         offset_r = -net_input_shape[0] + net_output_shape[0]
         offset_c = -net_input_shape[1] + net_output_shape[1]
-        block_size_x = net_input_shape[0] * (TILE_SIZE // net_input_shape[0])
-        block_size_y = net_input_shape[1] * (TILE_SIZE // net_input_shape[1])
+        block_size_x = net_input_shape[0] * (_TILE_SIZE // net_input_shape[0])
+        block_size_y = net_input_shape[1] * (_TILE_SIZE // net_input_shape[1])
 
         # Set up the output image
         if not input_bounds:
             input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
 
-        self._initialize((input_bounds.width() + offset_r, input_bounds.height() + offset_c), label)
+        self._initialize((input_bounds.width() + offset_r, input_bounds.height() + offset_c), label, image)
 
         def callback_function(roi, data):
             pred_image = self._predict_array(data)
@@ -113,22 +114,38 @@ class Predictor(ABC):
         output_rois = input_bounds.make_tile_rois(block_size_x - offset_r, block_size_y - offset_c,
                                                   include_partials=False, overlap_amount=-offset_r)
 
-        image.process_rois(output_rois, callback_function, show_progress=self._show_progress)
-        return self.output()
+        try:
+            image.process_rois(output_rois, callback_function, show_progress=self._show_progress)
+        except KeyboardInterrupt:
+            self._abort()
+            raise
 
+        return self._complete()
 class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, show_progress=False, probabilities=False):
+    def __init__(self, model, output_image=None, show_progress=False,
+                 colormap=None, prob_image=None, error_image=None, error_colors=None):
+        """
+        output_image, prob_image, and error_image are all DeltaImageWriter's.
+        colormap and error_colors are all numpy arrays mapping classes to colors.
+        """
         super(LabelPredictor, self).__init__(model, show_progress)
-        self._probabilities = probabilities
-        self._errors = None
-        self._buffer = None
         self._confusion_matrix = None
         self._num_classes = None
+        self._output_image = output_image
+        self._colormap = colormap
+        self._prob_image = prob_image
+        self._error_image = error_image
+        self._error_colors = error_colors
+        if self._error_image:
+            assert self._error_colors is not None, 'Must specify error_colors.'
+        self._output = None
+        self._prob_o = None
+        self._errors = None
 
-    def _initialize(self, shape, label):
+    def _initialize(self, shape, label, image):
         net_output_shape = self._model.get_output_shape_at(0)[1:]
         self._num_classes = net_output_shape[-1]
         if label:
@@ -137,33 +154,48 @@ class LabelPredictor(Predictor):
         else:
             self._errors = None
             self._confusion_matrix = None
-        if self._probabilities:
-            self._buffer = np.zeros(shape + (self._num_classes, ), dtype=np.float32)
-        else:
-            self._buffer = np.zeros(shape, dtype=np.int8)
-        #buffer_shape = shape + (self._num_classes, ) if self._probabilities else shape
-        #self._buffer = np.zeros(buffer_shape, dtype=np.float32)
+        if self._output_image:
+            if self._colormap:
+                self._output_image.initialize((shape[0], shape[1], self._colormap.shape[1]),
+                                              self._colormap.dtype, image.metadata())
+            else:
+                self._output_image.initialize((shape[0], shape[1]), np.int32, image.metadata())
+        if self._prob_image:
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
+        if self._error_image:
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
+
+    def _complete(self):
+        if self._output_image:
+            self._output_image.close()
+        if self._prob_image:
+            self._prob_image.close()
+        if self._error_image:
+            self._error_image.close()
+
+    def _abort(self):
+        self._complete()
+        self._output_image.abort()
+        self._prob_image.abort()
+        self._error_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
-        if self._probabilities:
-            self._buffer[x : x + pred_image.shape[0], y : y + pred_image.shape[1], :] = pred_image
+        if self._prob_image is not None:
+            self._prob_image.write(pred_image, x, y)
         pred_image = np.argmax(pred_image, axis=2)
 
-        if not self._probabilities:
-            self._buffer[x : x + pred_image.shape[0], y : y + pred_image.shape[1]] = pred_image
+        if self._output_image is not None:
+            if self._colormap:
+                self._output_image.write(self._colormap[pred_image], x, y)
+            else:
+                self._output_image.write(pred_image, x, y)
 
         if labels is not None:
-            self._errors[x : x + pred_image.shape[0], y : y + pred_image.shape[1]] = labels != pred_image
+            self._error_image.write(labels != pred_image, x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
                                           np.ndarray.flatten(pred_image),
                                           self._num_classes)
             self._confusion_matrix[:, :] += cm
-
-    def output(self):
-        """
-        Returns an image of integer pixel labels.
-        """
-        return self._buffer
 
     def confusion_matrix(self):
         """
@@ -171,37 +203,40 @@ class LabelPredictor(Predictor):
         """
         return self._confusion_matrix
 
-    def errors(self):
-        """
-        Returns an image showing where prediction was incorrect.
-        """
-        return self._errors
-
 class ImagePredictor(Predictor):
     """
     Predicts an image from an image.
     """
-    def __init__(self, model, show_progress=False):
-        super(ImagePredictor, self).__init__(model, show_progress)
-        self._errors = None
-        self._buffer = None
+    def __init__(self, model, output_image=None, show_progress=False, transform=None):
+        """
+        Trains on model, outputs to output_image, which is a DeltaImageWriter.
 
-    def _initialize(self, shape, label):
+        transform is a tuple (function, output numpy type, number of bands) applied
+        to the output image.
+        """
+        super(ImagePredictor, self).__init__(model, show_progress)
+        self._output_image = output_image
+        self._output = None
+        self._transform = transform
+
+    def _initialize(self, shape, label, image):
         net_output_shape = self._model.get_output_shape_at(0)[1:]
-        if label:
-            self._errors = np.zeros(shape + (net_output_shape[-1], ), dtype=np.float32)
-        else:
-            self._errors = None
-        self._buffer = np.zeros(shape + (net_output_shape[-1], ), dtype=np.float32)
+        if self._output_image is not None:
+            dtype = np.float32 if self._transform is None else self._transform[1]
+            bands = net_output_shape[-1] if self._transform is None else self._transform[2]
+            self._output_image.initialize((shape[0], shape[1], bands), dtype, image.metadata())
+
+    def _complete(self):
+        if self._output_image:
+            self._output_image.close()
+
+    def _abort(self):
+        self._complete()
+        self._output_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
-        self._buffer[x : x + pred_image.shape[0], y : y + pred_image.shape[1], :] = pred_image
-
-        if labels is not None:
-            self._errors[x : x + pred_image.shape[0], y : y + pred_image.shape[1], :] = np.abs(labels - pred_image)
-
-    def output(self):
-        return self._buffer
-
-    def errors(self):
-        return self._errors
+        if self._output_image is not None:
+            im = pred_image
+            if self._transform is not None:
+                im = self._transform[0](im)
+            self._output_image.write(im, x, y)

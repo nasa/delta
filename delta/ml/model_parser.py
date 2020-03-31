@@ -88,7 +88,6 @@ def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
         if isinstance(inputs, (int, str)):
             inputs = [inputs]
 
-    print(layer_id, inputs)
     return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
 
 def _make_model(model_dict, exposed_params):

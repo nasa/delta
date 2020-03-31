@@ -44,3 +44,22 @@ class NumpyImage(delta_image.DeltaImage):
     def num_bands(self):
         """Return the number of bands in the image."""
         return self._data.shape[2]
+
+class NumpyImageWriter(delta_image.DeltaImageWriter):
+    def __init__(self):
+        self._buffer = None
+
+    def initialize(self, size, numpy_dtype, metadata=None):
+        self._buffer = np.zeros(shape=size, dtype=numpy_dtype)
+
+    def write(self, data, x, y):
+        self._buffer[x:x+data.shape[0], y:y+data.shape[1]] = data
+
+    def close(self):
+        pass
+
+    def abort(self):
+        pass
+
+    def buffer(self):
+        return self._buffer
