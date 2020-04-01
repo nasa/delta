@@ -4,6 +4,7 @@ Tools for loading input images into the TensorFlow Dataset class.
 import functools
 import math
 import random
+import sys
 
 import tensorflow as tf
 
@@ -24,6 +25,7 @@ class ImageryDataset:
         assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
         self._chunk_size = chunk_size
         self._output_size = output_size
+        self._output_dims = 1
         self._chunk_stride = chunk_stride
 
         if labels:
@@ -54,10 +56,13 @@ class ImageryDataset:
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
                                            config.tile_ratio()))
                 tile_height = int(config.tile_ratio() * tile_width)
-                if tile_width < self._chunk_size * 2:
-                    raise ValueError('max_block_size is too low.')
-                if tile_height < self._chunk_size * 2:
-                    raise ValueError('max_block_size is too low.')
+                min_block_size = self._chunk_size ** 2 * config.tile_ratio() * img.num_bands() * 4
+                if max_block_bytes < min_block_size:
+                    print('Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)' % ( \
+                          max_block_bytes / 1024 / 1024, min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
+                          file=sys.stderr)
+                if tile_width < self._chunk_size or tile_height < self._chunk_size:
+                    raise ValueError('max_block_bytes is too low.')
                 tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
                                   overlap=self._chunk_size - 1)
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
@@ -161,11 +166,11 @@ class ImageryDataset:
         """
         Size of chunks used for inputs.
         """
-    def output_size(self):
+    def output_shape(self):
         """
         Output size of blocks of labels.
         """
-        return self._output_size
+        return (self._output_size, self._output_size, self._output_dims)
 
     def image_set(self):
         """
@@ -187,6 +192,7 @@ class AutoencoderDataset(ImageryDataset):
         """
         super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
         self._labels = self._images
+        self._output_dims = self.num_bands()
 
     def labels(self):
         return self.data()

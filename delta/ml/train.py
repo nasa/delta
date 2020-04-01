@@ -71,7 +71,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Number of Images',   len(images))
     mlflow.log_param('Chunk Size',   dataset.chunk_size())
     mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
-    mlflow.log_param('Output Size',   dataset.output_size())
+    mlflow.log_param('Output Shape',   dataset.output_shape())
     mlflow.log_param('Steps', training_spec.steps)
     mlflow.log_param('Loss Function', training_spec.loss_function)
     mlflow.log_param('Epochs', training_spec.epochs)
@@ -159,6 +159,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
     assert len(output_shape) == 2 or output_shape[1] == output_shape[2], 'Output from network is not chunked'
     assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
+    assert output_shape[1:] == dataset.output_shape(), \
+            'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape())
 
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
 
