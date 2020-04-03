@@ -307,7 +307,6 @@ class TiffWriter:
             for i in range(1,num_bands+1):
                 self._handle.GetRasterBand(i).SetNoDataValue(no_data_value)
 
-        # TODO: May need to adjust the order here to work with some files
         if metadata:
             self._handle.SetProjection  (metadata['projection'  ])
             self._handle.SetGeoTransform(metadata['geotransform'])

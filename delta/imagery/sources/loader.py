@@ -2,39 +2,36 @@
 Load images given configuration.
 """
 
-import functools
-
-import numpy as np
-
 from . import worldview, landsat, tiff, npy
 
-def _scale_preprocess(data, _, dummy, factor):#pylint:disable=unused-argument
-    return data / np.float32(factor)
+_IMAGE_TYPES = {
+        'worldview' : worldview.WorldviewImage,
+        'landsat' : landsat.LandsatImage,
+        'tiff' : tiff.TiffImage,
+        'rgba' : tiff.RGBAImage,
+        'npy' : npy.NumpyImage
+}
+
+def register_image_type(image_type, image_class):
+    """
+    Register a custom image type for use by DELTA.
+
+    image_type is a string specified in config files.
+    image_class is a custom class that extends
+    `delta.iamge.sources.delta_image.DeltaImage`.
+    """
+    global _IMAGE_TYPES #pylint: disable=global-statement
+    _IMAGE_TYPES[image_type] = image_class
 
 def load(filename, image_type, preprocess=False):
     """
     Load an image of the appropriate type and parameters.
     """
-    if image_type == 'worldview':
-        img = worldview.WorldviewImage(filename)
-        if preprocess:
-            img.set_preprocess(functools.partial(_scale_preprocess, factor=2048.0))
-    elif image_type == 'landsat':
-        img = landsat.LandsatImage(filename)
-        if preprocess:
-            img.set_preprocess(functools.partial(_scale_preprocess, factor=120.0))
-    elif image_type == 'rgba':
-        img = tiff.RGBAImage(filename)
-        if preprocess:
-            img.set_preprocess(functools.partial(_scale_preprocess, factor=1024.0))
-    elif image_type == 'tiff':
-        img = tiff.TiffImage(filename)
-        if preprocess:
-            img.set_preprocess(functools.partial(_scale_preprocess, factor=1024.0))
-    elif image_type == 'npy':
-        return npy.NumpyImage(path=filename)
-    else:
+    if image_type not in _IMAGE_TYPES:
         raise ValueError('Unexpected image_type %s.' % (image_type))
+    img = _IMAGE_TYPES[image_type](filename)
+    if preprocess:
+        img.set_preprocess(preprocess)
     return img
 
 def load_image(image_set, index):

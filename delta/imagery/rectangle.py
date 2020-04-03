@@ -144,7 +144,6 @@ class Rectangle:
                        include_partials=True, overlap_amount=0):
         '''Return a list of tiles encompassing the entire area of this Rectangle'''
 
-        # TODO: Can simplify this a bit!
         tile_spacing_x = tile_width  - overlap_amount
         tile_spacing_y = tile_height - overlap_amount
         num_tiles = (int(math.ceil(self.width()  / tile_spacing_x )),

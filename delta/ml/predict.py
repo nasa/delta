@@ -9,6 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
+from delta.config import config
 
 #pylint: disable=unsubscriptable-object
 # Pylint was barfing lines 32 and 76. See relevant bug report
@@ -54,6 +55,7 @@ class Predictor(ABC):
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
                      data.shape[1] - net_input_shape[1] + net_output_shape[1])
+        out_type = self._model.get_output_at(0).dtype
         image = tf.convert_to_tensor(data)
         image = tf.expand_dims(image, 0)
         chunks = tf.image.extract_patches(image, [1, net_input_shape[0], net_input_shape[1], 1],
@@ -61,9 +63,10 @@ class Predictor(ABC):
                                           [1, 1, 1, 1], padding='VALID')
         chunks = tf.reshape(chunks, (-1,) + net_input_shape)
 
-        best = np.zeros((chunks.shape[0],) + net_output_shape, dtype=np.float32)
-        ## TODO: other data types, configurable batch size
-        BATCH_SIZE=1000
+        best = np.zeros((chunks.shape[0],) + net_output_shape, dtype=out_type.as_numpy_dtype)
+        BATCH_SIZE = int(config.block_size_mb() * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
+                         net_input_shape[2] / out_type.size)
+        assert BATCH_SIZE > 0, 'block_size_mb too small.'
         for i in range(0, chunks.shape[0], BATCH_SIZE):
             best[i:i+BATCH_SIZE] = self._model.predict_on_batch(chunks[i:i+BATCH_SIZE])
 
@@ -155,7 +158,7 @@ class LabelPredictor(Predictor):
             self._errors = None
             self._confusion_matrix = None
         if self._output_image:
-            if self._colormap:
+            if self._colormap is not None:
                 self._output_image.initialize((shape[0], shape[1], self._colormap.shape[1]),
                                               self._colormap.dtype, image.metadata())
             else:
@@ -175,9 +178,12 @@ class LabelPredictor(Predictor):
 
     def _abort(self):
         self._complete()
-        self._output_image.abort()
-        self._prob_image.abort()
-        self._error_image.abort()
+        if self._output_image is not None:
+            self._output_image.abort()
+        if self._prob_image is not None:
+            self._prob_image.abort()
+        if self._error_image is not None:
+            self._error_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
         if self._prob_image is not None:
@@ -185,7 +191,7 @@ class LabelPredictor(Predictor):
         pred_image = np.argmax(pred_image, axis=2)
 
         if self._output_image is not None:
-            if self._colormap:
+            if self._colormap is not None:
                 self._output_image.write(self._colormap[pred_image], x, y)
             else:
                 self._output_image.write(pred_image, x, y)
@@ -227,12 +233,13 @@ class ImagePredictor(Predictor):
             self._output_image.initialize((shape[0], shape[1], bands), dtype, image.metadata())
 
     def _complete(self):
-        if self._output_image:
+        if self._output_image is not None:
             self._output_image.close()
 
     def _abort(self):
         self._complete()
-        self._output_image.abort()
+        if self._output_image is not None:
+            self._output_image.abort()
 
     def _process_block(self, pred_image, x, y, labels):
         if self._output_image is not None:

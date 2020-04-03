@@ -44,13 +44,14 @@ def test_images_dir():
     test_str = '''
     images:
       type: tiff
-      preprocess: false
+      preprocess:
+        enabled: false
       directory: data/
       extension: .tiff
     '''
     config.load(yaml_str=test_str)
     im = config.images()
-    assert not im.preprocess()
+    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
@@ -60,12 +61,13 @@ def test_images_files():
     test_str = '''
     images:
       type: tiff
-      preprocess: false
+      preprocess:
+        enabled: false
       files: [data/landsat.tiff]
     '''
     config.load(yaml_str=test_str)
     im = config.images()
-    assert not im.preprocess()
+    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0] == 'data/landsat.tiff'
@@ -281,12 +283,12 @@ def test_argparser():
 
     assert config.chunk_size() == 5
     im = config.images()
-    assert im.preprocess()
+    assert im.preprocess() is not None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
     im = config.labels()
-    assert not im.preprocess()
+    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
