@@ -8,13 +8,14 @@ class ImageSet:
 
     The images can be accessed by using the `ImageSet` as an iterable.
     """
-    def __init__(self, images, image_type, preprocess=False, nodata_value=None):
+    def __init__(self, images, image_type, preprocess=None, nodata_value=None):
         """
         The parameters for the constructor are:
 
          * An iterable of image filenames `images`
          * The image type (i.e., tiff, worldview, landsat) `image_type`
-         * Whether to `preprocess` (i.e., scaling)
+         * An optional preprocessing function to apply to the image,
+           following the signature in `delta.imagery.sources.delta_image.DeltaImage.set_process`.
          * A `nodata_value` for pixels to disregard
         """
         self._images = images
@@ -29,7 +30,7 @@ class ImageSet:
         return self._image_type
     def preprocess(self):
         """
-        Whether preprocessing should be performed.
+        Return the preprocessing function.
         """
         return self._preprocess
     def nodata_value(self):

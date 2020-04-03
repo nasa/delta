@@ -26,12 +26,14 @@ def load_dataset(source, output_size):
                   type: %s
                   directory: %s
                   extension: %s
-                  preprocess: False
+                  preprocess:
+                    enabled: false
                 labels:
                   type: %s
                   directory: %s
                   extension: %s
-                  preprocess: False
+                  preprocess:
+                    enabled: false
                 network:
                   chunk_size: 3
                 mlflow:
@@ -129,7 +131,8 @@ def autoencoder(all_sources):
                   type: %s
                   directory: %s
                   extension: %s
-                  preprocess: False
+                  preprocess:
+                    enabled: false
                 network:
                   chunk_size: 3
                 mlflow:

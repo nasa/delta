@@ -16,19 +16,23 @@ general:
 images:
   type:             tiff
   # preprocess the images when loading (i.e., scaling)
-  preprocess:       true
+  preprocess:
+    enabled:        true
+    scale_factor:   default
   nodata_value:     ~
   directory:        ~
-  extension:        ~
+  extension:        default
   file_list:        ~
   files:            ~
 
 labels:
   type:             tiff
-  preprocess:       false
+  preprocess:
+    enabled:        false
+    scale_factor:   default
   nodata_value:     ~
   directory:        ~
-  extension:        ~
+  extension:        default
   file_list:        ~
   files:            ~
 
@@ -58,18 +62,22 @@ train:
     # otherwise uses the first samples from this dataset:
     images:
       type:        tiff
-      preprocess:  true
+      preprocess:
+        enabled:        true
+        scale_factor:   default
       nodata_value: ~
       directory:   ~
-      extension:   ~
+      extension:   default
       file_list:   ~
       files:       ~
     labels:
       type:        tiff
-      preprocess:  true
+      preprocess:
+        enabled:        false
+        scale_factor:   default
       nodata_value: ~
       directory:   ~
-      extension:   ~
+      extension:   default
       file_list:   ~
       files:       ~
  
