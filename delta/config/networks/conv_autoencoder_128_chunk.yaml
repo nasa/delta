@@ -1,0 +1,114 @@
+layers:
+  - Input:
+      shape: in_shape
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_1_1
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_1_2
+  - MaxPooling2D:
+      pool_size: [2, 2]
+      name: pooling_1
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_2_1
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_2_2
+  - MaxPooling2D:
+      pool_size: [2, 2]
+      name: pooling_2
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_3_1
+  - Conv2D:
+      filters: 100 
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_3_2
+  - MaxPooling2D:
+      pool_size: [2, 2]
+      name: pooling_3
+  - UpSampling2D:
+      size: [2, 2]
+      name: upsampling_1 
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_T_4_1
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_T_4_2
+  - Add:
+      inputs: [conv_T_4_2, pooling_2]
+  - UpSampling2D:
+      size: [2, 2]
+      name: upsampling_2 
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_T_5_1
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_T_5_2
+  - Add:
+      inputs: [conv_T_5_2, pooling_1]
+  - UpSampling2D:
+      size: [2, 2]
+      name: upsampling_3 
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [1, 1]
+      activation: relu
+      padding: same
+      name: conv_T_6_1
+  - Conv2DTranspose:
+      filters: 100
+      kernel_size: [7, 7]
+      strides: [2, 2]
+      activation: relu
+      padding: same
+      name: conv_T_6_2
+  - Conv2D:
+      filters: num_bands
+      kernel_size: [3, 3]
+      activation: relu
+      padding: same
