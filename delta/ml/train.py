@@ -159,7 +159,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
     assert len(output_shape) == 2 or output_shape[1] == output_shape[2], 'Output from network is not chunked'
     assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
-    assert output_shape[1:] == dataset.output_shape(), \
+    # last element differs for the sparse metrics
+    assert output_shape[1:-1] == dataset.output_shape()[:-1], \
             'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape())
 
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
