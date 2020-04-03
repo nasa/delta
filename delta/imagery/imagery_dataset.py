@@ -27,6 +27,8 @@ class ImageryDataset:
         self._output_size = output_size
         self._output_dims = 1
         self._chunk_stride = chunk_stride
+        self._data_type = tf.float32
+        self._label_type = tf.uint8
 
         if labels:
             assert len(images) == len(labels)
@@ -51,9 +53,8 @@ class ImageryDataset:
             tgs = []
             for i in range(len(self._images)):
                 img = loader.load_image(self._images, i)
-                # TODO: account for other data types properly
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
-                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / 4 /
+                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
                                            config.tile_ratio()))
                 tile_height = int(config.tile_ratio() * tile_width)
                 min_block_size = self._chunk_size ** 2 * config.tile_ratio() * img.num_bands() * 4
@@ -129,8 +130,7 @@ class ImageryDataset:
         """
         Unbatched dataset of image chunks.
         """
-        # TODO: other types?
-        ret = self._load_images(False, tf.float32)
+        ret = self._load_images(False, self._data_type)
         ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
         return ret.unbatch()
 
@@ -138,7 +138,7 @@ class ImageryDataset:
         """
         Unbatched dataset of labels.
         """
-        label_set = self._load_images(True, tf.uint8)
+        label_set = self._load_images(True, self._label_type)
         label_set = label_set.map(self._reshape_labels)
 
         return label_set.unbatch()

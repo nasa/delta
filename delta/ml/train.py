@@ -139,7 +139,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if isinstance(model_fn, tf.keras.Model):
         model = model_fn
     else:
-        # TODO: Check that this checks the training spec for desired devices to run on.
         with _strategy(_devices(config.gpus())).scope():
             model = model_fn()
             assert isinstance(model, tf.keras.models.Model),\
@@ -153,7 +152,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     output_shape = model.get_output_at(0).shape
     chunk_size = input_shape[1]
 
-    assert len(input_shape) == 4, 'Input to network is wrong shape.' # TODO: Hard coding 4 a bad idea?
+    assert len(input_shape) == 4, 'Input to network is wrong shape.'
     assert input_shape[0] is None, 'Input is not batched.'
     # The below may no longer be valid if we move to convolutional architectures.
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'

@@ -21,7 +21,6 @@ def setup_parser(subparsers):
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main)
-    # TODO: move chunk_size into model somehow
     config.setup_arg_parser(sub, labels=True, train=False)
 
 def save_confusion(cm, filename):
