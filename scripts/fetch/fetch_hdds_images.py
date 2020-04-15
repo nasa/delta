@@ -53,7 +53,7 @@ def get_dataset_list(options):
         # Each event is a dataset, start by fetching the list of all HDDS datasets.
         print('Submitting HDDS dataset query...')
         results = api.datasets("", CATALOG)
-
+        print(results)
         if not results['data']:
             raise Exception('Did not find any HDDS data!')
         print('Found ' + str(len(results['data'])) + ' matching datasets.')
@@ -140,7 +140,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     try:
 
-        usage  = "usage: get_landsat_dswe_labels [options]"
+        usage  = "usage: fetch_hdds_images.py [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
@@ -162,6 +162,9 @@ def main(argsIn): #pylint: disable=R0914,R0912
         parser.add_argument("--refetch-scenes", action="store_true",
                             dest="refetch_scenes", default=False,
                             help="Force refetches of scene lists for each dataset.")
+
+        parser.add_argument("--event-name", dest="event_name", default=None,
+                            help="Only download images from this event.")
 
         options = parser.parse_args(argsIn)
 
@@ -196,6 +199,10 @@ def main(argsIn): #pylint: disable=R0914,R0912
         counter = counter + 1
         #if counter == 1:
         #    continue
+
+        if options.event_name: # Only download images from the specified event
+            if options.event_name not in full_name:
+                continue
 
         dataset_folder  = os.path.join(options.output_folder, full_name)
         scene_list_path = os.path.join(dataset_folder, 'scene_list.dat')

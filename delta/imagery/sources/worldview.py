@@ -57,7 +57,8 @@ class WorldviewImage(tiff.TiffImage):
             #print('Already have unpacked files in ' + unpack_folder)
             pass
         else:
-            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
+            tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
+                     output_stream=sys.stdout)
             utilities.unpack_to_folder(paths, unpack_folder)
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)

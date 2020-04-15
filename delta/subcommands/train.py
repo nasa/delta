@@ -3,6 +3,7 @@ Train a neural network.
 """
 
 import sys
+import time
 
 import tensorflow as tf
 
@@ -22,6 +23,7 @@ def setup_parser(subparsers):
     config.setup_arg_parser(sub, train=True)
 
 def main(options):
+    start_time = time.time()
     images = config.images()
     if not images:
         print('No images specified.', file=sys.stderr)
@@ -50,4 +52,6 @@ def main(options):
         print()
         print('Training cancelled.')
 
+    stop_time = time.time()
+    print('Elapsed time = ', stop_time-start_time)
     return 0
