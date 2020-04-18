@@ -93,26 +93,25 @@ class ImageryDataset:
         Loads a list of images as tensors.
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
-        #ds_input = self._tile_images()
-        #def load_tile(image_index, x1, y1, x2, y2):
-        #    tf.print("load_tile", output_stream=sys.stdout)
-        #    #img = tf.py_function(functools.partial(self._load_tensor_imagery,
-        #    #                                       is_labels),
-        #    #                     [image_index, [x1, y1, x2, y2]], data_type)
-        #    img = tf.zeros(shape=(128, 128, 8), dtype=tf.float32) # DEBUG
-        #    return img
-        #ret = ds_input.map(load_tile, num_parallel_calls=1)#config.threads())
-        #return ret#.prefetch(4)#tf.data.experimental.AUTOTUNE)
-        
-        def fake_tile(dummy):
-            tf.print("load_tile", output_stream=sys.stdout)
-            return tf.zeros(shape=(128, 128, 8), dtype=tf.float32)
-        ret = tf.data.Dataset.range(1000).map(fake_tile, num_parallel_calls=1)#config.threads())
+        ds_input = self._tile_images()
+        def load_tile(image_index, x1, y1, x2, y2):
+            #tf.print("load_tile", output_stream=sys.stdout)
+            img = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                   is_labels),
+                                 [image_index, [x1, y1, x2, y2]], data_type)
+            return img
+        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.threads())
         return ret#.prefetch(4)#tf.data.experimental.AUTOTUNE)
+        
+        #def fake_tile(dummy):
+        #    tf.print("load_tile", output_stream=sys.stdout)
+        #    return tf.zeros(shape=(128, 128, 8), dtype=tf.float32)
+        #ret = tf.data.Dataset.range(400).map(fake_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.threads())
+        #return ret#.prefetch(4)#tf.data.experimental.AUTOTUNE)
 
     def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
-        tf.print("chunk_image", output_stream=sys.stdout)
+        #tf.print("chunk_image", output_stream=sys.stdout)
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, self._chunk_stride, self._chunk_stride, 1] # SPacing between chunk starts
         rates   = [1, 1, 1, 1]
@@ -141,7 +140,7 @@ class ImageryDataset:
         Unbatched dataset of image chunks.
         """
         ret = self._load_images(False, self._data_type)
-        ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
+        ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.threads())
         #ret = ret.prefetch(4)#tf.data.experimental.AUTOTUNE)
         return ret.unbatch()
 
@@ -150,7 +149,7 @@ class ImageryDataset:
         Unbatched dataset of labels.
         """
         label_set = self._load_images(True, self._label_type)
-        label_set = label_set.map(self._reshape_labels, num_parallel_calls=config.threads())
+        label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.threads())
         #label_set = label_set.prefetch(4)#tf.data.experimental.AUTOTUNE)
         return label_set.unbatch()
 
@@ -159,12 +158,29 @@ class ImageryDataset:
         Return the underlying TensorFlow dataset object that this class creates.
         """
 
+        def double_chunk(image, label):
+            #di = tf.data.Dataset.from_tensors(image)
+            #dl = tf.data.Dataset.from_tensors(label)
+            #di = di.map(self._chunk_image,    num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            #dl = dl.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            #return  tf.data.Dataset.zip((di.unbatch(), dl.unbatch()))
+            ret = tf.data.Dataset.from_tensors(self._chunk_image(image))
+            label_set = tf.data.Dataset.from_tensors(tf.cast(self._reshape_labels(label), tf.float32))
+            return tf.data.Dataset.zip((ret.unbatch(), label_set.unbatch()))
+
+        #ret_data =  self._load_images(False, self._data_type)
+        #label_set = self._load_images(True, self._label_type)
+        #ds = tf.data.Dataset.zip((ret_data, label_set))
+        #ds = ds.interleave(double_chunk, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        #ds = ds.unbatch()
+
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore labels with no data
-#        if self._labels.nodata_value():
-#            ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
+        if self._labels.nodata_value():
+            ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
         #ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+        print(ds)
         return ds
 
     def num_bands(self):

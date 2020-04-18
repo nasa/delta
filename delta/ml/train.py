@@ -44,7 +44,8 @@ def _strategy(devices):
 def _prep_datasets(ids, tc, chunk_size, output_size):
     ds = ids.dataset()
     ds = ds.batch(tc.batch_size)
-    ds = ds.prefetch(12)
+    #ds = ds.cache()
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if False:#tc.validation:
         print('Using validation!')
         if tc.validation.from_training:
