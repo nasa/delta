@@ -30,7 +30,7 @@ def main(argsIn):
 
         parser.add_argument("--image-folder", dest="image_folder", required=True,
                             help="Folder containing the input image files.")
-        parser.add_argument("--label-folder", dest="label_folder", required=True,
+        parser.add_argument("--label-folder", dest="label_folder", default=None,
                             help="Folder containing the input label files.")
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
@@ -68,37 +68,45 @@ def main(argsIn):
     os.mkdir(out_train_folder)
     os.mkdir(out_valid_folder)
     os.mkdir(train_image_folder)
-    os.mkdir(train_label_folder)
     os.mkdir(valid_image_folder)
-    os.mkdir(valid_label_folder)
+    if options.label_folder:
+        os.mkdir(train_label_folder)
+        os.mkdir(valid_label_folder)
 
-    input_image_list = os.listdir(options.image_folder)
+    # Recursively find image files, obtaining the full path for each file.
+    input_image_list = [os.path.join(root, name)
+                        for root, dirs, files in os.walk(options.image_folder)
+                        for name in files
+                        if name.endswith((options.image_extension))]
 
     train_count = 0
     valid_count = 0
-    for f in input_image_list:
-        # Skip other files
-        ext = os.path.splitext(f)[1]
-        if ext != options.image_extension:
-            continue
+    for image_path in input_image_list:
 
-        # Get file names
-        image_path = os.path.join(options.image_folder, f)
-        label_path = get_label_path(f, options)
-        label_name = os.path.basename(label_path)
+        image_name = os.path.basename(image_path)
 
-        # Decide where to make the symlinks, train or label
+        # Use for validation or for training?
         use_for_valid = (random.random() < options.validate_fraction)
+
+        # Handle the image file
         if use_for_valid:
-            image_dest = os.path.join(valid_image_folder, f)
-            label_dest = os.path.join(valid_label_folder, label_name)
+            image_dest = os.path.join(valid_image_folder, image_name)
             valid_count += 1
         else:
-            image_dest = os.path.join(train_image_folder, f)
-            label_dest = os.path.join(train_label_folder, label_name)
+            image_dest = os.path.join(train_image_folder, image_name)
             train_count += 1
-
         os.symlink(image_path, image_dest)
+
+        if not options.label_folder:
+            continue
+
+        # Handle the label file
+        label_path = get_label_path(image_name, options)
+        label_name = os.path.basename(label_path)
+        if use_for_valid:
+            label_dest = os.path.join(valid_label_folder, label_name)
+        else:
+            label_dest = os.path.join(train_label_folder, label_name)
         os.symlink(label_path, label_dest)
 
     # Copy config file if provided
@@ -111,14 +119,16 @@ def main(argsIn):
                 config_data = yaml.load(f, Loader=yaml.FullLoader)
 
             config_data['images']['directory'] = train_image_folder
-            config_data['labels']['directory'] = train_label_folder
             config_data['train']['validation']['images']['directory'] = valid_image_folder
-            config_data['train']['validation']['labels']['directory'] = valid_label_folder
+
+            if options.label_folder:
+                config_data['labels']['directory'] = train_label_folder
+                config_data['train']['validation']['labels']['directory'] = valid_label_folder
 
             with open(config_out_path, 'w') as f:
                 yaml.dump(config_data, f)
             print('Wrote config file: ' + config_out_path)
-        except Exception as e:
+        except Exception as e: #pylint: disable=W0703
             print('Failed to copy config file!')
             print(str(e))
 
