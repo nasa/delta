@@ -53,8 +53,8 @@ train:
   loss_function:   sparse_categorical_crossentropy
   metrics:
     - sparse_categorical_accuracy
-  experiment_name: Default # used in tracking tools
   optimizer:       adam
+  experiment_name: Default # used in tracking tools
   validation:
     steps:         1000
     # if true, skips the first steps from the training set to use for validation instead
@@ -91,6 +91,7 @@ mlflow:
   checkpoints:
     frequency:     10000
     save_latest:   true
+
 tensorboard:
   enabled:        false
   # default to ~/.local/share/delta/tensorboard
