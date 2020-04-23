@@ -10,7 +10,7 @@ general:
   tile_ratio:        5.0
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
-    dir:              ~
+    dir:              default
     limit:            8
 
 images:
@@ -84,7 +84,7 @@ train:
 mlflow:
   # default to ~/.local/share/delta/mlflow
   enabled:        true
-  uri:            ~
+  uri:            default
   # rate in batches to save metrics
   frequency:      10000
   # rate in batches to save model checkpoints
@@ -94,4 +94,4 @@ mlflow:
 tensorboard:
   enabled:        false
   # default to ~/.local/share/delta/tensorboard
-  dir:            ~
+  dir:            default

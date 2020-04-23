@@ -203,7 +203,7 @@ _CONFIG_ENTRIES = [
     (['train', 'optimizer'],           None,                str,          None,            None, None),
     (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None,
      'Enable MLFlow.'),
-    (['mlflow', 'uri'],       'mlflow_uri',           str,                None,            None,
+    (['mlflow', 'uri'],       None,                   str,                None,            None,
      'URI to store MLFlow data.'),
     (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None,
      'Frequency to store metrics to MLFlow.'),
@@ -213,7 +213,7 @@ _CONFIG_ENTRIES = [
      'If true, only store the latest checkpoint.'),
     (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None,
      'Enable tensorboard.'),
-    (['tensorboard', 'dir'],      'tb_dir',           str,                None,            None,
+    (['tensorboard', 'dir'],      None,               str,                None,            None,
      'Directory to store tensorboard data.')
 ]
 _CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
@@ -264,13 +264,6 @@ class DeltaConfig:
         self.__training = None
         self.__config_dict = {}
         self._load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
-
-        # set a few special defaults
-        self.__config_dict['general']['cache']['dir'] = self._dirs.user_cache_dir
-        self.__config_dict['mlflow']['uri'] = 'file://' + \
-                       os.path.join(self._dirs.user_data_dir, 'mlflow')
-        self.__config_dict['tensorboard']['dir'] = \
-                os.path.join(self._dirs.user_data_dir, 'tensorboard')
 
     def load(self, yaml_file: str = None, yaml_str: str = None):
         """
@@ -329,10 +322,33 @@ class DeltaConfig:
                 raise ValueError('Value %s for %s is invalid.' % (v, e[0][-1]))
 
     def cache_manager(self) -> disk_folder_cache.DiskCache:
+        """
+        Returns the disk cache object to manage the cache.
+        """
         if self._cache_manager is None:
-            self._cache_manager = disk_folder_cache.DiskCache(self.__config_dict['general']['cache']['dir'],
-                                                              self.__config_dict['general']['cache']['limit'])
+            cdir = self.__config_dict['general']['cache']['dir']
+            if cdir == 'default':
+                cdir = self._dirs.user_cache_dir
+            self._cache_manager = disk_folder_cache.DiskCache(cdir, self.__config_dict['general']['cache']['limit'])
         return self._cache_manager
+
+    def mlflow_uri(self) -> str:
+        """
+        Returns the URI for MLFlow to store data.
+        """
+        uri = self.__config_dict['mlflow']['uri']
+        if uri == 'default':
+            uri = 'file://' + os.path.join(self._dirs.user_data_dir, 'mlflow')
+        return uri
+
+    def tb_dir(self) -> str:
+        """
+        Returns the directory for tensorboard to store to.
+        """
+        tbd = self.__config_dict['tensorboard']['dir']
+        if tbd == 'default':
+            tbd = os.path.join(self._dirs.user_data_dir, 'tensorboard')
+        return tbd
 
     def __load_images_labels(self, image_keys, label_keys):
         images = self._get_entry(image_keys)
