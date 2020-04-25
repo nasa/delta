@@ -31,28 +31,28 @@ from delta.ml.layers import ALL_LAYERS
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('train', help='Train a task-specific classifier.')
+    config.setup_arg_parser(sub)
     sub.add_argument('--autoencoder', action='store_true',
                      help='Train autoencoder (ignores labels).')
     sub.add_argument('--resume', help='Use the model as a starting point for the training.')
     sub.add_argument('model', nargs='?', default=None, help='File to save the network to.')
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub, train=True)
 
 def main(options):
-    images = config.images()
+    images = config.dataset.images()
     if not images:
         print('No images specified.', file=sys.stderr)
         return 1
-    tc = config.training()
+    tc = config.train.spec()
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, config.chunk_size(), tc.chunk_stride)
+        ids = imagery_dataset.AutoencoderDataset(images, config.network.chunk_size(), tc.chunk_stride)
     else:
-        labels = config.labels()
+        labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
-        ids = imagery_dataset.ImageryDataset(images, labels, config.chunk_size(),
-                                             config.output_size(), tc.chunk_stride)
+        ids = imagery_dataset.ImageryDataset(images, labels, config.network.chunk_size(),
+                                             config.network.output_size(), tc.chunk_stride)
 
     try:
         if options.resume is not None:

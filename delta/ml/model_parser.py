@@ -144,8 +144,8 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequent
     """
     Creates the model specified in the configuration.
     """
-    in_data_shape = (config.chunk_size(), config.chunk_size(), num_bands)
-    out_data_shape = (config.output_size(), config.output_size(), config.classes())
+    in_data_shape = (config.network.chunk_size(), config.network.chunk_size(), num_bands)
+    out_data_shape = (config.network.output_size(), config.network.output_size(), config.network.classes())
 
     params_exposed = {'out_shape' : out_data_shape,
                       'out_dims' : out_data_shape[0] * out_data_shape[1] * out_data_shape[2],
@@ -153,4 +153,4 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequent
                       'in_dims'  : in_data_shape[0] * in_data_shape[1] * in_data_shape[2],
                       'num_bands' : in_data_shape[2]}
 
-    return model_from_dict(config.model_dict(), params_exposed)
+    return model_from_dict(config.network.model.as_dict(), params_exposed)

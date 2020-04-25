@@ -112,15 +112,15 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
 
     def on_train_batch_end(self, batch, logs):
         self.batch = batch
-        if batch % config.mlflow_freq() == 0:
+        if batch % config.mlflow.frequency() == 0:
             for k in logs.keys():
                 if k in ('batch', 'size'):
                     continue
                 mlflow.log_metric(k, logs[k].item(), step=batch)
-        if config.mlflow_checkpoint_freq() and batch % config.mlflow_checkpoint_freq() == 0:
+        if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')
-            if config.mlflow_checkpoint_latest():
+            if config.mlflow.checkpoint.save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
@@ -134,7 +134,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
             mlflow.log_metric('validation_' + k, logs[k].item())
 
 def _mlflow_train_setup(model, dataset, training_spec):
-    mlflow.set_tracking_uri(config.mlflow_uri())
+    mlflow.set_tracking_uri(config.mlflow.uri())
     mlflow.set_experiment(training_spec.experiment)
     mlflow.start_run()
     _log_mlflow_params(model, dataset, training_spec)
@@ -156,7 +156,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if isinstance(model_fn, tf.keras.Model):
         model = model_fn
     else:
-        with _strategy(_devices(config.gpus())).scope():
+        with _strategy(_devices(config.general.gpus())).scope():
             model = model_fn()
             assert isinstance(model, tf.keras.models.Model),\
                    "Model is not a Tensorflow Keras model"
@@ -188,15 +188,15 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             c = l.callback()
             if c:
                 callbacks.append(c)
-    if config.tb_enabled():
-        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tb_dir(),
+    if config.tensorboard.enabled():
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
                                              update_freq='epoch',
                                              histogram_freq=1,
                                              write_images=True,
                                              embeddings_freq=1)
         callbacks.append(tcb)
 
-    if config.mlflow_enabled():
+    if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
 
@@ -207,7 +207,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
                             steps_per_epoch=training_spec.steps)
-        if config.mlflow_enabled():
+        if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
             model.save(model_path, save_format='h5')
@@ -215,7 +215,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             os.remove(model_path)
             mlflow.log_param('Status', 'Completed')
     except:
-        if config.mlflow_enabled():
+        if config.mlflow.enabled():
             mlflow.log_param('Status', 'Aborted')
             mlflow.end_run('FAILED')
             model_path = os.path.join(mcb.temp_dir, 'aborted_model.h5')
@@ -225,13 +225,13 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             os.remove(model_path)
         raise
     finally:
-        if config.mlflow_enabled():
+        if config.mlflow.enabled():
             mlflow.log_param('Epoch', mcb.epoch)
             mlflow.log_param('Batch', mcb.batch)
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
 
-    if config.mlflow_enabled():
+    if config.mlflow.enabled():
         mlflow.end_run()
 
     return model, history

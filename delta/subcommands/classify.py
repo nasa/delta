@@ -32,13 +32,13 @@ import delta.ml.layers
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
+    config.setup_arg_parser(sub)
 
     sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
     sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub, labels=True, train=False)
 
 def save_confusion(cm, filename):
     f = plt.figure()
@@ -75,8 +75,8 @@ def main(options):
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
 
-    images = config.images()
-    labels = config.labels()
+    images = config.dataset.images()
+    labels = config.dataset.labels()
 
     if options.autoencoder:
         labels = None
@@ -93,7 +93,7 @@ def main(options):
 
         label = None
         if labels:
-            label = loader.load_image(config.labels(), i)
+            label = loader.load_image(config.dataset.labels(), i)
         if options.autoencoder:
             label = image
             predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))

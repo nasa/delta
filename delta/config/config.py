@@ -15,7 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
+#pylint: disable=no-member
+
 import os
 import os.path
 
@@ -26,25 +27,6 @@ import appdirs
 from delta.imagery import disk_folder_cache
 from delta.imagery.sources import image_set
 from delta.ml import ml_config
-
-#pylint: disable=W0108
-
-def _recursive_update(d, u, ignore_new):
-    """
-    Like dict.update, but recursively updates only
-    values that have changed in sub-dictionaries.
-    """
-    for k, v in u.items():
-        if not ignore_new and k not in d:
-            raise IndexError('Unexpected config value %s.' % (k))
-        dv = d.get(k, {})
-        if not isinstance(dv, collections.abc.Mapping):
-            d[k] = v
-        elif isinstance(v, collections.abc.Mapping):
-            d[k] = _recursive_update(dv, v, ignore_new)
-        else:
-            d[k] = v
-    return d
 
 __DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                         'worldview' : '.zip',
@@ -58,10 +40,10 @@ def __extension(conf):
     if conf['extension'] == 'default':
         return __DEFAULT_EXTENSIONS.get(conf['type'])
     return conf['extension']
-def __scale_factor(conf):
-    f = conf['preprocess']['scale_factor']
+def __scale_factor(image_comp):
+    f = image_comp.preprocess.scale_factor()
     if f == 'default':
-        return __DEFAULT_SCALE_FACTORS.get(conf['type'])
+        return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
     try:
         return float(f)
     except ValueError:
@@ -107,18 +89,20 @@ def __find_images(conf, matching_images=None, matching_conf=None):
             raise ValueError('Image file %s does not exist.' % (img))
     return images
 
-def __preprocess_function(image_dict):
-    if not image_dict['preprocess']['enabled']:
+def __preprocess_function(image_comp):
+    if not image_comp.preprocess.enabled():
         return None
-    f = __scale_factor(image_dict)
+    f = __scale_factor(image_comp)
     if f is None:
         return None
     return lambda data, _, dummy: data / np.float32(f)
 
-def _config_to_image_label_sets(images_dict, labels_dict):
+def _config_to_image_label_sets(images_comp, labels_comp):
     '''
     Takes two configuration subsections and returns (image set, label set)
     '''
+    images_dict = images_comp._config_dict #pylint:disable=protected-access
+    labels_dict = labels_comp._config_dict #pylint:disable=protected-access
     images = __find_images(images_dict)
 
     if images_dict['directory']:
@@ -130,7 +114,7 @@ def _config_to_image_label_sets(images_dict, labels_dict):
                 label_extension = __extension(labels_dict)
                 images = [img for img in images if not img.endswith(label_extension)]
 
-    pre = __preprocess_function(images_dict)
+    pre = __preprocess_function(images_comp)
     imageset = image_set.ImageSet(images, images_dict['type'], pre, images_dict['nodata_value'])
 
     if (labels_dict['files'] is None) and (labels_dict['file_list'] is None) and (labels_dict['directory'] is None):
@@ -141,112 +125,83 @@ def _config_to_image_label_sets(images_dict, labels_dict):
     if len(labels) != len(images):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
-    pre = __preprocess_function(labels_dict)
+    pre = __preprocess_function(labels_comp)
     return (imageset, image_set.ImageSet(labels, labels_dict['type'],
                                          pre, labels_dict['nodata_value']))
 
-# images validated when finding the files
-def __image_entries(keys, cpre):
-    return [
-        (keys + ['type'],               None,                str,                None,
-         cpre + '-type' if cpre else None, 'Image type (tiff, worldview, landsat, etc.).'),
-        (keys + ['files'],               None,               list,               None, None),
-        (keys + ['file_list'],           None,               str,                None,
-         cpre + '-file-list' if cpre else None, 'Data text file listing images.'),
-        (keys + ['directory'],           None,               str,                None,
-         cpre + '-dir' if cpre else None, 'Directory to search for images of given extension.'),
-        (keys + ['extension'],           None,               str,                None,
-         cpre + '-extension' if cpre else None, 'File extension to search for images in given directory.'),
-        (keys + ['preprocess', 'enabled'], None,             bool,               None,            None, None),
-        (keys + ['preprocess', 'scale_factor'], None,        (float, str),       None,            None, None),
-        (keys + ['nodata_value'],        None,               float,              None,            None, None)
-    ]
+def validate_path(path, base_dir):
+    path = os.path.expanduser(path)
+    # make relative paths relative to this config file
+    if base_dir:
+        path = os.path.normpath(os.path.join(base_dir, path))
+    return path
 
+def validate_positive(num, _):
+    if num <= 0:
+        raise ValueError('%d is not positive' % (num))
+    return num
 
-# This list contains all the entries expected in the config file, as well as how they are given command line arguments,
-# validated and accessed.
-#   dictionary entry, method_name, type, validation function, command line, description
-_CONFIG_ENTRIES = [
-    (['general', 'gpus'],              'gpus',              int,          None,
-     'gpus', 'Number of gpus to use.'),
-    (['general', 'threads'],           'threads',           int,          lambda x : x is None or x > 0,
-     'threads', 'Number of threads to use.'),
-    (['general', 'block_size_mb'],     'block_size_mb',     int,          lambda x : x > 0, 'block-size-mb',
-     'Size of an image block to load in memory at once.'),
-    (['general', 'interleave_images'], 'interleave_images', int,          lambda x : x > 0, None,
-     'Number of images to interleave at a time when training.'),
-    (['general', 'tile_ratio'],        'tile_ratio',        float,        lambda x : x > 0, 'tile-ratio',
-     'Width to height ratio of blocks to load in images.'),
-    (['general', 'cache', 'dir'],      None,                str,          None,             None, None),
-    (['general', 'cache', 'limit'],    None,                int,          lambda x : x > 0, None, None),
-    (['network', 'chunk_size'],        'chunk_size',        int,          lambda x: x > 0,
-     'chunk-size', 'Width of an image chunk to input to the neural network.'),
-    (['network', 'output_size'],       'output_size',        int,          lambda x: x > 0,
-     'output-size', 'Width of an image chunk to output from the neural network.'),
-    (['network', 'classes'],           'classes',           int,          lambda x: x > 0,
-     'classes', 'Number of label classes.'),
-    (['network', 'model', 'yaml_file'], None,               str,          None,
-     'model_description', 'A YAML file describing the network to train.'),
-    (['train', 'chunk_stride'],        None,                int,          lambda x: x > 0,
-     'chunk-stride', 'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.'),
-    (['train', 'epochs'],              None,                int,          lambda x: x > 0,
-     'num-epochs', 'Number of times to repeat training on the dataset.'),
-    (['train', 'batch_size'],          None,                int,          lambda x: x > 0,
-     'batch-size', 'Features to group into each batch for training.'),
-    (['train', 'loss_function'],       None,                str,          None,            None, None),
-    (['train', 'metrics'],             None,                list,         None,            None, None),
-    (['train', 'steps'],               None,                int,          None,
-     'steps', 'Number of steps to train for.'),
-    (['train', 'validation', 'steps'], None,                int,          lambda x: x > 0, None, None),
-    (['train', 'validation', 'from_training'],        None, bool,         None,            None, None),
-    (['train', 'experiment_name'],     None,                str,          None,            None, None),
-    (['train', 'optimizer'],           None,                str,          None,            None, None),
-    (['mlflow', 'enabled'],   'mlflow_enabled',       bool,               None,            None,
-     'Enable MLFlow.'),
-    (['mlflow', 'uri'],       None,                   str,                None,            None,
-     'URI to store MLFlow data.'),
-    (['mlflow', 'frequency'], 'mlflow_freq',          int,                lambda x: x > 0, None,
-     'Frequency to store metrics to MLFlow.'),
-    (['mlflow', 'checkpoints', 'frequency'], 'mlflow_checkpoint_freq', int,   None,            None,
-     'Frequency in batches to store neural network checkpoints in MLFlow.'),
-    (['mlflow', 'checkpoints', 'save_latest'], 'mlflow_checkpoint_latest', bool,   None,            None,
-     'If true, only store the latest checkpoint.'),
-    (['tensorboard', 'enabled'],  'tb_enabled',       bool,               None,            None,
-     'Enable tensorboard.'),
-    (['tensorboard', 'dir'],      None,               str,                None,            None,
-     'Directory to store tensorboard data.')
-]
-_CONFIG_ENTRIES.extend(__image_entries(['images'], 'image'))
-_CONFIG_ENTRIES.extend(__image_entries(['labels'], 'label'))
-_CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'images'], None))
-_CONFIG_ENTRIES.extend(__image_entries(['train', 'validation', 'labels'], None))
-
-class DeltaConfig:
+class DeltaConfigComponent:
     """
-    DELTA configuration manager.
+    DELTA configuration component.
 
-    Access and control all configuration parameters.
+    Handles one subsection of a config file. Generally subclasses
+    will want to register fields and components in the constructor,
+    and possibly override setup_arg_parser and parse_args to handle
+    command line options.
     """
     def __init__(self):
         """
-        Do not create a new instance, only the `delta.config.config`
-        singleton should be used.
+        Constructs the component.
         """
-        self.__config_dict = None
-        self._cache_manager = None
-        self.__images = None
-        self.__labels = None
-        self.__training = None
-        self._dirs = appdirs.AppDirs('delta', 'nasa')
+        self._config_dict = {}
+        self._components = {}
+        self._fields = []
+        self._validate = {}
+        self._types = {}
+        self._cmd_args = {}
+        self._descs = {}
 
-        self.reset()
+    def reset(self):
+        """
+        Resets all state in the component.
+        """
+        self._config_dict = {}
+        for c in self._components.values():
+            c.reset()
 
-    def _get_entry(self, key_list):
-        assert len(key_list) >= 1
-        a = self.__config_dict
-        for k in key_list:
-            a = a[k]
-        return a
+    def register_component(self, component, name : str, attr_name = None):
+        """
+        Register a subcomponent with a name and attribute name (access as self.attr_name)
+        """
+        assert name not in self._components
+        self._components[name] = component
+        if attr_name is None:
+            attr_name = name
+        setattr(self, attr_name, component)
+
+    def _register_field(self, name : str, types, accessor = None, cmd_arg = None, validate_fn = None, desc = None):
+        """
+        Register a field in this component of the configuration.
+
+        types is a single type or a tuple of valid types
+
+        validate_fn (optional) should take two strings as input, the field's value and
+        the base directory, and return what to save to the config dictionary.
+        It should raise an exception if the field is invalid.
+        accessor is an optional name to create an accessor function with
+        """
+        self._fields.append(name)
+        self._validate[name] = validate_fn
+        self._types[name] = types
+        self._cmd_args[name] = cmd_arg
+        self._descs[name] = desc
+        if accessor:
+            def access(self) -> types:
+                return self._config_dict[name]#pylint:disable=protected-access
+            access.__name__ = accessor
+            access.__doc__ = desc
+            setattr(self.__class__, accessor, access)
 
     def export(self) -> str:
         """
@@ -254,113 +209,163 @@ class DeltaConfig:
         """
         return yaml.dump(self.__config_dict)
 
-    def reset(self) -> None:
+    def _set_field(self, name : str, value : str, base_dir : str):
+        if name not in self._fields:
+            raise ValueError('Unexpected field %s.' % (name))
+        if value is not None and not isinstance(value, self._types[name]):
+            raise TypeError('%s must be of type %s, is %s.' % (name, self._types[name], value))
+        if self._validate[name] and value is not None:
+            try:
+                value = self._validate[name](value, base_dir)
+            except:
+                print('Value %s for %s is invalid.' % (value, name))
+                raise
+        self._config_dict[name] = value
+
+    def _load_dict(self, d : dict, base_dir):
         """
-        Restores the config file to the default state specified in `delta/config/defaults.cfg`.
+        Loads the dictionary d, assuming it came from the given base_dir (for relative paths).
         """
+        for (k, v) in d.items():
+            if k in self._components:
+                self._components[k]._load_dict(v, base_dir) #pylint:disable=protected-access
+            else:
+                self._set_field(k, v, base_dir)
+
+    def setup_arg_parser(self, parser) -> None:
+        """
+        Adds arguments to the parser. Must overridden by child classes.
+        """
+        for name in self._fields:
+            c = self._cmd_args[name]
+            if c is None:
+                continue
+            parser.add_argument(c, dest=c.replace('-', '_'), required=False,
+                                type=self._types[name], help=self._descs[name])
+
+    def parse_args(self, options):
+        """
+        Parse options extracted from an ArgParser configured with
+        `setup_arg_parser` and override the appropriate
+        configuration values.
+        """
+        d = {}
+        for name in self._fields:
+            c = self._cmd_args[name]
+            if c is None:
+                continue
+            n = c.replace('-', '_')
+            if not hasattr(options, n):
+                continue
+            d[name] = getattr(options, n)
+        self._load_dict(d, None)
+        return options
+
+class CacheConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('dir', str, None, None, validate_path, 'Cache directory.')
+        self._register_field('limit', int, None, None, validate_positive, 'Number of items to cache.')
+
         self._cache_manager = None
-        self.__images = None
-        self.__labels = None
-        self.__training = None
-        self.__config_dict = {}
-        self._load(pkg_resources.resource_filename('delta', 'config/delta.yaml'), ignore_new=True)
 
-    def load(self, yaml_file: str = None, yaml_str: str = None):
-        """
-        Loads a config file, then updates the default configuration
-        with the loaded values.
-        """
-        self._load(yaml_file, yaml_str)
+    def reset(self):
+        super().reset()
+        self._cache_manager = None
 
-    def _load(self, yaml_file=None, yaml_str=None, ignore_new=False):
-        if yaml_file:
-            if not os.path.exists(yaml_file):
-                raise Exception('Config file does not exist: ' + yaml_file)
-            with open(yaml_file, 'r') as f:
-                config_data = yaml.safe_load(f)
-        else:
-            config_data = yaml.safe_load(yaml_str)
-        def normalize_path(path):
-            path = os.path.expanduser(path)
-            # make relative paths relative to this config file
-            if yaml_file:
-                path = os.path.normpath(os.path.join(os.path.dirname(yaml_file), path))
-            return path
-        # expand paths to use relative ones to this config file
-        def recursive_normalize(d):
-            for k, v in d.items():
-                if isinstance(v, collections.abc.Mapping):
-                    recursive_normalize(v)
-                else:
-                    if k == 'yaml_file' and pkg_resources.resource_exists('delta', os.path.join('config', v)):
-                        continue
-                    if ('dir' in k or 'file' in k):
-                        if isinstance(v, str):
-                            d[k] = normalize_path(v)
-                        elif isinstance(v, list):
-                            d[k] = [normalize_path(item) for item in v]
-        recursive_normalize(config_data)
-
-        self.__config_dict = _recursive_update(self.__config_dict, config_data, ignore_new)
-
-        # overwrite model entirely if updated (don't want combined layers from multiple files)
-        if 'network' in config_data and 'model' in config_data['network']:
-            m = config_data['network']['model']
-            for k in ['yaml_file', 'layers', 'params']:
-                if not k in m:
-                    m[k] = None
-            self.__config_dict['network']['model'] = m
-
-        self._validate()
-
-    def _validate(self):
-        for e in _CONFIG_ENTRIES:
-            v = self._get_entry(e[0])
-            if v is not None and not isinstance(v, e[2]):
-                raise TypeError('%s must be of type %s, is %s.' % (e[0][-1], e[2], v))
-            if e[3] and not e[3](v):
-                raise ValueError('Value %s for %s is invalid.' % (v, e[0][-1]))
-
-    def cache_manager(self) -> disk_folder_cache.DiskCache:
+    def manager(self) -> disk_folder_cache.DiskCache:
         """
         Returns the disk cache object to manage the cache.
         """
         if self._cache_manager is None:
-            cdir = self.__config_dict['general']['cache']['dir']
+            cdir = self._config_dict['dir']
             if cdir == 'default':
-                cdir = self._dirs.user_cache_dir
-            self._cache_manager = disk_folder_cache.DiskCache(cdir, self.__config_dict['general']['cache']['limit'])
+                cdir = appdirs.AppDirs('delta', 'nasa').user_cache_dir
+            self._cache_manager = disk_folder_cache.DiskCache(cdir, self._config_dict['limit'])
         return self._cache_manager
 
-    def mlflow_uri(self) -> str:
-        """
-        Returns the URI for MLFlow to store data.
-        """
-        uri = self.__config_dict['mlflow']['uri']
-        if uri == 'default':
-            uri = 'file://' + os.path.join(self._dirs.user_data_dir, 'mlflow')
-        return uri
 
-    def tb_dir(self) -> str:
-        """
-        Returns the directory for tensorboard to store to.
-        """
-        tbd = self.__config_dict['tensorboard']['dir']
-        if tbd == 'default':
-            tbd = os.path.join(self._dirs.user_data_dir, 'tensorboard')
-        return tbd
+class GeneralConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('gpus', int, 'gpus', '--gpus', None, 'Number of gpus to use.')
+        self._register_field('threads', int, 'threads', '--threads', None, 'Number of threads to use.')
+        self._register_field('block_size_mb', int, 'block_size_mb', '--block-size-mb', validate_positive,
+                             'Size of an image block to load in memory at once.')
+        self._register_field('interleave_images', int, 'interleave_images', None, validate_positive,
+                             'Number of images to interleave at a time when training.')
+        self._register_field('tile_ratio', float, 'tile_ratio', '--tile-ratio', validate_positive,
+                             'Width to height ratio of blocks to load in images.')
+        self.register_component(CacheConfig(), 'cache')
 
-    def __load_images_labels(self, image_keys, label_keys):
-        images = self._get_entry(image_keys)
-        labels = self._get_entry(label_keys)
-        return _config_to_image_label_sets(images, labels)
+    def setup_arg_parser(self, parser) -> None:
+        group = parser.add_argument_group('General')
+        super().setup_arg_parser(group)
+
+class ImagePreprocessConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('enabled', bool, 'enabled', None, None, 'Turn on preprocessing.')
+        self._register_field('scale_factor', (float, str), 'scale_factor', None, None, 'Image scale factor.')
+
+class ImageSetConfig(DeltaConfigComponent):
+    def __init__(self, name=None):
+        super().__init__()
+        self._register_field('type', str, 'type', '--' + name + '-type' if name else None, None, 'Image type.')
+        self._register_field('files', list, None, None, None, 'List of image files.')
+        self._register_field('file_list', list, None, '--' + name + '-file-list' if name else None,
+                             validate_path, 'File listing image files.')
+        self._register_field('directory', str, None, '--' + name + '-dir' if name else None,
+                             validate_path, 'Directory of image files.')
+        self._register_field('extension', str, None, '--' + name + '-extension' if name else None,
+                             None, 'Image file extension.')
+        self._register_field('nodata_value', float, None, None, None, 'Value of pixels to ignore.')
+        self.register_component(ImagePreprocessConfig(), 'preprocess')
+        self._name = name
+
+    def setup_arg_parser(self, parser) -> None:
+        if self._name:
+            parser.add_argument("--" + self._name, dest=self._name, required=False,
+                                help="Specify a single image file.")
+        super().setup_arg_parser(parser)
+
+    def parse_args(self, options):
+        super().parse_args(options)
+        if hasattr(options, self._name) and getattr(options, self._name) is not None:
+            self._config_dict['files'] = [getattr(options, self._name)]
+        return options
+
+class DatasetConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_component(ImageSetConfig('image'), 'images', '__image_comp')
+        self.register_component(ImageSetConfig('label'), 'labels', '__label_comp')
+        self.__images = None
+        self.__labels = None
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def setup_arg_parser(self, parser) -> None:
+        group = parser.add_argument_group('Dataset')
+        super().setup_arg_parser(group)
+        for c in self._components.values():
+            c.setup_arg_parser(group)
+
+    def parse_args(self, options):
+        for c in self._components.values():
+            c.parse_args(options)
+        return options
 
     def images(self) -> image_set.ImageSet:
         """
         Returns the training images.
         """
         if self.__images is None:
-            (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
+            (self.__images, self.__labels) = _config_to_image_label_sets(self._components['images'],
+                                                                         self._components['labels'])
         return self.__images
 
     def labels(self) -> image_set.ImageSet:
@@ -368,17 +373,33 @@ class DeltaConfig:
         Returns the label images.
         """
         if self.__labels is None:
-            (self.__images, self.__labels) = self.__load_images_labels(['images'], ['labels'])
+            (self.__images, self.__labels) = _config_to_image_label_sets(self._components['images'],
+                                                                         self._components['labels'])
         return self.__labels
 
-    def model_dict(self) -> dict:
+
+class NetworkModelConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('yaml_file', str, 'yaml_file', None, validate_path,
+                             'A YAML file describing the network to train.')
+        self._register_field('params', dict, None, None, None, None)
+        self._register_field('layers', list, None, None, None, None)
+
+    # overwrite model entirely if updated (don't want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        super()._load_dict(d, base_dir)
+        for k in ['yaml_file', 'layers', 'params']:
+            if not k in d:
+                self._config_dict[k] = None
+
+    def as_dict(self) -> dict:
         """
         Returns a dictionary representing the network model for use by `delta.ml.model_parser`.
         """
-        model = self._get_entry(['network', 'model'])
-        yaml_file = model['yaml_file']
+        yaml_file = self._config_dict['yaml_file']
         if yaml_file is not None:
-            if model['layers'] is not None:
+            if self._config_dict['layers'] is not None:
                 raise ValueError('Specified both yaml file and layers in model.')
 
             resource = os.path.join('config', yaml_file)
@@ -388,126 +409,204 @@ class DeltaConfig:
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
                 return yaml.safe_load(f)
-        return model
+        return self._config_dict
 
-    def training(self) -> ml_config.TrainingSpec:
+class NetworkConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('chunk_size', int, 'chunk_size', '--chunk-size', validate_positive,
+                             'Width of an image chunk to input to the neural network.')
+        self._register_field('output_size', int, 'output_size', '--output-size', validate_positive,
+                             'Width of an image chunk to output from the neural network.')
+        self._register_field('classes', int, 'classes', '--classes', validate_positive, 'Number of label classes.')
+        self.register_component(NetworkModelConfig(), 'model')
+
+    def setup_arg_parser(self, parser) -> None:
+        group = parser.add_argument_group('Network')
+        super().setup_arg_parser(group)
+
+class ValidationConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('steps', int, 'steps', None, validate_positive,
+                             'If from training, validate for this many steps.')
+        self._register_field('from_training', bool, 'from_training', None, None,
+                             'Take validation data from training data.')
+        self.register_component(ImageSetConfig(), 'images')
+        self.register_component(ImageSetConfig(), 'labels')
+        self.__images = None
+        self.__labels = None
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def images(self) -> image_set.ImageSet:
+        """
+        Returns the training images.
+        """
+        if self.__images is None:
+            (self.__images, self.__labels) = _config_to_image_label_sets(self._components['images'],
+                                                                         self._components['labels'])
+        return self.__images
+
+    def labels(self) -> image_set.ImageSet:
+        """
+        Returns the label images.
+        """
+        if self.__labels is None:
+            (self.__images, self.__labels) = _config_to_image_label_sets(self._components['images'],
+                                                                         self._components['labels'])
+        return self.__labels
+
+class TrainingConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('chunk_stride', int, None, '--chunk-stride', validate_positive,
+                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
+        self._register_field('epochs', int, None, '--epochs', validate_positive,
+                             'Number of times to repeat training on the dataset.')
+        self._register_field('batch_size', int, None, '--batch-size', validate_positive,
+                             'Features to group into each training batch.')
+        self._register_field('loss_function', str, None, None, None, 'Keras loss function.')
+        self._register_field('metrics', list, None, None, None, 'List of metrics to apply.')
+        self._register_field('steps', int, None, '--steps', validate_positive, 'Batches to train per epoch.')
+        self._register_field('experiment_name', str, None, None, None, 'Experiment name in MLFlow.')
+        self._register_field('optimizer', str, None, None, None, 'Keras optimizer to use.')
+        self.register_component(ValidationConfig(), 'validation')
+        self.__training = None
+
+    def setup_arg_parser(self, parser) -> None:
+        group = parser.add_argument_group('Training')
+        super().setup_arg_parser(group)
+
+    def spec(self) -> ml_config.TrainingSpec:
         """
         Returns the options configuring training.
         """
-        if self.__training is not None:
-            return self.__training
-        from_training = self._get_entry(['train', 'validation', 'from_training'])
-        vsteps = self._get_entry(['train', 'validation', 'steps'])
-        (vimg, vlabels) = (None, None)
-        if not from_training:
-            (vimg, vlabels) = self.__load_images_labels(['train', 'validation', 'images'],
-                                                        ['train', 'validation', 'labels'])
-        validation = ml_config.ValidationSet(vimg, vlabels, from_training, vsteps)
-        self.__training = ml_config.TrainingSpec(batch_size=self._get_entry(['train', 'batch_size']),
-                                                 epochs=self._get_entry(['train', 'epochs']),
-                                                 loss_function=self._get_entry(['train', 'loss_function']),
-                                                 validation=validation,
-                                                 steps=self._get_entry(['train', 'steps']),
-                                                 metrics=self._get_entry(['train', 'metrics']),
-                                                 chunk_stride=self._get_entry(['train', 'chunk_stride']),
-                                                 optimizer=self._get_entry(['train', 'optimizer']),
-                                                 experiment_name=self._get_entry(['train', 'experiment_name']))
+        if not self.__training:
+            from_training = self.validation.from_training()
+            vsteps = self.validation.steps()
+            (vimg, vlabels) = (None, None)
+            if not from_training:
+                (vimg, vlabels) = (self.validation.images(), self.validation.labels())
+            validation = ml_config.ValidationSet(vimg, vlabels, from_training, vsteps)
+            self.__training = ml_config.TrainingSpec(batch_size=self._config_dict['batch_size'],
+                                                     epochs=self._config_dict['epochs'],
+                                                     loss_function=self._config_dict['loss_function'],
+                                                     validation=validation,
+                                                     steps=self._config_dict['steps'],
+                                                     metrics=self._config_dict['metrics'],
+                                                     chunk_stride=self._config_dict['chunk_stride'],
+                                                     optimizer=self._config_dict['optimizer'],
+                                                     experiment_name=self._config_dict['experiment_name'])
         return self.__training
 
-    def __add_arg_group(self, group, group_key):#pylint:disable=no-self-use
-        '''Add command line arguments for the given group.'''
-        for e in _CONFIG_ENTRIES:
-            if e[0][0] == group_key and e[4] is not None:
-                group.add_argument('--' + e[4], dest=e[4].replace('-', '_'), required=False, type=e[2], help=e[5])
 
-    def setup_arg_parser(self, parser, general=True, images=True, labels=True, train=False) -> None:
+class MLFlowCheckpointsConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('frequency', int, 'frequency', None, None,
+                             'Frequency in batches to store neural network checkpoints.')
+        self._register_field('save_latest', bool, 'save_latest', None, None,
+                             'If true, only keep the most recent checkpoint.')
+
+class MLFlowConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('enabled', bool, 'enabled', None, None, 'Enable MLFlow.')
+        self._register_field('uri', str, None, None, None, 'URI to store MLFlow data.')
+        self._register_field('frequency', int, 'frequency', None, validate_positive, 'Frequency to store metrics.')
+        self.register_component(MLFlowCheckpointsConfig(), 'checkpoints')
+
+    def uri(self) -> str:
         """
-        Setup the ArgParser parser to allow the specified options.
-
-         * **general**: General options which don't fit in another group.
-         * **images**: Specify input images.
-         * **labels**: Specify labels corresponding to the images.
-         * **train**: Specify options for training a neural network.
+        Returns the URI for MLFlow to store data.
         """
-        group = parser.add_argument_group('General')
-        group.add_argument('--config', dest='config', action='append', required=False, default=[],
-                           help='Load configuration file (can pass multiple times).')
-        if general:
-            self.__add_arg_group(group, 'general')
+        uri = self._config_dict['uri']
+        if uri == 'default':
+            uri = 'file://' + os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'mlflow')
+        return uri
 
-        if images:
-            group = parser.add_argument_group('Input Data')
-            self.__add_arg_group(group, 'images')
-            group.add_argument("--image", dest="image", required=False,
-                               help="Specify a single image file.")
-        if labels:
-            self.__add_arg_group(group, 'labels')
-            group.add_argument("--label", dest="label", required=False,
-                               help="Specify a single label file.")
+class TensorboardConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._register_field('enabled', bool, 'enabled', None, None, 'Enable Tensorboard.')
+        self._register_field('dir', str, None, None, None, 'Directory to store Tensorboard data.')
 
-        if train:
-            group = parser.add_argument_group('Machine Learning')
-            self.__add_arg_group(group, 'network')
-            self.__add_arg_group(group, 'train')
+    def dir(self) -> str:
+        """
+        Returns the directory for tensorboard to store to.
+        """
+        tbd = self._config_dict['dir']
+        if tbd == 'default':
+            tbd = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
+        return tbd
+
+class DeltaConfig(DeltaConfigComponent):
+    """
+    DELTA configuration manager.
+
+    Access and control all configuration parameters.
+    """
+    def load(self, yaml_file: str = None, yaml_str: str = None):
+        """
+        Loads a config file, then updates the default configuration
+        with the loaded values.
+        """
+        base_path = None
+        if yaml_file:
+            if not os.path.exists(yaml_file):
+                raise Exception('Config file does not exist: ' + yaml_file)
+            with open(yaml_file, 'r') as f:
+                config_data = yaml.safe_load(f)
+            base_path = os.path.normpath(os.path.dirname(yaml_file))
+        else:
+            config_data = yaml.safe_load(yaml_str)
+        self._load_dict(config_data, base_path)
+
+    def setup_arg_parser(self, parser) -> None:
+        parser.add_argument('--config', dest='config', action='append', required=False, default=[],
+                            help='Load configuration file (can pass multiple times).')
+        for c in self._components.values():
+            c.setup_arg_parser(parser)
 
     def parse_args(self, options):
-        """
-        Parse an options extracted from an ArgParser configured with
-        `setup_arg_parser` and override the appropriate
-        configuration values.
-        """
         for c in options.config:
             self.load(c)
-
-        c = self.__config_dict
-        if hasattr(options, 'image') and options.image:
-            c['images']['files'] = [options.image]
-        if hasattr(options, 'label') and options.label:
-            c['labels']['files'] = [options.label]
-        # load all the command line arguments into the config_dict
-        for e in _CONFIG_ENTRIES:
-            if e[4] is None:
-                continue
-            name = e[4].replace('-', '_')
-            if not hasattr(options, name):
-                continue
-            v = getattr(options, name)
-            if v is None:
-                continue
-            a = self.__config_dict
-            for k in e[0][:-1]:
-                a = a[k]
-            a[e[0][-1]] = v
-
-        self._validate()
+        for c in self._components.values():
+            c.parse_args(options)
         return options
 
-# make accessor functions for DeltaConfig based on list
-def _create_accessor(key_list, name, doc, return_type):
-    def accessor(self) -> return_type:
-        return self._get_entry(key_list)#pylint:disable=protected-access
-    accessor.__name__ = name
-    accessor.__doc__ = doc
-    setattr(DeltaConfig, name, accessor)
+    def reset(self):
+        super().reset()
+        self.load(pkg_resources.resource_filename('delta', 'config/delta.yaml'))
 
-def __initialize_delta_config():
-    for e in _CONFIG_ENTRIES:
-        if e[1] is None:
-            continue
-        _create_accessor(e[0], e[1], e[5], e[2])
+    def initialize(self, options, config_files = None):
+        """
+        Loads the default files unless config_files is specified, in which case it
+        loads them. Then loads options (from argparse).
+        """
+        self.reset()
 
-__initialize_delta_config()
-config = DeltaConfig()
-
-def __load_initial_config():
-    # only contains things not in default config file
-    global config #pylint: disable=global-statement
-    dirs = appdirs.AppDirs('delta', 'nasa')
-    DEFAULT_CONFIG_FILES = [os.path.join(dirs.site_config_dir, 'delta.yaml'),
+        if config_files is None:
+            dirs = appdirs.AppDirs('delta', 'nasa')
+            config_files = [os.path.join(dirs.site_config_dir, 'delta.yaml'),
                             os.path.join(dirs.user_config_dir, 'delta.yaml')]
 
-    for filename in DEFAULT_CONFIG_FILES:
-        if os.path.exists(filename):
-            config.load(filename)
+        for filename in config_files:
+            if os.path.exists(filename):
+                config.load(filename)
 
-__load_initial_config()
+        if options is not None:
+            config.parse_args(options)
+
+config = DeltaConfig()
+
+config.register_component(GeneralConfig(), 'general')
+config.register_component(DatasetConfig(), 'dataset')
+config.register_component(NetworkConfig(), 'network')
+config.register_component(TrainingConfig(), 'train')
+config.register_component(MLFlowConfig(), 'mlflow')
+config.register_component(TensorboardConfig(), 'tensorboard')

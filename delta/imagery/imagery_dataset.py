@@ -65,16 +65,16 @@ class ImageryDataset:
         return r
 
     def _tile_images(self):
-        max_block_bytes = config.block_size_mb() * 1024 * 1024
+        max_block_bytes = config.general.block_size_mb() * 1024 * 1024
         def tile_generator():
             tgs = []
             for i in range(len(self._images)):
                 img = loader.load_image(self._images, i)
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
-                                           config.tile_ratio()))
-                tile_height = int(config.tile_ratio() * tile_width)
-                min_block_size = self._chunk_size ** 2 * config.tile_ratio() * img.num_bands() * 4
+                                           config.general.tile_ratio()))
+                tile_height = int(config.general.tile_ratio() * tile_width)
+                min_block_size = self._chunk_size ** 2 * config.general.tile_ratio() * img.num_bands() * 4
                 if max_block_bytes < min_block_size:
                     print('Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)' % ( \
                           max_block_bytes / 1024 / 1024, min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
@@ -86,8 +86,8 @@ class ImageryDataset:
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
             while tgs:
-                cur = tgs[:config.interleave_images()]
-                tgs = tgs[config.interleave_images():]
+                cur = tgs[:config.general.interleave_images()]
+                tgs = tgs[config.general.interleave_images():]
                 done = False
                 while not done:
                     done = True
@@ -114,7 +114,7 @@ class ImageryDataset:
                                                    is_labels),
                                  [image_index, [x1, y1, x2, y2]], data_type)
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=config.threads())
+        ret = ds_input.map(load_tile, num_parallel_calls=config.general.threads())
 
         return ret.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -148,7 +148,7 @@ class ImageryDataset:
         Unbatched dataset of image chunks.
         """
         ret = self._load_images(False, self._data_type)
-        ret = ret.map(self._chunk_image, num_parallel_calls=config.threads())
+        ret = ret.map(self._chunk_image, num_parallel_calls=config.general.threads())
         return ret.unbatch()
 
     def labels(self):

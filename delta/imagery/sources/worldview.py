@@ -65,7 +65,7 @@ class WorldviewImage(tiff.TiffImage):
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
         name = '_'.join([self._sensor, self._date])
-        unpack_folder = config.cache_manager().register_item(name)
+        unpack_folder = config.general.cache.manager().register_item(name)
 
         # Check if we already unpacked this data
         (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)

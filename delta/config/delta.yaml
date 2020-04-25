@@ -13,28 +13,29 @@ general:
     dir:              default
     limit:            8
 
-images:
-  type:             tiff
-  # preprocess the images when loading (i.e., scaling)
-  preprocess:
-    enabled:        true
-    scale_factor:   default
-  nodata_value:     ~
-  directory:        ~
-  extension:        default
-  file_list:        ~
-  files:            ~
-
-labels:
-  type:             tiff
-  preprocess:
-    enabled:        false
-    scale_factor:   default
-  nodata_value:     ~
-  directory:        ~
-  extension:        default
-  file_list:        ~
-  files:            ~
+dataset:
+  images:
+    type:             tiff
+    # preprocess the images when loading (i.e., scaling)
+    preprocess:
+      enabled:        true
+      scale_factor:   default
+    nodata_value:     ~
+    directory:        ~
+    extension:        default
+    file_list:        ~
+    files:            ~
+  
+  labels:
+    type:             tiff
+    preprocess:
+      enabled:        false
+      scale_factor:   default
+    nodata_value:     ~
+    directory:        ~
+    extension:        default
+    file_list:        ~
+    files:            ~
 
 network:
   chunk_size:      16
