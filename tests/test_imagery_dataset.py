@@ -52,15 +52,16 @@ def load_dataset(source, output_size):
                     extension: %s
                     preprocess:
                       enabled: false
-                network:
-                  chunk_size: 3
+                train:
+                  network:
+                    chunk_size: 3
                 mlflow:
                   enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 
     dataset = imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
-                                             config.network.chunk_size(), output_size,
+                                             config.train.network.chunk_size(), output_size,
                                              config.train.spec().chunk_stride)
     return dataset
 
@@ -152,14 +153,15 @@ def autoencoder(all_sources):
                     extension: %s
                     preprocess:
                       enabled: false
-                network:
-                  chunk_size: 3
+                train:
+                  network:
+                    chunk_size: 3
                 mlflow:
                   enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),
-                                                 config.network.chunk_size(), config.train.spec().chunk_stride)
+                                                 config.train.network.chunk_size(), config.train.spec().chunk_stride)
     return dataset
 
 def test_autoencoder(autoencoder): #pylint: disable=redefined-outer-name

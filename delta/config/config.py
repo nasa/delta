@@ -211,7 +211,7 @@ class DeltaConfigComponent:
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
-            raise ValueError('Unexpected field %s.' % (name))
+            raise ValueError('Unexpected field %s in config file.' % (name))
         if value is not None and not isinstance(value, self._types[name]):
             raise TypeError('%s must be of type %s, is %s.' % (name, self._types[name], value))
         if self._validate[name] and value is not None:
@@ -243,6 +243,9 @@ class DeltaConfigComponent:
             parser.add_argument(c, dest=c.replace('-', '_'), required=False,
                                 type=self._types[name], help=self._descs[name])
 
+        for c in self._components.values():
+            c.setup_arg_parser(parser)
+
     def parse_args(self, options):
         """
         Parse options extracted from an ArgParser configured with
@@ -259,7 +262,9 @@ class DeltaConfigComponent:
                 continue
             d[name] = getattr(options, n)
         self._load_dict(d, None)
-        return options
+
+        for c in self._components.values():
+            c.parse_args(options)
 
 class CacheConfig(DeltaConfigComponent):
     def __init__(self):
@@ -324,16 +329,18 @@ class ImageSetConfig(DeltaConfigComponent):
         self._name = name
 
     def setup_arg_parser(self, parser) -> None:
-        if self._name:
-            parser.add_argument("--" + self._name, dest=self._name, required=False,
-                                help="Specify a single image file.")
+        if self._name is None:
+            return
+        parser.add_argument("--" + self._name, dest=self._name, required=False,
+                            help="Specify a single image file.")
         super().setup_arg_parser(parser)
 
     def parse_args(self, options):
+        if self._name is None:
+            return
         super().parse_args(options)
         if hasattr(options, self._name) and getattr(options, self._name) is not None:
             self._config_dict['files'] = [getattr(options, self._name)]
-        return options
 
 class DatasetConfig(DeltaConfigComponent):
     def __init__(self):
@@ -351,13 +358,6 @@ class DatasetConfig(DeltaConfigComponent):
     def setup_arg_parser(self, parser) -> None:
         group = parser.add_argument_group('Dataset')
         super().setup_arg_parser(group)
-        for c in self._components.values():
-            c.setup_arg_parser(group)
-
-    def parse_args(self, options):
-        for c in self._components.values():
-            c.parse_args(options)
-        return options
 
     def images(self) -> image_set.ImageSet:
         """
@@ -475,6 +475,7 @@ class TrainingConfig(DeltaConfigComponent):
         self._register_field('experiment_name', str, None, None, None, 'Experiment name in MLFlow.')
         self._register_field('optimizer', str, None, None, None, 'Keras optimizer to use.')
         self.register_component(ValidationConfig(), 'validation')
+        self.register_component(NetworkConfig(), 'network')
         self.__training = None
 
     def setup_arg_parser(self, parser) -> None:
@@ -569,15 +570,12 @@ class DeltaConfig(DeltaConfigComponent):
     def setup_arg_parser(self, parser) -> None:
         parser.add_argument('--config', dest='config', action='append', required=False, default=[],
                             help='Load configuration file (can pass multiple times).')
-        for c in self._components.values():
-            c.setup_arg_parser(parser)
+        super().setup_arg_parser(parser)
 
     def parse_args(self, options):
         for c in options.config:
             self.load(c)
-        for c in self._components.values():
-            c.parse_args(options)
-        return options
+        super().parse_args(options)
 
     def reset(self):
         super().reset()
@@ -606,7 +604,6 @@ config = DeltaConfig()
 
 config.register_component(GeneralConfig(), 'general')
 config.register_component(DatasetConfig(), 'dataset')
-config.register_component(NetworkConfig(), 'network')
 config.register_component(TrainingConfig(), 'train')
 config.register_component(MLFlowConfig(), 'mlflow')
 config.register_component(TensorboardConfig(), 'tensorboard')

@@ -37,16 +37,15 @@ dataset:
     file_list:        ~
     files:            ~
 
-network:
-  chunk_size:      16
-  output_size:     8
-  classes:         4
-  model:
-    yaml_file:     networks/convpool.yaml
-    params:        ~
-    layers:        ~
-
 train:
+  network:
+    chunk_size:      16
+    output_size:     8
+    classes:         4
+    model:
+      yaml_file:     networks/convpool.yaml
+      params:        ~
+      layers:        ~
   chunk_stride:    1
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)

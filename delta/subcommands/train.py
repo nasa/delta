@@ -45,14 +45,14 @@ def main(options):
         return 1
     tc = config.train.spec()
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, config.network.chunk_size(), tc.chunk_stride)
+        ids = imagery_dataset.AutoencoderDataset(images, config.train.network.chunk_size(), tc.chunk_stride)
     else:
         labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
-        ids = imagery_dataset.ImageryDataset(images, labels, config.network.chunk_size(),
-                                             config.network.output_size(), tc.chunk_stride)
+        ids = imagery_dataset.ImageryDataset(images, labels, config.train.network.chunk_size(),
+                                             config.train.network.output_size(), tc.chunk_stride)
 
     try:
         if options.resume is not None:

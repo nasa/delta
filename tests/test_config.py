@@ -168,32 +168,35 @@ def test_pretrained_layer():
 def test_network_file():
     config.reset()
     test_str = '''
-    network:
-      chunk_size: 5
-      classes: 3
-      model:
-        yaml_file: networks/convpool.yaml
+    train:
+      network:
+        chunk_size: 5
+        classes: 3
+        model:
+          yaml_file: networks/convpool.yaml
     '''
     config.load(yaml_str=test_str)
-    assert config.network.chunk_size() == 5
-    assert config.network.classes() == 3
+    assert config.train.network.chunk_size() == 5
+    assert config.train.network.classes() == 3
     model = model_parser.config_model(2)()
-    assert model.input_shape == (None, config.network.chunk_size(), config.network.chunk_size(), 2)
-    assert model.output_shape == (None, config.network.output_size(),
-                                  config.network.output_size(), config.network.classes())
+    assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
+    assert model.output_shape == (None, config.train.network.output_size(),
+                                  config.train.network.output_size(), config.train.network.classes())
 
 def test_validate():
     config.reset()
     test_str = '''
-    network:
-      chunk_size: -1
+    train:
+      network:
+        chunk_size: -1
     '''
     with pytest.raises(ValueError):
         config.load(yaml_str=test_str)
     config.reset()
     test_str = '''
-    network:
-      chunk_size: string
+    train:
+      network:
+        chunk_size: string
     '''
     with pytest.raises(TypeError):
         config.load(yaml_str=test_str)
@@ -201,29 +204,30 @@ def test_validate():
 def test_network_inline():
     config.reset()
     test_str = '''
-    network:
-      chunk_size: 5
-      output_size: 1
-      classes: 3
-      model:
-        params:
-          v1 : 10
-        layers:
-        - Flatten:
-            input_shape: in_shape
-        - Dense:
-            units: v1
-            activation : relu
-        - Dense:
-            units: out_dims
-            activation : softmax
+    train:
+      network:
+        chunk_size: 5
+        output_size: 1
+        classes: 3
+        model:
+          params:
+            v1 : 10
+          layers:
+          - Flatten:
+              input_shape: in_shape
+          - Dense:
+              units: v1
+              activation : relu
+          - Dense:
+              units: out_dims
+              activation : softmax
     '''
     config.load(yaml_str=test_str)
-    assert config.network.chunk_size() == 5
-    assert config.network.classes() == 3
+    assert config.train.network.chunk_size() == 5
+    assert config.train.network.classes() == 3
     model = model_parser.config_model(2)()
-    assert model.input_shape == (None, config.network.chunk_size(), config.network.chunk_size(), 2)
-    assert model.output_shape == (None, config.network.classes())
+    assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
+    assert model.output_shape == (None, config.train.network.classes())
 
 def test_train():
     config.reset()
@@ -299,7 +303,7 @@ def test_argparser():
                                  ' --label-type tiff --label data/landsat.tiff').split())
     config.parse_args(options)
 
-    assert config.network.chunk_size() == 5
+    assert config.train.network.chunk_size() == 5
     im = config.dataset.images()
     print(im.preprocess())
     assert im.preprocess() is not None
