@@ -1,5 +1,5 @@
-**DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery.
-Use DELTA to train and run neural networks to classify large satellite images. DELTA
+**DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
+based on Tensorflow. Use DELTA to train and run neural networks to classify large satellite images. DELTA
 provides pre-trained autoencoders for a variety of satellites to reduce required training data
 and time.
 
@@ -8,7 +8,9 @@ DELTA is currently under active development by the
 frequent changes. It is initially being used to map floods for disaster response, in collaboration with the
 [U.S. Geological Survey](http://www.usgs.gov), [National Geospatial Intelligence Agency](https://www.nga.mil/),
 [National Center for Supercomputing Applications](http://www.ncsa.illinois.edu/), and
-[University of Alabama](https://www.ua.edu/).
+[University of Alabama](https://www.ua.edu/). DELTA is a component of the
+[Crisis Mapping Toolkit](https://github.com/nasa/CrisisMappingToolkit), in addition
+to our previous software for mapping floods with Google Earth Engine.
 
 Installation
 ============
@@ -122,3 +124,9 @@ Important notes for developers:
 
  * **Development Setup**: You can install delta using pip's `-e` flag which installs in editable mode. Then you can
    run `delta` and it will use your latest changes made to the repo without reinstalling.
+
+Licensing
+=========
+DELTA is released under the Apache 2 license.
+
+Copyright (c) 2020, United States Government, as represented by the Administrator of the National Aeronautics and Space Administration. All rights reserved.
