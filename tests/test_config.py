@@ -36,6 +36,7 @@ def test_general():
     test_str = '''
     general:
       gpus: 3
+    io:
       threads: 5
       block_size_mb: 10
       interleave_images: 3
@@ -47,26 +48,27 @@ def test_general():
     config.load(yaml_str=test_str)
 
     assert config.general.gpus() == 3
-    assert config.general.threads() == 5
-    assert config.general.block_size_mb() == 10
-    assert config.general.interleave_images() == 3
-    assert config.general.tile_ratio() == 1.0
-    cache = config.general.cache.manager()
+    assert config.io.threads() == 5
+    assert config.io.block_size_mb() == 10
+    assert config.io.interleave_images() == 3
+    assert config.io.tile_ratio() == 1.0
+    cache = config.io.cache.manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2
     os.rmdir('nonsense')
 
 def test_images_dir():
     config.reset()
+    dir_path = os.path.join(os.path.dirname(__file__), 'data')
     test_str = '''
     dataset:
       images:
         type: tiff
         preprocess:
           enabled: false
-        directory: data/
+        directory: %s/
         extension: .tiff
-    '''
+    ''' % (dir_path)
     config.load(yaml_str=test_str)
     im = config.dataset.images()
     assert im.preprocess() is None
@@ -76,20 +78,21 @@ def test_images_dir():
 
 def test_images_files():
     config.reset()
+    file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
     test_str = '''
     dataset:
       images:
         type: tiff
         preprocess:
           enabled: false
-        files: [data/landsat.tiff]
-    '''
+        files: [%s]
+    ''' % (file_path)
     config.load(yaml_str=test_str)
     im = config.dataset.images()
     assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
-    assert im[0] == 'data/landsat.tiff'
+    assert im[0] == file_path
 
 def test_model_from_dict():
     config.reset()
@@ -239,7 +242,6 @@ def test_train():
       epochs: 3
       loss_function: loss
       metrics: [metric]
-      experiment_name: name
       optimizer: opt
       validation:
         steps: 20
@@ -253,7 +255,6 @@ def test_train():
     assert tc.epochs == 3
     assert tc.loss_function == 'loss'
     assert tc.metrics == ['metric']
-    assert tc.experiment == 'name'
     assert tc.optimizer == 'opt'
     assert tc.validation.steps == 20
     assert tc.validation.from_training
@@ -267,6 +268,7 @@ def test_mlflow():
     mlflow:
       enabled: false
       uri: nonsense
+      experiment_name: name
       frequency: 5
       checkpoints:
         frequency: 10
@@ -276,6 +278,7 @@ def test_mlflow():
     assert not config.mlflow.enabled()
     assert config.mlflow.uri() == 'nonsense'
     assert config.mlflow.frequency() == 5
+    assert config.mlflow.experiment() == 'name'
     assert config.mlflow.checkpoints.frequency() == 10
 
 def test_tensorboard():
@@ -299,8 +302,9 @@ def test_argparser():
     parser = argparse.ArgumentParser()
     config.setup_arg_parser(parser)
 
-    options = parser.parse_args(('--chunk-size 5 --image-type tiff --image data/landsat.tiff' +
-                                 ' --label-type tiff --label data/landsat.tiff').split())
+    file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
+    options = parser.parse_args(('--chunk-size 5 --image-type tiff --image %s' % (file_path) +
+                                 ' --label-type tiff --label %s' % (file_path)).split())
     config.parse_args(options)
 
     assert config.train.network.chunk_size() == 5

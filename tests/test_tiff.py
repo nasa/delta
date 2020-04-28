@@ -18,6 +18,7 @@
 """
 Test for GDAL I/O classes.
 """
+import os.path
 import pytest
 import numpy as np
 
@@ -88,18 +89,20 @@ def test_geotiff_read():
     '''
     Tests reading a landsat geotiff.
     '''
-    check_landsat_tiff('data/landsat.tiff')
+    file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
+    check_landsat_tiff(file_path)
 
 def test_geotiff_save(tmpdir):
     '''
     Tests writing a landsat geotiff.
     '''
-    image = TiffImage('data/landsat.tiff')
+    file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
+    image = TiffImage(file_path)
     new_tiff = str(tmpdir / 'test.tiff')
 
     image.save(new_tiff)
 
-    check_same('data/landsat.tiff', new_tiff)
+    check_same(file_path, new_tiff)
 
 def test_geotiff_write(tmpdir):
     '''

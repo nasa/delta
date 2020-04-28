@@ -20,9 +20,10 @@ Note that some configuration options can be overwritten on the command line: run
 The remainder of this document details the available configuration parameters. Note that
 DELTA is still under active development and parts are likely to change in the future.
 
-Images and Labels
+Dataset
 -----------------
-Images and labels are specified with the `images` and `labels` fields respectively. Both share the
+Images and labels are specified with the `images` and `labels` fields respectively,
+within `dataset`. Both share the
 same underlying options.
 
  * `type`: Indicates which loader to use, e.g., `tiff` for geotiff.
@@ -37,8 +38,47 @@ same underlying options.
    * `scale_factor`: Factor to scale all readings by.
  * `nodata_value`: A pixel value to ignore in the images.
 
-Network
--------
+As an example:
+
+  ```
+  dataset:
+    images:
+      type: worldview
+      directory: images/
+    labels:
+      type: tiff
+      directory: labels/
+      extension: _label.tiff
+  ```
+
+This configuration will load worldview files ending in `.zip` from the `images/` directory.
+It will then find matching tiff files ending in `_label.tiff` from the `labels` directory
+to use as labels.
+
+Train
+-----
+These options are used in the `delta train` command.
+
+ * `network`: The nueral network to train. See the next section for details.
+ * `chunk_stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
+   default of 1 to use all available training data.
+ * `batch_size`: The number of chunks to train on in a group. May affect convergence speed. Larger
+   batches allow higher training data throughput, but may encounter memory limitations.
+ * `steps`: If specified, stop training for each epoch after the given number of batches.
+ * `epochs`: the number of times to iterate through all training data during training.
+ * `loss_function`: [Keras loss function](https://keras.io/losses/). For integer classes, use
+   `sparse_categorical_cross_entropy`.
+ * `metrics`: A list of [Keras metrics](https://keras.io/metrics/) to evaluate.
+ * `optimizer`: The [Keras optimizer](https://keras.io/optimizers/) to use.
+ * `validation`: Specify validation data. The validation data is tested after each epoch to evaluate the
+   classifier performance. Always use separate training and validation data!
+   * `from_training` and `steps`: If `from_training` is true, take the `steps` training batches
+     and do not use it for training but for validation instead.
+   * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
+     if `from_training` is false.
+
+### Network
+
 These options configure the neural network to train with the `delta train` command.
 
  * `chunk_size`: The width and height of each chunks to input to the neural network
@@ -51,27 +91,6 @@ These options configure the neural network to train with the `delta train` comma
    layers are specified using the [Keras functional layers API](https://keras.io/layers/core/)
    converted to YAML files.
 
-Train
------
-These options are used in the `delta train` command.
-
- * `chunk_stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
-   default of 1 to use all available training data.
- * `batch_size`: The number of chunks to train on in a group. May affect convergence speed. Larger
-   batches allow higher training data throughput, but may encounter memory limitations.
- * `steps`: If specified, stop training for each epoch after the given number of batches.
- * `epochs`: the number of times to iterate through all training data during training.
- * `loss_function`: [Keras loss function](https://keras.io/losses/). For integer classes, use
-   `sparse_categorical_cross_entropy`.
- * `metrics`: A list of [Keras metrics](https://keras.io/metrics/) to evaluate.
- * `optimizer`: The [Keras optimizer](https://keras.io/optimizers/) to use.
- * `experiment_name`: A name for the experiment to track in MLFlow.
- * `validation`: Specify validation data. The validation data is tested after each epoch to evaluate the
-   classifier performance. Always use separate training and validation data!
-   * `from_training` and `steps`: If `from_training` is true, take the `steps` training batches
-     and do not use it for training but for validation instead.
-   * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
-     if `from_training` is false.
 
 MLFlow
 ------
@@ -81,6 +100,7 @@ Used in the `delta train` and `delta mlflow_ui` commands to keep track of traini
  * `uri`: The URI for where MLFlow should store tracking runs. Options such as file directories, databases,
    and HTTP servers are supported. See the
    [`mlflow.set_tracking_uri()`](https://www.mlflow.org/docs/latest/tracking.html)  documentation for details.
+ * `experiment_name`: A name for the experiment to track in MLFlow.
  * `frequency`: Record metrics after this many batches. Want to pick a number that won't slow down training or
    use too much disk space.
  * `checkpoints`: Configure saving of checkpoint networks to mlflow, in case something goes wrong or to compare

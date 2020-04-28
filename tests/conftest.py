@@ -27,6 +27,13 @@ import pytest
 
 from delta.imagery.sources import tiff
 
+import delta.imagery.imagery_config
+import delta.ml.ml_config
+
+# initialize config files
+delta.imagery.imagery_config.register()
+delta.ml.ml_config.register()
+
 def generate_tile(width=32, height=32, blocks=50):
     """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
     image = np.zeros((width, height, 1), np.float32)

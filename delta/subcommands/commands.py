@@ -18,8 +18,13 @@
 """
 Lists all avaiable commands.
 """
+import delta.imagery.imagery_config
+import delta.ml.ml_config
 
 from . import classify, train, mlflow_ui
+
+delta.imagery.imagery_config.register()
+delta.ml.ml_config.register()
 
 SETUP_COMMANDS = [train.setup_parser,
                   classify.setup_parser,

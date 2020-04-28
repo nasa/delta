@@ -26,7 +26,7 @@ def setup_parser(subparsers):
     sub = subparsers.add_parser('mlflow_ui', help='Launch mlflow user interface to visualize run history.')
 
     sub.set_defaults(function=main)
-    config.setup_arg_parser(sub)
+    config.setup_arg_parser(sub, ['mlflow'])
 
 def main(_):
     os.system('mlflow ui --backend-store-uri %s' % (config.mlflow.uri()))

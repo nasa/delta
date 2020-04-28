@@ -95,7 +95,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Batch Size', training_spec.batch_size)
     mlflow.log_param('Optimizer', training_spec.optimizer)
     mlflow.log_param('Model Layers', len(model.layers))
-    mlflow.log_param('Status', 'Running')
+    #mlflow.log_param('Status', 'Running')
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -120,7 +120,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')
-            if config.mlflow.checkpoint.save_latest():
+            if config.mlflow.checkpoints.save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
@@ -135,7 +135,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
 
 def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.set_tracking_uri(config.mlflow.uri())
-    mlflow.set_experiment(training_spec.experiment)
+    mlflow.set_experiment(config.mlflow.experiment())
     mlflow.start_run()
     _log_mlflow_params(model, dataset, training_spec)
 

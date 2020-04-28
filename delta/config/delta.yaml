@@ -1,6 +1,8 @@
 general:
   # negative is all
   gpus:              -1
+
+io:
   threads:           1
   # size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
   block_size_mb:     1
@@ -54,7 +56,6 @@ train:
   metrics:
     - sparse_categorical_accuracy
   optimizer:       adam
-  experiment_name: Default # used in tracking tools
   validation:
     steps:         1000
     # if true, skips the first steps from the training set to use for validation instead
@@ -87,6 +88,7 @@ mlflow:
   uri:            default
   # rate in batches to save metrics
   frequency:      10000
+  experiment_name: Default
   # rate in batches to save model checkpoints
   checkpoints:
     frequency:     10000

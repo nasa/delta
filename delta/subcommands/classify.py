@@ -29,10 +29,12 @@ from delta.imagery.sources import tiff
 from delta.imagery.sources import loader
 from delta.ml import predict
 import delta.ml.layers
+import delta.imagery.imagery_config
+import delta.ml.ml_config
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
-    config.setup_arg_parser(sub)
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
 
     sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
     sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')

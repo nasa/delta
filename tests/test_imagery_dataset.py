@@ -36,7 +36,7 @@ def load_dataset(source, output_size):
     (image_path, label_path) = source[0]
     config.load(yaml_str=
                 '''
-                general:
+                io:
                   cache:
                     dir: %s
                 dataset:
@@ -125,7 +125,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
         reshape = keras.layers.Reshape((1, 1, 2))(dense1)
         return keras.Model(inputs=kerasinput, outputs=reshape)
     model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy'))
+                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.90
 
@@ -143,7 +143,7 @@ def autoencoder(all_sources):
     (image_path, _) = source[0]
     config.load(yaml_str=
                 '''
-                general:
+                io:
                   cache:
                     dir: %s
                 dataset:

@@ -81,7 +81,7 @@ class Predictor(ABC):
         chunks = tf.reshape(chunks, (-1,) + net_input_shape)
 
         best = np.zeros((chunks.shape[0],) + net_output_shape, dtype=out_type.as_numpy_dtype)
-        BATCH_SIZE = int(config.block_size_mb() * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
+        BATCH_SIZE = int(config.io.block_size_mb() * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
                          net_input_shape[2] / out_type.size)
         assert BATCH_SIZE > 0, 'block_size_mb too small.'
         for i in range(0, chunks.shape[0], BATCH_SIZE):
