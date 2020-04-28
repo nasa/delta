@@ -20,7 +20,7 @@ Installation
    GPU support in DELTA (highly recommended) follow the directions in the
    [GPU guide](https://www.tensorflow.org/install/gpu).
 
-2. Checkout the delta repository and install with pip:
+3. Checkout the delta repository and install with pip:
 
    ```
    git clone http://github.com/nasa/delta
@@ -37,8 +37,10 @@ You would:
 
 1. **Collect** training data. Find and save Worldview images with and without water. For a robust
    classifier, the training data should be as representative as possible of the evaluation data.
+
 2. **Label** training data. Create images matching the training images pixel for pixel, where each pixel
    in the label is 0 if it is not water and 1 if it is.
+
 3. **Train** the neural network. Run
    ```
    delta train --config wv_water.yaml wv_water.h5
@@ -48,6 +50,7 @@ You would:
    neural network file `wv_water.h5` which can be
    used for classification. The neural network operates on the level of *chunks*, inputting
    and output smaller blocks of the image at a time.
+
 4. **Classify** with the trained network. Run
    ```
    delta classify --image image.tiff wv_water.h5
@@ -88,6 +91,18 @@ View all the logged training information through mlflow by running::
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
 
+Using DELTA from Code
+=====================
+You can also call DELTA as a python library and customize it with your own extensions, for example,
+custom image types. The python API documentation can be generated as HTML. To do so:
+
+```
+  pip install pdoc3
+  ./scripts/docs.sh
+```
+
+Then open `html/delta/index.html` in a web browser.
+
 Contributors
 ============
 We welcome pull requests to contribute to DELTA. However, due to NASA legal restrictions, we must require
@@ -96,10 +111,14 @@ that all contributors sign and submit a
 You can scan the document and submit via email. Thank you for your understanding.
 
 Important notes for developers:
+
  * **Branching**: Active development occurs on `develop`. Releases are pushed to `master`.
+
  * **Code Style**: Code must pass our linter before merging. Run `scripts/linter/install_linter.sh` to install
    the linter as a git pre-commit hook.
+
  * **Unit Tests**: Code must pass unit tests before merging. Run `pytest` in the `tests` directory to run the tests.
    Please add new unit tests as appropriate.
+
  * **Development Setup**: You can install delta using pip's `-e` flag which installs in editable mode. Then you can
    run `delta` and it will use your latest changes made to the repo without reinstalling.

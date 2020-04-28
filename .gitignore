@@ -9,3 +9,4 @@ htmlcov
 /scripts/my_tests/
 .idea/
 .cache
+html
