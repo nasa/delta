@@ -20,13 +20,50 @@ Lists all avaiable commands.
 """
 import delta.imagery.imagery_config
 import delta.ml.ml_config
+from delta.config import config
 
-from . import classify, train, mlflow_ui
+#pylint:disable=import-outside-toplevel
 
 delta.imagery.imagery_config.register()
 delta.ml.ml_config.register()
 
-SETUP_COMMANDS = [train.setup_parser,
-                  classify.setup_parser,
-                  mlflow_ui.setup_parser,
-                 ]
+# we put this here because tensorflow takes so long to load, we don't do it unless we have to
+def main_classify(options):
+    from . import classify
+    classify.main(options)
+
+def main_train(options):
+    from . import train
+    train.main(options)
+
+def main_mlflow_ui(options):
+    from .import mlflow_ui
+    mlflow_ui.main(options)
+
+def setup_classify(subparsers):
+    sub = subparsers.add_parser('classify', help='Classify images given a model.')
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
+
+    sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
+    sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')
+    sub.add_argument('model', help='File to save the network to.')
+
+    sub.set_defaults(function=main_classify)
+
+def setup_train(subparsers):
+    sub = subparsers.add_parser('train', help='Train a task-specific classifier.')
+    config.setup_arg_parser(sub)
+    sub.add_argument('--autoencoder', action='store_true',
+                     help='Train autoencoder (ignores labels).')
+    sub.add_argument('--resume', help='Use the model as a starting point for the training.')
+    sub.add_argument('model', nargs='?', default=None, help='File to save the network to.')
+    sub.set_defaults(function=main_train)
+
+def setup_mlflow_ui(subparsers):
+    sub = subparsers.add_parser('mlflow_ui', help='Launch mlflow user interface to visualize run history.')
+    config.setup_arg_parser(sub, ['mlflow'])
+
+    sub.set_defaults(function=main_mlflow_ui)
+
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui]

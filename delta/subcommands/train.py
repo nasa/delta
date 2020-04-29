@@ -29,15 +29,6 @@ from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
 
-def setup_parser(subparsers):
-    sub = subparsers.add_parser('train', help='Train a task-specific classifier.')
-    config.setup_arg_parser(sub)
-    sub.add_argument('--autoencoder', action='store_true',
-                     help='Train autoencoder (ignores labels).')
-    sub.add_argument('--resume', help='Use the model as a starting point for the training.')
-    sub.add_argument('model', nargs='?', default=None, help='File to save the network to.')
-    sub.set_defaults(function=main)
-
 def main(options):
     images = config.dataset.images()
     if not images:
