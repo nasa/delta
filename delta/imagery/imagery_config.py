@@ -180,11 +180,17 @@ class ImagePreprocessConfig(DeltaConfigComponent):
         self.register_field('enabled', bool, 'enabled', None, None, 'Turn on preprocessing.')
         self.register_field('scale_factor', (float, str), 'scale_factor', None, None, 'Image scale factor.')
 
+def _validate_paths(paths, base_dir):
+    out = []
+    for p in paths:
+        out.append(validate_path(p, base_dir))
+    return out
+
 class ImageSetConfig(DeltaConfigComponent):
     def __init__(self, name=None):
         super().__init__()
         self.register_field('type', str, 'type', '--' + name + '-type' if name else None, None, 'Image type.')
-        self.register_field('files', list, None, None, None, 'List of image files.')
+        self.register_field('files', list, None, None, _validate_paths, 'List of image files.')
         self.register_field('file_list', list, None, '--' + name + '-file-list' if name else None,
                             validate_path, 'File listing image files.')
         self.register_field('directory', str, None, '--' + name + '-dir' if name else None,
