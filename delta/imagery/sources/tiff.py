@@ -429,7 +429,8 @@ class DeltaTiffWriter(delta_image.DeltaImageWriter):
         """
         Finish writing.
         """
-        self._tiff_w.close()
+        if self._tiff_w is not None:
+            self._tiff_w.close()
 
     def abort(self):
         self.close()

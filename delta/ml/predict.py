@@ -183,7 +183,8 @@ class LabelPredictor(Predictor):
         if self._prob_image:
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
         if self._error_image:
-            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
+            self._error_image.initialize((shape[0], shape[1], self._error_colors.shape[1]),
+                                         self._error_colors.dtype, image.metadata())
 
     def _complete(self):
         if self._output_image:
@@ -214,7 +215,7 @@ class LabelPredictor(Predictor):
                 self._output_image.write(pred_image, x, y)
 
         if labels is not None:
-            self._error_image.write(labels != pred_image, x, y)
+            self._error_image.write(self._error_colors[(labels != pred_image).astype(int)], x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
                                           np.ndarray.flatten(pred_image),
                                           self._num_classes)
