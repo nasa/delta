@@ -2,7 +2,7 @@ layers:
   - Input:
       shape: in_shape
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -11,7 +11,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -27,7 +27,7 @@ layers:
       size: [2, 2]
       name: upsampling_5
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -36,7 +36,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
