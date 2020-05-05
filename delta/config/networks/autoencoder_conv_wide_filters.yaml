@@ -3,34 +3,34 @@ layers:
       shape: in_shape
   - Conv2D:
       filters: 50
-      kernel_size: [3, 3]
+      kernel_size: [7, 7]
       activation: relu
       padding: same
   - MaxPooling2D:
       pool_size: [2, 2]
   - Conv2D:
       filters: 50 
-      kernel_size: [3, 3]
+      kernel_size: [7, 7]
       activation: relu
       padding: same
   - MaxPooling2D:
       pool_size: [2, 2]
   - Conv2D:
       filters: 50 
-      kernel_size: [3, 3]
+      kernel_size: [7, 7]
       activation: relu
       padding: same
   - UpSampling2D:
       size: [2, 2]
   - Conv2D:
       filters: 50
-      kernel_size: [3, 3]
+      kernel_size: [7, 7]
       activation: relu
       padding: same
   - UpSampling2D:
       size: [2, 2]
   - Conv2D:
       filters: num_bands
-      kernel_size: [3, 3]
+      kernel_size: [7, 7]
       activation: relu
       padding: same
