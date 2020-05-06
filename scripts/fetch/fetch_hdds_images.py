@@ -60,7 +60,7 @@ def get_dataset_list(options):
 
         # Go through all the datasets and identify the events we are interested in.
         TARGET_TYPES = ['flood', 'hurricane', 'cyclone', 'tsunami', 'dam_collapse', 'storm']
-        SKIP = ['test', 'snowstorm', 'adhoc', 'ad hoc', 'ad_hoc'] # TODO: What is ad hoc here?
+        SKIP = ['test', 'icestorm', 'snowstorm', 'adhoc', 'ad hoc', 'ad_hoc'] # TODO: What is ad hoc here?
 
         handle = open(dataset_cache_path, 'w')
 
@@ -201,7 +201,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
         #    continue
 
         if options.event_name: # Only download images from the specified event
-            if options.event_name not in full_name:
+            if options.event_name.lower() not in full_name.lower():
                 continue
 
         dataset_folder  = os.path.join(options.output_folder, full_name)
@@ -216,12 +216,35 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
         print('--> Search scenes for: ' + full_name)
 
+        BATCH_SIZE = 10000
         if not os.path.exists(scene_list_path) or options.refetch_scenes:
             # Request the scene list from USGS
             #details = {'Agency - Platform - Vendor':'WORLDVIEW', 'Sensor Type':'MS'}
             #details = {'sensor_type':'MS'}
             details = {} # TODO: How do these work??
-            results = api.search(dataset, CATALOG, where=details, max_results=5000, extended=False)
+
+            # Large sets of results require multiple queries
+            done  = False
+            error = False
+            all_scenes = []
+            while not done:
+                print('starting_number = ' + str(len(all_scenes)))
+                results = api.search(dataset, CATALOG, where=details,
+                                     max_results=BATCH_SIZE, 
+                                     starting_number=len(all_scenes), extended=False)
+
+                if 'results' not in results['data']:
+                    print('ERROR: Failed to get any results for dataset: ' + full_name)
+                    error = True
+                    break
+                if len(results['data']['results']) < BATCH_SIZE:
+                    done = True
+                all_scenes += results['data']['results']
+
+            if error:
+                continue
+
+            results['data']['results'] = all_scenes
 
             # Cache the results to disk
             with open(scene_list_path, 'wb') as f:
@@ -231,9 +254,6 @@ def main(argsIn): #pylint: disable=R0914,R0912
             with open(scene_list_path, 'rb') as f:
                 results = pickle.load(f)
 
-        if 'results' not in results['data']:
-            print('ERROR: Failed to get any results for dataset: ' + full_name)
-            continue
         print('Got ' + str(len(results['data']['results'])) + ' scene results.')
 
         for scene in results['data']['results']:
@@ -241,7 +261,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             #print(scene)
 
             fail = False
-            REQUIRED_PARTS = ['displayId', 'summary']
+            REQUIRED_PARTS = ['displayId', 'summary', 'entityId', 'displayId']
             for p in REQUIRED_PARTS:
                 if (p not in scene) or (not scene[p]):
                     print('scene object is missing element: ' + p)
@@ -250,6 +270,29 @@ def main(argsIn): #pylint: disable=R0914,R0912
             if fail:
                 continue
 
+            # DEBUG: Only download these files!
+            desired_ids = [
+'WV02S11_162083E030_4279162019122200000000MS00',
+'WV02N16_024291W016_4697352013033100000000MS00',
+'WV02N34_364027E132_7086112018071500000000MS00',
+'WV02N39_970882W091_5066782018102300000000MS00',
+'WV02N50_838472E043_9616662016071800000000MS00',
+'WV02N26_526388E086_9256942017082300000000MS00',
+'WV02N08_267222W062_7001382017081000000000MS00',
+'WV02S28_527916W071_1270832017052600000000MS00',
+'WV02N39_620277W118_4440272016110200000000MS00',
+'WV02N59_979444W149_6266662017091900000000MS00',
+'WV02N28_708333W096_0125002017083000000000MS00',
+'WV02N29_982083W095_0877772017083100000000MS00',
+'WV02N36_728780E007_9239362011080800000000MS00',
+'WV02N46_676908W092_1901272012062400000000MS00',
+'WV02N48_971380W097_2213192013051200000000MS00',
+'WV02N29_782222W085_1613882018101200000000MS00',
+'WV02N34_105694E134_1177772016032600000000MS00', 
+'WV02N15_373714E032_3806602013081100000000MS01']
+
+            #if scene['displayId'] not in desired_ids:
+            #    continue
 
             # Figure out the downloaded file path for this image
             file_name   = scene['displayId'] + '.zip'
@@ -275,6 +318,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 print((platform,sensor))
                 print('Undesired sensor: ' + scene['summary'])
                 continue
+
 
             # Investigate the number of bands
             PLATFORM_BAND_COUNTS = {'worldview':8, 'TODO':1}
@@ -318,6 +362,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             if not ready:
                 raise Exception('Missing download option for scene: ' + str(types))
 
+            
             # Get the download URL of the file we want.
             r = api.download(dataset, CATALOG, [scene['entityId']],
                              product=download_type)
@@ -336,7 +381,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             #raise Exception('DEBUG')
 
         print('Finished processing dataset: ' + full_name)
-        os.system('touch ' + done_flag_path) # Mark this dataset as finished
+#        os.system('touch ' + done_flag_path) # Mark this dataset as finished
         #raise Exception('DEBUG')
 
         #if not os.path.exists(output_path):
