@@ -44,6 +44,9 @@ def main(argsIn):
         parser.add_argument("--label-ext", dest="label_extension", default='.tif',
                             help="Extension for label files.")
 
+        parser.add_argument("--image-limit", dest="image_limit", default=None, type=int,
+                            help="Only use this many image files total.")
+
         parser.add_argument("--config-file", dest="config_path", default=None,
                             help="Make a copy of this config file with paths changed.  The config " +
                             "file must be fully set up, as only the directory entries will be updated.")
@@ -97,17 +100,19 @@ def main(argsIn):
             train_count += 1
         os.symlink(image_path, image_dest)
 
-        if not options.label_folder:
-            continue
+        if options.label_folder:  # Handle the label file
+            label_path = get_label_path(image_name, options)
+            label_name = os.path.basename(label_path)
+            if use_for_valid:
+                label_dest = os.path.join(valid_label_folder, label_name)
+            else:
+                label_dest = os.path.join(train_label_folder, label_name)
+            os.symlink(label_path, label_dest)
 
-        # Handle the label file
-        label_path = get_label_path(image_name, options)
-        label_name = os.path.basename(label_path)
-        if use_for_valid:
-            label_dest = os.path.join(valid_label_folder, label_name)
-        else:
-            label_dest = os.path.join(train_label_folder, label_name)
-        os.symlink(label_path, label_dest)
+        # Check the image limit if it was specified
+        total_count = valid_count + train_count
+        if options.image_limit and (total_count >= options.image_limit):
+            break
 
     # Copy config file if provided
     if options.config_path:
