@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#pylint: disable=R0914
 """
 Given folders of input image/label files, create a new pair of train/validate
 folders which contain symlinks to random non-overlapping subsets of the input files.
@@ -47,6 +48,9 @@ def main(argsIn):
         parser.add_argument("--image-limit", dest="image_limit", default=None, type=int,
                             help="Only use this many image files total.")
 
+        parser.add_argument("--file-list-path", dest="file_list_path", default=None,
+                            help="Path to text file containing list of image file names to use, one per line.")
+
         parser.add_argument("--config-file", dest="config_path", default=None,
                             help="Make a copy of this config file with paths changed.  The config " +
                             "file must be fully set up, as only the directory entries will be updated.")
@@ -82,11 +86,20 @@ def main(argsIn):
                         for name in files
                         if name.endswith((options.image_extension))]
 
+    images_to_use = []
+    if options.file_list_path:
+        with open(options.file_list_path, 'r') as f:
+            for line in f:
+                images_to_use.append(line.strip())
+
     train_count = 0
     valid_count = 0
     for image_path in input_image_list:
 
+        # If an image list was provided skip images which are not in the list.
         image_name = os.path.basename(image_path)
+        if images_to_use and (image_name not in images_to_use):
+            continue
 
         # Use for validation or for training?
         use_for_valid = (random.random() < options.validate_fraction)
