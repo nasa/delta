@@ -82,7 +82,7 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
     if tc.steps:
         ds = ds.take(tc.steps)
     #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
-#    ds = ds.repeat(tc.epochs)
+    #ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -205,9 +205,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
 
-    print('steps = ', training_spec.steps)
-    print('val steps = ', training_spec.validation.steps)
-    #raise Exception('DEBUG')
     try:
         history = model.fit(ds,
                             epochs=training_spec.epochs,
@@ -215,7 +212,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
                             steps_per_epoch=training_spec.steps)#, verbose=2)
-        if config.mlflow_enabled():
+        if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
             model.save(model_path, save_format='h5')
