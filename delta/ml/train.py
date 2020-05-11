@@ -198,7 +198,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                             callbacks=callbacks,
                             validation_data=validation,
                             #validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps)
+                            steps_per_epoch=training_spec.steps)#, verbose=2)
         if config.mlflow_enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))

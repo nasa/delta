@@ -98,7 +98,7 @@ def main(argsIn):
 
         # If an image list was provided skip images which are not in the list.
         image_name = os.path.basename(image_path)
-        if images_to_use and (image_name not in images_to_use):
+        if images_to_use and (os.path.splitext(image_name)[0] not in images_to_use):
             continue
 
         # Use for validation or for training?

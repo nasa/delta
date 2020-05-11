@@ -5,6 +5,9 @@ Train a neural network.
 import sys
 import time
 
+#import logging
+#logging.getLogger("tensorflow").setLevel(logging.DEBUG)
+
 import tensorflow as tf
 
 from delta.config import config
@@ -12,6 +15,10 @@ from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
+
+
+#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
 
 def setup_parser(subparsers):
     sub = subparsers.add_parser('train', help='Train a task-specific classifier.')

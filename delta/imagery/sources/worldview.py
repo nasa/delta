@@ -5,7 +5,10 @@ Functions to support the WorldView satellites.
 import math
 import functools
 import os
+import sys
 import numpy as np
+
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
