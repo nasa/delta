@@ -20,6 +20,7 @@ Classify input images given a model.
 """
 import os.path
 
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -67,6 +68,7 @@ def main(options):
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
 
+    start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
 
@@ -107,4 +109,6 @@ def main(options):
         if options.autoencoder:
             tiff.write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
                             metadata=image.metadata())
+    stop_time = time.time()
+    print('Elapsed time = ', stop_time - start_time)
     return 0

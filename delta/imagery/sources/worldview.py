@@ -22,7 +22,10 @@ Functions to support the WorldView satellites.
 import math
 import functools
 import os
+import sys
 import numpy as np
+
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -74,7 +77,8 @@ class WorldviewImage(tiff.TiffImage):
             #print('Already have unpacked files in ' + unpack_folder)
             pass
         else:
-            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
+            tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
+                     output_stream=sys.stdout)
             utilities.unpack_to_folder(paths, unpack_folder)
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)

@@ -40,9 +40,9 @@ def _devices(num_gpus):
     '''
     devs = None
     if num_gpus == 0:
-        devs = [x.name for x in tf.config.list_logical_devices('CPU')]
+        devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
     else:
-        devs = [x.name for x in tf.config.list_logical_devices('GPU')]
+        devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
         assert len(devs) >= num_gpus,\
                "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
         if num_gpus > 0:
@@ -61,6 +61,8 @@ def _strategy(devices):
 def _prep_datasets(ids, tc, chunk_size, output_size):
     ds = ids.dataset()
     ds = ds.batch(tc.batch_size)
+    #ds = ds.cache()
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.validation:
         if tc.validation.from_training:
             validation = ds.take(tc.validation.steps)
@@ -73,11 +75,14 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
             else:
                 vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
                 validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+        #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
     else:
+        print('validation = None')
         validation = None
     if tc.steps:
         ds = ds.take(tc.steps)
-    ds = ds.repeat(tc.epochs)
+    #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
+#    ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -95,7 +100,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Batch Size', training_spec.batch_size)
     mlflow.log_param('Optimizer', training_spec.optimizer)
     mlflow.log_param('Model Layers', len(model.layers))
-    #mlflow.log_param('Status', 'Running')
+    #mlflow.log_param('Status', 'Running') Illegal to change the value!
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -200,14 +205,17 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
 
+    print('steps = ', training_spec.steps)
+    print('val steps = ', training_spec.validation.steps)
+    #raise Exception('DEBUG')
     try:
         history = model.fit(ds,
                             epochs=training_spec.epochs,
                             callbacks=callbacks,
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps)
-        if config.mlflow.enabled():
+                            steps_per_epoch=training_spec.steps)#, verbose=2)
+        if config.mlflow_enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
             model.save(model_path, save_format='h5')
