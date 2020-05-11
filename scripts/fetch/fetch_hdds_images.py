@@ -267,8 +267,6 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
         for scene in results['data']['results']:
 
-            #print(scene)
-
             fail = False
             REQUIRED_PARTS = ['displayId', 'summary', 'entityId', 'displayId']
             for p in REQUIRED_PARTS:
@@ -327,7 +325,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 if not num_bands:
                     raise KeyError() # Treat like the except case
                 if num_bands < min_num_bands:
-                    print('Skipping, too few bands: ' + str(num_bands))
+                    print('Skipping %s, too few bands: %d' % (scene['displayId'], num_bands))
                     continue
             except KeyError:
                 print('Unable to perform metadata check!')
