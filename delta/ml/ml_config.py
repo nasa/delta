@@ -116,8 +116,8 @@ class ValidationConfig(config.DeltaConfigComponent):
                             'If from training, validate for this many steps.')
         self.register_field('from_training', bool, 'from_training', None, None,
                             'Take validation data from training data.')
-        self.register_component(ImageSetConfig(), 'images')
-        self.register_component(ImageSetConfig(), 'labels')
+        self.register_component(ImageSetConfig(), 'images', '__image_comp')
+        self.register_component(ImageSetConfig(), 'labels', '__label_comp')
         self.__images = None
         self.__labels = None
 
