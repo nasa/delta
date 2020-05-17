@@ -24,6 +24,7 @@ import functools
 import os
 import sys
 import numpy as np
+import portalocker
 
 import tensorflow as tf
 
@@ -70,17 +71,19 @@ class WorldviewImage(tiff.TiffImage):
         name = '_'.join([self._sensor, self._date])
         unpack_folder = config.io.cache.manager().register_item(name)
 
-        # Check if we already unpacked this data
-        (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
-
-        if imd_path and tif_path:
-            #print('Already have unpacked files in ' + unpack_folder)
-            pass
-        else:
-            tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
-                     output_stream=sys.stdout)
-            utilities.unpack_to_folder(paths, unpack_folder)
+        with portalocker.Lock(paths, 'r', timeout=300) as unused:
+            # Check if we already unpacked this data
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+
+            if imd_path and tif_path:
+                tf.print('Already have unpacked files in ' + unpack_folder,
+                         output_stream=sys.stdout)
+                pass
+            else:
+                tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
+                         output_stream=sys.stdout)
+                utilities.unpack_to_folder(paths, unpack_folder)
+                (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
     # This function is currently set up for the HDDS archived WV data, files from other

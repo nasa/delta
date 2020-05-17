@@ -28,6 +28,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
+from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
 
 def _devices(num_gpus):
@@ -70,19 +71,22 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
         else:
             vimg = tc.validation.images
             vlabel = tc.validation.labels
-            if not vimg or not vlabel:
+            if not vimg:
                 validation = None
             else:
-                vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
+                if vlabel:
+                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
+                else:
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride)
                 validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
         #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
     else:
-        print('validation = None')
+
         validation = None
     if tc.steps:
         ds = ds.take(tc.steps)
     #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
-    #ds = ds.repeat(tc.epochs)
+    ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -206,6 +210,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         callbacks.append(mcb)
 
     try:
+        print(training_spec.validation)
         history = model.fit(ds,
                             epochs=training_spec.epochs,
                             callbacks=callbacks,
