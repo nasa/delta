@@ -72,6 +72,11 @@ class ImageryDataset:
             tgs = []
             for i in range(len(self._images)):
                 img = loader.load_image(self._images, i)
+                if self._labels: # If we have labels make sure they are the same size as the input images
+                    label = loader.load_image(self._labels, i)
+                    if label.size() != img.size():
+                        raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
+                                        + ' does not match input image size of ' + str(img.size()))
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
                                            config.io.tile_ratio()))
