@@ -37,25 +37,25 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1, ):
+    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1,
+                 resume_mode=False, log_folder=None):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
 
-        # TODO: Parameters!
-        self._resume_mode = False
-        self._log_folder = '/home/smcmich1/data/ds_log'
-        if not os.path.exists(self._log_folder):
+        self._resume_mode = resume_mode
+        self._log_folder  = log_folder
+        if self._log_folder and not os.path.exists(self._log_folder):
             os.mkdir(self._log_folder)
 
         # Record some of the config values
         assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
-        self._chunk_size = chunk_size
-        self._output_size = output_size
-        self._output_dims = 1
+        self._chunk_size   = chunk_size
+        self._output_size  = output_size
+        self._output_dims  = 1
         self._chunk_stride = chunk_stride
-        self._data_type = tf.float32
-        self._label_type = tf.uint8
+        self._data_type    = tf.float32
+        self._label_type   = tf.uint8
 
         if labels:
             assert len(images) == len(labels)
@@ -77,7 +77,7 @@ class ImageryDataset:
     def _get_image_read_count(self, image_path):
         """Return the number of ROIs we have read from an image"""
         log_path = self._get_image_read_log_path(image_path)
-        if not log_path:
+        if (not log_path) or not os.path.exists(log_path):
             return 0
         counter = 0
         with portalocker.Lock(log_path, 'r', timeout=300) as f:
@@ -112,8 +112,7 @@ class ImageryDataset:
 
                 if self._resume_mode:
                     # Skip images which we have already read some number of tiles from
-                    READ_CUTOFF = 200 # TODO How to set this
-                    if self._get_image_read_count(self._images[i]) > READ_CUTOFF:
+                    if self._get_image_read_count(self._images[i]) > config.io.resume_cutoff():
                         continue
 
                 img = loader.load_image(self._images, i)
@@ -137,6 +136,8 @@ class ImageryDataset:
                                   overlap=self._chunk_size - 1)
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
+            if not tgs:
+                return
             while tgs:
                 cur = tgs[:config.io.interleave_images()]
                 tgs = tgs[config.io.interleave_images():]
@@ -279,11 +280,11 @@ class ImageryDataset:
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_size, chunk_stride=1):
+    def __init__(self, images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None):
         """
         The images are used as labels as well.
         """
-        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride, resume_mode=resume_mode, log_folder=log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

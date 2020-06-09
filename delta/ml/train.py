@@ -20,6 +20,7 @@ Train neural networks.
 """
 
 import os
+import sys
 import tempfile
 import shutil
 
@@ -75,10 +76,13 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = None
             else:
                 if vlabel:
-                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
+                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride,
+                                              resume_mode=False)
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride)
-                validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
+                validation = vimagery.dataset().batch(tc.batch_size)
+                if tc.validation.steps:
+                    validation = validation.take(tc.validation.steps)
         #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
     else:
 
@@ -133,6 +137,8 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
+            tf.print('Recording checkpoint: ' + filename,
+                     output_stream=sys.stdout)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 
@@ -208,15 +214,17 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
+        print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     try:
-        print(training_spec.validation)
         history = model.fit(ds,
                             epochs=training_spec.epochs,
                             callbacks=callbacks,
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps)#, verbose=2)
+                            steps_per_epoch=training_spec.steps,
+                            verbose=1)
+
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))

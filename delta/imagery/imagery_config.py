@@ -222,6 +222,8 @@ class DatasetConfig(DeltaConfigComponent):
         self.register_component(ImageSetConfig('label'), 'labels', '__label_comp')
         self.__images = None
         self.__labels = None
+        self.register_field('log_folder', str, 'log_folder', None, validate_path,
+                            'Directory where dataset progress is recorded.')
 
     def reset(self):
         super().reset()
@@ -279,6 +281,9 @@ class IOConfig(DeltaConfigComponent):
                             'Number of images to interleave at a time when training.')
         self.register_field('tile_ratio', float, 'tile_ratio', '--tile-ratio', validate_positive,
                             'Width to height ratio of blocks to load in images.')
+        self.register_field('resume_cutoff', int, 'resume_cutoff', None, None,
+                            'When resuming a dataset, skip images where we have read this many tiles.')
+
         self.register_component(CacheConfig(), 'cache')
 
 def register():
