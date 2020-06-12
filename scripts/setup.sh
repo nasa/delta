@@ -3,11 +3,14 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # use this repository and key for gdal-2.0
-sudo add-apt-repository ppa:ubuntugis/ppa
+sudo add-apt-repository -y ppa:ubuntugis/ppa
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 089EBE08314DF160
 sudo apt update
 
-sudo apt install -y python3-pip python3-dev python3-gdal || { echo >&2 "ERROR. Failed to install pip3."; exit 1; }
+sudo apt install -y python3-dev python3-gdal || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
+
+pip install --upgrade pip
+pip install --upgrade setuptools requests numpy
 
 $DIR/linter/install_linter.sh || { echo >&2 "ERROR. Failed to install linter."; exit 1; }
 
