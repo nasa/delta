@@ -23,8 +23,8 @@ jobs:
     - name: Install DELTA
       run: |
         ./scripts/setup.sh
-        pip install pylint pytest
-        pip install .
+        python3 -m pip install pylint pytest
+        python3 -m pip install .
     - name: Lint with pylint
       run: |
         find . -type f -name "*.py" | xargs --null --no-run-if-empty ./scripts/linter/lint

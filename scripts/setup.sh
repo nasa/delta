@@ -9,8 +9,8 @@ sudo apt update
 
 sudo apt install -y python3-dev python3-gdal || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
 
-pip install --upgrade pip
-pip install --upgrade setuptools requests numpy
+python3 -m pip install --upgrade pip
+python3 -m pip install --upgrade setuptools requests numpy
 
 $DIR/linter/install_linter.sh || { echo >&2 "ERROR. Failed to install linter."; exit 1; }
 
