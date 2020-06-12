@@ -107,10 +107,10 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         self.batch = 0
         self.temp_dir = temp_dir
 
-    def on_epoch_end(self, epoch, _):
+    def on_epoch_end(self, epoch, _=None):
         self.epoch = epoch
 
-    def on_train_batch_end(self, batch, logs):
+    def on_train_batch_end(self, batch, logs=None):
         self.batch = batch
         if batch % config.mlflow.frequency() == 0:
             for k in logs.keys():
@@ -127,7 +127,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 
-    def on_test_batch_end(self, _, logs): # pylint:disable=no-self-use
+    def on_test_batch_end(self, _, logs=None): # pylint:disable=no-self-use
         for k in logs.keys():
             if k in ('batch', 'size'):
                 continue
