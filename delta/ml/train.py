@@ -190,7 +190,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
 
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
 
-    callbacks = []
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
     # add callbacks from DeltaLayers
     for l in model.layers:
         if isinstance(l, DeltaLayer):
