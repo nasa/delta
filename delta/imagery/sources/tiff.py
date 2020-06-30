@@ -267,6 +267,10 @@ def numpy_dtype_to_gdal_type(dtype):
         return gdal.GDT_UInt16
     if dtype == np.uint32:
         return gdal.GDT_UInt32
+    if dtype == np.int16:
+        return gdal.GDT_Int16
+    if dtype == np.int32:
+        return gdal.GDT_Int32
     if dtype == np.float32:
         return gdal.GDT_Float32
     if dtype == np.float64:
@@ -413,7 +417,7 @@ class DeltaTiffWriter(delta_image.DeltaImageWriter):
         """
         Prepare for writing with the given size and dtype.
         """
-        assert len(size) == 3
+        assert (len(size) == 3), ('Error: len(size) of '+str(size)+' != 3')
         TILE_SIZE = 256
         self._tiff_w = TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
                                   data_type=numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
