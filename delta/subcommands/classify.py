@@ -58,15 +58,29 @@ def ae_convert(data):
     return (data[:, :, [4, 2, 1]] * 256.0).astype(np.uint8)
 
 def main(options):
-    model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+
+    # TODO: Share the way this is done with in ml/train.py
+    cpuOnly = (config.general.gpus()==0)
+
+    if cpuOnly:
+        with tf.device('/cpu:0'):
+            model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+    else:
+        model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
 
     colors = np.array([[0x0, 0x0, 0x0],
                        [0x67, 0xa9, 0xcf],
                        [0xf6, 0xef, 0xf7],
                        [0xbd, 0xc9, 0xe1],
-                       [0x02, 0x81, 0x8a]], dtype=np.uint8)
+                       [0x02, 0x81, 0x8a],
+                       [0x00, 0xff, 0xff], # TODO: Label and clean up colormap
+                       [0xff, 0x00, 0xff],
+                       [0xff, 0xff, 0x00]],
+                       dtype=np.uint8)
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
+    if options.noColormap:
+        colors=None # Forces raw one channel output
 
     start_time = time.time()
     images = config.dataset.images()
@@ -88,15 +102,20 @@ def main(options):
         label = None
         if labels:
             label = loader.load_image(config.dataset.labels(), i)
+
         if options.autoencoder:
             label = image
             predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
         else:
             predictor = predict.LabelPredictor(model, output_image, True, colormap=colors, prob_image=prob_image,
-                                               error_image=error_image, error_colors=error_colors)
+                                                   error_image=error_image, error_colors=error_colors)
 
         try:
-            predictor.predict(image, label)
+            if cpuOnly:
+                with tf.device('/cpu:0'):
+                    predictor.predict(image, label)
+            else:
+                predictor.predict(image, label)
         except KeyboardInterrupt:
             print('\nAborted.')
             return 0
