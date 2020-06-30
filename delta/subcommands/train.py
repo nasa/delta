@@ -20,6 +20,10 @@ Train a neural network.
 """
 
 import sys
+import time
+
+#import logging
+#logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 
 import tensorflow as tf
 
@@ -29,7 +33,10 @@ from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
 
+#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
 def main(options):
+    start_time = time.time()
     images = config.dataset.images()
     if not images:
         print('No images specified.', file=sys.stderr)
@@ -58,4 +65,6 @@ def main(options):
         print()
         print('Training cancelled.')
 
+    stop_time = time.time()
+    print('Elapsed time = ', stop_time-start_time)
     return 0
