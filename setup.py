@@ -50,7 +50,7 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow==2.1',
+        'tensorflow>=2.1',
         'mlflow',
         'portalocker',
         'appdirs',
