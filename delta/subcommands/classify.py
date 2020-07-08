@@ -76,7 +76,7 @@ def main(options):
                        [0x00, 0xff, 0xff], # TODO: Label and clean up colormap
                        [0xff, 0x00, 0xff],
                        [0xff, 0xff, 0x00]],
-                       dtype=np.uint8)
+                      dtype=np.uint8)
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
     if options.noColormap:
@@ -108,7 +108,7 @@ def main(options):
             predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
         else:
             predictor = predict.LabelPredictor(model, output_image, True, colormap=colors, prob_image=prob_image,
-                                                   error_image=error_image, error_colors=error_colors)
+                                               error_image=error_image, error_colors=error_colors)
 
         try:
             if cpuOnly:

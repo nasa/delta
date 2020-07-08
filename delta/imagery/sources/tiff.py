@@ -260,7 +260,7 @@ class RGBAImage(TiffImage):
             os.system(cmd)
         return [output_path]
 
-def numpy_dtype_to_gdal_type(dtype):
+def numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
     if dtype == np.uint8:
         return gdal.GDT_Byte
     if dtype == np.uint16:

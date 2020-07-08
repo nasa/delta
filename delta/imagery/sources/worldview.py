@@ -70,7 +70,7 @@ class WorldviewImage(tiff.TiffImage):
         # Get the folder where this will be stored from the cache manager
         unpack_folder = config.io.cache.manager().register_item(self._name)
 
-        with portalocker.Lock(paths, 'r', timeout=300) as unused:
+        with portalocker.Lock(paths, 'r', timeout=300) as unused: #pylint: disable=W0612
             # Check if we already unpacked this data
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
 
