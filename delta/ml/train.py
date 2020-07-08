@@ -42,9 +42,9 @@ def _devices(num_gpus):
     '''
     devs = None
     if num_gpus == 0:
-        devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
+        devs = [x.name for x in tf.config.list_logical_devices('CPU')]
     else:
-        devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
+        devs = [x.name for x in tf.config.list_logical_devices('GPU')]
         assert len(devs) >= num_gpus,\
                "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
         if num_gpus > 0:

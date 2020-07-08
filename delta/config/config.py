@@ -181,9 +181,9 @@ class DeltaConfig(DeltaConfigComponent):
         Loads a config file, then updates the default configuration
         with the loaded values.
         """
-        print("Loading config file: " + yaml_file)
         base_path = None
         if yaml_file:
+            print("Loading config file: " + yaml_file)
             if not os.path.exists(yaml_file):
                 raise Exception('Config file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
@@ -214,7 +214,6 @@ class DeltaConfig(DeltaConfigComponent):
         """
         self.reset()
 
-        print('initialize with config_files = ' + str(config_files))
         if config_files is None:
             dirs = appdirs.AppDirs('delta', 'nasa')
             config_files = [os.path.join(dirs.site_config_dir, 'delta.yaml'),

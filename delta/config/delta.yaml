@@ -19,7 +19,7 @@ io:
     limit:            8
 
 dataset:
-  log_folder:         ~
+  log_folder:         ~ # Storage location for any record keeping files about the input dataset
   images:
     type:             tiff
     # preprocess the images when loading (i.e., scaling)
