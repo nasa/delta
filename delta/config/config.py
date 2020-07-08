@@ -183,7 +183,7 @@ class DeltaConfig(DeltaConfigComponent):
         """
         base_path = None
         if yaml_file:
-            print("Loading config file: " + yaml_file)
+            #print("Loading config file: " + yaml_file)
             if not os.path.exists(yaml_file):
                 raise Exception('Config file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:

@@ -111,6 +111,7 @@ class ImageryDataset:
             for i in range(len(self._images)):
 
                 if self._resume_mode:
+                    # TODO: Improve feature to work with multiple epochs
                     # Skip images which we have already read some number of tiles from
                     if self._get_image_read_count(self._images[i]) > config.io.resume_cutoff():
                         continue
@@ -262,7 +263,8 @@ class AutoencoderDataset(ImageryDataset):
         """
         The images are used as labels as well.
         """
-        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride, resume_mode=resume_mode, log_folder=log_folder)
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
+                                                 resume_mode=resume_mode, log_folder=log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

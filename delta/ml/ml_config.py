@@ -121,7 +121,7 @@ class NetworkModelConfig(config.DeltaConfigComponent):
                 yaml_file = pkg_resources.resource_filename('delta', resource)
             if not os.path.exists(yaml_file):
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
-            print('Opening model file: ' + yaml_file)
+            #print('Opening model file: ' + yaml_file)
             with open(yaml_file, 'r') as f:
                 return yaml.safe_load(f)
         return self._config_dict

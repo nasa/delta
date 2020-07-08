@@ -214,7 +214,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
-        print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+        #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     try:
         history = model.fit(ds,
