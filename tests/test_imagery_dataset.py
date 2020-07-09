@@ -134,7 +134,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
     output_image = npy.NumpyImageWriter()
     predictor = predict.LabelPredictor(model, output_image=output_image)
     predictor.predict(npy.NumpyImage(test_image))
-    assert sum(sum(np.logical_xor(output_image.buffer(), test_label))) < 200 # very easy test since we don't train much
+    assert sum(sum(np.logical_xor(output_image.buffer()[:,:,0], test_label))) < 200 # very easy test since we don't train much
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
