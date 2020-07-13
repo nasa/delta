@@ -179,7 +179,7 @@ class LabelPredictor(Predictor):
                 self._output_image.initialize((shape[0], shape[1], self._colormap.shape[1]),
                                               self._colormap.dtype, image.metadata())
             else:
-                self._output_image.initialize((shape[0], shape[1]), np.int32, image.metadata())
+                self._output_image.initialize((shape[0], shape[1], 1), np.int32, image.metadata())
         if self._prob_image:
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
         if self._error_image:

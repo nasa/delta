@@ -20,6 +20,7 @@ Train neural networks.
 """
 
 import os
+import sys
 import tempfile
 import shutil
 
@@ -28,6 +29,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
+from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
 
 def _devices(num_gpus):
@@ -61,6 +63,8 @@ def _strategy(devices):
 def _prep_datasets(ids, tc, chunk_size, output_size):
     ds = ids.dataset()
     ds = ds.batch(tc.batch_size)
+    #ds = ds.cache()
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.validation:
         if tc.validation.from_training:
             validation = ds.take(tc.validation.steps)
@@ -68,15 +72,24 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
         else:
             vimg = tc.validation.images
             vlabel = tc.validation.labels
-            if not vimg or not vlabel:
+            if not vimg:
                 validation = None
             else:
-                vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
-                validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+                if vlabel:
+                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride,
+                                              resume_mode=False)
+                else:
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
+                validation = vimagery.dataset().batch(tc.batch_size)
+                if tc.validation.steps:
+                    validation = validation.take(tc.validation.steps)
+        #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
     else:
+
         validation = None
     if tc.steps:
         ds = ds.take(tc.steps)
+    #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
     ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
@@ -95,7 +108,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Batch Size', training_spec.batch_size)
     mlflow.log_param('Optimizer', training_spec.optimizer)
     mlflow.log_param('Model Layers', len(model.layers))
-    #mlflow.log_param('Status', 'Running')
+    #mlflow.log_param('Status', 'Running') Illegal to change the value!
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -124,6 +137,8 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
+            tf.print('Recording checkpoint: ' + filename,
+                     output_stream=sys.stdout)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 
@@ -181,7 +196,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
 
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
 
-    callbacks = []
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
     # add callbacks from DeltaLayers
     for l in model.layers:
         if isinstance(l, DeltaLayer):
@@ -199,6 +214,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
+        #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     try:
         history = model.fit(ds,
@@ -206,7 +222,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                             callbacks=callbacks,
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps)
+                            steps_per_epoch=training_spec.steps,
+                            verbose=1)
+
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))

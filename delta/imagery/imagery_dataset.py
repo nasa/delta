@@ -22,6 +22,8 @@ import functools
 import math
 import random
 import sys
+import os
+import portalocker
 
 import tensorflow as tf
 
@@ -29,23 +31,31 @@ from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery.sources import loader
 
+#import numpy as np
+
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1):
+    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1,
+                 resume_mode=False, log_folder=None):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
 
+        self._resume_mode = resume_mode
+        self._log_folder  = log_folder
+        if self._log_folder and not os.path.exists(self._log_folder):
+            os.mkdir(self._log_folder)
+
         # Record some of the config values
         assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
-        self._chunk_size = chunk_size
-        self._output_size = output_size
-        self._output_dims = 1
+        self._chunk_size   = chunk_size
+        self._output_size  = output_size
+        self._output_dims  = 1
         self._chunk_stride = chunk_stride
-        self._data_type = tf.float32
-        self._label_type = tf.uint8
+        self._data_type    = tf.float32
+        self._label_type   = tf.uint8
 
         if labels:
             assert len(images) == len(labels)
@@ -55,9 +65,39 @@ class ImageryDataset:
         # Load the first image to get the number of bands for the input files.
         self._num_bands = loader.load_image(images, 0).num_bands()
 
+    def _get_image_read_log_path(self, image_path):
+        """Return the path to the read log for an input image"""
+        if not self._log_folder:
+            return None
+        image_name = os.path.basename(image_path)
+        file_name  = os.path.splitext(image_name)[0] + '_read.log'
+        log_path   = os.path.join(self._log_folder, file_name)
+        return log_path
+
+    def _get_image_read_count(self, image_path):
+        """Return the number of ROIs we have read from an image"""
+        log_path = self._get_image_read_log_path(image_path)
+        if (not log_path) or not os.path.exists(log_path):
+            return 0
+        counter = 0
+        with portalocker.Lock(log_path, 'r', timeout=300) as f:
+            for line in f: #pylint: disable=W0612
+                counter += 1
+        return counter
+
     def _load_tensor_imagery(self, is_labels, image_index, bbox):
         """Loads a single image as a tensor."""
-        image = loader.load_image(self._labels if is_labels else self._images, image_index.numpy())
+        data = self._labels if is_labels else self._images
+
+        if not is_labels: # Record each time we write a tile
+            file_path = data[image_index.numpy()]
+            log_path  = self._get_image_read_log_path(file_path)
+            if log_path:
+                with portalocker.Lock(log_path, 'a', timeout=300) as f:
+                    f.write(str(bbox) + '\n')
+                    # TODO: What to write and when to clear it?
+
+        image = loader.load_image(data, image_index.numpy())
         w = int(bbox[2])
         h = int(bbox[3])
         rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
@@ -69,7 +109,19 @@ class ImageryDataset:
         def tile_generator():
             tgs = []
             for i in range(len(self._images)):
+
+                if self._resume_mode:
+                    # TODO: Improve feature to work with multiple epochs
+                    # Skip images which we have already read some number of tiles from
+                    if self._get_image_read_count(self._images[i]) > config.io.resume_cutoff():
+                        continue
+
                 img = loader.load_image(self._images, i)
+                if self._labels: # If we have labels make sure they are the same size as the input images
+                    label = loader.load_image(self._labels, i)
+                    if label.size() != img.size():
+                        raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
+                                        + ' does not match input image size of ' + str(img.size()))
                 # w * h * bands * 4 * chunk * chunk = max_block_bytes
                 tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
                                            config.io.tile_ratio()))
@@ -85,6 +137,8 @@ class ImageryDataset:
                                   overlap=self._chunk_size - 1)
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
+            if not tgs:
+                return
             while tgs:
                 cur = tgs[:config.io.interleave_images()]
                 tgs = tgs[config.io.interleave_images():]
@@ -114,15 +168,18 @@ class ImageryDataset:
                                                    is_labels),
                                  [image_index, [x1, y1, x2, y2]], data_type)
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=config.io.threads())
+        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
 
-        return ret.prefetch(tf.data.experimental.AUTOTUNE)
+        # Don't let the entire session be taken down by one bad dataset input.
+        # - Would be better to handle this somehow but it is not clear if TF supports that.
+        ret = ret.apply(tf.data.experimental.ignore_errors())
+
+        return ret
 
     def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
-
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
-        strides = [1, self._chunk_stride, self._chunk_stride, 1] # SPacing between chunk starts
+        strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
         rates   = [1, 1, 1, 1]
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
@@ -134,7 +191,8 @@ class ImageryDataset:
     def _reshape_labels(self, labels):
         """Reshape the labels to account for the chunking process."""
         w = (self._chunk_size - self._output_size) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w, tf.shape(labels)[1] - 2 * w)
+        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
+                                                             tf.shape(labels)[1] - 2 * w) #pylint: disable=C0330
 
         ksizes  = [1, self._output_size, self._output_size, 1]
         strides = [1, self._chunk_stride, self._chunk_stride, 1]
@@ -148,7 +206,7 @@ class ImageryDataset:
         Unbatched dataset of image chunks.
         """
         ret = self._load_images(False, self._data_type)
-        ret = ret.map(self._chunk_image, num_parallel_calls=config.io.threads())
+        ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         return ret.unbatch()
 
     def labels(self):
@@ -156,8 +214,7 @@ class ImageryDataset:
         Unbatched dataset of labels.
         """
         label_set = self._load_images(True, self._label_type)
-        label_set = label_set.map(self._reshape_labels)
-
+        label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
         return label_set.unbatch()
 
     def dataset(self):
@@ -170,7 +227,6 @@ class ImageryDataset:
         # ignore labels with no data
         if self._labels.nodata_value():
             ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
-
         return ds
 
     def num_bands(self):
@@ -203,11 +259,12 @@ class ImageryDataset:
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_size, chunk_stride=1):
+    def __init__(self, images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None):
         """
         The images are used as labels as well.
         """
-        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride)
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
+                                                 resume_mode=resume_mode, log_folder=log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

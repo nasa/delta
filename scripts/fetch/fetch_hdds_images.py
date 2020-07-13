@@ -53,14 +53,14 @@ def get_dataset_list(options):
         # Each event is a dataset, start by fetching the list of all HDDS datasets.
         print('Submitting HDDS dataset query...')
         results = api.datasets("", CATALOG)
-
+        print(results)
         if not results['data']:
             raise Exception('Did not find any HDDS data!')
         print('Found ' + str(len(results['data'])) + ' matching datasets.')
 
         # Go through all the datasets and identify the events we are interested in.
         TARGET_TYPES = ['flood', 'hurricane', 'cyclone', 'tsunami', 'dam_collapse', 'storm']
-        SKIP = ['test', 'snowstorm', 'adhoc', 'ad hoc', 'ad_hoc'] # TODO: What is ad hoc here?
+        SKIP = ['test', 'icestorm', 'snowstorm', 'adhoc', 'ad hoc', 'ad_hoc'] # TODO: What is ad hoc here?
 
         handle = open(dataset_cache_path, 'w')
 
@@ -140,7 +140,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     try:
 
-        usage  = "usage: get_landsat_dswe_labels [options]"
+        usage  = "usage: fetch_hdds_images.py [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
@@ -163,6 +163,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
                             dest="refetch_scenes", default=False,
                             help="Force refetches of scene lists for each dataset.")
 
+        parser.add_argument("--image-list-path", dest="image_list_path", default=None,
+                            help="Path to text file containing list of image IDs to download, one per line.")
+
+        parser.add_argument("--event-name", dest="event_name", default=None,
+                            help="Only download images from this event.")
+
         options = parser.parse_args(argsIn)
 
     except argparse.ArgumentError:
@@ -171,6 +177,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     if options.output_folder and not os.path.exists(options.output_folder):
         os.mkdir(options.output_folder)
+
+    images_to_use = []
+    if options.image_list_path:
+        with open(options.image_list_path, 'r') as f:
+            for line in f:
+                images_to_use.append(line.strip())
 
     # Only log in if our session expired (ugly function use to check!)
     if options.force_login or (not api._get_api_key(None)): #pylint: disable=W0212
@@ -197,6 +209,10 @@ def main(argsIn): #pylint: disable=R0914,R0912
         #if counter == 1:
         #    continue
 
+        if options.event_name: # Only download images from the specified event
+            if options.event_name.lower() not in full_name.lower():
+                continue
+
         dataset_folder  = os.path.join(options.output_folder, full_name)
         scene_list_path = os.path.join(dataset_folder, 'scene_list.dat')
         done_flag_path  = os.path.join(dataset_folder, 'done.flag')
@@ -209,12 +225,35 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
         print('--> Search scenes for: ' + full_name)
 
+        BATCH_SIZE = 10000
         if not os.path.exists(scene_list_path) or options.refetch_scenes:
             # Request the scene list from USGS
             #details = {'Agency - Platform - Vendor':'WORLDVIEW', 'Sensor Type':'MS'}
             #details = {'sensor_type':'MS'}
             details = {} # TODO: How do these work??
-            results = api.search(dataset, CATALOG, where=details, max_results=5000, extended=False)
+
+            # Large sets of results require multiple queries in order to get all of the data
+            done  = False
+            error = False
+            all_scenes = [] # Acculumate all scene data here
+            while not done:
+                print('Searching with start offset = ' + str(len(all_scenes)))
+                results = api.search(dataset, CATALOG, where=details,
+                                     max_results=BATCH_SIZE,
+                                     starting_number=len(all_scenes), extended=False)
+
+                if 'results' not in results['data']:
+                    print('ERROR: Failed to get any results for dataset: ' + full_name)
+                    error = True
+                    break
+                if len(results['data']['results']) < BATCH_SIZE:
+                    done = True
+                all_scenes += results['data']['results']
+
+            if error:
+                continue
+
+            results['data']['results'] = all_scenes
 
             # Cache the results to disk
             with open(scene_list_path, 'wb') as f:
@@ -224,17 +263,12 @@ def main(argsIn): #pylint: disable=R0914,R0912
             with open(scene_list_path, 'rb') as f:
                 results = pickle.load(f)
 
-        if 'results' not in results['data']:
-            print('ERROR: Failed to get any results for dataset: ' + full_name)
-            continue
         print('Got ' + str(len(results['data']['results'])) + ' scene results.')
 
         for scene in results['data']['results']:
 
-            #print(scene)
-
             fail = False
-            REQUIRED_PARTS = ['displayId', 'summary']
+            REQUIRED_PARTS = ['displayId', 'summary', 'entityId', 'displayId']
             for p in REQUIRED_PARTS:
                 if (p not in scene) or (not scene[p]):
                     print('scene object is missing element: ' + p)
@@ -243,6 +277,9 @@ def main(argsIn): #pylint: disable=R0914,R0912
             if fail:
                 continue
 
+            # If image list was provided skip other image names
+            if images_to_use and (scene['displayId'] not in images_to_use):
+                continue
 
             # Figure out the downloaded file path for this image
             file_name   = scene['displayId'] + '.zip'
@@ -269,6 +306,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 print('Undesired sensor: ' + scene['summary'])
                 continue
 
+
             # Investigate the number of bands
             PLATFORM_BAND_COUNTS = {'worldview':8, 'TODO':1}
             min_num_bands = PLATFORM_BAND_COUNTS[platform]
@@ -287,7 +325,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
                 if not num_bands:
                     raise KeyError() # Treat like the except case
                 if num_bands < min_num_bands:
-                    print('Skipping, too few bands: ' + str(num_bands))
+                    print('Skipping %s, too few bands: %d' % (scene['displayId'], num_bands))
                     continue
             except KeyError:
                 print('Unable to perform metadata check!')
@@ -310,6 +348,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
                     break
             if not ready:
                 raise Exception('Missing download option for scene: ' + str(types))
+
 
             # Get the download URL of the file we want.
             r = api.download(dataset, CATALOG, [scene['entityId']],

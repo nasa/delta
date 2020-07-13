@@ -2,7 +2,7 @@ layers:
   - Input:
       shape: in_shape
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -11,7 +11,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -24,7 +24,7 @@ layers:
       strides: 2
       name: pooling_1
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -33,7 +33,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -46,7 +46,7 @@ layers:
       strides: 2
       name: pooling_2
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -55,7 +55,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -64,7 +64,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -77,7 +77,7 @@ layers:
       strides: 2
       name: pooling_3
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -86,7 +86,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -95,7 +95,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -108,7 +108,7 @@ layers:
       strides: 2
       name: pooling_4
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -117,7 +117,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -126,7 +126,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2D:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       padding: same
       use_bias: false
@@ -142,7 +142,7 @@ layers:
       size: [2, 2]
       name: upsampling_1
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -154,7 +154,7 @@ layers:
       size: [2, 2]
       name: upsampling_1
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -163,7 +163,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -172,7 +172,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -184,7 +184,7 @@ layers:
       size: [2, 2]
       name: upsampling_2
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -193,7 +193,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -202,7 +202,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -214,7 +214,7 @@ layers:
       size: [2, 2]
       name: upsampling_3
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -223,7 +223,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -232,7 +232,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -244,7 +244,7 @@ layers:
       size: [2, 2]
       name: upsampling_4
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -253,7 +253,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -265,7 +265,7 @@ layers:
       size: [2, 2]
       name: upsampling_5
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same
@@ -274,7 +274,7 @@ layers:
   - Activation:
       activation: relu
   - Conv2DTranspose:
-      filters: 100
+      filters: 64
       kernel_size: [7, 7]
       strides: [1, 1]
       padding: same

@@ -22,7 +22,11 @@ Functions to support the WorldView satellites.
 import math
 import functools
 import os
+import sys
 import numpy as np
+import portalocker
+
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -64,19 +68,21 @@ class WorldviewImage(tiff.TiffImage):
 
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
-        name = '_'.join([self._sensor, self._date])
-        unpack_folder = config.io.cache.manager().register_item(name)
+        unpack_folder = config.io.cache.manager().register_item(self._name)
 
-        # Check if we already unpacked this data
-        (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
-
-        if imd_path and tif_path:
-            #print('Already have unpacked files in ' + unpack_folder)
-            pass
-        else:
-            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
-            utilities.unpack_to_folder(paths, unpack_folder)
+        with portalocker.Lock(paths, 'r', timeout=300) as unused: #pylint: disable=W0612
+            # Check if we already unpacked this data
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+
+            if imd_path and tif_path:
+                #tf.print('Already have unpacked files in ' + unpack_folder,
+                #         output_stream=sys.stdout)
+                pass
+            else:
+                tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
+                         output_stream=sys.stdout)
+                utilities.unpack_to_folder(paths, unpack_folder)
+                (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
     # This function is currently set up for the HDDS archived WV data, files from other
@@ -89,7 +95,8 @@ class WorldviewImage(tiff.TiffImage):
         assert isinstance(paths, str)
         parts = os.path.basename(paths).split('_')
         self._sensor = parts[0][0:4]
-        self._date = parts[2][6:14]
+        self._date   = parts[2][6:14]
+        self._name   = os.path.splitext(os.path.basename(paths))[0]
 
         (tif_path, imd_path) = self._unpack(paths)
 
