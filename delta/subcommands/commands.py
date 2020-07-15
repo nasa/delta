@@ -18,14 +18,9 @@
 """
 Lists all avaiable commands.
 """
-import delta.imagery.imagery_config
-import delta.ml.ml_config
 from delta.config import config
 
 #pylint:disable=import-outside-toplevel
-
-delta.imagery.imagery_config.register()
-delta.ml.ml_config.register()
 
 # we put this here because tensorflow takes so long to load, we don't do it unless we have to
 def main_classify(options):

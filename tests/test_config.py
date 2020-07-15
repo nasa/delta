@@ -26,8 +26,6 @@ import tensorflow as tf
 from delta.config import config
 from delta.ml import model_parser
 
-#pylint: disable=import-outside-toplevel
-
 def test_general():
     config.reset()
 
@@ -309,7 +307,6 @@ def test_argparser():
 
     assert config.train.network.chunk_size() == 5
     im = config.dataset.images()
-    print(im.preprocess())
     assert im.preprocess() is not None
     assert im.type() == 'tiff'
     assert len(im) == 1

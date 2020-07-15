@@ -129,7 +129,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
             for k in logs.keys():
                 if k in ('batch', 'size'):
                     continue
-                mlflow.log_metric(k, logs[k].item(), step=batch)
+                mlflow.log_metric(k, logs[k], step=batch)
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')

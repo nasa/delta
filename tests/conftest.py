@@ -21,6 +21,7 @@
 import os
 import random
 import shutil
+import sys
 import tempfile
 import zipfile
 
@@ -29,12 +30,10 @@ import pytest
 
 from delta.imagery.sources import tiff
 
-import delta.imagery.imagery_config
-import delta.ml.ml_config
+import delta.config.modules
+delta.config.modules.register_all()
 
-# initialize config files
-delta.imagery.imagery_config.register()
-delta.ml.ml_config.register()
+assert 'tensorflow' not in sys.modules, 'For speed of command line tool, tensorflow should not be imported by config!'
 
 def generate_tile(width=32, height=32, blocks=50):
     """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
