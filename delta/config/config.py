@@ -35,6 +35,9 @@ def validate_positive(num, _):
         raise ValueError('%d is not positive' % (num))
     return num
 
+class _NotSpecified: #pylint:disable=too-few-public-methods
+    pass
+
 class DeltaConfigComponent:
     """
     DELTA configuration component.
@@ -78,7 +81,7 @@ class DeltaConfigComponent:
             attr_name = name
         setattr(self, attr_name, component)
 
-    def register_field(self, name : str, types, accessor = None, cmd_arg = None, validate_fn = None, desc = None):
+    def register_field(self, name : str, types, accessor = None, validate_fn = None, desc = None):
         """
         Register a field in this component of the configuration.
 
@@ -92,7 +95,6 @@ class DeltaConfigComponent:
         self._fields.append(name)
         self._validate[name] = validate_fn
         self._types[name] = types
-        self._cmd_args[name] = cmd_arg
         self._descs[name] = desc
         if accessor:
             def access(self) -> types:
@@ -100,6 +102,28 @@ class DeltaConfigComponent:
             access.__name__ = accessor
             access.__doc__ = desc
             setattr(self.__class__, accessor, access)
+
+    def register_arg(self, field, argname, **kwargs):
+        """
+        Registers a command line argument in this component.
+
+        field is the (registered) field this argument modifies.
+        argname is the name of the flag on the command line (i.e., '--flag')
+        **kwargs are arguments to ArgumentParser.add_argument.
+
+        If help and type are not specified, will use the ones for the field.
+        If default is not specified, will use the value from the config files.
+        """
+        assert field in self._fields, 'Field %s not registered.' % (field)
+        if 'help' not in kwargs:
+            kwargs['help'] = self._descs[field]
+        if 'type' not in kwargs:
+            kwargs['type'] = self._types[field]
+        elif kwargs['type'] is None:
+            del kwargs['type']
+        if 'default' not in kwargs:
+            kwargs['default'] = _NotSpecified
+        self._cmd_args[argname] = (field, kwargs)
 
     def export(self) -> str:
         """
@@ -139,12 +163,9 @@ class DeltaConfigComponent:
         """
         if self._section_header is not None:
             parser = parser.add_argument_group(self._section_header)
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
-                continue
-            parser.add_argument(c, dest=c.replace('-', '_'), required=False,
-                                type=self._types[name], help=self._descs[name])
+        for (arg, value) in self._cmd_args.items():
+            (field, kwargs) = value
+            parser.add_argument(arg, dest=field, **kwargs)
 
         for (name, c) in self._components.items():
             if components is None or name in components:
@@ -157,14 +178,12 @@ class DeltaConfigComponent:
         configuration values.
         """
         d = {}
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
+        for (field, _) in self._cmd_args.values():
+            if not hasattr(options, field) or getattr(options, field) is None:
                 continue
-            n = c.replace('-', '_')
-            if not hasattr(options, n) or getattr(options, n) is None:
+            if getattr(options, field) is _NotSpecified:
                 continue
-            d[name] = getattr(options, n)
+            d[field] = getattr(options, field)
         self._load_dict(d, None)
 
         for c in self._components.values():

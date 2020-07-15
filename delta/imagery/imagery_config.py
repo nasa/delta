@@ -177,8 +177,8 @@ def load_images_labels(images_comp, labels_comp):
 class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('enabled', bool, 'enabled', None, None, 'Turn on preprocessing.')
-        self.register_field('scale_factor', (float, str), 'scale_factor', None, None, 'Image scale factor.')
+        self.register_field('enabled', bool, 'enabled', None, 'Turn on preprocessing.')
+        self.register_field('scale_factor', (float, str), 'scale_factor', None, 'Image scale factor.')
 
 def _validate_paths(paths, base_dir):
     out = []
@@ -189,15 +189,18 @@ def _validate_paths(paths, base_dir):
 class ImageSetConfig(DeltaConfigComponent):
     def __init__(self, name=None):
         super().__init__()
-        self.register_field('type', str, 'type', '--' + name + '-type' if name else None, None, 'Image type.')
-        self.register_field('files', list, None, None, _validate_paths, 'List of image files.')
-        self.register_field('file_list', list, None, '--' + name + '-file-list' if name else None,
-                            validate_path, 'File listing image files.')
-        self.register_field('directory', str, None, '--' + name + '-dir' if name else None,
-                            validate_path, 'Directory of image files.')
-        self.register_field('extension', str, None, '--' + name + '-extension' if name else None,
-                            None, 'Image file extension.')
-        self.register_field('nodata_value', float, None, None, None, 'Value of pixels to ignore.')
+        self.register_field('type', str, 'type', None, 'Image type.')
+        self.register_field('files', list, None, _validate_paths, 'List of image files.')
+        self.register_field('file_list', list, None, validate_path, 'File listing image files.')
+        self.register_field('directory', str, None, validate_path, 'Directory of image files.')
+        self.register_field('extension', str, None, None, 'Image file extension.')
+        self.register_field('nodata_value', float, None, None, 'Value of pixels to ignore.')
+
+        if name:
+            self.register_arg('type', '--' + name + '-type')
+            self.register_arg('file_list', '--' + name + '-file-list')
+            self.register_arg('directory', '--' + name + '-dir')
+            self.register_arg('extension', '--' + name + '-extension')
         self.register_component(ImagePreprocessConfig(), 'preprocess')
         self._name = name
 
@@ -222,7 +225,7 @@ class DatasetConfig(DeltaConfigComponent):
         self.register_component(ImageSetConfig('label'), 'labels', '__label_comp')
         self.__images = None
         self.__labels = None
-        self.register_field('log_folder', str, 'log_folder', None, validate_path,
+        self.register_field('log_folder', str, 'log_folder', validate_path,
                             'Directory where dataset progress is recorded.')
 
     def reset(self):
@@ -251,8 +254,8 @@ class DatasetConfig(DeltaConfigComponent):
 class CacheConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('dir', str, None, None, validate_path, 'Cache directory.')
-        self.register_field('limit', int, None, None, validate_positive, 'Number of items to cache.')
+        self.register_field('dir', str, None, validate_path, 'Cache directory.')
+        self.register_field('limit', int, None, validate_positive, 'Number of items to cache.')
 
         self._cache_manager = None
 
@@ -274,15 +277,19 @@ class CacheConfig(DeltaConfigComponent):
 class IOConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('threads', int, 'threads', '--threads', None, 'Number of threads to use.')
-        self.register_field('block_size_mb', int, 'block_size_mb', '--block-size-mb', validate_positive,
+        self.register_field('threads', int, 'threads', None, 'Number of threads to use.')
+        self.register_field('block_size_mb', int, 'block_size_mb', validate_positive,
                             'Size of an image block to load in memory at once.')
-        self.register_field('interleave_images', int, 'interleave_images', None, validate_positive,
+        self.register_field('interleave_images', int, 'interleave_images', validate_positive,
                             'Number of images to interleave at a time when training.')
-        self.register_field('tile_ratio', float, 'tile_ratio', '--tile-ratio', validate_positive,
+        self.register_field('tile_ratio', float, 'tile_ratio', validate_positive,
                             'Width to height ratio of blocks to load in images.')
-        self.register_field('resume_cutoff', int, 'resume_cutoff', None, None,
+        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
+
+        self.register_arg('threads', '--threads')
+        self.register_arg('block_size_mb', '--block-size-mb')
+        self.register_arg('tile_ratio', '--tile-ratio')
 
         self.register_component(CacheConfig(), 'cache')
 
