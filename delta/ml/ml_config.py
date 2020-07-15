@@ -18,17 +18,16 @@
 """
 Configuration options specific to machine learning.
 """
+# Please do not put any tensorflow imports in this file as it will greatly slow loading
+# when tensorflow isn't needed
 import os.path
 
 import appdirs
 import pkg_resources
 import yaml
 
-import tensorflow.keras.losses
-
 from delta.imagery.imagery_config import ImageSet, ImageSetConfig, load_images_labels
 import delta.config as config
-
 
 def loss_function_factory(loss_spec):
     '''
@@ -39,6 +38,7 @@ def loss_function_factory(loss_spec):
     with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
     of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
     '''
+    import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
 
     if isinstance(loss_spec, str):
         return loss_spec
@@ -225,7 +225,7 @@ class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
         super().__init__()
         self.register_field('frequency', int, 'frequency', None, None,
                             'Frequency in batches to store neural network checkpoints.')
-        self.register_field('save_latest', bool, 'save_latest', None, None,
+        self.register_field('save_latest', bool, 'save_latest', '--save-latest', None,
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):
