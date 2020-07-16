@@ -1,6 +1,7 @@
 general:
   # negative is all
   gpus:              -1
+  stop_on_input_error: true # If false skip past bad input files without halting training
 
 io:
   threads:           1
