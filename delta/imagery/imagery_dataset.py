@@ -24,14 +24,12 @@ import random
 import sys
 import os
 import portalocker
-
+import numpy as np
 import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import rectangle
 from delta.imagery.sources import loader
-
-#import numpy as np
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -97,11 +95,20 @@ class ImageryDataset:
                     f.write(str(bbox) + '\n')
                     # TODO: What to write and when to clear it?
 
-        image = loader.load_image(data, image_index.numpy())
-        w = int(bbox[2])
-        h = int(bbox[3])
-        rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
-        r = image.read(rect)
+        try:
+            image = loader.load_image(data, image_index.numpy())
+            w = int(bbox[2])
+            h = int(bbox[3])
+            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
+            r = image.read(rect)
+        except Exception as e: #pylint: disable=W0703
+            print('Caught exception loading tile from image: ' + data[image_index.numpy()] + ' -> ' + str(e)
+                  + '\nSkipping tile: ' + str(bbox))
+            if config.general.stop_on_input_error():
+                print('Aborting processing, set --bypass-input-errors to bypass this error.')
+                raise
+            # Else just skip this tile
+            r = np.zeros(shape=(0,0,0), dtype=np.float32)
         return r
 
     def _tile_images(self):
@@ -116,25 +123,36 @@ class ImageryDataset:
                     if self._get_image_read_count(self._images[i]) > config.io.resume_cutoff():
                         continue
 
-                img = loader.load_image(self._images, i)
-                if self._labels: # If we have labels make sure they are the same size as the input images
-                    label = loader.load_image(self._labels, i)
-                    if label.size() != img.size():
-                        raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
-                                        + ' does not match input image size of ' + str(img.size()))
-                # w * h * bands * 4 * chunk * chunk = max_block_bytes
-                tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
-                                           config.io.tile_ratio()))
-                tile_height = int(config.io.tile_ratio() * tile_width)
-                min_block_size = self._chunk_size ** 2 * config.io.tile_ratio() * img.num_bands() * 4
-                if max_block_bytes < min_block_size:
-                    print('Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)' % ( \
-                          max_block_bytes / 1024 / 1024, min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
-                          file=sys.stderr)
-                if tile_width < self._chunk_size or tile_height < self._chunk_size:
-                    raise ValueError('max_block_bytes is too low.')
-                tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
-                                  overlap=self._chunk_size - 1)
+                try:
+                    img = loader.load_image(self._images, i)
+
+                    if self._labels: # If we have labels make sure they are the same size as the input images
+                        label = loader.load_image(self._labels, i)
+                        if label.size() != img.size():
+                            raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
+                                            + ' does not match input image size of ' + str(img.size()))
+                    # w * h * bands * 4 * chunk * chunk = max_block_bytes
+                    tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
+                                               config.io.tile_ratio()))
+                    tile_height = int(config.io.tile_ratio() * tile_width)
+                    min_block_size = self._chunk_size ** 2 * config.io.tile_ratio() * img.num_bands() * 4
+                    if max_block_bytes < min_block_size:
+                        print('Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)'
+                              % (max_block_bytes / 1024 / 1024,
+                                 min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
+                              file=sys.stderr)
+                    if tile_width < self._chunk_size or tile_height < self._chunk_size:
+                        raise ValueError('max_block_bytes is too low.')
+                    tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
+                                      overlap=self._chunk_size - 1)
+                except Exception as e: #pylint: disable=W0703
+                    print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
+                          + '\nWill not load any tiles from this image')
+                    if config.general.stop_on_input_error():
+                        print('Aborting processing, set --bypass-input-errors to bypass this error.')
+                        raise
+                    tiles = [] # Else move past this image without loading any tiles
+
                 random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
                 tgs.append((i, tiles))
             if not tgs:
@@ -172,7 +190,7 @@ class ImageryDataset:
 
         # Don't let the entire session be taken down by one bad dataset input.
         # - Would be better to handle this somehow but it is not clear if TF supports that.
-        ret = ret.apply(tf.data.experimental.ignore_errors())
+#        ret = ret.apply(tf.data.experimental.ignore_errors())
 
         return ret
 
