@@ -82,6 +82,14 @@ class WorldviewImage(tiff.TiffImage):
                 tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
                          output_stream=sys.stdout)
                 utilities.unpack_to_folder(paths, unpack_folder)
+                # some worldview zip files have a subdirectory with the name of the image
+                if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):
+                    subdir = os.path.join(unpack_folder, os.path.splitext(os.path.basename(paths))[0])
+                    if not os.path.exists(os.path.join(subdir, 'vendor_metadata')):
+                        raise Exception('vendor_metadata not found in %s.' % (paths))
+                    for filename in os.listdir(subdir):
+                        os.rename(os.path.join(subdir, filename), os.path.join(unpack_folder, filename))
+                    os.rmdir(subdir)
                 (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
