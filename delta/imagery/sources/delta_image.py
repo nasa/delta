@@ -153,7 +153,7 @@ class DeltaImage(ABC):
         pending = []
         exe = concurrent.futures.ThreadPoolExecutor(1)
         NUM_AHEAD = 2
-        for i in range(NUM_AHEAD):
+        for i in range(min(NUM_AHEAD, len(jobs))):
             pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
         num_remaining = total_rois
         for (i, (read_roi, rois)) in enumerate(jobs):
