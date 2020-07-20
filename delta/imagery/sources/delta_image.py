@@ -127,7 +127,6 @@ class DeltaImage(ABC):
 
         # gdal doesn't work reading multithreading. But this let's a thread
         # take care of IO input while we do computation.
-        exe = concurrent.futures.ThreadPoolExecutor(1)
         jobs = []
 
         total_rois = len(block_rois)
@@ -148,18 +147,25 @@ class DeltaImage(ABC):
                     continue
                 applicable_rois.append(block_rois.pop(index))
 
-            buf = exe.submit(functools.partial(self.read, read_roi))
-            jobs.append((buf, read_roi, applicable_rois))
+            jobs.append((read_roi, applicable_rois))
 
+        # only do a few reads ahead since otherwise we will exhaust our memory
+        pending = []
+        exe = concurrent.futures.ThreadPoolExecutor(1)
+        NUM_AHEAD = 2
+        for i in range(NUM_AHEAD):
+            pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
         num_remaining = total_rois
-        for (buf_exe, read_roi, rois) in jobs:
-            buf = buf_exe.result()
+        for (i, (read_roi, rois)) in enumerate(jobs):
+            buf = pending.pop(0).result()
             for roi in rois:
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
                 num_remaining -= 1
                 yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
                        (total_rois - num_remaining, total_rois))
+            if i + NUM_AHEAD < len(jobs):
+                pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))
 
     def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
                      callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
