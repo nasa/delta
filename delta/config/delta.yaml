@@ -96,8 +96,8 @@ mlflow:
   experiment_name: Default
   # rate in batches to save model checkpoints
   checkpoints:
-    frequency:     10000
-    save_latest:   true
+    frequency:          10000
+    only_save_latest:   true
 
 tensorboard:
   enabled:        false

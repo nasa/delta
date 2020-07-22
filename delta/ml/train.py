@@ -133,7 +133,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')
-            if config.mlflow.checkpoints.save_latest():
+            if config.mlflow.checkpoints.only_save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
