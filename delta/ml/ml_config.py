@@ -234,7 +234,7 @@ class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
         super().__init__()
         self.register_field('frequency', int, 'frequency', None,
                             'Frequency in batches to store neural network checkpoints.')
-        self.register_field('save_latest', bool, 'save_latest', None,
+        self.register_field('only_save_latest', bool, 'only_save_latest', None,
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):

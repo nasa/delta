@@ -107,7 +107,7 @@ Used in the `delta train` and `delta mlflow_ui` commands to keep track of traini
    networks from different stages of training.
    * `frequency`: Frequency in batches to save a checkpoint. Networks can require a fair amount of disk space,
      so don't save too often.
-   * `save_latest`: If true, only keep the network file from the most recent checkpoint.
+   * `only_save_latest`: If true, only keep the network file from the most recent checkpoint.
 
 TensorBoard
 -----------
