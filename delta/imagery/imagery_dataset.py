@@ -72,16 +72,35 @@ class ImageryDataset:
         log_path   = os.path.join(self._log_folder, file_name)
         return log_path
 
+    def _read_single_integer_file(self, path):
+        """Reads the only integer in a file or zero if it can't be read"""
+        try:
+            with portalocker.Lock(path, 'r', timeout=300) as f:
+                line = f.readline()
+                return int(line)
+        except Exception:
+            return 0
+
     def _get_image_read_count(self, image_path):
         """Return the number of ROIs we have read from an image"""
         log_path = self._get_image_read_log_path(image_path)
         if (not log_path) or not os.path.exists(log_path):
             return 0
-        counter = 0
-        with portalocker.Lock(log_path, 'r', timeout=300) as f:
-            for line in f: #pylint: disable=W0612
-                counter += 1
-        return counter
+        # The file should contain a single integer with the read count
+        return self._read_single_integer_file(log_path)
+
+    def reset_read_counts(self):
+        """Reset all input file read counts to zero.
+           This needs to be called after each epoch to use resume_mode."""
+        if not self._log_folder:
+            return
+        print('Resetting read counts in folder: ' + self._log_folder)
+        file_list = os.listdir(self._log_folder)
+        for log_name in file_list:
+            if '_read.log' in log_name:
+                log_path = os.path.join(self._log_folder, name)
+                with portalocker.Lock(log_path, 'w', timeout=300) as f:
+                    f.write("0")
 
     def _load_tensor_imagery(self, is_labels, image_index, bbox):
         """Loads a single image as a tensor."""
@@ -91,9 +110,13 @@ class ImageryDataset:
             file_path = data[image_index.numpy()]
             log_path  = self._get_image_read_log_path(file_path)
             if log_path:
-                with portalocker.Lock(log_path, 'a', timeout=300) as f:
-                    f.write(str(bbox) + '\n')
-                    # TODO: What to write and when to clear it?
+                count = self._read_single_integer_file(log_path)
+                if self._resume_mode and (count > config.io.resume_cutoff()):
+                    # Already read this file too many times, skip it
+                    return np.zeros(shape=(0,0,0), dtype=np.float32)
+                else:
+                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
+                        f.write(str(count+1))
 
         try:
             image = loader.load_image(data, image_index.numpy())

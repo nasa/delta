@@ -110,6 +110,17 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Model Layers', len(model.layers))
     #mlflow.log_param('Status', 'Running') Illegal to change the value!
 
+class _EpochResetCallback(tf.keras.callbacks.Callback):
+    """
+    Reset imagery_dataset file counts on epoch end
+    """
+    def __init__(self, ids):
+        super(_MLFlowCallback, self).__init__()
+        self.ids = ids
+
+    def on_epoch_end(self, epoch, _=None):
+        self.ids.reset_read_counts()
+
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
@@ -215,6 +226,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
         #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    callbacks.append(_EpochResetCallback(ds))
 
     try:
         history = model.fit(ds,
