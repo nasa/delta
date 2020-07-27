@@ -115,10 +115,11 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
     Reset imagery_dataset file counts on epoch end
     """
     def __init__(self, ids):
-        super(_MLFlowCallback, self).__init__()
+        super(_EpochResetCallback, self).__init__()
         self.ids = ids
 
     def on_epoch_end(self, epoch, _=None):
+        print('Finished epoch ' + str(epoch))
         self.ids.reset_read_counts()
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
@@ -179,8 +180,11 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     Trains the specified model on a dataset according to a training
     specification.
     """
+    # This does not work when using the CPU!
     if isinstance(model_fn, tf.keras.Model):
         model = model_fn
+        print('WARNING: Model loaded without TF strategy/device wrapper, this may fail in some configurations!')
+        # May not be able to improve on this until tf 2.2
     else:
         with _strategy(_devices(config.general.gpus())).scope():
             model = model_fn()
@@ -191,9 +195,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             model.compile(optimizer=training_spec.optimizer, loss=loss,
                           metrics=training_spec.metrics)
 
-    input_shape = model.get_input_at(0).shape
+    input_shape  = model.get_input_at(0).shape
     output_shape = model.get_output_at(0).shape
-    chunk_size = input_shape[1]
+    chunk_size   = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.'
     assert input_shape[0] is None, 'Input is not batched.'
@@ -225,9 +229,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
-        #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+        print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
-    callbacks.append(_EpochResetCallback(ds))
+    callbacks.append(_EpochResetCallback(dataset))
 
     try:
         history = model.fit(ds,

@@ -98,7 +98,7 @@ class ImageryDataset:
         file_list = os.listdir(self._log_folder)
         for log_name in file_list:
             if '_read.log' in log_name:
-                log_path = os.path.join(self._log_folder, name)
+                log_path = os.path.join(self._log_folder, log_name)
                 with portalocker.Lock(log_path, 'w', timeout=300) as f:
                     f.write("0")
 
@@ -113,6 +113,7 @@ class ImageryDataset:
                 count = self._read_single_integer_file(log_path)
                 if self._resume_mode and (count > config.io.resume_cutoff()):
                     # Already read this file too many times, skip it
+                    #print('Skipping ' + file_path)
                     return np.zeros(shape=(0,0,0), dtype=np.float32)
                 else:
                     with portalocker.Lock(log_path, 'w', timeout=300) as f:
@@ -139,12 +140,6 @@ class ImageryDataset:
         def tile_generator():
             tgs = []
             for i in range(len(self._images)):
-
-                if self._resume_mode:
-                    # TODO: Improve feature to work with multiple epochs
-                    # Skip images which we have already read some number of tiles from
-                    if self._get_image_read_count(self._images[i]) > config.io.resume_cutoff():
-                        continue
 
                 try:
                     img = loader.load_image(self._images, i)
