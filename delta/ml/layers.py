@@ -23,6 +23,7 @@ import tensorflow.keras.models
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.callbacks import Callback
+from pathlib import Path
 
 class DeltaLayer(Layer):
     # optionally return a Keras callback
@@ -95,7 +96,21 @@ def pretrained_model(filename, encoding_layer, trainable=False, **kwargs):
             break
     return tensorflow.keras.models.Sequential(output_layers, **kwargs)
 
+def resnet50(include_top=False, weights='imagenet',input_shape=None, pooling=None, classes=None, trainable=False, **kwargs):
+    assert not include_top or classes is not None,\
+            '''Either do not include the top layer of the network or specify the number
+            of classes'''
+
+    assert weights == 'imagenet' or weights is None or Path(weights).exists(), \
+            f'''weights must be either \'imagenet\', None, or a path to pretrained weights,
+            was: {weights}'''
+
+    m = tf.keras.applications.ResNet50(include_top=include_top, weights=weights, input_shape=input_shape, classes=classes, **kwargs)
+    m.trainable = trainable
+    return m
+
 ALL_LAYERS = {
     'GaussianSample' : GaussianSample,
     'Pretrained' : pretrained_model
+    'ResNet50' : resnet50
 }
