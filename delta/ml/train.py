@@ -180,8 +180,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             model.compile(optimizer=training_spec.optimizer, loss=loss,
                           metrics=training_spec.metrics)
 
-    input_shape = model.get_input_at(0).shape
-    output_shape = model.get_output_at(0).shape
+    input_shape = model.input_shape
+    output_shape = model.output_shape
     chunk_size = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.'
