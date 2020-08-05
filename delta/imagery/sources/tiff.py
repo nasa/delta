@@ -21,8 +21,8 @@ Block-aligned reading from multiple Geotiff files.
 import os
 import math
 
-from osgeo import gdal
 import numpy as np
+from osgeo import gdal
 
 from delta.config import config
 from delta.imagery import rectangle
@@ -313,8 +313,8 @@ class TiffWriter:
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        options += ['BLOCKXSIZE='+str(self._tile_height),
-                    'BLOCKYSIZE='+str(self._tile_width)]
+        options += ['BLOCKXSIZE='+str(self._tile_width),
+                    'BLOCKYSIZE='+str(self._tile_height)]
         MIN_SIZE_FOR_TILES=100
         if width > MIN_SIZE_FOR_TILES or height > MIN_SIZE_FOR_TILES:
             options += ['TILED=YES']

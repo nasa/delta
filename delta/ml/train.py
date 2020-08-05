@@ -114,13 +114,16 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
     """
     Reset imagery_dataset file counts on epoch end
     """
-    def __init__(self, ids):
+    def __init__(self, ids, last_epoch):
         super(_EpochResetCallback, self).__init__()
         self.ids = ids
+        self.last_epoch = last_epoch
 
     def on_epoch_end(self, epoch, _=None):
         print('Finished epoch ' + str(epoch))
-        self.ids.reset_read_counts()
+        # Leave the counts from the last epoch just as a record
+        if epoch != self.last_epoch:
+            self.ids.reset_read_counts()
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -231,7 +234,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         callbacks.append(mcb)
         print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
-    callbacks.append(_EpochResetCallback(dataset))
+    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     try:
         history = model.fit(ds,
