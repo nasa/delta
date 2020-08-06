@@ -44,11 +44,27 @@ dataset:
     file_list:        ~
     files:            ~
 
+  # can either be a list of classes or the number of classes,
+  # if the labels are 0, 1, 2, 3
+  classes:            4
+  #classes:
+  #  - value: 1
+  #    name: Water
+  #    color: 0x67a9cf
+  #  - value: 2
+  #    name: No Water
+  #    color: 0xf6eff7
+  #  - value: 3
+  #    name: Maybe
+  #    color: 0xbdc9e1
+  #  - value: 4
+  #    name: Cloud
+  #    color: 0x02818a
+
 train:
   network:
     chunk_size:      16
     output_size:     8
-    classes:         4
     model:
       yaml_file:     networks/convpool.yaml
       params:        ~

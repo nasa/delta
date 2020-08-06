@@ -227,6 +227,9 @@ class DatasetConfig(DeltaConfigComponent):
         self.__labels = None
         self.register_field('log_folder', str, 'log_folder', validate_path,
                             'Directory where dataset progress is recorded.')
+        self.register_field('classes', int, 'classes', validate_positive,
+                            'Number of label classes.')
+        self.register_arg('classes', '--classes')
 
     def reset(self):
         super().reset()

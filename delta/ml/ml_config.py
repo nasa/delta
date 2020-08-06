@@ -133,12 +133,9 @@ class NetworkConfig(config.DeltaConfigComponent):
                             'Width of an image chunk to input to the neural network.')
         self.register_field('output_size', int, 'output_size', config.validate_positive,
                             'Width of an image chunk to output from the neural network.')
-        self.register_field('classes', int, 'classes', config.validate_positive,
-                            'Number of label classes.')
 
         self.register_arg('chunk_size', '--chunk-size')
         self.register_arg('output_size', '--output-size')
-        self.register_arg('classes', '--classes')
         self.register_component(NetworkModelConfig(), 'model')
 
     def setup_arg_parser(self, parser, components = None) -> None:

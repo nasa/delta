@@ -92,6 +92,15 @@ def test_images_files():
     assert len(im) == 1
     assert im[0] == file_path
 
+def test_classes():
+    config.reset()
+    test_str = '''
+    dataset:
+      classes: 2
+    '''
+    config.load(yaml_str=test_str)
+    assert config.dataset.classes() == 2
+
 def test_model_from_dict():
     config.reset()
     test_str = '''
@@ -169,20 +178,20 @@ def test_pretrained_layer():
 def test_network_file():
     config.reset()
     test_str = '''
+    dataset:
+      classes: 3
     train:
       network:
         chunk_size: 5
-        classes: 3
         model:
           yaml_file: networks/convpool.yaml
     '''
     config.load(yaml_str=test_str)
     assert config.train.network.chunk_size() == 5
-    assert config.train.network.classes() == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
     assert model.output_shape == (None, config.train.network.output_size(),
-                                  config.train.network.output_size(), config.train.network.classes())
+                                  config.train.network.output_size(), config.dataset.classes())
 
 def test_validate():
     config.reset()
@@ -205,11 +214,12 @@ def test_validate():
 def test_network_inline():
     config.reset()
     test_str = '''
+    dataset:
+      classes: 3
     train:
       network:
         chunk_size: 5
         output_size: 1
-        classes: 3
         model:
           params:
             v1 : 10
@@ -225,10 +235,10 @@ def test_network_inline():
     '''
     config.load(yaml_str=test_str)
     assert config.train.network.chunk_size() == 5
-    assert config.train.network.classes() == 3
+    assert config.dataset.classes() == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
-    assert model.output_shape == (None, config.train.network.classes())
+    assert model.output_shape == (None, config.dataset.classes())
 
 def test_train():
     config.reset()
