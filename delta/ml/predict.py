@@ -64,8 +64,8 @@ class Predictor(ABC):
         """
 
     def _predict_array(self, data):
-        net_input_shape = self._model.get_input_shape_at(0)[1:]
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_input_shape = self._model.input_shape[1:]
+        net_output_shape = self._model.output_shape[1:]
 
         assert net_input_shape[2] == data.shape[2],\
                'Model expects %d input channels, data has %d channels' % (net_input_shape[2], data.shape[2])
@@ -101,8 +101,8 @@ class Predictor(ABC):
         Results are limited to `input_bounds`. Returns output, the meaning of which
         depends on the subclass.
         """
-        net_input_shape = self._model.get_input_shape_at(0)[1:]
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_input_shape = self._model.input_shape[1:]
+        net_output_shape = self._model.output_shape[1:]
         offset_r = -net_input_shape[0] + net_output_shape[0]
         offset_c = -net_input_shape[1] + net_output_shape[1]
         block_size_x = net_input_shape[0] * (_TILE_SIZE // net_input_shape[0])
@@ -166,7 +166,7 @@ class LabelPredictor(Predictor):
         self._errors = None
 
     def _initialize(self, shape, label, image):
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_output_shape = self._model.output_shape[1:]
         self._num_classes = net_output_shape[-1]
         if label:
             self._errors = np.zeros(shape, dtype=np.bool)
@@ -244,7 +244,7 @@ class ImagePredictor(Predictor):
         self._transform = transform
 
     def _initialize(self, shape, label, image):
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_output_shape = self._model.output_shape[1:]
         if self._output_image is not None:
             dtype = np.float32 if self._transform is None else self._transform[1]
             bands = net_output_shape[-1] if self._transform is None else self._transform[2]
