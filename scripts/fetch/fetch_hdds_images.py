@@ -368,7 +368,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
             #raise Exception('DEBUG')
 
         print('Finished processing dataset: ' + full_name)
-#        os.system('touch ' + done_flag_path) # Mark this dataset as finished
+        os.system('touch ' + done_flag_path) # Mark this dataset as finished
         #raise Exception('DEBUG')
 
         #if not os.path.exists(output_path):

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright © 2020, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.
@@ -17,9 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+"""
+Registers all config modules.
+"""
 
-from delta.subcommands import main
+import delta.imagery.imagery_config
+import delta.ml.ml_config
 
-if __name__ == "__main__":
-    sys.exit(main.main(sys.argv))
+_config_initialized = False
+def register_all():
+    global _config_initialized #pylint: disable=global-statement
+    # needed to call twice when testing subcommands and when not
+    if _config_initialized:
+        return
+    delta.imagery.imagery_config.register()
+    delta.ml.ml_config.register()
+    _config_initialized = True

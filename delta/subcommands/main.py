@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright © 2020, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.
@@ -18,8 +16,29 @@
 # limitations under the License.
 
 import sys
+import argparse
 
-from delta.subcommands import main
+from delta.config import config
+import delta.config.modules
+from delta.subcommands import commands
 
-if __name__ == "__main__":
-    sys.exit(main.main(sys.argv))
+def main(args):
+    delta.config.modules.register_all()
+    parser = argparse.ArgumentParser(description='DELTA Machine Learning Toolkit')
+    subparsers = parser.add_subparsers()
+
+    for d in commands.SETUP_COMMANDS:
+        d(subparsers)
+
+    try:
+        options = parser.parse_args(args[1:])
+    except argparse.ArgumentError:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    if not hasattr(options, 'function'):
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
+    config.initialize(options)
+    return options.function(options)

@@ -20,6 +20,7 @@ Train neural networks.
 """
 
 import os
+import sys
 import tempfile
 import shutil
 
@@ -41,9 +42,9 @@ def _devices(num_gpus):
     '''
     devs = None
     if num_gpus == 0:
-        devs = [x.name for x in tf.config.experimental.list_logical_devices('CPU')]
+        devs = [x.name for x in tf.config.list_logical_devices('CPU')]
     else:
-        devs = [x.name for x in tf.config.experimental.list_logical_devices('GPU')]
+        devs = [x.name for x in tf.config.list_logical_devices('GPU')]
         assert len(devs) >= num_gpus,\
                "Requested %d GPUs with only %d available." % (num_gpus, len(devs))
         if num_gpus > 0:
@@ -75,10 +76,13 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = None
             else:
                 if vlabel:
-                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride)
+                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride,
+                                              resume_mode=False)
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride)
-                validation = vimagery.dataset().batch(tc.batch_size).take(tc.validation.steps)
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
+                validation = vimagery.dataset().batch(tc.batch_size)
+                if tc.validation.steps:
+                    validation = validation.take(tc.validation.steps)
         #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
     else:
 
@@ -116,27 +120,29 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         self.batch = 0
         self.temp_dir = temp_dir
 
-    def on_epoch_end(self, epoch, _):
+    def on_epoch_end(self, epoch, _=None):
         self.epoch = epoch
 
-    def on_train_batch_end(self, batch, logs):
+    def on_train_batch_end(self, batch, logs=None):
         self.batch = batch
         if batch % config.mlflow.frequency() == 0:
             for k in logs.keys():
                 if k in ('batch', 'size'):
                     continue
-                mlflow.log_metric(k, logs[k].item(), step=batch)
+                mlflow.log_metric(k, logs[k], step=batch)
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
             self.model.save(filename, save_format='h5')
-            if config.mlflow.checkpoints.save_latest():
+            if config.mlflow.checkpoints.only_save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
+            tf.print('Recording checkpoint: ' + filename,
+                     output_stream=sys.stdout)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 
-    def on_test_batch_end(self, _, logs): # pylint:disable=no-self-use
+    def on_test_batch_end(self, _, logs=None): # pylint:disable=no-self-use
         for k in logs.keys():
             if k in ('batch', 'size'):
                 continue
@@ -208,15 +214,17 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
+        #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     try:
-        print(training_spec.validation)
         history = model.fit(ds,
                             epochs=training_spec.epochs,
                             callbacks=callbacks,
                             validation_data=validation,
                             validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps)#, verbose=2)
+                            steps_per_epoch=training_spec.steps,
+                            verbose=1)
+
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))

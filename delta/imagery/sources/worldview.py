@@ -70,7 +70,7 @@ class WorldviewImage(tiff.TiffImage):
         # Get the folder where this will be stored from the cache manager
         unpack_folder = config.io.cache.manager().register_item(self._name)
 
-        with portalocker.Lock(paths, 'r', timeout=300) as unused:
+        with portalocker.Lock(paths, 'r', timeout=300) as unused: #pylint: disable=W0612
             # Check if we already unpacked this data
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
 
@@ -82,6 +82,14 @@ class WorldviewImage(tiff.TiffImage):
                 tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
                          output_stream=sys.stdout)
                 utilities.unpack_to_folder(paths, unpack_folder)
+                # some worldview zip files have a subdirectory with the name of the image
+                if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):
+                    subdir = os.path.join(unpack_folder, os.path.splitext(os.path.basename(paths))[0])
+                    if not os.path.exists(os.path.join(subdir, 'vendor_metadata')):
+                        raise Exception('vendor_metadata not found in %s.' % (paths))
+                    for filename in os.listdir(subdir):
+                        os.rename(os.path.join(subdir, filename), os.path.join(unpack_folder, filename))
+                    os.rmdir(subdir)
                 (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
