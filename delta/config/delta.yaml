@@ -47,19 +47,20 @@ dataset:
   # can either be a list of classes or the number of classes,
   # if the labels are 0, 1, 2, 3
   classes:            4
+  # labels are 1, 2, 3, 4; with names and display colors
   #classes:
-  #  - value: 1
-  #    name: Water
-  #    color: 0x67a9cf
-  #  - value: 2
-  #    name: No Water
-  #    color: 0xf6eff7
-  #  - value: 3
-  #    name: Maybe
-  #    color: 0xbdc9e1
-  #  - value: 4
-  #    name: Cloud
-  #    color: 0x02818a
+  #  - 1:
+  #      name: Water
+  #      color: 0x67a9cf
+  #  - 2:
+  #      name: No Water
+  #      color: 0xf6eff7
+  #  - 3:
+  #      name: Maybe Water
+  #      color: 0xbdc9e1
+  #  - 4:
+  #      name: Cloud
+  #      color: 0x02818a
 
 train:
   network:

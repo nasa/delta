@@ -72,7 +72,7 @@ class Predictor(ABC):
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
                      data.shape[1] - net_input_shape[1] + net_output_shape[1])
-        out_type = self._model.get_output_at(0).dtype
+        out_type = tf.dtypes.as_dtype(self._model.dtype)
         image = tf.convert_to_tensor(data)
         image = tf.expand_dims(image, 0)
         chunks = tf.image.extract_patches(image, [1, net_input_shape[0], net_input_shape[1], 1],
@@ -155,6 +155,15 @@ class LabelPredictor(Predictor):
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
+        if colormap is not None:
+            # convert python list to numpy array
+            if not isinstance(colormap, np.ndarray):
+                a = np.zeros(shape=(len(colormap), 3), dtype=np.uint8)
+                for (i, v) in enumerate(colormap):
+                    a[i][0] = (v >> 16) & 0xFF
+                    a[i][1] = (v >> 8) & 0xFF
+                    a[i][2] = v & 0xFF
+                colormap = a
         self._colormap = colormap
         self._prob_image = prob_image
         self._error_image = error_image

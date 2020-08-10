@@ -21,6 +21,7 @@ import tempfile
 import pytest
 import yaml
 
+import numpy as np
 import tensorflow as tf
 
 from delta.config import config
@@ -99,7 +100,35 @@ def test_classes():
       classes: 2
     '''
     config.load(yaml_str=test_str)
-    assert config.dataset.classes() == 2
+    assert len(config.dataset.classes) == 2
+    for (i, c) in enumerate(config.dataset.classes):
+        assert c.value == i
+    config.reset()
+    test_str = '''
+    dataset:
+      classes:
+        - 2:
+            name: 2
+            color: 2
+        - 1:
+            name: 1
+            color: 1
+        - 5:
+            name: 5
+            color: 5
+    '''
+    config.load(yaml_str=test_str)
+    assert config.dataset.classes
+    values = [1, 2, 5]
+    for (i, c) in enumerate(config.dataset.classes):
+        e = values[i]
+        assert c.value == e
+        assert c.name == str(e)
+        assert c.color == e
+    arr = np.array(values)
+    ind = config.dataset.classes.classes_to_indices_func()(arr)
+    assert np.max(ind) == 2
+    assert (config.dataset.classes.indices_to_classes_func()(ind) == values).all()
 
 def test_model_from_dict():
     config.reset()
@@ -191,7 +220,7 @@ def test_network_file():
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
     assert model.output_shape == (None, config.train.network.output_size(),
-                                  config.train.network.output_size(), config.dataset.classes())
+                                  config.train.network.output_size(), len(config.dataset.classes))
 
 def test_validate():
     config.reset()
@@ -235,10 +264,10 @@ def test_network_inline():
     '''
     config.load(yaml_str=test_str)
     assert config.train.network.chunk_size() == 5
-    assert config.dataset.classes() == 3
+    assert len(config.dataset.classes) == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
-    assert model.output_shape == (None, config.dataset.classes())
+    assert model.output_shape == (None, len(config.dataset.classes))
 
 def test_train():
     config.reset()
