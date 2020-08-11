@@ -101,8 +101,9 @@ def main(options):
             label = image
             predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
         else:
-            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors, prob_image=prob_image,
-                                               error_image=error_image, error_colors=error_colors)
+            predictor = predict.LabelPredictor(model, output_image, True, labels.nodata_value(), colormap=colors,
+                                               prob_image=prob_image, error_image=error_image,
+                                               error_colors=error_colors)
 
         try:
             if cpuOnly:

@@ -141,11 +141,12 @@ class Predictor(ABC):
             raise
 
         return self._complete()
+
 class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, output_image=None, show_progress=False,
+    def __init__(self, model, output_image=None, show_progress=False, nodata_value=None, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
         output_image, prob_image, and error_image are all DeltaImageWriter's.
@@ -164,6 +165,7 @@ class LabelPredictor(Predictor):
                     a[i][1] = (v >> 8) & 0xFF
                     a[i][2] = v & 0xFF
                 colormap = a
+        self._nodata_value = nodata_value
         self._colormap = colormap
         self._prob_image = prob_image
         self._error_image = error_image
@@ -224,7 +226,13 @@ class LabelPredictor(Predictor):
                 self._output_image.write(pred_image, x, y)
 
         if labels is not None:
-            self._error_image.write(self._error_colors[(labels != pred_image).astype(int)], x, y)
+            eimg = self._error_colors[(labels != pred_image).astype(int)]
+            if self._nodata_value is not None:
+                valid = (labels != self._nodata_value)
+                eimg[np.logical_not(valid)] = np.zeros(eimg.shape[-1:], dtype=eimg.dtype)
+                labels = labels[valid]
+                pred_image = pred_image[valid]
+            self._error_image.write(eimg, x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
                                           np.ndarray.flatten(pred_image),
                                           self._num_classes)

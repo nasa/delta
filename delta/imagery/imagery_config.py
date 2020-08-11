@@ -198,7 +198,7 @@ class ImageSetConfig(DeltaConfigComponent):
         self.register_field('file_list', list, None, validate_path, 'File listing image files.')
         self.register_field('directory', str, None, validate_path, 'Directory of image files.')
         self.register_field('extension', str, None, None, 'Image file extension.')
-        self.register_field('nodata_value', float, None, None, 'Value of pixels to ignore.')
+        self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')
 
         if name:
             self.register_arg('type', '--' + name + '-type')

@@ -165,7 +165,8 @@ class ValidationConfig(config.DeltaConfigComponent):
         """
         if self.__images is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                config.dataset.classes)
         return self.__images
 
     def labels(self) -> ImageSet:
@@ -174,7 +175,8 @@ class ValidationConfig(config.DeltaConfigComponent):
         """
         if self.__labels is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                config.dataset.classes)
         return self.__labels
 
 class TrainingConfig(config.DeltaConfigComponent):
