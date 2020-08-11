@@ -146,7 +146,7 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequent
     """
     in_data_shape = (config.train.network.chunk_size(), config.train.network.chunk_size(), num_bands)
     out_data_shape = (config.train.network.output_size(), config.train.network.output_size(),
-                      config.train.network.classes())
+                      len(config.dataset.classes))
 
     params_exposed = {'out_shape' : out_data_shape,
                       'out_dims' : out_data_shape[0] * out_data_shape[1] * out_data_shape[2],
