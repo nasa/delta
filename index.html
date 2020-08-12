@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta API documentation</title>
+<meta name="description" content="**DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
+based on Tensorflow. Use DELTA to train …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Package <code>delta</code></h1>
+</header>
+<section id="section-intro">
+<p><strong>DELTA</strong> (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
+based on Tensorflow. Use DELTA to train and run neural networks to classify large satellite images. DELTA
+provides pre-trained autoencoders for a variety of satellites to reduce required training data
+and time.</p>
+<p>DELTA is currently under active development by the
+<a href="https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/">NASA Ames Intelligent Robotics Group</a>. Expect
+frequent changes. It is initially being used to map floods for disaster response, in collaboration with the
+<a href="http://www.usgs.gov">U.S. Geological Survey</a>, <a href="https://www.nga.mil/">National Geospatial Intelligence Agency</a>,
+<a href="http://www.ncsa.illinois.edu/">National Center for Supercomputing Applications</a>, and
+<a href="https://www.ua.edu/">University of Alabama</a>. DELTA is a component of the
+<a href="https://github.com/nasa/CrisisMappingToolkit">Crisis Mapping Toolkit</a>, in addition
+to our previous software for mapping floods with Google Earth Engine.</p>
+<h1 id="installation">Installation</h1>
+<ol>
+<li>
+<p>Install <a href="https://www.python.org/downloads/">python3</a>, <a href="https://gdal.org/download.html">GDAL</a>, and the <a href="https://pypi.org/project/GDAL/">GDAL python bindings</a>.
+For Ubuntu Linux, you can run <code>scripts/setup.sh</code> from the DELTA repository to install these dependencies.</p>
+</li>
+<li>
+<p>Install Tensorflow with pip following the <a href="https://www.tensorflow.org/install">instructions</a>. For
+GPU support in DELTA (highly recommended) follow the directions in the
+<a href="https://www.tensorflow.org/install/gpu">GPU guide</a>.</p>
+</li>
+<li>
+<p>Checkout the delta repository and install with pip:</p>
+</li>
+</ol>
+<p><code>git clone &lt;http://github.com/nasa/delta&gt;
+python3 -m pip install delta</code></p>
+<p>This installs DELTA and all dependencies (except for GDAL which must be installed manually in step 1).</p>
+<h1 id="usage">Usage</h1>
+<p>As a simple example, consider training a neural network to map water in Worldview imagery.
+You would:</p>
+<ol>
+<li>
+<p><strong>Collect</strong> training data. Find and save Worldview images with and without water. For a robust
+classifier, the training data should be as representative as possible of the evaluation data.</p>
+</li>
+<li>
+<p><strong>Label</strong> training data. Create images matching the training images pixel for pixel, where each pixel
+in the label is 0 if it is not water and 1 if it is.</p>
+</li>
+<li>
+<p><strong>Train</strong> the neural network. Run
+<code>delta train --config wv_water.yaml wv_water.h5</code>
+where <code>wv_water.yaml</code> is a configuration file specifying the labeled training data and any
+training parameters (learn more about configuration files below). The command will output a
+neural network file <code>wv_water.h5</code> which can be
+used for classification. The neural network operates on the level of <em>chunks</em>, inputting
+and output smaller blocks of the image at a time.</p>
+</li>
+<li>
+<p><strong>Classify</strong> with the trained network. Run
+<code>delta classify --image image.tiff wv_water.h5</code>
+to classify <code>image.tiff</code> using the network <code>wv_water.h5</code> learned previously.
+The file <code>image_predicted.tiff</code> will be written to the current directory showing the resulting labels.</p>
+</li>
+</ol>
+<h2 id="configuration-files">Configuration Files</h2>
+<p>DELTA is configured with YAML files. Some options can be overwritten with command line options (use
+<code>delta --help</code> to see which). <a href="./delta/config/README.md">Learn more about DELTA configuration files</a>.</p>
+<p>All available configuration options and their default values are shown <a href="./delta/config/delta.yaml">here</a>.
+We suggest that users create one reusable configuration file to describe the parameters specific
+to each dataset, and separate configuration files to train on or classify that dataset.</p>
+<h2 id="supported-image-formats">Supported Image Formats</h2>
+<p>DELTA supports tiff files and a few other formats, listed <a href="./delta/imagery/sources/README.md">here</a>.
+Users can extend DELTA with their own custom formats. We are looking to expand DELTA to support other
+useful file formats.</p>
+<h2 id="mlflow">Mlflow</h2>
+<p>DELTA integrates with <a href="http://mlflow.org">MLFlow</a> to track training. MLFlow options can
+be specified in the corresponding area of the configuration file. By default, training and
+validation metrics are logged, along with all configuration parameters. The most recent neural
+network is saved to a file when the training program is interrupted or completes.</p>
+<p>View all the logged training information through mlflow by running::</p>
+<pre><code>  delta mlflow_ui
+</code></pre>
+<p>and navigating to the printed URL in a browser. This makes it easier to keep track when running
+experiments and adjusting parameters.</p>
+<h1 id="using-delta-from-code">Using DELTA from Code</h1>
+<p>You can also call DELTA as a python library and customize it with your own extensions, for example,
+custom image types. The python API documentation can be generated as HTML. To do so:</p>
+<pre><code>  pip install pdoc3
+  ./scripts/docs.sh
+</code></pre>
+<p>Then open <code>html/delta/index.html</code> in a web browser.</p>
+<h1 id="contributors">Contributors</h1>
+<p>We welcome pull requests to contribute to DELTA. However, due to NASA legal restrictions, we must require
+that all contributors sign and submit a
+<a href="https://www.nasa.gov/sites/default/files/atoms/files/astrobee_individual_contributor_license_agreement.pdf">NASA Individual Contributor License Agreement</a>.
+You can scan the document and submit via email. Thank you for your understanding.</p>
+<p>Important notes for developers:</p>
+<ul>
+<li>
+<p><strong>Branching</strong>: Active development occurs on <code>develop</code>. Releases are pushed to <code>master</code>.</p>
+</li>
+<li>
+<p><strong>Code Style</strong>: Code must pass our linter before merging. Run <code>scripts/linter/install_linter.sh</code> to install
+the linter as a git pre-commit hook.</p>
+</li>
+<li>
+<p><strong>Unit Tests</strong>: Code must pass unit tests before merging. Run <code>pytest</code> in the <code>tests</code> directory to run the tests.
+Please add new unit tests as appropriate.</p>
+</li>
+<li>
+<p><strong>Development Setup</strong>: You can install delta using pip's <code>-e</code> flag which installs in editable mode. Then you can
+run <code><a title="delta" href="#delta">delta</a></code> and it will use your latest changes made to the repo without reinstalling.</p>
+</li>
+</ul>
+<h1 id="licensing">Licensing</h1>
+<p>DELTA is released under the Apache 2 license.</p>
+<p>Copyright (c) 2020, United States Government, as represented by the Administrator of the National Aeronautics and Space Administration. All rights reserved.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#39;&#39;&#39;
+.. include:: ../README.md
+&#39;&#39;&#39;
+
+import re
+import sys
+
+if sys.version_info &lt; (3, 0, 0):
+    raise ImportError(&#39;DELTA code requires Python version &gt;= 3.0.  Installed is %s&#39; % (sys.version_info,))</code></pre>
+</details>
+</section>
+<section>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+<dl>
+<dt><code class="name"><a title="delta.config" href="config/index.html">delta.config</a></code></dt>
+<dd>
+<div class="desc"><p>Configuration via YAML files and command line options …</p></div>
+</dd>
+<dt><code class="name"><a title="delta.imagery" href="imagery/index.html">delta.imagery</a></code></dt>
+<dd>
+<div class="desc"><p>Load and process imagery data sources …</p></div>
+</dd>
+<dt><code class="name"><a title="delta.ml" href="ml/index.html">delta.ml</a></code></dt>
+<dd>
+<div class="desc"><p>Module for machine learning given imagery data.</p></div>
+</dd>
+<dt><code class="name"><a title="delta.subcommands" href="subcommands/index.html">delta.subcommands</a></code></dt>
+<dd>
+<div class="desc"><p>Subcommands called from the main <code><a title="delta" href="#delta">delta</a></code> executable …</p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#usage">Usage</a><ul>
+<li><a href="#configuration-files">Configuration Files</a></li>
+<li><a href="#supported-image-formats">Supported Image Formats</a></li>
+<li><a href="#mlflow">MLFlow</a></li>
+</ul>
+</li>
+<li><a href="#using-delta-from-code">Using DELTA from Code</a></li>
+<li><a href="#contributors">Contributors</a></li>
+<li><a href="#licensing">Licensing</a></li>
+</ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="delta.config" href="config/index.html">delta.config</a></code></li>
+<li><code><a title="delta.imagery" href="imagery/index.html">delta.imagery</a></code></li>
+<li><code><a title="delta.ml" href="ml/index.html">delta.ml</a></code></li>
+<li><code><a title="delta.subcommands" href="subcommands/index.html">delta.subcommands</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>

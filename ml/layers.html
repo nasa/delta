@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.ml.layers API documentation</title>
+<meta name="description" content="DELTA specific network layers." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.ml.layers</code></h1>
+</header>
+<section id="section-intro">
+<p>DELTA specific network layers.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+DELTA specific network layers.
+&#34;&#34;&#34;
+
+import tensorflow.keras.models
+import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Layer
+from tensorflow.keras.callbacks import Callback
+
+class DeltaLayer(Layer):
+    # optionally return a Keras callback
+    def callback(self): # pylint:disable=no-self-use
+        return None
+
+# If layers inherit from callback as well we add them automatically on fit
+class GaussianSample(DeltaLayer):
+    def __init__(self, kl_loss=True, **kwargs):
+        super(GaussianSample, self).__init__(**kwargs)
+        self._use_kl_loss = kl_loss
+        self._kl_enabled = K.variable(0.0, name=self.name + &#39;:kl_enabled&#39;)
+        self.trainable = False
+
+    def get_config(self):
+        config = super(GaussianSample, self).get_config()
+        config.update({&#39;kl_loss&#39;: self._use_kl_loss})
+        return config
+
+    def callback(self):
+        kl_enabled = self._kl_enabled
+        class GaussianSampleCallback(Callback):
+            def on_epoch_begin(self, epoch, _=None): # pylint:disable=no-self-use
+                if epoch &gt; 0:
+                    K.set_value(kl_enabled, 1.0)
+        return GaussianSampleCallback()
+
+    def call(self, inputs, **_):
+        mean, log_var = inputs
+        batch = K.shape(mean)[0]
+        dim = K.int_shape(mean)[1:]
+        epsilon = K.random_normal(shape=(batch, ) + dim)
+        result = mean + K.exp(0.5 * log_var) * epsilon
+
+        if self._use_kl_loss:
+            # this loss function makes the mean and variance match a Normal(0, 1) distribution
+            kl_loss = K.square(mean) + K.exp(log_var) - 1 - log_var
+            kl_loss = K.sum(kl_loss, axis=-1)
+            kl_loss = 0.5 * K.mean(kl_loss)
+
+            # reduce relative weight compared to mean squared error
+            kl_loss /= K.cast(batch * dim[0] * dim[1] * dim[2], dtype=&#39;float32&#39;)
+
+            kl_loss *= self._kl_enabled
+
+            self.add_loss(kl_loss)
+            self.add_metric(kl_loss, aggregation=&#39;mean&#39;, name=self.name + &#39;_kl_loss&#39;)
+
+        return result
+
+def pretrained_model(filename, encoding_layer, trainable=False, **kwargs):
+    &#39;&#39;&#39;
+    Loads a pretrained model and extracts the enocoding layers.
+    &#39;&#39;&#39;
+    assert filename is not None, &#39;Did not specify pre-trained model.&#39;
+    assert encoding_layer is not None, &#39;Did not specify encoding layer point.&#39;
+
+    temp_model = tensorflow.keras.models.load_model(filename, compile=False)
+
+    output_layers = []
+    if isinstance(encoding_layer, int):
+        break_point = lambda x, y: x == encoding_layer
+    elif isinstance(encoding_layer, str):
+        break_point = lambda x, y: y.name == encoding_layer
+
+    for idx, l in enumerate(temp_model.layers):
+        output_layers.append(l)
+        output_layers[-1].trainable = trainable
+        if break_point(idx, l):
+            break
+    return tensorflow.keras.models.Sequential(output_layers, **kwargs)
+
+ALL_LAYERS = {
+    &#39;GaussianSample&#39; : GaussianSample,
+    &#39;Pretrained&#39; : pretrained_model
+}</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.ml.layers.pretrained_model"><code class="name flex">
+<span>def <span class="ident">pretrained_model</span></span>(<span>filename, encoding_layer, trainable=False, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Loads a pretrained model and extracts the enocoding layers.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def pretrained_model(filename, encoding_layer, trainable=False, **kwargs):
+    &#39;&#39;&#39;
+    Loads a pretrained model and extracts the enocoding layers.
+    &#39;&#39;&#39;
+    assert filename is not None, &#39;Did not specify pre-trained model.&#39;
+    assert encoding_layer is not None, &#39;Did not specify encoding layer point.&#39;
+
+    temp_model = tensorflow.keras.models.load_model(filename, compile=False)
+
+    output_layers = []
+    if isinstance(encoding_layer, int):
+        break_point = lambda x, y: x == encoding_layer
+    elif isinstance(encoding_layer, str):
+        break_point = lambda x, y: y.name == encoding_layer
+
+    for idx, l in enumerate(temp_model.layers):
+        output_layers.append(l)
+        output_layers[-1].trainable = trainable
+        if break_point(idx, l):
+            break
+    return tensorflow.keras.models.Sequential(output_layers, **kwargs)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.ml.layers.DeltaLayer"><code class="flex name class">
+<span>class <span class="ident">DeltaLayer</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This is the class from which all layers inherit.</p>
+<p>A layer is a callable object that takes as input one or more tensors and
+that outputs one or more tensors. It involves <em>computation</em>, defined
+in the <code>call()</code> method, and a <em>state</em> (weight variables), defined
+either in the constructor <code>__init__()</code> or in the <code>build()</code> method.</p>
+<p>Users will just instantiate a layer and then treat it as a callable.</p>
+<h2 id="arguments">Arguments</h2>
+<p>trainable: Boolean, whether the layer's variables should be trainable.
+name: String name of the layer.
+dtype: The dtype of the layer's computations and weights (default of
+<code>None</code> means use <code>tf.keras.backend.floatx</code> in TensorFlow 2, or the type
+of the first input in TensorFlow 1).
+dynamic: Set this to <code>True</code> if your layer should only be run eagerly, and
+should not be used to generate a static computation graph.
+This would be the case for a Tree-RNN or a recursive network,
+for example, or generally for any layer that manipulates tensors
+using Python control flow. If <code>False</code>, we assume that the layer can
+safely be used to generate a static computation graph.</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>name</code></strong></dt>
+<dd>The name of the layer (string).</dd>
+<dt><strong><code>dtype</code></strong></dt>
+<dd>The dtype of the layer's computations and weights. If mixed
+precision is used with a <code>tf.keras.mixed_precision.experimental.Policy</code>,
+this is instead just the dtype of the layer's weights, as the computations
+are done in a different dtype.</dd>
+<dt><strong><code>trainable_weights</code></strong></dt>
+<dd>List of variables to be included in backprop.</dd>
+<dt><strong><code>non_trainable_weights</code></strong></dt>
+<dd>List of variables that should not be
+included in backprop.</dd>
+<dt><strong><code>weights</code></strong></dt>
+<dd>The concatenation of the lists trainable_weights and
+non_trainable_weights (in this order).</dd>
+<dt><strong><code>trainable</code></strong></dt>
+<dd>Whether the layer should be trained (boolean), i.e. whether
+its potentially-trainable weights should be returned as part of
+<code>layer.trainable_weights</code>.</dd>
+<dt><strong><code>input_spec</code></strong></dt>
+<dd>Optional (list of) <code>InputSpec</code> object(s) specifying the
+constraints on inputs that can be accepted by the layer.</dd>
+</dl>
+<p>We recommend that descendants of <code>Layer</code> implement the following methods:</p>
+<ul>
+<li><code>__init__()</code>: Defines custom layer attributes, and creates layer state
+variables that do not depend on input shapes, using <code>add_weight()</code>.</li>
+<li><code>build(self, input_shape)</code>: This method can be used to create weights that
+depend on the shape(s) of the input(s), using <code>add_weight()</code>. <code>__call__()</code>
+will automatically build the layer (if it has not been built yet) by
+calling <code>build()</code>.</li>
+<li><code>call(self, *args, **kwargs)</code>: Called in <code>__call__</code> after making sure
+<code>build()</code> has been called. <code>call()</code> performs the logic of applying the
+layer to the input tensors (which should be passed in as argument).
+Two reserved keyword arguments you can optionally use in <code>call()</code> are:<ul>
+<li><code>training</code> (boolean, whether the call is in
+inference mode or training mode)</li>
+<li><code>mask</code> (boolean tensor encoding masked timesteps in the input, used
+in RNN layers)</li>
+</ul>
+</li>
+<li><code>get_config(self)</code>: Returns a dictionary containing the configuration used
+to initialize this layer. If the keys differ from the arguments
+in <code>__init__</code>, then override <code>from_config(self)</code> as well.
+This method is used when saving
+the layer or a model that contains this layer.</li>
+</ul>
+<p>Examples:</p>
+<p>Here's a basic example: a layer with two variables, <code>w</code> and <code>b</code>,
+that returns <code>y = w . x + b</code>.
+It shows how to implement <code>build()</code> and <code>call()</code>.
+Variables set as attributes of a layer are tracked as weights
+of the layers (in <code>layer.weights</code>).</p>
+<pre><code class="python">class SimpleDense(Layer):
+
+  def __init__(self, units=32):
+      super(SimpleDense, self).__init__()
+      self.units = units
+
+  def build(self, input_shape):  # Create the state of the layer (weights)
+    w_init = tf.random_normal_initializer()
+    self.w = tf.Variable(
+        initial_value=w_init(shape=(input_shape[-1], self.units),
+                             dtype='float32'),
+        trainable=True)
+    b_init = tf.zeros_initializer()
+    self.b = tf.Variable(
+        initial_value=b_init(shape=(self.units,), dtype='float32'),
+        trainable=True)
+
+  def call(self, inputs):  # Defines the computation from inputs to outputs
+      return tf.matmul(inputs, self.w) + self.b
+
+# Instantiates the layer.
+linear_layer = SimpleDense(4)
+
+# This will also call `build(input_shape)` and create the weights.
+y = linear_layer(tf.ones((2, 2)))
+assert len(linear_layer.weights) == 2
+
+# These weights are trainable, so they're listed in `trainable_weights`:
+assert len(linear_layer.trainable_weights) == 2
+</code></pre>
+<p>Note that the method <code>add_weight()</code> offers a shortcut to create weights:</p>
+<pre><code class="python">class SimpleDense(Layer):
+
+  def __init__(self, units=32):
+      super(SimpleDense, self).__init__()
+      self.units = units
+
+  def build(self, input_shape):
+      self.w = self.add_weight(shape=(input_shape[-1], self.units),
+                               initializer='random_normal',
+                               trainable=True)
+      self.b = self.add_weight(shape=(self.units,),
+                               initializer='random_normal',
+                               trainable=True)
+
+  def call(self, inputs):
+      return tf.matmul(inputs, self.w) + self.b
+</code></pre>
+<p>Besides trainable weights, updated via backpropagation during training,
+layers can also have non-trainable weights. These weights are meant to
+be updated manually during <code>call()</code>. Here's a example layer that computes
+the running sum of its inputs:</p>
+<pre><code class="python">class ComputeSum(Layer):
+
+  def __init__(self, input_dim):
+      super(ComputeSum, self).__init__()
+      # Create a non-trainable weight.
+      self.total = tf.Variable(initial_value=tf.zeros((input_dim,)),
+                               trainable=False)
+
+  def call(self, inputs):
+      self.total.assign_add(tf.reduce_sum(inputs, axis=0))
+      return self.total
+
+my_sum = ComputeSum(2)
+x = tf.ones((2, 2))
+
+y = my_sum(x)
+print(y.numpy())  # [2. 2.]
+
+y = my_sum(x)
+print(y.numpy())  # [4. 4.]
+
+assert my_sum.weights == [my_sum.total]
+assert my_sum.non_trainable_weights == [my_sum.total]
+assert my_sum.trainable_weights == []
+</code></pre>
+<p>For more information about creating layers, see the guide
+<a href="https://www.tensorflow.org/guide/keras/custom_layers_and_models">Writing custom layers and models with Keras</a></p>
+<p>About the layer's <code>dtype</code> attribute:</p>
+<p>Each layer has a dtype, which is typically the dtype of the layer's
+computations and variables. A layer's dtype can be queried via the
+<code>Layer.dtype</code> property. The dtype is specified with the <code>dtype</code> constructor
+argument. In TensorFlow 2, the dtype defaults to <code>tf.keras.backend.floatx()</code>
+if no dtype is passed. <code>floatx()</code> itself defaults to "float32". Additionally,
+layers will cast their inputs to the layer's dtype in TensorFlow 2. When mixed
+precision is used, layers may have different computation and variable dtypes.
+See <code>tf.keras.mixed_precision.experimental.Policy</code> for details on layer
+dtypes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DeltaLayer(Layer):
+    # optionally return a Keras callback
+    def callback(self): # pylint:disable=no-self-use
+        return None</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>tensorflow.python.module.module.Module</li>
+<li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
+<li>tensorflow.python.training.tracking.base.Trackable</li>
+<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.ml.layers.GaussianSample" href="#delta.ml.layers.GaussianSample">GaussianSample</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.layers.DeltaLayer.callback"><code class="name flex">
+<span>def <span class="ident">callback</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def callback(self): # pylint:disable=no-self-use
+    return None</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="delta.ml.layers.GaussianSample"><code class="flex name class">
+<span>class <span class="ident">GaussianSample</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This is the class from which all layers inherit.</p>
+<p>A layer is a callable object that takes as input one or more tensors and
+that outputs one or more tensors. It involves <em>computation</em>, defined
+in the <code>call()</code> method, and a <em>state</em> (weight variables), defined
+either in the constructor <code>__init__()</code> or in the <code>build()</code> method.</p>
+<p>Users will just instantiate a layer and then treat it as a callable.</p>
+<h2 id="arguments">Arguments</h2>
+<p>trainable: Boolean, whether the layer's variables should be trainable.
+name: String name of the layer.
+dtype: The dtype of the layer's computations and weights (default of
+<code>None</code> means use <code>tf.keras.backend.floatx</code> in TensorFlow 2, or the type
+of the first input in TensorFlow 1).
+dynamic: Set this to <code>True</code> if your layer should only be run eagerly, and
+should not be used to generate a static computation graph.
+This would be the case for a Tree-RNN or a recursive network,
+for example, or generally for any layer that manipulates tensors
+using Python control flow. If <code>False</code>, we assume that the layer can
+safely be used to generate a static computation graph.</p>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>name</code></strong></dt>
+<dd>The name of the layer (string).</dd>
+<dt><strong><code>dtype</code></strong></dt>
+<dd>The dtype of the layer's computations and weights. If mixed
+precision is used with a <code>tf.keras.mixed_precision.experimental.Policy</code>,
+this is instead just the dtype of the layer's weights, as the computations
+are done in a different dtype.</dd>
+<dt><strong><code>trainable_weights</code></strong></dt>
+<dd>List of variables to be included in backprop.</dd>
+<dt><strong><code>non_trainable_weights</code></strong></dt>
+<dd>List of variables that should not be
+included in backprop.</dd>
+<dt><strong><code>weights</code></strong></dt>
+<dd>The concatenation of the lists trainable_weights and
+non_trainable_weights (in this order).</dd>
+<dt><strong><code>trainable</code></strong></dt>
+<dd>Whether the layer should be trained (boolean), i.e. whether
+its potentially-trainable weights should be returned as part of
+<code>layer.trainable_weights</code>.</dd>
+<dt><strong><code>input_spec</code></strong></dt>
+<dd>Optional (list of) <code>InputSpec</code> object(s) specifying the
+constraints on inputs that can be accepted by the layer.</dd>
+</dl>
+<p>We recommend that descendants of <code>Layer</code> implement the following methods:</p>
+<ul>
+<li><code>__init__()</code>: Defines custom layer attributes, and creates layer state
+variables that do not depend on input shapes, using <code>add_weight()</code>.</li>
+<li><code>build(self, input_shape)</code>: This method can be used to create weights that
+depend on the shape(s) of the input(s), using <code>add_weight()</code>. <code>__call__()</code>
+will automatically build the layer (if it has not been built yet) by
+calling <code>build()</code>.</li>
+<li><code>call(self, *args, **kwargs)</code>: Called in <code>__call__</code> after making sure
+<code>build()</code> has been called. <code>call()</code> performs the logic of applying the
+layer to the input tensors (which should be passed in as argument).
+Two reserved keyword arguments you can optionally use in <code>call()</code> are:<ul>
+<li><code>training</code> (boolean, whether the call is in
+inference mode or training mode)</li>
+<li><code>mask</code> (boolean tensor encoding masked timesteps in the input, used
+in RNN layers)</li>
+</ul>
+</li>
+<li><code>get_config(self)</code>: Returns a dictionary containing the configuration used
+to initialize this layer. If the keys differ from the arguments
+in <code>__init__</code>, then override <code>from_config(self)</code> as well.
+This method is used when saving
+the layer or a model that contains this layer.</li>
+</ul>
+<p>Examples:</p>
+<p>Here's a basic example: a layer with two variables, <code>w</code> and <code>b</code>,
+that returns <code>y = w . x + b</code>.
+It shows how to implement <code>build()</code> and <code>call()</code>.
+Variables set as attributes of a layer are tracked as weights
+of the layers (in <code>layer.weights</code>).</p>
+<pre><code class="python">class SimpleDense(Layer):
+
+  def __init__(self, units=32):
+      super(SimpleDense, self).__init__()
+      self.units = units
+
+  def build(self, input_shape):  # Create the state of the layer (weights)
+    w_init = tf.random_normal_initializer()
+    self.w = tf.Variable(
+        initial_value=w_init(shape=(input_shape[-1], self.units),
+                             dtype='float32'),
+        trainable=True)
+    b_init = tf.zeros_initializer()
+    self.b = tf.Variable(
+        initial_value=b_init(shape=(self.units,), dtype='float32'),
+        trainable=True)
+
+  def call(self, inputs):  # Defines the computation from inputs to outputs
+      return tf.matmul(inputs, self.w) + self.b
+
+# Instantiates the layer.
+linear_layer = SimpleDense(4)
+
+# This will also call `build(input_shape)` and create the weights.
+y = linear_layer(tf.ones((2, 2)))
+assert len(linear_layer.weights) == 2
+
+# These weights are trainable, so they're listed in `trainable_weights`:
+assert len(linear_layer.trainable_weights) == 2
+</code></pre>
+<p>Note that the method <code>add_weight()</code> offers a shortcut to create weights:</p>
+<pre><code class="python">class SimpleDense(Layer):
+
+  def __init__(self, units=32):
+      super(SimpleDense, self).__init__()
+      self.units = units
+
+  def build(self, input_shape):
+      self.w = self.add_weight(shape=(input_shape[-1], self.units),
+                               initializer='random_normal',
+                               trainable=True)
+      self.b = self.add_weight(shape=(self.units,),
+                               initializer='random_normal',
+                               trainable=True)
+
+  def call(self, inputs):
+      return tf.matmul(inputs, self.w) + self.b
+</code></pre>
+<p>Besides trainable weights, updated via backpropagation during training,
+layers can also have non-trainable weights. These weights are meant to
+be updated manually during <code>call()</code>. Here's a example layer that computes
+the running sum of its inputs:</p>
+<pre><code class="python">class ComputeSum(Layer):
+
+  def __init__(self, input_dim):
+      super(ComputeSum, self).__init__()
+      # Create a non-trainable weight.
+      self.total = tf.Variable(initial_value=tf.zeros((input_dim,)),
+                               trainable=False)
+
+  def call(self, inputs):
+      self.total.assign_add(tf.reduce_sum(inputs, axis=0))
+      return self.total
+
+my_sum = ComputeSum(2)
+x = tf.ones((2, 2))
+
+y = my_sum(x)
+print(y.numpy())  # [2. 2.]
+
+y = my_sum(x)
+print(y.numpy())  # [4. 4.]
+
+assert my_sum.weights == [my_sum.total]
+assert my_sum.non_trainable_weights == [my_sum.total]
+assert my_sum.trainable_weights == []
+</code></pre>
+<p>For more information about creating layers, see the guide
+<a href="https://www.tensorflow.org/guide/keras/custom_layers_and_models">Writing custom layers and models with Keras</a></p>
+<p>About the layer's <code>dtype</code> attribute:</p>
+<p>Each layer has a dtype, which is typically the dtype of the layer's
+computations and variables. A layer's dtype can be queried via the
+<code>Layer.dtype</code> property. The dtype is specified with the <code>dtype</code> constructor
+argument. In TensorFlow 2, the dtype defaults to <code>tf.keras.backend.floatx()</code>
+if no dtype is passed. <code>floatx()</code> itself defaults to "float32". Additionally,
+layers will cast their inputs to the layer's dtype in TensorFlow 2. When mixed
+precision is used, layers may have different computation and variable dtypes.
+See <code>tf.keras.mixed_precision.experimental.Policy</code> for details on layer
+dtypes.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class GaussianSample(DeltaLayer):
+    def __init__(self, kl_loss=True, **kwargs):
+        super(GaussianSample, self).__init__(**kwargs)
+        self._use_kl_loss = kl_loss
+        self._kl_enabled = K.variable(0.0, name=self.name + &#39;:kl_enabled&#39;)
+        self.trainable = False
+
+    def get_config(self):
+        config = super(GaussianSample, self).get_config()
+        config.update({&#39;kl_loss&#39;: self._use_kl_loss})
+        return config
+
+    def callback(self):
+        kl_enabled = self._kl_enabled
+        class GaussianSampleCallback(Callback):
+            def on_epoch_begin(self, epoch, _=None): # pylint:disable=no-self-use
+                if epoch &gt; 0:
+                    K.set_value(kl_enabled, 1.0)
+        return GaussianSampleCallback()
+
+    def call(self, inputs, **_):
+        mean, log_var = inputs
+        batch = K.shape(mean)[0]
+        dim = K.int_shape(mean)[1:]
+        epsilon = K.random_normal(shape=(batch, ) + dim)
+        result = mean + K.exp(0.5 * log_var) * epsilon
+
+        if self._use_kl_loss:
+            # this loss function makes the mean and variance match a Normal(0, 1) distribution
+            kl_loss = K.square(mean) + K.exp(log_var) - 1 - log_var
+            kl_loss = K.sum(kl_loss, axis=-1)
+            kl_loss = 0.5 * K.mean(kl_loss)
+
+            # reduce relative weight compared to mean squared error
+            kl_loss /= K.cast(batch * dim[0] * dim[1] * dim[2], dtype=&#39;float32&#39;)
+
+            kl_loss *= self._kl_enabled
+
+            self.add_loss(kl_loss)
+            self.add_metric(kl_loss, aggregation=&#39;mean&#39;, name=self.name + &#39;_kl_loss&#39;)
+
+        return result</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.ml.layers.DeltaLayer" href="#delta.ml.layers.DeltaLayer">DeltaLayer</a></li>
+<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>tensorflow.python.module.module.Module</li>
+<li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
+<li>tensorflow.python.training.tracking.base.Trackable</li>
+<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.layers.GaussianSample.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, inputs, **_)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This is where the layer's logic lives.</p>
+<p>Note here that <code>call()</code> method in <code>tf.keras</code> is little bit different
+from <code>keras</code> API. In <code>keras</code> API, you can pass support masking for
+layers as additional arguments. Whereas <code>tf.keras</code> has <code>compute_mask()</code>
+method to support masking.</p>
+<h2 id="arguments">Arguments</h2>
+<p>inputs: Input tensor, or list/tuple of input tensors.
+**kwargs: Additional keyword arguments. Currently unused.</p>
+<h2 id="returns">Returns</h2>
+<p>A tensor or list/tuple of tensors.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, inputs, **_):
+    mean, log_var = inputs
+    batch = K.shape(mean)[0]
+    dim = K.int_shape(mean)[1:]
+    epsilon = K.random_normal(shape=(batch, ) + dim)
+    result = mean + K.exp(0.5 * log_var) * epsilon
+
+    if self._use_kl_loss:
+        # this loss function makes the mean and variance match a Normal(0, 1) distribution
+        kl_loss = K.square(mean) + K.exp(log_var) - 1 - log_var
+        kl_loss = K.sum(kl_loss, axis=-1)
+        kl_loss = 0.5 * K.mean(kl_loss)
+
+        # reduce relative weight compared to mean squared error
+        kl_loss /= K.cast(batch * dim[0] * dim[1] * dim[2], dtype=&#39;float32&#39;)
+
+        kl_loss *= self._kl_enabled
+
+        self.add_loss(kl_loss)
+        self.add_metric(kl_loss, aggregation=&#39;mean&#39;, name=self.name + &#39;_kl_loss&#39;)
+
+    return result</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.layers.GaussianSample.callback"><code class="name flex">
+<span>def <span class="ident">callback</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def callback(self):
+    kl_enabled = self._kl_enabled
+    class GaussianSampleCallback(Callback):
+        def on_epoch_begin(self, epoch, _=None): # pylint:disable=no-self-use
+            if epoch &gt; 0:
+                K.set_value(kl_enabled, 1.0)
+    return GaussianSampleCallback()</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.layers.GaussianSample.get_config"><code class="name flex">
+<span>def <span class="ident">get_config</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the config of the layer.</p>
+<p>A layer config is a Python dictionary (serializable)
+containing the configuration of a layer.
+The same layer can be reinstantiated later
+(without its trained weights) from this configuration.</p>
+<p>The config of a layer does not include connectivity
+information, nor the layer class name. These are handled
+by <code>Network</code> (one layer of abstraction above).</p>
+<h2 id="returns">Returns</h2>
+<p>Python dictionary.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_config(self):
+    config = super(GaussianSample, self).get_config()
+    config.update({&#39;kl_loss&#39;: self._use_kl_loss})
+    return config</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.ml" href="index.html">delta.ml</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.ml.layers.pretrained_model" href="#delta.ml.layers.pretrained_model">pretrained_model</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.ml.layers.DeltaLayer" href="#delta.ml.layers.DeltaLayer">DeltaLayer</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.layers.DeltaLayer.callback" href="#delta.ml.layers.DeltaLayer.callback">callback</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.ml.layers.GaussianSample" href="#delta.ml.layers.GaussianSample">GaussianSample</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.layers.GaussianSample.call" href="#delta.ml.layers.GaussianSample.call">call</a></code></li>
+<li><code><a title="delta.ml.layers.GaussianSample.callback" href="#delta.ml.layers.GaussianSample.callback">callback</a></code></li>
+<li><code><a title="delta.ml.layers.GaussianSample.get_config" href="#delta.ml.layers.GaussianSample.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>
