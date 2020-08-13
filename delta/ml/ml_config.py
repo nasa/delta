@@ -106,25 +106,17 @@ class NetworkModelConfig(config.DeltaConfigComponent):
             self._config_dict['layers'] = None
         elif 'layers' in d:
             self._config_dict['yaml_file'] = None
-
-    def as_dict(self) -> dict:
-        """
-        Returns a dictionary representing the network model for use by `delta.ml.model_parser`.
-        """
-        yaml_file = self._config_dict['yaml_file']
-        if yaml_file is not None:
-            if self._config_dict['layers'] is not None:
-                raise ValueError('Specified both yaml file and layers in model.')
-
+        if 'yaml_file' in d and 'layers' in d and d['yaml_file'] is not None and d['layers'] is not None:
+            raise ValueError('Specified both yaml file and layers in model.')
+        if 'yaml_file' in d and d['yaml_file'] is not None:
+            yaml_file = d['yaml_file']
             resource = os.path.join('config', yaml_file)
             if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
                 yaml_file = pkg_resources.resource_filename('delta', resource)
             if not os.path.exists(yaml_file):
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
-            #print('Opening model file: ' + yaml_file)
             with open(yaml_file, 'r') as f:
-                return yaml.safe_load(f)
-        return self._config_dict
+                self._config_dict.update(yaml.safe_load(f))
 
 class NetworkConfig(config.DeltaConfigComponent):
     def __init__(self):
@@ -166,7 +158,7 @@ class ValidationConfig(config.DeltaConfigComponent):
         if self.__images is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
                                                                 self._components['labels'],
-                                                                config.dataset.classes)
+                                                                config.config.dataset.classes)
         return self.__images
 
     def labels(self) -> ImageSet:
@@ -176,7 +168,7 @@ class ValidationConfig(config.DeltaConfigComponent):
         if self.__labels is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
                                                                 self._components['labels'],
-                                                                config.dataset.classes)
+                                                                config.config.dataset.classes)
         return self.__labels
 
 class TrainingConfig(config.DeltaConfigComponent):

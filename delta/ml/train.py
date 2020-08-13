@@ -31,6 +31,7 @@ from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
+from .io import save_model
 
 def _devices(num_gpus):
     '''
@@ -132,7 +133,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 mlflow.log_metric(k, logs[k], step=batch)
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
-            self.model.save(filename, save_format='h5')
+            save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
@@ -228,7 +229,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
-            model.save(model_path, save_format='h5')
+            save_model(model, model_path)
             mlflow.log_artifact(model_path)
             os.remove(model_path)
             mlflow.log_param('Status', 'Completed')
@@ -238,7 +239,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             mlflow.end_run('FAILED')
             model_path = os.path.join(mcb.temp_dir, 'aborted_model.h5')
             print('\nAborting, saving current model to %s.' % (mlflow.get_artifact_uri() + '/aborted_model.h5'))
-            model.save(model_path, save_format='h5')
+            save_model(model, model_path)
             mlflow.log_artifact(model_path)
             os.remove(model_path)
         raise
