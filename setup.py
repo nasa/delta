@@ -54,7 +54,8 @@ setuptools.setup(
         'mlflow',
         'portalocker',
         'appdirs',
-        'gdal'
+        'gdal',
+        'h5py'
     ],
     scripts=scripts,
     include_package_data = True,

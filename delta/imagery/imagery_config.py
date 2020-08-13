@@ -252,6 +252,7 @@ class ClassesConfig(DeltaConfigComponent):
     def _load_dict(self, d : dict, base_dir):
         if not d:
             return
+        self._config_dict = d
         self._classes = []
         if isinstance(d, int):
             for i in range(d):

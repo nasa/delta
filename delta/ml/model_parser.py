@@ -154,4 +154,4 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequent
                       'in_dims'  : in_data_shape[0] * in_data_shape[1] * in_data_shape[2],
                       'num_bands' : in_data_shape[2]}
 
-    return model_from_dict(config.train.network.model.as_dict(), params_exposed)
+    return model_from_dict(config.train.network.model.to_dict(), params_exposed)
