@@ -223,7 +223,7 @@ class ImageSetConfig(DeltaConfigComponent):
             self._config_dict['files'] = [getattr(options, self._name)]
 
 class LabelClass:
-    def __init__(self, value, name=None, color=None):
+    def __init__(self, value, name=None, color=None, weight=None):
         color_order = [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, \
                        0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf]
         if name is None:
@@ -233,6 +233,8 @@ class LabelClass:
         self.value = value
         self.name = name
         self.color = color
+        self.weight = weight
+
     def __repr__(self):
         return 'Color: ' + self.name
 
@@ -267,7 +269,7 @@ class ClassesConfig(DeltaConfigComponent):
                     k = next(iter(keys))
                     assert isinstance(k, int), 'Class label value must be int.'
                     inner_dict = c[k]
-                    self._classes.append(LabelClass(k, str(inner_dict.get('name')), inner_dict.get('color')))
+                    self._classes.append(LabelClass(k, str(inner_dict.get('name')), inner_dict.get('color'), inner_dict.get('weight')))
         else:
             raise ValueError('Expected classes to be an int or list in config, was ' + str(d))
         # make sure the order is consistent for same values, and create preprocessing function
@@ -276,6 +278,16 @@ class ClassesConfig(DeltaConfigComponent):
         for (i, v) in enumerate(self._classes):
             if v.value != i:
                 self._conversions.append(v.value)
+
+    def weights(self):
+        weights = []
+        for c in self._classes:
+            if c.weight is not None:
+                weights.append(c.weight)
+        if not weights:
+            return None
+        assert len(weights) == len(self._classes), 'For class weights, either all or none must be specified.'
+        return weights
 
     def classes_to_indices_func(self):
         if not self._conversions:
