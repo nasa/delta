@@ -269,7 +269,8 @@ class ClassesConfig(DeltaConfigComponent):
                     k = next(iter(keys))
                     assert isinstance(k, int), 'Class label value must be int.'
                     inner_dict = c[k]
-                    self._classes.append(LabelClass(k, str(inner_dict.get('name')), inner_dict.get('color'), inner_dict.get('weight')))
+                    self._classes.append(LabelClass(k, str(inner_dict.get('name')),
+                                                    inner_dict.get('color'), inner_dict.get('weight')))
         else:
             raise ValueError('Expected classes to be an int or list in config, was ' + str(d))
         # make sure the order is consistent for same values, and create preprocessing function

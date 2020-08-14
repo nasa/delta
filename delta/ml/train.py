@@ -20,11 +20,9 @@ Train neural networks.
 """
 
 import os
-import sys
 import tempfile
 import shutil
 
-import numpy as np
 import mlflow
 import tensorflow as tf
 

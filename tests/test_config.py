@@ -103,7 +103,7 @@ def test_classes():
     assert len(config.dataset.classes) == 2
     for (i, c) in enumerate(config.dataset.classes):
         assert c.value == i
-    assert config.dataset.classes.weights() == None
+    assert config.dataset.classes.weights() is None
     config.reset()
     test_str = '''
     dataset:

@@ -249,7 +249,7 @@ class ImageryDataset:
             ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
         if class_weights is not None:
             lookup = tf.constant(class_weights)
-            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32))))
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
         return ds
 
     def num_bands(self):
