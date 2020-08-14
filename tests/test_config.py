@@ -103,6 +103,7 @@ def test_classes():
     assert len(config.dataset.classes) == 2
     for (i, c) in enumerate(config.dataset.classes):
         assert c.value == i
+    assert config.dataset.classes.weights() is None
     config.reset()
     test_str = '''
     dataset:
@@ -110,12 +111,15 @@ def test_classes():
         - 2:
             name: 2
             color: 2
+            weight: 5.0
         - 1:
             name: 1
             color: 1
+            weight: 1.0
         - 5:
             name: 5
             color: 5
+            weight: 2.0
     '''
     config.load(yaml_str=test_str)
     assert config.dataset.classes
@@ -125,6 +129,7 @@ def test_classes():
         assert c.value == e
         assert c.name == str(e)
         assert c.color == e
+    assert config.dataset.classes.weights() == [1.0, 5.0, 2.0]
     arr = np.array(values)
     ind = config.dataset.classes.classes_to_indices_func()(arr)
     assert np.max(ind) == 2

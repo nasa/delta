@@ -127,7 +127,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
     model, _ = train.train(model_fn, dataset,
                            TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
-    assert ret[1] > 0.90
+    assert ret[1] > 0.70
 
     (test_image, test_label) = conftest.generate_tile()
     test_label = test_label[1:-1, 1:-1]
