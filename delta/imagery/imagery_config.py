@@ -142,9 +142,10 @@ def __preprocess_function(image_comp):
         return None
     return lambda data, _, dummy: data / np.float32(f)
 
-def load_images_labels(images_comp, labels_comp):
+def load_images_labels(images_comp, labels_comp, classes_comp):
     '''
-    Takes two configuration subsections and returns (image set, label set)
+    Takes two configuration subsections and returns (image set, label set). Also takes classes
+    configuration to apply preprocessing function to labels.
     '''
     images_dict = images_comp._config_dict #pylint:disable=protected-access
     labels_dict = labels_comp._config_dict #pylint:disable=protected-access
@@ -170,7 +171,10 @@ def load_images_labels(images_comp, labels_comp):
     if len(labels) != len(images):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
-    pre = __preprocess_function(labels_comp)
+    pre = pre_orig = __preprocess_function(labels_comp)
+    conv = classes_comp.classes_to_indices_func()
+    if conv is not None:
+        pre = lambda data, _, dummy: conv(pre_orig(data, _, dummy) if pre_orig is not None else data)
     return (imageset, ImageSet(labels, labels_dict['type'],
                                pre, labels_dict['nodata_value']))
 
@@ -194,7 +198,7 @@ class ImageSetConfig(DeltaConfigComponent):
         self.register_field('file_list', list, None, validate_path, 'File listing image files.')
         self.register_field('directory', str, None, validate_path, 'Directory of image files.')
         self.register_field('extension', str, None, None, 'Image file extension.')
-        self.register_field('nodata_value', float, None, None, 'Value of pixels to ignore.')
+        self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')
 
         if name:
             self.register_arg('type', '--' + name + '-type')
@@ -218,6 +222,81 @@ class ImageSetConfig(DeltaConfigComponent):
         if hasattr(options, self._name) and getattr(options, self._name) is not None:
             self._config_dict['files'] = [getattr(options, self._name)]
 
+class LabelClass:
+    def __init__(self, value, name=None, color=None):
+        color_order = [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, \
+                       0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf]
+        if name is None:
+            name = 'Class ' + str(value)
+        if color is None:
+            color = color_order[value] if value < len(color_order) else 0
+        self.value = value
+        self.name = name
+        self.color = color
+    def __repr__(self):
+        return 'Color: ' + self.name
+
+class ClassesConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._classes = []
+        self._conversions = []
+
+    def __iter__(self):
+        return self._classes.__iter__()
+
+    def __len__(self):
+        return len(self._classes)
+
+    # overwrite model entirely if updated (don't want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        self._config_dict = d
+        self._classes = []
+        if isinstance(d, int):
+            for i in range(d):
+                self._classes.append(LabelClass(i))
+        elif isinstance(d, list):
+            for (i, c) in enumerate(d):
+                if isinstance(c, int): # just pixel value
+                    self._classes.append(LabelClass(i))
+                else:
+                    keys = c.keys()
+                    assert len(keys) == 1, 'Dict should have name of pixel value.'
+                    k = next(iter(keys))
+                    assert isinstance(k, int), 'Class label value must be int.'
+                    inner_dict = c[k]
+                    self._classes.append(LabelClass(k, str(inner_dict.get('name')), inner_dict.get('color')))
+        else:
+            raise ValueError('Expected classes to be an int or list in config, was ' + str(d))
+        # make sure the order is consistent for same values, and create preprocessing function
+        self._conversions = []
+        self._classes = sorted(self._classes, key=lambda x: x.value)
+        for (i, v) in enumerate(self._classes):
+            if v.value != i:
+                self._conversions.append(v.value)
+
+    def classes_to_indices_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in enumerate(self._conversions):
+                data[data == c] = i
+            return data
+        return convert
+
+    def indices_to_classes_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in reversed(list(enumerate(self._conversions))):
+                data[data == i] = c
+            return data
+        return convert
+
 class DatasetConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__('Dataset')
@@ -227,6 +306,7 @@ class DatasetConfig(DeltaConfigComponent):
         self.__labels = None
         self.register_field('log_folder', str, 'log_folder', validate_path,
                             'Directory where dataset progress is recorded.')
+        self.register_component(ClassesConfig(), 'classes')
 
     def reset(self):
         super().reset()
@@ -239,7 +319,8 @@ class DatasetConfig(DeltaConfigComponent):
         """
         if self.__images is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                self._components['classes'])
         return self.__images
 
     def labels(self) -> ImageSet:
@@ -248,7 +329,8 @@ class DatasetConfig(DeltaConfigComponent):
         """
         if self.__labels is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                self._components['classes'])
         return self.__labels
 
 class CacheConfig(DeltaConfigComponent):
