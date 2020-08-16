@@ -268,6 +268,12 @@ class CacheConfig(DeltaConfigComponent):
         Returns the disk cache object to manage the cache.
         """
         if self._cache_manager is None:
+            # Auto-populating defaults here is a workaround so small tools can skip the full
+            # command line config setup.  Could be improved!
+            if 'dir' not in self._config_dict:
+                self._config_dict['dir'] = 'default'
+            if 'limit' not in self._config_dict:
+                self._config_dict['limit'] = 8
             cdir = self._config_dict['dir']
             if cdir == 'default':
                 cdir = appdirs.AppDirs('delta', 'nasa').user_cache_dir

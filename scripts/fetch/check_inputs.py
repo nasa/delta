@@ -25,7 +25,13 @@ Go through all of the images in a folder and verify all the images can be loaded
 import os
 import sys
 import argparse
+import traceback
 from delta.imagery.sources import loader
+import delta.config.modules
+
+# Needed for image cache to be created
+delta.config.modules.register_all()
+
 
 #------------------------------------------------------------------------------
 
@@ -40,6 +46,7 @@ def get_label_path(image_name, options):
     return label_path
 
 def main(argsIn):
+
 
     try:
 
@@ -75,11 +82,12 @@ def main(argsIn):
     for image_path in input_image_list:
 
         try:
-            loader.load_image(image_path, options.image_type)
+            loader.load(image_path, options.image_type)
         except Exception as e: #pylint: disable=W0703
             failed_files.append(image_path)
             print('For file: ' + image_path +
                   '\ncaught exception: ' + str(e))
+            traceback.print_exc(file=sys.stdout)
 
     if failed_files:
         print('The following files failed: ')

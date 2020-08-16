@@ -70,7 +70,7 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
             validation = ds.take(tc.validation.steps)
             ds = ds.skip(tc.validation.steps)
         else:
-            vimg = tc.validation.images
+            vimg   = tc.validation.images
             vlabel = tc.validation.labels
             if not vimg:
                 validation = None
@@ -114,10 +114,10 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
     """
     Reset imagery_dataset file counts on epoch end
     """
-    def __init__(self, ids, last_epoch):
+    def __init__(self, ids, stop_epoch):
         super(_EpochResetCallback, self).__init__()
         self.ids = ids
-        self.last_epoch = last_epoch
+        self.last_epoch = stop_epoch - 1
 
     def on_epoch_end(self, epoch, _=None):
         print('Finished epoch ' + str(epoch))
@@ -237,13 +237,18 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     try:
-        history = model.fit(ds,
-                            epochs=training_spec.epochs,
-                            callbacks=callbacks,
-                            validation_data=validation,
-                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps,
-                            verbose=1)
+        if training_spec.steps > 0:
+            history = model.fit(ds,
+                                epochs=training_spec.epochs,
+                                callbacks=callbacks,
+                                validation_data=validation,
+                                validation_steps=training_spec.validation.steps if training_spec.validation else None,
+                                steps_per_epoch=training_spec.steps,
+                                verbose=1)
+        else: # Skip training
+            print('Skipping straight to validation')
+            history = model.evaluate(validation, steps=training_spec.validation.steps,
+                                     callbacks=callbacks, verbose=1)
 
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
