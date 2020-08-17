@@ -72,13 +72,13 @@ class ImageryDataset:
         log_path   = os.path.join(self._log_folder, file_name)
         return log_path
 
-    def _read_single_integer_file(self, path):
+    def _read_single_integer_file(self, path): #pylint: disable=R0201
         """Reads the only integer in a file or zero if it can't be read"""
         try:
             with portalocker.Lock(path, 'r', timeout=300) as f:
                 line = f.readline()
                 return int(line)
-        except Exception:
+        except Exception: #pylint: disable=W0703
             return 0
 
     def _get_image_read_count(self, image_path):
@@ -115,9 +115,9 @@ class ImageryDataset:
                     # Already read this file too many times, skip it
                     #print('Skipping ' + file_path)
                     return np.zeros(shape=(0,0,0), dtype=np.float32)
-                else:
-                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                        f.write(str(count+1))
+                # Else increment the value
+                with portalocker.Lock(log_path, 'w', timeout=300) as f:
+                    f.write(str(count+1))
 
         try:
             image = loader.load_image(data, image_index.numpy())
@@ -136,11 +136,19 @@ class ImageryDataset:
         return r
 
     def _tile_images(self):
+        """Return a Dataset generator object which will cycle through all tiles in all input images"""
         max_block_bytes = config.io.block_size_mb() * 1024 * 1024
-        def tile_generator():
-            tgs = []
-            for i in range(len(self._images)):
 
+        # Define a local generator function to be passed into a TF dataset function.
+        def tile_generator():
+
+            # Get a list of input image indices in a random order
+            num_images = len(self._images)
+            indices    = range(num_images)
+            random.Random(0).shuffle(indices) # Use consistent random ordering
+
+            # Local function to get the tile list for a single image index
+            def get_image_tile_list(i):
                 try:
                     img = loader.load_image(self._images, i)
 
@@ -171,25 +179,35 @@ class ImageryDataset:
                         raise
                     tiles = [] # Else move past this image without loading any tiles
 
-                random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
-                tgs.append((i, tiles))
-            if not tgs:
-                return
-            while tgs:
-                cur = tgs[:config.io.interleave_images()]
-                tgs = tgs[config.io.interleave_images():]
+                random.Random(0).shuffle(tiles) # Gives consistent random ordering so labels will match
+                return (i, tiles)
+
+            while indices: # Loop until all input images have been processed
+
+                # Split off a set of input files from the list
+                set_size    = config.io.interleave_images()
+                current_set = indices[:set_size]
+                indices     = indices[set_size:]
+
+                # Convert from indicies into tile lists for this set
+                print('Loading tile lists for set of ' + str(set_size) + ' images.')
+                current_tiles = [get_image_tile_list(i) for i in current_set]
+                print('Done loading set of tile lists.')
+
                 done = False
-                while not done:
+                while not done:  # Loop through this set of input files and yield interleaved tiles
                     done = True
-                    for it in cur:
-                        if not it[1]:
+                    for it in current_tiles:
+                        if not it[1]: # No tiles loaded for this input image
                             continue
-                        t = it[1].pop(0)
-                        if t:
+                        roi = it[1].pop(0) # Get the next tile for this input image
+                        if roi:
                             done = False
-                            yield (it[0], t.min_x, t.min_y, t.max_x, t.max_y)
+                            yield (it[0], roi.min_x, roi.min_y, roi.max_x, roi.max_y)
                     if done:
                         break
+
+        # Pass the local function into the dataset generator function
         return tf.data.Dataset.from_generator(tile_generator,
                                               (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32))
 
