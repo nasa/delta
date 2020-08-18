@@ -20,6 +20,7 @@ Functions to support the WorldView satellites.
 """
 
 import math
+import zipfile
 import functools
 import os
 import sys
@@ -101,10 +102,23 @@ class WorldviewImage(tiff.TiffImage):
            TODO: Apply TOA conversion!
         """
         assert isinstance(paths, str)
-        parts = os.path.basename(paths).split('_')
+        (_, ext) = os.path.splitext(paths)
+        if ext == '.zip':
+            zip_file = zipfile.ZipFile(paths, 'r')
+            tif_names = list(filter(lambda x: '.tif' in x, zip_file.namelist()))
+            assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
+            assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
+            tif_name = tif_names[0]
+        else:
+            tif_name = paths
+
+
+        #parts = os.path.basename(paths).split('_')
+        parts = os.path.basename(tif_name).split('_')
         self._sensor = parts[0][0:4]
         self._date   = parts[2][6:14]
-        self._name   = os.path.splitext(os.path.basename(paths))[0]
+        #self._name   = os.path.splitext(os.path.basename(paths))[0]
+        self._name   = os.path.splitext(os.path.basename(tif_name))[0]
 
         (tif_path, imd_path) = self._unpack(paths)
 
