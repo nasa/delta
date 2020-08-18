@@ -103,14 +103,13 @@ class WorldviewImage(tiff.TiffImage):
         """
         assert isinstance(paths, str)
         (_, ext) = os.path.splitext(paths)
-        if ext == '.zip':
-            zip_file = zipfile.ZipFile(paths, 'r')
-            tif_names = list(filter(lambda x: '.tif' in x, zip_file.namelist()))
-            assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
-            assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
-            tif_name = tif_names[0]
-        else:
-            tif_name = paths
+        assert '.zip' in ext, f'Error: Was assuming a zip file. Found {paths}'
+
+        zip_file = zipfile.ZipFile(paths, 'r')
+        tif_names = list(filter(lambda x: '.tif' in x, zip_file.namelist()))
+        assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
+        assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
+        tif_name = tif_names[0]
 
 
         parts = os.path.basename(tif_name).split('_')
