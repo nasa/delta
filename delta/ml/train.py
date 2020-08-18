@@ -20,7 +20,6 @@ Train neural networks.
 """
 
 import os
-import sys
 import tempfile
 import shutil
 
@@ -62,7 +61,7 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc, chunk_size, output_size):
-    ds = ids.dataset()
+    ds = ids.dataset(config.dataset.classes.weights())
     ds = ds.batch(tc.batch_size)
     #ds = ds.cache()
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
@@ -138,8 +137,6 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
-            tf.print('Recording checkpoint: ' + filename,
-                     output_stream=sys.stdout)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 

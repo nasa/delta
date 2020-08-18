@@ -48,19 +48,24 @@ dataset:
   # if the labels are 0, 1, 2, 3
   classes:            4
   # labels are 1, 2, 3, 4; with names and display colors
+  # weight is optional, but required for either all or none
   #classes:
   #  - 1:
   #      name: Water
   #      color: 0x67a9cf
+  #      weight: 5.0
   #  - 2:
   #      name: No Water
   #      color: 0xf6eff7
+  #      weight: 1.0
   #  - 3:
   #      name: Maybe Water
   #      color: 0xbdc9e1
+  #      weight: 1.0
   #  - 4:
   #      name: Cloud
   #      color: 0x02818a
+  #      weight: 1.0
 
 train:
   network:
