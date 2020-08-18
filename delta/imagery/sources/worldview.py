@@ -113,11 +113,9 @@ class WorldviewImage(tiff.TiffImage):
             tif_name = paths
 
 
-        #parts = os.path.basename(paths).split('_')
         parts = os.path.basename(tif_name).split('_')
         self._sensor = parts[0][0:4]
         self._date   = parts[2][6:14]
-        #self._name   = os.path.splitext(os.path.basename(paths))[0]
         self._name   = os.path.splitext(os.path.basename(tif_name))[0]
 
         (tif_path, imd_path) = self._unpack(paths)
