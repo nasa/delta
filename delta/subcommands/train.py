@@ -33,6 +33,7 @@ from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
+from delta.ml.io import save_model
 
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
@@ -74,7 +75,7 @@ def main(options):
         model, _ = train(model, ids, tc)
 
         if options.model is not None:
-            model.save(options.model)
+            save_model(model, options.model)
     except KeyboardInterrupt:
         print()
         print('Training cancelled.')

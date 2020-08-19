@@ -235,9 +235,11 @@ class ImageryDataset:
         label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
         return label_set.unbatch()
 
-    def dataset(self):
+    def dataset(self, class_weights=None):
         """
         Return the underlying TensorFlow dataset object that this class creates.
+
+        class_weights: a list of weights to apply to the samples in each class, if specified.
         """
 
         # Pair the data and labels in our dataset
@@ -245,6 +247,9 @@ class ImageryDataset:
         # ignore labels with no data
         if self._labels.nodata_value():
             ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
+        if class_weights is not None:
+            lookup = tf.constant(class_weights)
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
         return ds
 
     def num_bands(self):

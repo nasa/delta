@@ -20,7 +20,6 @@ Train neural networks.
 """
 
 import os
-import sys
 import tempfile
 import shutil
 
@@ -31,6 +30,7 @@ from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
+from .io import save_model
 
 def _devices(num_gpus):
     '''
@@ -61,7 +61,7 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc, chunk_size, output_size):
-    ds = ids.dataset()
+    ds = ids.dataset(config.dataset.classes.weights())
     ds = ds.batch(tc.batch_size)
     #ds = ds.cache()
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
@@ -132,13 +132,11 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 mlflow.log_metric(k, logs[k], step=batch)
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d.h5' % (batch))
-            self.model.save(filename, save_format='h5')
+            save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
                 old = filename
                 filename = os.path.join(self.temp_dir, 'latest.h5')
                 os.rename(old, filename)
-            tf.print('Recording checkpoint: ' + filename,
-                     output_stream=sys.stdout)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
 
@@ -180,8 +178,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             model.compile(optimizer=training_spec.optimizer, loss=loss,
                           metrics=training_spec.metrics)
 
-    input_shape = model.get_input_at(0).shape
-    output_shape = model.get_output_at(0).shape
+    input_shape = model.input_shape
+    output_shape = model.output_shape
     chunk_size = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.'
@@ -228,7 +226,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
             print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model.h5'))
-            model.save(model_path, save_format='h5')
+            save_model(model, model_path)
             mlflow.log_artifact(model_path)
             os.remove(model_path)
             mlflow.log_param('Status', 'Completed')
@@ -238,7 +236,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
             mlflow.end_run('FAILED')
             model_path = os.path.join(mcb.temp_dir, 'aborted_model.h5')
             print('\nAborting, saving current model to %s.' % (mlflow.get_artifact_uri() + '/aborted_model.h5'))
-            model.save(model_path, save_format='h5')
+            save_model(model, model_path)
             mlflow.log_artifact(model_path)
             os.remove(model_path)
         raise
