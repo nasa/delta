@@ -1,0 +1,40 @@
+# Build documentation and commit to gh-pages branch.
+
+name: DELTA Continuous Integration
+
+on:
+  push:
+    branches: [ 'master', 'generate_pages']
+
+jobs:
+  continuous_integration:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: repo/
+    - name: Checkout gh-pages
+      uses: actions/checkout@v2
+      with:
+        path: docs/
+        ref: gh-pages
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install pdoc3
+      run: |
+        python3 -m pip install pdoc3
+    - name: Build Documentation
+      run: |
+        ./repo/scripts/doc.sh -o ./docs/
+    - name: Commit and Push
+      run: |
+        cd docs/
+        git add .
+        git commit -m "Automatic update for $GITHUB_SHA."
+        git push origin gh-pages
+
