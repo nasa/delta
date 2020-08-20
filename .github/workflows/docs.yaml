@@ -1,14 +1,13 @@
 # Build documentation and commit to gh-pages branch.
 
-name: DELTA Continuous Integration
+name: Build and Push Documentation to gh-pages Branch
 
 on:
   push:
     branches: [ 'master', 'generate_pages']
 
 jobs:
-  continuous_integration:
-
+  build_and_push_docs:
     runs-on: ubuntu-latest
 
     steps:
