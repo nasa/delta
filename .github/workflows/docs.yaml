@@ -38,7 +38,8 @@ jobs:
     - name: Commit and Push
       run: |
         cd docs/
+        git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
         git add .
         git commit -m "Automatic update for $GITHUB_SHA."
-        git push origin gh-pages
+        git push github gh-pages
 
