@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.ml.train API documentation</title>
+<meta name="description" content="Train neural networks." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.ml.train</code></h1>
+</header>
+<section id="section-intro">
+<p>Train neural networks.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Train neural networks.
+&#34;&#34;&#34;
+
+import os
+import tempfile
+import shutil
+
+import mlflow
+import tensorflow as tf
+
+from delta.config import config
+from delta.imagery.imagery_dataset import ImageryDataset
+from delta.imagery.imagery_dataset import AutoencoderDataset
+from .layers import DeltaLayer
+from .io import save_model
+
+def _devices(num_gpus):
+    &#39;&#39;&#39;
+    Takes a number of GPUs and returns a list of TensorFlow LogicalDevices.
+
+    Arguments
+
+    num_gpus -- Number of GPUs to use.  If negative, will use all CPUs available.
+    &#39;&#39;&#39;
+    devs = None
+    if num_gpus == 0:
+        devs = [x.name for x in tf.config.list_logical_devices(&#39;CPU&#39;)]
+    else:
+        devs = [x.name for x in tf.config.list_logical_devices(&#39;GPU&#39;)]
+        assert len(devs) &gt;= num_gpus,\
+               &#34;Requested %d GPUs with only %d available.&#34; % (num_gpus, len(devs))
+        if num_gpus &gt; 0:
+            devs = devs[:num_gpus]
+    return devs
+
+def _strategy(devices):
+    &#39;&#39;&#39;Given a list of TensorFlow Logical Devices, returns a distribution strategy.&#39;&#39;&#39;
+    strategy = None
+    if len(devices) == 1:
+        strategy = tf.distribute.OneDeviceStrategy(device=devices[0])
+    else:
+        strategy = tf.distribute.MirroredStrategy(devices=devices)
+    return strategy
+
+def _prep_datasets(ids, tc, chunk_size, output_size):
+    ds = ids.dataset(config.dataset.classes.weights())
+    ds = ds.batch(tc.batch_size)
+    #ds = ds.cache()
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+    if tc.validation:
+        if tc.validation.from_training:
+            validation = ds.take(tc.validation.steps)
+            ds = ds.skip(tc.validation.steps)
+        else:
+            vimg = tc.validation.images
+            vlabel = tc.validation.labels
+            if not vimg:
+                validation = None
+            else:
+                if vlabel:
+                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride,
+                                              resume_mode=False)
+                else:
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
+                validation = vimagery.dataset().batch(tc.batch_size)
+                if tc.validation.steps:
+                    validation = validation.take(tc.validation.steps)
+        #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
+    else:
+
+        validation = None
+    if tc.steps:
+        ds = ds.take(tc.steps)
+    #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
+    ds = ds.repeat(tc.epochs)
+    return (ds, validation)
+
+def _log_mlflow_params(model, dataset, training_spec):
+    images = dataset.image_set()
+    #labels = dataset.label_set()
+    mlflow.log_param(&#39;Image Type&#39;,   images.type())
+    mlflow.log_param(&#39;Preprocess&#39;,   images.preprocess())
+    mlflow.log_param(&#39;Number of Images&#39;,   len(images))
+    mlflow.log_param(&#39;Chunk Size&#39;,   dataset.chunk_size())
+    mlflow.log_param(&#39;Chunk Stride&#39;, training_spec.chunk_stride)
+    mlflow.log_param(&#39;Output Shape&#39;,   dataset.output_shape())
+    mlflow.log_param(&#39;Steps&#39;, training_spec.steps)
+    mlflow.log_param(&#39;Loss Function&#39;, training_spec.loss_function)
+    mlflow.log_param(&#39;Epochs&#39;, training_spec.epochs)
+    mlflow.log_param(&#39;Batch Size&#39;, training_spec.batch_size)
+    mlflow.log_param(&#39;Optimizer&#39;, training_spec.optimizer)
+    mlflow.log_param(&#39;Model Layers&#39;, len(model.layers))
+    #mlflow.log_param(&#39;Status&#39;, &#39;Running&#39;) Illegal to change the value!
+
+class _MLFlowCallback(tf.keras.callbacks.Callback):
+    &#34;&#34;&#34;
+    Callback to log everything for MLFlow.
+    &#34;&#34;&#34;
+    def __init__(self, temp_dir):
+        super(_MLFlowCallback, self).__init__()
+        self.epoch = 0
+        self.batch = 0
+        self.temp_dir = temp_dir
+
+    def on_epoch_end(self, epoch, _=None):
+        self.epoch = epoch
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.batch = batch
+        if batch % config.mlflow.frequency() == 0:
+            for k in logs.keys():
+                if k in (&#39;batch&#39;, &#39;size&#39;):
+                    continue
+                mlflow.log_metric(k, logs[k], step=batch)
+        if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
+            filename = os.path.join(self.temp_dir, &#39;%d.h5&#39; % (batch))
+            save_model(self.model, filename)
+            if config.mlflow.checkpoints.only_save_latest():
+                old = filename
+                filename = os.path.join(self.temp_dir, &#39;latest.h5&#39;)
+                os.rename(old, filename)
+            mlflow.log_artifact(filename, &#39;checkpoints&#39;)
+            os.remove(filename)
+
+    def on_test_batch_end(self, _, logs=None): # pylint:disable=no-self-use
+        for k in logs.keys():
+            if k in (&#39;batch&#39;, &#39;size&#39;):
+                continue
+            mlflow.log_metric(&#39;validation_&#39; + k, logs[k].item())
+
+def _mlflow_train_setup(model, dataset, training_spec):
+    mlflow.set_tracking_uri(config.mlflow.uri())
+    mlflow.set_experiment(config.mlflow.experiment())
+    mlflow.start_run()
+    _log_mlflow_params(model, dataset, training_spec)
+
+    temp_dir = tempfile.mkdtemp()
+    fname = os.path.join(temp_dir, &#39;config.yaml&#39;)
+    with open(fname, &#39;w&#39;) as f:
+        f.write(config.export())
+    mlflow.log_artifact(fname)
+    os.remove(fname)
+
+    return _MLFlowCallback(temp_dir)
+
+def train(model_fn, dataset : ImageryDataset, training_spec):
+    &#34;&#34;&#34;
+    Trains the specified model on a dataset according to a training
+    specification.
+    &#34;&#34;&#34;
+    if isinstance(model_fn, tf.keras.Model):
+        model = model_fn
+    else:
+        with _strategy(_devices(config.general.gpus())).scope():
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model),\
+                   &#34;Model is not a Tensorflow Keras model&#34;
+            loss = training_spec.loss_function
+            # TODO: specify learning rate and optimizer parameters, change learning rate over time
+            model.compile(optimizer=training_spec.optimizer, loss=loss,
+                          metrics=training_spec.metrics)
+
+    input_shape = model.input_shape
+    output_shape = model.output_shape
+    chunk_size = input_shape[1]
+
+    assert len(input_shape) == 4, &#39;Input to network is wrong shape.&#39;
+    assert input_shape[0] is None, &#39;Input is not batched.&#39;
+    # The below may no longer be valid if we move to convolutional architectures.
+    assert input_shape[1] == input_shape[2], &#39;Input to network is not chunked&#39;
+    assert len(output_shape) == 2 or output_shape[1] == output_shape[2], &#39;Output from network is not chunked&#39;
+    assert input_shape[3] == dataset.num_bands(), &#39;Number of bands in model does not match data.&#39;
+    # last element differs for the sparse metrics
+    assert output_shape[1:-1] == dataset.output_shape()[:-1], \
+            &#39;Network output shape %s does not match label shape %s.&#39; % (output_shape[1:], dataset.output_shape())
+
+    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
+
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
+    # add callbacks from DeltaLayers
+    for l in model.layers:
+        if isinstance(l, DeltaLayer):
+            c = l.callback()
+            if c:
+                callbacks.append(c)
+    if config.tensorboard.enabled():
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
+                                             update_freq=&#39;epoch&#39;,
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
+        callbacks.append(tcb)
+
+    if config.mlflow.enabled():
+        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        callbacks.append(mcb)
+        #print(&#39;Using mlflow folder: &#39; + mlflow.get_artifact_uri())
+
+    try:
+        history = model.fit(ds,
+                            epochs=training_spec.epochs,
+                            callbacks=callbacks,
+                            validation_data=validation,
+                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
+                            steps_per_epoch=training_spec.steps,
+                            verbose=1)
+
+        if config.mlflow.enabled():
+            model_path = os.path.join(mcb.temp_dir, &#39;final_model.h5&#39;)
+            print(&#39;\nFinished, saving model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/final_model.h5&#39;))
+            save_model(model, model_path)
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
+            mlflow.log_param(&#39;Status&#39;, &#39;Completed&#39;)
+    except:
+        if config.mlflow.enabled():
+            mlflow.log_param(&#39;Status&#39;, &#39;Aborted&#39;)
+            mlflow.end_run(&#39;FAILED&#39;)
+            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model.h5&#39;)
+            print(&#39;\nAborting, saving current model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/aborted_model.h5&#39;))
+            save_model(model, model_path)
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
+        raise
+    finally:
+        if config.mlflow.enabled():
+            mlflow.log_param(&#39;Epoch&#39;, mcb.epoch)
+            mlflow.log_param(&#39;Batch&#39;, mcb.batch)
+            if mcb and mcb.temp_dir:
+                shutil.rmtree(mcb.temp_dir)
+
+    if config.mlflow.enabled():
+        mlflow.end_run()
+
+    return model, history</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.ml.train.train"><code class="name flex">
+<span>def <span class="ident">train</span></span>(<span>model_fn, dataset: <a title="delta.imagery.imagery_dataset.ImageryDataset" href="../imagery/imagery_dataset.html#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a>, training_spec)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Trains the specified model on a dataset according to a training
+specification.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def train(model_fn, dataset : ImageryDataset, training_spec):
+    &#34;&#34;&#34;
+    Trains the specified model on a dataset according to a training
+    specification.
+    &#34;&#34;&#34;
+    if isinstance(model_fn, tf.keras.Model):
+        model = model_fn
+    else:
+        with _strategy(_devices(config.general.gpus())).scope():
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model),\
+                   &#34;Model is not a Tensorflow Keras model&#34;
+            loss = training_spec.loss_function
+            # TODO: specify learning rate and optimizer parameters, change learning rate over time
+            model.compile(optimizer=training_spec.optimizer, loss=loss,
+                          metrics=training_spec.metrics)
+
+    input_shape = model.input_shape
+    output_shape = model.output_shape
+    chunk_size = input_shape[1]
+
+    assert len(input_shape) == 4, &#39;Input to network is wrong shape.&#39;
+    assert input_shape[0] is None, &#39;Input is not batched.&#39;
+    # The below may no longer be valid if we move to convolutional architectures.
+    assert input_shape[1] == input_shape[2], &#39;Input to network is not chunked&#39;
+    assert len(output_shape) == 2 or output_shape[1] == output_shape[2], &#39;Output from network is not chunked&#39;
+    assert input_shape[3] == dataset.num_bands(), &#39;Number of bands in model does not match data.&#39;
+    # last element differs for the sparse metrics
+    assert output_shape[1:-1] == dataset.output_shape()[:-1], \
+            &#39;Network output shape %s does not match label shape %s.&#39; % (output_shape[1:], dataset.output_shape())
+
+    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
+
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
+    # add callbacks from DeltaLayers
+    for l in model.layers:
+        if isinstance(l, DeltaLayer):
+            c = l.callback()
+            if c:
+                callbacks.append(c)
+    if config.tensorboard.enabled():
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
+                                             update_freq=&#39;epoch&#39;,
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
+        callbacks.append(tcb)
+
+    if config.mlflow.enabled():
+        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        callbacks.append(mcb)
+        #print(&#39;Using mlflow folder: &#39; + mlflow.get_artifact_uri())
+
+    try:
+        history = model.fit(ds,
+                            epochs=training_spec.epochs,
+                            callbacks=callbacks,
+                            validation_data=validation,
+                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
+                            steps_per_epoch=training_spec.steps,
+                            verbose=1)
+
+        if config.mlflow.enabled():
+            model_path = os.path.join(mcb.temp_dir, &#39;final_model.h5&#39;)
+            print(&#39;\nFinished, saving model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/final_model.h5&#39;))
+            save_model(model, model_path)
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
+            mlflow.log_param(&#39;Status&#39;, &#39;Completed&#39;)
+    except:
+        if config.mlflow.enabled():
+            mlflow.log_param(&#39;Status&#39;, &#39;Aborted&#39;)
+            mlflow.end_run(&#39;FAILED&#39;)
+            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model.h5&#39;)
+            print(&#39;\nAborting, saving current model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/aborted_model.h5&#39;))
+            save_model(model, model_path)
+            mlflow.log_artifact(model_path)
+            os.remove(model_path)
+        raise
+    finally:
+        if config.mlflow.enabled():
+            mlflow.log_param(&#39;Epoch&#39;, mcb.epoch)
+            mlflow.log_param(&#39;Batch&#39;, mcb.batch)
+            if mcb and mcb.temp_dir:
+                shutil.rmtree(mcb.temp_dir)
+
+    if config.mlflow.enabled():
+        mlflow.end_run()
+
+    return model, history</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.ml" href="index.html">delta.ml</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.ml.train.train" href="#delta.ml.train.train">train</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>

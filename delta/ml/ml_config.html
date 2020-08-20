@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.ml.ml_config API documentation</title>
+<meta name="description" content="Configuration options specific to machine learning." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.ml.ml_config</code></h1>
+</header>
+<section id="section-intro">
+<p>Configuration options specific to machine learning.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Configuration options specific to machine learning.
+&#34;&#34;&#34;
+# Please do not put any tensorflow imports in this file as it will greatly slow loading
+# when tensorflow isn&#39;t needed
+import os.path
+
+import appdirs
+import pkg_resources
+import yaml
+
+from delta.imagery.imagery_config import ImageSet, ImageSetConfig, load_images_labels
+import delta.config as config
+
+def loss_function_factory(loss_spec):
+    &#39;&#39;&#39;
+    loss_function_factory - Creates a loss function object, if an object is specified in the
+    config file, or a string if that is all that is specified.
+
+    :param: loss_spec Specification of the loss function.  Either a string that is compatible
+    with the keras interface (e.g. &#39;categorical_crossentropy&#39;) or an object defined by a dict
+    of the form {&#39;LossFunctionName&#39;: {&#39;arg1&#39;:arg1_val, ...,&#39;argN&#39;,argN_val}}
+    &#39;&#39;&#39;
+    import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
+
+    if isinstance(loss_spec, str):
+        return loss_spec
+
+    if isinstance(loss_spec, list):
+        assert len(loss_spec) == 1, &#39;Too many loss functions specified&#39;
+        assert isinstance(loss_spec[0], dict), &#39;&#39;&#39;Loss functions objects and parameters must
+                                                  be specified as a yaml dictionary object
+                                                  &#39;&#39;&#39;
+        assert len(loss_spec[0].keys()) == 1, f&#39;Too many loss functions specified: {dict.keys()}&#39;
+        loss_type = list(loss_spec[0].keys())[0]
+        loss_fn_args = loss_spec[0][loss_type]
+
+        loss_class = getattr(tensorflow.keras.losses, loss_type, None)
+        return loss_class(**loss_fn_args)
+
+    raise RuntimeError(f&#39;Did not recognize the loss function specification: {loss_spec}&#39;)
+
+
+class ValidationSet:#pylint:disable=too-few-public-methods
+    &#34;&#34;&#34;
+    Specifies the images and labels in a validation set.
+    &#34;&#34;&#34;
+    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+        &#34;&#34;&#34;
+        Uses the specified `delta.imagery.sources.ImageSet`s images and labels.
+
+        If `from_training` is `True`, instead takes samples from the training set
+        before they are used for training.
+
+        The number of samples to use for validation is set by `steps`.
+        &#34;&#34;&#34;
+        self.images = images
+        self.labels = labels
+        self.from_training = from_training
+        self.steps = steps
+
+class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
+    &#34;&#34;&#34;
+    Options used in training by `delta.ml.train.train`.
+    &#34;&#34;&#34;
+    def __init__(self, batch_size, epochs, loss_function, metrics, validation=None, steps=None,
+                 chunk_stride=1, optimizer=&#39;adam&#39;):
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.loss_function = loss_function
+        self.validation = validation
+        self.steps = steps
+        self.metrics = metrics
+        self.chunk_stride = chunk_stride
+        self.optimizer = optimizer
+
+class NetworkModelConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;yaml_file&#39;, str, &#39;yaml_file&#39;, config.validate_path,
+                            &#39;A YAML file describing the network to train.&#39;)
+        self.register_field(&#39;params&#39;, dict, None, None, None)
+        self.register_field(&#39;layers&#39;, list, None, None, None)
+
+    # overwrite model entirely if updated (don&#39;t want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        super()._load_dict(d, base_dir)
+        if &#39;yaml_file&#39; in d:
+            self._config_dict[&#39;layers&#39;] = None
+        elif &#39;layers&#39; in d:
+            self._config_dict[&#39;yaml_file&#39;] = None
+        if &#39;yaml_file&#39; in d and &#39;layers&#39; in d and d[&#39;yaml_file&#39;] is not None and d[&#39;layers&#39;] is not None:
+            raise ValueError(&#39;Specified both yaml file and layers in model.&#39;)
+        if &#39;yaml_file&#39; in d and d[&#39;yaml_file&#39;] is not None:
+            yaml_file = d[&#39;yaml_file&#39;]
+            resource = os.path.join(&#39;config&#39;, yaml_file)
+            if not os.path.exists(yaml_file) and pkg_resources.resource_exists(&#39;delta&#39;, resource):
+                yaml_file = pkg_resources.resource_filename(&#39;delta&#39;, resource)
+            if not os.path.exists(yaml_file):
+                raise ValueError(&#39;Model yaml_file does not exist: &#39; + yaml_file)
+            with open(yaml_file, &#39;r&#39;) as f:
+                self._config_dict.update(yaml.safe_load(f))
+
+class NetworkConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;chunk_size&#39;, int, &#39;chunk_size&#39;, config.validate_positive,
+                            &#39;Width of an image chunk to input to the neural network.&#39;)
+        self.register_field(&#39;output_size&#39;, int, &#39;output_size&#39;, config.validate_positive,
+                            &#39;Width of an image chunk to output from the neural network.&#39;)
+
+        self.register_arg(&#39;chunk_size&#39;, &#39;--chunk-size&#39;)
+        self.register_arg(&#39;output_size&#39;, &#39;--output-size&#39;)
+        self.register_component(NetworkModelConfig(), &#39;model&#39;)
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        group = parser.add_argument_group(&#39;Network&#39;)
+        super().setup_arg_parser(group, components)
+
+class ValidationConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;steps&#39;, int, &#39;steps&#39;, config.validate_positive,
+                            &#39;If from training, validate for this many steps.&#39;)
+        self.register_field(&#39;from_training&#39;, bool, &#39;from_training&#39;, None,
+                            &#39;Take validation data from training data.&#39;)
+        self.register_component(ImageSetConfig(), &#39;images&#39;, &#39;__image_comp&#39;)
+        self.register_component(ImageSetConfig(), &#39;labels&#39;, &#39;__label_comp&#39;)
+        self.__images = None
+        self.__labels = None
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def images(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the training images.
+        &#34;&#34;&#34;
+        if self.__images is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                config.config.dataset.classes)
+        return self.__images
+
+    def labels(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the label images.
+        &#34;&#34;&#34;
+        if self.__labels is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                config.config.dataset.classes)
+        return self.__labels
+
+class TrainingConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;chunk_stride&#39;, int, None, config.validate_positive,
+                            &#39;Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.&#39;)
+        self.register_field(&#39;epochs&#39;, int, None, config.validate_positive,
+                            &#39;Number of times to repeat training on the dataset.&#39;)
+        self.register_field(&#39;batch_size&#39;, int, None, config.validate_positive,
+                            &#39;Features to group into each training batch.&#39;)
+        self.register_field(&#39;loss_function&#39;, (str, list), None, None, &#39;Keras loss function.&#39;)
+        self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
+        self.register_field(&#39;steps&#39;, int, None, config.validate_positive, &#39;Batches to train per epoch.&#39;)
+        self.register_field(&#39;optimizer&#39;, str, None, None, &#39;Keras optimizer to use.&#39;)
+
+        self.register_arg(&#39;chunk_stride&#39;, &#39;--chunk-stride&#39;)
+        self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
+        self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
+        self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
+        self.register_component(ValidationConfig(), &#39;validation&#39;)
+        self.register_component(NetworkConfig(), &#39;network&#39;)
+        self.__training = None
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        group = parser.add_argument_group(&#39;Training&#39;)
+        super().setup_arg_parser(group, components)
+
+    def spec(self) -&gt; TrainingSpec:
+        &#34;&#34;&#34;
+        Returns the options configuring training.
+        &#34;&#34;&#34;
+        if not self.__training:
+            from_training = self._components[&#39;validation&#39;].from_training()
+            vsteps = self._components[&#39;validation&#39;].steps()
+            (vimg, vlabels) = (None, None)
+            if not from_training:
+                (vimg, vlabels) = (self._components[&#39;validation&#39;].images(), self._components[&#39;validation&#39;].labels())
+            validation = ValidationSet(vimg, vlabels, from_training, vsteps)
+            loss_fn = loss_function_factory(self._config_dict[&#39;loss_function&#39;])
+            self.__training = TrainingSpec(batch_size=self._config_dict[&#39;batch_size&#39;],
+                                           epochs=self._config_dict[&#39;epochs&#39;],
+                                           loss_function=loss_fn,
+                                           metrics=self._config_dict[&#39;metrics&#39;],
+                                           validation=validation,
+                                           steps=self._config_dict[&#39;steps&#39;],
+                                           chunk_stride=self._config_dict[&#39;chunk_stride&#39;],
+                                           optimizer=self._config_dict[&#39;optimizer&#39;])
+        return self.__training
+
+
+class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;frequency&#39;, int, &#39;frequency&#39;, None,
+                            &#39;Frequency in batches to store neural network checkpoints.&#39;)
+        self.register_field(&#39;only_save_latest&#39;, bool, &#39;only_save_latest&#39;, None,
+                            &#39;If true, only keep the most recent checkpoint.&#39;)
+
+class MLFlowConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Enable MLFlow.&#39;)
+        self.register_field(&#39;uri&#39;, str, None, None, &#39;URI to store MLFlow data.&#39;)
+        self.register_field(&#39;frequency&#39;, int, &#39;frequency&#39;, config.validate_positive,
+                            &#39;Frequency to store metrics.&#39;)
+        self.register_field(&#39;experiment_name&#39;, str, &#39;experiment&#39;, None, &#39;Experiment name in MLFlow.&#39;)
+
+        self.register_arg(&#39;enabled&#39;, &#39;--disable-mlflow&#39;, action=&#39;store_const&#39;, const=False, type=None)
+        self.register_arg(&#39;enabled&#39;, &#39;--enable-mlflow&#39;, action=&#39;store_const&#39;, const=True, type=None)
+        self.register_component(MLFlowCheckpointsConfig(), &#39;checkpoints&#39;)
+
+    def uri(self) -&gt; str:
+        &#34;&#34;&#34;
+        Returns the URI for MLFlow to store data.
+        &#34;&#34;&#34;
+        uri = self._config_dict[&#39;uri&#39;]
+        if uri == &#39;default&#39;:
+            uri = &#39;file://&#39; + os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;mlflow&#39;)
+        return uri
+
+class TensorboardConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Enable Tensorboard.&#39;)
+        self.register_field(&#39;dir&#39;, str, None, None, &#39;Directory to store Tensorboard data.&#39;)
+
+    def dir(self) -&gt; str:
+        &#34;&#34;&#34;
+        Returns the directory for tensorboard to store to.
+        &#34;&#34;&#34;
+        tbd = self._config_dict[&#39;dir&#39;]
+        if tbd == &#39;default&#39;:
+            tbd = os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;tensorboard&#39;)
+        return tbd
+
+def register():
+    &#34;&#34;&#34;
+    Registers imagery config options with the global config manager.
+
+    The arguments enable command line arguments for different components.
+    &#34;&#34;&#34;
+    if not hasattr(config.config, &#39;general&#39;):
+        config.config.register_component(config.DeltaConfigComponent(&#39;General&#39;), &#39;general&#39;)
+
+    config.config.general.register_field(&#39;gpus&#39;, int, &#39;gpus&#39;, None, &#39;Number of gpus to use.&#39;)
+    config.config.general.register_arg(&#39;gpus&#39;, &#39;--gpus&#39;)
+    config.config.general.register_field(&#39;stop_on_input_error&#39;, bool, &#39;stop_on_input_error&#39;, None,
+                                         &#39;If false, skip past bad input images.&#39;)
+    config.config.general.register_arg(&#39;stop_on_input_error&#39;, &#39;--bypass-input-errors&#39;,
+                                       action=&#39;store_const&#39;, const=False, type=None)
+    config.config.general.register_arg(&#39;stop_on_input_error&#39;, &#39;--stop-on-input-error&#39;,
+                                       action=&#39;store_const&#39;, const=True, type=None)
+
+    config.config.register_component(TrainingConfig(), &#39;train&#39;)
+    config.config.register_component(MLFlowConfig(), &#39;mlflow&#39;)
+    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.ml.ml_config.loss_function_factory"><code class="name flex">
+<span>def <span class="ident">loss_function_factory</span></span>(<span>loss_spec)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>loss_function_factory - Creates a loss function object, if an object is specified in the
+config file, or a string if that is all that is specified.</p>
+<p>:param: loss_spec Specification of the loss function.
+Either a string that is compatible
+with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
+of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def loss_function_factory(loss_spec):
+    &#39;&#39;&#39;
+    loss_function_factory - Creates a loss function object, if an object is specified in the
+    config file, or a string if that is all that is specified.
+
+    :param: loss_spec Specification of the loss function.  Either a string that is compatible
+    with the keras interface (e.g. &#39;categorical_crossentropy&#39;) or an object defined by a dict
+    of the form {&#39;LossFunctionName&#39;: {&#39;arg1&#39;:arg1_val, ...,&#39;argN&#39;,argN_val}}
+    &#39;&#39;&#39;
+    import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
+
+    if isinstance(loss_spec, str):
+        return loss_spec
+
+    if isinstance(loss_spec, list):
+        assert len(loss_spec) == 1, &#39;Too many loss functions specified&#39;
+        assert isinstance(loss_spec[0], dict), &#39;&#39;&#39;Loss functions objects and parameters must
+                                                  be specified as a yaml dictionary object
+                                                  &#39;&#39;&#39;
+        assert len(loss_spec[0].keys()) == 1, f&#39;Too many loss functions specified: {dict.keys()}&#39;
+        loss_type = list(loss_spec[0].keys())[0]
+        loss_fn_args = loss_spec[0][loss_type]
+
+        loss_class = getattr(tensorflow.keras.losses, loss_type, None)
+        return loss_class(**loss_fn_args)
+
+    raise RuntimeError(f&#39;Did not recognize the loss function specification: {loss_spec}&#39;)</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.ml_config.register"><code class="name flex">
+<span>def <span class="ident">register</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Registers imagery config options with the global config manager.</p>
+<p>The arguments enable command line arguments for different components.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register():
+    &#34;&#34;&#34;
+    Registers imagery config options with the global config manager.
+
+    The arguments enable command line arguments for different components.
+    &#34;&#34;&#34;
+    if not hasattr(config.config, &#39;general&#39;):
+        config.config.register_component(config.DeltaConfigComponent(&#39;General&#39;), &#39;general&#39;)
+
+    config.config.general.register_field(&#39;gpus&#39;, int, &#39;gpus&#39;, None, &#39;Number of gpus to use.&#39;)
+    config.config.general.register_arg(&#39;gpus&#39;, &#39;--gpus&#39;)
+    config.config.general.register_field(&#39;stop_on_input_error&#39;, bool, &#39;stop_on_input_error&#39;, None,
+                                         &#39;If false, skip past bad input images.&#39;)
+    config.config.general.register_arg(&#39;stop_on_input_error&#39;, &#39;--bypass-input-errors&#39;,
+                                       action=&#39;store_const&#39;, const=False, type=None)
+    config.config.general.register_arg(&#39;stop_on_input_error&#39;, &#39;--stop-on-input-error&#39;,
+                                       action=&#39;store_const&#39;, const=True, type=None)
+
+    config.config.register_component(TrainingConfig(), &#39;train&#39;)
+    config.config.register_component(MLFlowConfig(), &#39;mlflow&#39;)
+    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.ml.ml_config.MLFlowCheckpointsConfig"><code class="flex name class">
+<span>class <span class="ident">MLFlowCheckpointsConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;frequency&#39;, int, &#39;frequency&#39;, None,
+                            &#39;Frequency in batches to store neural network checkpoints.&#39;)
+        self.register_field(&#39;only_save_latest&#39;, bool, &#39;only_save_latest&#39;, None,
+                            &#39;If true, only keep the most recent checkpoint.&#39;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.MLFlowConfig"><code class="flex name class">
+<span>class <span class="ident">MLFlowConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MLFlowConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Enable MLFlow.&#39;)
+        self.register_field(&#39;uri&#39;, str, None, None, &#39;URI to store MLFlow data.&#39;)
+        self.register_field(&#39;frequency&#39;, int, &#39;frequency&#39;, config.validate_positive,
+                            &#39;Frequency to store metrics.&#39;)
+        self.register_field(&#39;experiment_name&#39;, str, &#39;experiment&#39;, None, &#39;Experiment name in MLFlow.&#39;)
+
+        self.register_arg(&#39;enabled&#39;, &#39;--disable-mlflow&#39;, action=&#39;store_const&#39;, const=False, type=None)
+        self.register_arg(&#39;enabled&#39;, &#39;--enable-mlflow&#39;, action=&#39;store_const&#39;, const=True, type=None)
+        self.register_component(MLFlowCheckpointsConfig(), &#39;checkpoints&#39;)
+
+    def uri(self) -&gt; str:
+        &#34;&#34;&#34;
+        Returns the URI for MLFlow to store data.
+        &#34;&#34;&#34;
+        uri = self._config_dict[&#39;uri&#39;]
+        if uri == &#39;default&#39;:
+            uri = &#39;file://&#39; + os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;mlflow&#39;)
+        return uri</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.ml_config.MLFlowConfig.uri"><code class="name flex">
+<span>def <span class="ident">uri</span></span>(<span>self) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the URI for MLFlow to store data.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def uri(self) -&gt; str:
+    &#34;&#34;&#34;
+    Returns the URI for MLFlow to store data.
+    &#34;&#34;&#34;
+    uri = self._config_dict[&#39;uri&#39;]
+    if uri == &#39;default&#39;:
+        uri = &#39;file://&#39; + os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;mlflow&#39;)
+    return uri</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.NetworkConfig"><code class="flex name class">
+<span>class <span class="ident">NetworkConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class NetworkConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;chunk_size&#39;, int, &#39;chunk_size&#39;, config.validate_positive,
+                            &#39;Width of an image chunk to input to the neural network.&#39;)
+        self.register_field(&#39;output_size&#39;, int, &#39;output_size&#39;, config.validate_positive,
+                            &#39;Width of an image chunk to output from the neural network.&#39;)
+
+        self.register_arg(&#39;chunk_size&#39;, &#39;--chunk-size&#39;)
+        self.register_arg(&#39;output_size&#39;, &#39;--output-size&#39;)
+        self.register_component(NetworkModelConfig(), &#39;model&#39;)
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        group = parser.add_argument_group(&#39;Network&#39;)
+        super().setup_arg_parser(group, components)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.NetworkModelConfig"><code class="flex name class">
+<span>class <span class="ident">NetworkModelConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class NetworkModelConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;yaml_file&#39;, str, &#39;yaml_file&#39;, config.validate_path,
+                            &#39;A YAML file describing the network to train.&#39;)
+        self.register_field(&#39;params&#39;, dict, None, None, None)
+        self.register_field(&#39;layers&#39;, list, None, None, None)
+
+    # overwrite model entirely if updated (don&#39;t want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        super()._load_dict(d, base_dir)
+        if &#39;yaml_file&#39; in d:
+            self._config_dict[&#39;layers&#39;] = None
+        elif &#39;layers&#39; in d:
+            self._config_dict[&#39;yaml_file&#39;] = None
+        if &#39;yaml_file&#39; in d and &#39;layers&#39; in d and d[&#39;yaml_file&#39;] is not None and d[&#39;layers&#39;] is not None:
+            raise ValueError(&#39;Specified both yaml file and layers in model.&#39;)
+        if &#39;yaml_file&#39; in d and d[&#39;yaml_file&#39;] is not None:
+            yaml_file = d[&#39;yaml_file&#39;]
+            resource = os.path.join(&#39;config&#39;, yaml_file)
+            if not os.path.exists(yaml_file) and pkg_resources.resource_exists(&#39;delta&#39;, resource):
+                yaml_file = pkg_resources.resource_filename(&#39;delta&#39;, resource)
+            if not os.path.exists(yaml_file):
+                raise ValueError(&#39;Model yaml_file does not exist: &#39; + yaml_file)
+            with open(yaml_file, &#39;r&#39;) as f:
+                self._config_dict.update(yaml.safe_load(f))</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.TensorboardConfig"><code class="flex name class">
+<span>class <span class="ident">TensorboardConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TensorboardConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Enable Tensorboard.&#39;)
+        self.register_field(&#39;dir&#39;, str, None, None, &#39;Directory to store Tensorboard data.&#39;)
+
+    def dir(self) -&gt; str:
+        &#34;&#34;&#34;
+        Returns the directory for tensorboard to store to.
+        &#34;&#34;&#34;
+        tbd = self._config_dict[&#39;dir&#39;]
+        if tbd == &#39;default&#39;:
+            tbd = os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;tensorboard&#39;)
+        return tbd</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.ml_config.TensorboardConfig.dir"><code class="name flex">
+<span>def <span class="ident">dir</span></span>(<span>self) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the directory for tensorboard to store to.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dir(self) -&gt; str:
+    &#34;&#34;&#34;
+    Returns the directory for tensorboard to store to.
+    &#34;&#34;&#34;
+    tbd = self._config_dict[&#39;dir&#39;]
+    if tbd == &#39;default&#39;:
+        tbd = os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;tensorboard&#39;)
+    return tbd</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.TrainingConfig"><code class="flex name class">
+<span>class <span class="ident">TrainingConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TrainingConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;chunk_stride&#39;, int, None, config.validate_positive,
+                            &#39;Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.&#39;)
+        self.register_field(&#39;epochs&#39;, int, None, config.validate_positive,
+                            &#39;Number of times to repeat training on the dataset.&#39;)
+        self.register_field(&#39;batch_size&#39;, int, None, config.validate_positive,
+                            &#39;Features to group into each training batch.&#39;)
+        self.register_field(&#39;loss_function&#39;, (str, list), None, None, &#39;Keras loss function.&#39;)
+        self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
+        self.register_field(&#39;steps&#39;, int, None, config.validate_positive, &#39;Batches to train per epoch.&#39;)
+        self.register_field(&#39;optimizer&#39;, str, None, None, &#39;Keras optimizer to use.&#39;)
+
+        self.register_arg(&#39;chunk_stride&#39;, &#39;--chunk-stride&#39;)
+        self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
+        self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
+        self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
+        self.register_component(ValidationConfig(), &#39;validation&#39;)
+        self.register_component(NetworkConfig(), &#39;network&#39;)
+        self.__training = None
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        group = parser.add_argument_group(&#39;Training&#39;)
+        super().setup_arg_parser(group, components)
+
+    def spec(self) -&gt; TrainingSpec:
+        &#34;&#34;&#34;
+        Returns the options configuring training.
+        &#34;&#34;&#34;
+        if not self.__training:
+            from_training = self._components[&#39;validation&#39;].from_training()
+            vsteps = self._components[&#39;validation&#39;].steps()
+            (vimg, vlabels) = (None, None)
+            if not from_training:
+                (vimg, vlabels) = (self._components[&#39;validation&#39;].images(), self._components[&#39;validation&#39;].labels())
+            validation = ValidationSet(vimg, vlabels, from_training, vsteps)
+            loss_fn = loss_function_factory(self._config_dict[&#39;loss_function&#39;])
+            self.__training = TrainingSpec(batch_size=self._config_dict[&#39;batch_size&#39;],
+                                           epochs=self._config_dict[&#39;epochs&#39;],
+                                           loss_function=loss_fn,
+                                           metrics=self._config_dict[&#39;metrics&#39;],
+                                           validation=validation,
+                                           steps=self._config_dict[&#39;steps&#39;],
+                                           chunk_stride=self._config_dict[&#39;chunk_stride&#39;],
+                                           optimizer=self._config_dict[&#39;optimizer&#39;])
+        return self.__training</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.ml_config.TrainingConfig.spec"><code class="name flex">
+<span>def <span class="ident">spec</span></span>(<span>self) ‑> <a title="delta.ml.ml_config.TrainingSpec" href="#delta.ml.ml_config.TrainingSpec">TrainingSpec</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the options configuring training.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def spec(self) -&gt; TrainingSpec:
+    &#34;&#34;&#34;
+    Returns the options configuring training.
+    &#34;&#34;&#34;
+    if not self.__training:
+        from_training = self._components[&#39;validation&#39;].from_training()
+        vsteps = self._components[&#39;validation&#39;].steps()
+        (vimg, vlabels) = (None, None)
+        if not from_training:
+            (vimg, vlabels) = (self._components[&#39;validation&#39;].images(), self._components[&#39;validation&#39;].labels())
+        validation = ValidationSet(vimg, vlabels, from_training, vsteps)
+        loss_fn = loss_function_factory(self._config_dict[&#39;loss_function&#39;])
+        self.__training = TrainingSpec(batch_size=self._config_dict[&#39;batch_size&#39;],
+                                       epochs=self._config_dict[&#39;epochs&#39;],
+                                       loss_function=loss_fn,
+                                       metrics=self._config_dict[&#39;metrics&#39;],
+                                       validation=validation,
+                                       steps=self._config_dict[&#39;steps&#39;],
+                                       chunk_stride=self._config_dict[&#39;chunk_stride&#39;],
+                                       optimizer=self._config_dict[&#39;optimizer&#39;])
+    return self.__training</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.TrainingSpec"><code class="flex name class">
+<span>class <span class="ident">TrainingSpec</span></span>
+<span>(</span><span>batch_size, epochs, loss_function, metrics, validation=None, steps=None, chunk_stride=1, optimizer='adam')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Options used in training by <code><a title="delta.ml.train.train" href="train.html#delta.ml.train.train">train()</a></code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
+    &#34;&#34;&#34;
+    Options used in training by `delta.ml.train.train`.
+    &#34;&#34;&#34;
+    def __init__(self, batch_size, epochs, loss_function, metrics, validation=None, steps=None,
+                 chunk_stride=1, optimizer=&#39;adam&#39;):
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.loss_function = loss_function
+        self.validation = validation
+        self.steps = steps
+        self.metrics = metrics
+        self.chunk_stride = chunk_stride
+        self.optimizer = optimizer</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.ml_config.ValidationConfig"><code class="flex name class">
+<span>class <span class="ident">ValidationConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ValidationConfig(config.DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;steps&#39;, int, &#39;steps&#39;, config.validate_positive,
+                            &#39;If from training, validate for this many steps.&#39;)
+        self.register_field(&#39;from_training&#39;, bool, &#39;from_training&#39;, None,
+                            &#39;Take validation data from training data.&#39;)
+        self.register_component(ImageSetConfig(), &#39;images&#39;, &#39;__image_comp&#39;)
+        self.register_component(ImageSetConfig(), &#39;labels&#39;, &#39;__label_comp&#39;)
+        self.__images = None
+        self.__labels = None
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def images(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the training images.
+        &#34;&#34;&#34;
+        if self.__images is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                config.config.dataset.classes)
+        return self.__images
+
+    def labels(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the label images.
+        &#34;&#34;&#34;
+        if self.__labels is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                config.config.dataset.classes)
+        return self.__labels</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.ml_config.ValidationConfig.images"><code class="name flex">
+<span>def <span class="ident">images</span></span>(<span>self) ‑> <a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the training images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def images(self) -&gt; ImageSet:
+    &#34;&#34;&#34;
+    Returns the training images.
+    &#34;&#34;&#34;
+    if self.__images is None:
+        (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                            self._components[&#39;labels&#39;],
+                                                            config.config.dataset.classes)
+    return self.__images</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.ml_config.ValidationConfig.labels"><code class="name flex">
+<span>def <span class="ident">labels</span></span>(<span>self) ‑> <a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the label images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def labels(self) -&gt; ImageSet:
+    &#34;&#34;&#34;
+    Returns the label images.
+    &#34;&#34;&#34;
+    if self.__labels is None:
+        (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                            self._components[&#39;labels&#39;],
+                                                            config.config.dataset.classes)
+    return self.__labels</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.ml.ml_config.ValidationSet"><code class="flex name class">
+<span>class <span class="ident">ValidationSet</span></span>
+<span>(</span><span>images=None, labels=None, from_training=False, steps=1000)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Specifies the images and labels in a validation set.</p>
+<p>Uses the specified <code>delta.imagery.sources.ImageSet</code>s images and labels.</p>
+<p>If <code>from_training</code> is <code>True</code>, instead takes samples from the training set
+before they are used for training.</p>
+<p>The number of samples to use for validation is set by <code>steps</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ValidationSet:#pylint:disable=too-few-public-methods
+    &#34;&#34;&#34;
+    Specifies the images and labels in a validation set.
+    &#34;&#34;&#34;
+    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+        &#34;&#34;&#34;
+        Uses the specified `delta.imagery.sources.ImageSet`s images and labels.
+
+        If `from_training` is `True`, instead takes samples from the training set
+        before they are used for training.
+
+        The number of samples to use for validation is set by `steps`.
+        &#34;&#34;&#34;
+        self.images = images
+        self.labels = labels
+        self.from_training = from_training
+        self.steps = steps</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.ml" href="index.html">delta.ml</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.loss_function_factory" href="#delta.ml.ml_config.loss_function_factory">loss_function_factory</a></code></li>
+<li><code><a title="delta.ml.ml_config.register" href="#delta.ml.ml_config.register">register</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.ml.ml_config.MLFlowCheckpointsConfig" href="#delta.ml.ml_config.MLFlowCheckpointsConfig">MLFlowCheckpointsConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.MLFlowConfig" href="#delta.ml.ml_config.MLFlowConfig">MLFlowConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.MLFlowConfig.uri" href="#delta.ml.ml_config.MLFlowConfig.uri">uri</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.NetworkConfig" href="#delta.ml.ml_config.NetworkConfig">NetworkConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.NetworkModelConfig" href="#delta.ml.ml_config.NetworkModelConfig">NetworkModelConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.TensorboardConfig" href="#delta.ml.ml_config.TensorboardConfig">TensorboardConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.TensorboardConfig.dir" href="#delta.ml.ml_config.TensorboardConfig.dir">dir</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.TrainingConfig" href="#delta.ml.ml_config.TrainingConfig">TrainingConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.TrainingConfig.spec" href="#delta.ml.ml_config.TrainingConfig.spec">spec</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.TrainingSpec" href="#delta.ml.ml_config.TrainingSpec">TrainingSpec</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.ValidationConfig" href="#delta.ml.ml_config.ValidationConfig">ValidationConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.ValidationConfig.images" href="#delta.ml.ml_config.ValidationConfig.images">images</a></code></li>
+<li><code><a title="delta.ml.ml_config.ValidationConfig.labels" href="#delta.ml.ml_config.ValidationConfig.labels">labels</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.ml.ml_config.ValidationSet" href="#delta.ml.ml_config.ValidationSet">ValidationSet</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>

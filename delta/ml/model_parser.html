@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.ml.model_parser API documentation</title>
+<meta name="description" content="Construct sequential neural networks using the Tensorflow-Keras API from
+dictionaries.
+Assumes that the names of the parameters for the layer …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.ml.model_parser</code></h1>
+</header>
+<section id="section-intro">
+<p>Construct sequential neural networks using the Tensorflow-Keras API from
+dictionaries.
+Assumes that the names of the parameters for the layer constructor functions are as
+given in the Tensorflow API documentation.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Construct sequential neural networks using the Tensorflow-Keras API from
+dictionaries.  Assumes that the names of the parameters for the layer constructor functions are as
+given in the Tensorflow API documentation.
+&#34;&#34;&#34;
+import functools
+from typing import Callable
+
+import tensorflow
+import tensorflow.keras.models
+import tensorflow.keras.layers
+
+from delta.config import config
+
+from . import layers
+
+class _LayerWrapper:
+    def __init__(self, layer_type, layer_name, inputs, params):
+        self._layer_type = layer_type
+        self._layer_name = layer_name
+        self._inputs = inputs
+        layer_class = getattr(tensorflow.keras.layers, self._layer_type, None)
+        if layer_class is None and self._layer_type in layers.ALL_LAYERS:
+            layer_class = layers.ALL_LAYERS[self._layer_type]
+        if layer_class is None:
+            raise ValueError(&#39;Unknown layer type %s.&#39; % (self._layer_type))
+        self._layer_constructor = layer_class(**params)
+        self._layer = None
+
+    def is_input(self):
+        return self._layer_type == &#39;Input&#39;
+
+    # TODO: will crash if there is a cycle in the graph
+    def layer(self, layer_dict):
+        &#34;&#34;&#34;
+        Constructs the layers with preceding layers as inputs. layer_dict is a name
+        indexed dictionary of LayerWrappers for all the layers.
+        &#34;&#34;&#34;
+        if self._layer is not None:
+            return self._layer
+        inputs = []
+        for k in self._inputs:
+            if isinstance(k, tensorflow.Tensor):
+                inputs.append(k)
+                continue
+            if k not in layer_dict:
+                raise ValueError(&#39;Input layer &#39; + str(k) + &#39; not found.&#39;)
+            inputs.append(layer_dict[k].layer(layer_dict))
+        if inputs:
+            if len(inputs) == 1:
+                inputs = inputs[0]
+            self._layer = self._layer_constructor(inputs)
+        else:
+            self._layer = self._layer_constructor
+        return self._layer
+
+def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
+    &#34;&#34;&#34;
+    Constructs a layer specified in layer_dict, possibly using parameters specified in
+    param_dict.  layer_id is the order in the order in the config file.
+    Assumes layer_dict only contains the properly named parameters for constructing
+    the layer, and the additional fields:
+
+     * `type`: the type of keras layer.
+     * `name` (optional): a name to refer to the layer by
+     * `inputs` (optional): the name or a list of names of
+       the preceding layers (defaults to previous in list)
+    &#34;&#34;&#34;
+    if len(layer_dict.keys()) &gt; 1:
+        raise ValueError(&#39;Layer with multiple types.&#39;)
+    layer_type = next(layer_dict.keys().__iter__())
+    l = layer_dict[layer_type]
+    if l is None:
+        l = {}
+
+    for (k, v) in l.items():
+        if isinstance(v, str) and v in param_dict.keys():
+            l[k] = param_dict[v]
+
+    inputs = [prev_layer]
+    if layer_type == &#39;Input&#39;:
+        inputs = []
+    if &#39;name&#39; in l:
+        layer_id = l[&#39;name&#39;]
+    if &#39;inputs&#39; in l:
+        inputs = l[&#39;inputs&#39;]
+        del l[&#39;inputs&#39;]
+        if isinstance(inputs, (int, str)):
+            inputs = [inputs]
+
+    return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
+
+def _make_model(model_dict, exposed_params):
+    layer_list = model_dict[&#39;layers&#39;]
+    defined_params = {}
+    if &#39;params&#39; in model_dict and model_dict[&#39;params&#39;] is not None:
+        defined_params = model_dict[&#39;params&#39;]
+
+    params = {**exposed_params, **defined_params}
+    layer_dict = {}
+    last = None
+    first_layer_type = next(layer_list[0].keys().__iter__())
+    if first_layer_type != &#39;Input&#39; and &#39;input&#39; not in layer_list[0][first_layer_type]:
+        layer_list = [{&#39;Input&#39; : {&#39;shape&#39; : params[&#39;in_shape&#39;]}}] + layer_list
+    #if layer_list[0][&#39;type&#39;] != &#39;Input&#39; and &#39;input&#39; not in layer_list[0]:
+    prev_layer = 0
+    for (i, l) in enumerate(layer_list):
+        (layer_id, layer) = _make_layer(l, i, prev_layer, params)
+        last = layer
+        layer_dict[layer_id] = layer
+        prev_layer = layer_id
+
+    outputs = last.layer(layer_dict)
+    inputs = [l.layer(layer_dict) for l in layer_dict.values() if l.is_input()]
+
+    if len(inputs) == 1:
+        inputs = inputs[0]
+    return tensorflow.keras.models.Model(inputs=inputs, outputs=outputs)
+
+def model_from_dict(model_dict, exposed_params) -&gt; Callable[[], tensorflow.keras.models.Sequential]:
+    &#34;&#34;&#34;
+    Creates a function that returns a sequential model from a dictionary.
+    &#34;&#34;&#34;
+    return functools.partial(_make_model, model_dict, exposed_params)
+
+def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Sequential]:
+    &#34;&#34;&#34;
+    Creates the model specified in the configuration.
+    &#34;&#34;&#34;
+    in_data_shape = (config.train.network.chunk_size(), config.train.network.chunk_size(), num_bands)
+    out_data_shape = (config.train.network.output_size(), config.train.network.output_size(),
+                      len(config.dataset.classes))
+
+    params_exposed = {&#39;out_shape&#39; : out_data_shape,
+                      &#39;out_dims&#39; : out_data_shape[0] * out_data_shape[1] * out_data_shape[2],
+                      &#39;in_shape&#39; : in_data_shape,
+                      &#39;in_dims&#39;  : in_data_shape[0] * in_data_shape[1] * in_data_shape[2],
+                      &#39;num_bands&#39; : in_data_shape[2]}
+
+    return model_from_dict(config.train.network.model.to_dict(), params_exposed)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.ml.model_parser.config_model"><code class="name flex">
+<span>def <span class="ident">config_model</span></span>(<span>num_bands: int) ‑> Callable[[], tensorflow.python.keras.engine.sequential.Sequential]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Creates the model specified in the configuration.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Sequential]:
+    &#34;&#34;&#34;
+    Creates the model specified in the configuration.
+    &#34;&#34;&#34;
+    in_data_shape = (config.train.network.chunk_size(), config.train.network.chunk_size(), num_bands)
+    out_data_shape = (config.train.network.output_size(), config.train.network.output_size(),
+                      len(config.dataset.classes))
+
+    params_exposed = {&#39;out_shape&#39; : out_data_shape,
+                      &#39;out_dims&#39; : out_data_shape[0] * out_data_shape[1] * out_data_shape[2],
+                      &#39;in_shape&#39; : in_data_shape,
+                      &#39;in_dims&#39;  : in_data_shape[0] * in_data_shape[1] * in_data_shape[2],
+                      &#39;num_bands&#39; : in_data_shape[2]}
+
+    return model_from_dict(config.train.network.model.to_dict(), params_exposed)</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.model_parser.model_from_dict"><code class="name flex">
+<span>def <span class="ident">model_from_dict</span></span>(<span>model_dict, exposed_params) ‑> Callable[[], tensorflow.python.keras.engine.sequential.Sequential]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Creates a function that returns a sequential model from a dictionary.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def model_from_dict(model_dict, exposed_params) -&gt; Callable[[], tensorflow.keras.models.Sequential]:
+    &#34;&#34;&#34;
+    Creates a function that returns a sequential model from a dictionary.
+    &#34;&#34;&#34;
+    return functools.partial(_make_model, model_dict, exposed_params)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.ml" href="index.html">delta.ml</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.ml.model_parser.config_model" href="#delta.ml.model_parser.config_model">config_model</a></code></li>
+<li><code><a title="delta.ml.model_parser.model_from_dict" href="#delta.ml.model_parser.model_from_dict">model_from_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>

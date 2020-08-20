@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.imagery.imagery_dataset API documentation</title>
+<meta name="description" content="Tools for loading input images into the TensorFlow Dataset class." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.imagery.imagery_dataset</code></h1>
+</header>
+<section id="section-intro">
+<p>Tools for loading input images into the TensorFlow Dataset class.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Tools for loading input images into the TensorFlow Dataset class.
+&#34;&#34;&#34;
+import functools
+import math
+import random
+import sys
+import os
+import portalocker
+import numpy as np
+import tensorflow as tf
+
+from delta.config import config
+from delta.imagery import rectangle
+from delta.imagery.sources import loader
+
+class ImageryDataset:
+    &#34;&#34;&#34;Create dataset with all files as described in the provided config file.
+    &#34;&#34;&#34;
+
+    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1,
+                 resume_mode=False, log_folder=None):
+        &#34;&#34;&#34;
+        Initialize the dataset based on the specified image and label ImageSets
+        &#34;&#34;&#34;
+
+        self._resume_mode = resume_mode
+        self._log_folder  = log_folder
+        if self._log_folder and not os.path.exists(self._log_folder):
+            os.mkdir(self._log_folder)
+
+        # Record some of the config values
+        assert (chunk_size % 2) == (output_size % 2), &#39;Chunk size and output size must both be either even or odd.&#39;
+        self._chunk_size   = chunk_size
+        self._output_size  = output_size
+        self._output_dims  = 1
+        self._chunk_stride = chunk_stride
+        self._data_type    = tf.float32
+        self._label_type   = tf.uint8
+
+        if labels:
+            assert len(images) == len(labels)
+        self._images = images
+        self._labels = labels
+
+        # Load the first image to get the number of bands for the input files.
+        self._num_bands = loader.load_image(images, 0).num_bands()
+
+    def _get_image_read_log_path(self, image_path):
+        &#34;&#34;&#34;Return the path to the read log for an input image&#34;&#34;&#34;
+        if not self._log_folder:
+            return None
+        image_name = os.path.basename(image_path)
+        file_name  = os.path.splitext(image_name)[0] + &#39;_read.log&#39;
+        log_path   = os.path.join(self._log_folder, file_name)
+        return log_path
+
+    def _get_image_read_count(self, image_path):
+        &#34;&#34;&#34;Return the number of ROIs we have read from an image&#34;&#34;&#34;
+        log_path = self._get_image_read_log_path(image_path)
+        if (not log_path) or not os.path.exists(log_path):
+            return 0
+        counter = 0
+        with portalocker.Lock(log_path, &#39;r&#39;, timeout=300) as f:
+            for line in f: #pylint: disable=W0612
+                counter += 1
+        return counter
+
+    def _load_tensor_imagery(self, is_labels, image_index, bbox):
+        &#34;&#34;&#34;Loads a single image as a tensor.&#34;&#34;&#34;
+        data = self._labels if is_labels else self._images
+
+        if not is_labels: # Record each time we write a tile
+            file_path = data[image_index.numpy()]
+            log_path  = self._get_image_read_log_path(file_path)
+            if log_path:
+                with portalocker.Lock(log_path, &#39;a&#39;, timeout=300) as f:
+                    f.write(str(bbox) + &#39;\n&#39;)
+                    # TODO: What to write and when to clear it?
+
+        try:
+            image = loader.load_image(data, image_index.numpy())
+            w = int(bbox[2])
+            h = int(bbox[3])
+            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
+            r = image.read(rect)
+        except Exception as e: #pylint: disable=W0703
+            print(&#39;Caught exception loading tile from image: &#39; + data[image_index.numpy()] + &#39; -&gt; &#39; + str(e)
+                  + &#39;\nSkipping tile: &#39; + str(bbox))
+            if config.general.stop_on_input_error():
+                print(&#39;Aborting processing, set --bypass-input-errors to bypass this error.&#39;)
+                raise
+            # Else just skip this tile
+            r = np.zeros(shape=(0,0,0), dtype=np.float32)
+        return r
+
+    def _tile_images(self):
+        max_block_bytes = config.io.block_size_mb() * 1024 * 1024
+        def tile_generator():
+            tgs = []
+            for i in range(len(self._images)):
+
+                if self._resume_mode:
+                    # TODO: Improve feature to work with multiple epochs
+                    # Skip images which we have already read some number of tiles from
+                    if self._get_image_read_count(self._images[i]) &gt; config.io.resume_cutoff():
+                        continue
+
+                try:
+                    img = loader.load_image(self._images, i)
+
+                    if self._labels: # If we have labels make sure they are the same size as the input images
+                        label = loader.load_image(self._labels, i)
+                        if label.size() != img.size():
+                            raise Exception(&#39;Label file &#39; + self._labels[i] + &#39; with size &#39; + str(label.size())
+                                            + &#39; does not match input image size of &#39; + str(img.size()))
+                    # w * h * bands * 4 * chunk * chunk = max_block_bytes
+                    tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
+                                               config.io.tile_ratio()))
+                    tile_height = int(config.io.tile_ratio() * tile_width)
+                    min_block_size = self._chunk_size ** 2 * config.io.tile_ratio() * img.num_bands() * 4
+                    if max_block_bytes &lt; min_block_size:
+                        print(&#39;Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)&#39;
+                              % (max_block_bytes / 1024 / 1024,
+                                 min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
+                              file=sys.stderr)
+                    if tile_width &lt; self._chunk_size or tile_height &lt; self._chunk_size:
+                        raise ValueError(&#39;max_block_bytes is too low.&#39;)
+                    tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
+                                      overlap=self._chunk_size - 1)
+                except Exception as e: #pylint: disable=W0703
+                    print(&#39;Caught exception tiling image: &#39; + self._images[i] + &#39; -&gt; &#39; + str(e)
+                          + &#39;\nWill not load any tiles from this image&#39;)
+                    if config.general.stop_on_input_error():
+                        print(&#39;Aborting processing, set --bypass-input-errors to bypass this error.&#39;)
+                        raise
+                    tiles = [] # Else move past this image without loading any tiles
+
+                random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
+                tgs.append((i, tiles))
+            if not tgs:
+                return
+            while tgs:
+                cur = tgs[:config.io.interleave_images()]
+                tgs = tgs[config.io.interleave_images():]
+                done = False
+                while not done:
+                    done = True
+                    for it in cur:
+                        if not it[1]:
+                            continue
+                        t = it[1].pop(0)
+                        if t:
+                            done = False
+                            yield (it[0], t.min_x, t.min_y, t.max_x, t.max_y)
+                    if done:
+                        break
+        return tf.data.Dataset.from_generator(tile_generator,
+                                              (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32))
+
+    def _load_images(self, is_labels, data_type):
+        &#34;&#34;&#34;
+        Loads a list of images as tensors.
+        If label_list is specified, load labels instead. The corresponding image files are still required however.
+        &#34;&#34;&#34;
+        ds_input = self._tile_images()
+        def load_tile(image_index, x1, y1, x2, y2):
+            img = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                   is_labels),
+                                 [image_index, [x1, y1, x2, y2]], data_type)
+            return img
+        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
+
+        # Don&#39;t let the entire session be taken down by one bad dataset input.
+        # - Would be better to handle this somehow but it is not clear if TF supports that.
+#        ret = ret.apply(tf.data.experimental.ignore_errors())
+
+        return ret
+
+    def _chunk_image(self, image):
+        &#34;&#34;&#34;Split up a tensor image into tensor chunks&#34;&#34;&#34;
+        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
+        strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
+        rates   = [1, 1, 1, 1]
+        result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
+                                           padding=&#39;VALID&#39;)
+        # Output is [1, M, N, chunk*chunk*bands]
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
+
+        return result
+
+    def _reshape_labels(self, labels):
+        &#34;&#34;&#34;Reshape the labels to account for the chunking process.&#34;&#34;&#34;
+        w = (self._chunk_size - self._output_size) // 2
+        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
+                                                             tf.shape(labels)[1] - 2 * w) #pylint: disable=C0330
+
+        ksizes  = [1, self._output_size, self._output_size, 1]
+        strides = [1, self._chunk_stride, self._chunk_stride, 1]
+        rates   = [1, 1, 1, 1]
+        labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
+                                          padding=&#39;VALID&#39;)
+        return tf.reshape(labels, [-1, self._output_size, self._output_size])
+
+    def data(self):
+        &#34;&#34;&#34;
+        Unbatched dataset of image chunks.
+        &#34;&#34;&#34;
+        ret = self._load_images(False, self._data_type)
+        ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        return ret.unbatch()
+
+    def labels(self):
+        &#34;&#34;&#34;
+        Unbatched dataset of labels.
+        &#34;&#34;&#34;
+        label_set = self._load_images(True, self._label_type)
+        label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
+        return label_set.unbatch()
+
+    def dataset(self, class_weights=None):
+        &#34;&#34;&#34;
+        Return the underlying TensorFlow dataset object that this class creates.
+
+        class_weights: a list of weights to apply to the samples in each class, if specified.
+        &#34;&#34;&#34;
+
+        # Pair the data and labels in our dataset
+        ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        # ignore labels with no data
+        if self._labels.nodata_value():
+            ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
+        if class_weights is not None:
+            lookup = tf.constant(class_weights)
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
+        return ds
+
+    def num_bands(self):
+        &#34;&#34;&#34;
+        Return the number of bands in each image of the data set.
+        &#34;&#34;&#34;
+        return self._num_bands
+
+    def chunk_size(self):
+        &#34;&#34;&#34;
+        Size of chunks used for inputs.
+        &#34;&#34;&#34;
+    def output_shape(self):
+        &#34;&#34;&#34;
+        Output size of blocks of labels.
+        &#34;&#34;&#34;
+        return (self._output_size, self._output_size, self._output_dims)
+
+    def image_set(self):
+        &#34;&#34;&#34;
+        Returns set of images.
+        &#34;&#34;&#34;
+        return self._images
+    def label_set(self):
+        &#34;&#34;&#34;
+        Returns set of label images.
+        &#34;&#34;&#34;
+        return self._labels
+
+class AutoencoderDataset(ImageryDataset):
+    &#34;&#34;&#34;Slightly modified dataset class for the Autoencoder which does not use separate label files&#34;&#34;&#34;
+
+    def __init__(self, images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None):
+        &#34;&#34;&#34;
+        The images are used as labels as well.
+        &#34;&#34;&#34;
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
+                                                 resume_mode=resume_mode, log_folder=log_folder)
+        self._labels = self._images
+        self._output_dims = self.num_bands()
+
+    def labels(self):
+        return self.data()</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.imagery.imagery_dataset.AutoencoderDataset"><code class="flex name class">
+<span>class <span class="ident">AutoencoderDataset</span></span>
+<span>(</span><span>images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Slightly modified dataset class for the Autoencoder which does not use separate label files</p>
+<p>The images are used as labels as well.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class AutoencoderDataset(ImageryDataset):
+    &#34;&#34;&#34;Slightly modified dataset class for the Autoencoder which does not use separate label files&#34;&#34;&#34;
+
+    def __init__(self, images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None):
+        &#34;&#34;&#34;
+        The images are used as labels as well.
+        &#34;&#34;&#34;
+        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
+                                                 resume_mode=resume_mode, log_folder=log_folder)
+        self._labels = self._images
+        self._output_dims = self.num_bands()
+
+    def labels(self):
+        return self.data()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.imagery.imagery_dataset.ImageryDataset" href="#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.imagery.imagery_dataset.ImageryDataset" href="#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.chunk_size" href="#delta.imagery.imagery_dataset.ImageryDataset.chunk_size">chunk_size</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.data" href="#delta.imagery.imagery_dataset.ImageryDataset.data">data</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.dataset" href="#delta.imagery.imagery_dataset.ImageryDataset.dataset">dataset</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.image_set" href="#delta.imagery.imagery_dataset.ImageryDataset.image_set">image_set</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.label_set" href="#delta.imagery.imagery_dataset.ImageryDataset.label_set">label_set</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.labels" href="#delta.imagery.imagery_dataset.ImageryDataset.labels">labels</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.num_bands" href="#delta.imagery.imagery_dataset.ImageryDataset.num_bands">num_bands</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.output_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.output_shape">output_shape</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset"><code class="flex name class">
+<span>class <span class="ident">ImageryDataset</span></span>
+<span>(</span><span>images, labels, chunk_size, output_size, chunk_stride=1, resume_mode=False, log_folder=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create dataset with all files as described in the provided config file.</p>
+<p>Initialize the dataset based on the specified image and label ImageSets</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ImageryDataset:
+    &#34;&#34;&#34;Create dataset with all files as described in the provided config file.
+    &#34;&#34;&#34;
+
+    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1,
+                 resume_mode=False, log_folder=None):
+        &#34;&#34;&#34;
+        Initialize the dataset based on the specified image and label ImageSets
+        &#34;&#34;&#34;
+
+        self._resume_mode = resume_mode
+        self._log_folder  = log_folder
+        if self._log_folder and not os.path.exists(self._log_folder):
+            os.mkdir(self._log_folder)
+
+        # Record some of the config values
+        assert (chunk_size % 2) == (output_size % 2), &#39;Chunk size and output size must both be either even or odd.&#39;
+        self._chunk_size   = chunk_size
+        self._output_size  = output_size
+        self._output_dims  = 1
+        self._chunk_stride = chunk_stride
+        self._data_type    = tf.float32
+        self._label_type   = tf.uint8
+
+        if labels:
+            assert len(images) == len(labels)
+        self._images = images
+        self._labels = labels
+
+        # Load the first image to get the number of bands for the input files.
+        self._num_bands = loader.load_image(images, 0).num_bands()
+
+    def _get_image_read_log_path(self, image_path):
+        &#34;&#34;&#34;Return the path to the read log for an input image&#34;&#34;&#34;
+        if not self._log_folder:
+            return None
+        image_name = os.path.basename(image_path)
+        file_name  = os.path.splitext(image_name)[0] + &#39;_read.log&#39;
+        log_path   = os.path.join(self._log_folder, file_name)
+        return log_path
+
+    def _get_image_read_count(self, image_path):
+        &#34;&#34;&#34;Return the number of ROIs we have read from an image&#34;&#34;&#34;
+        log_path = self._get_image_read_log_path(image_path)
+        if (not log_path) or not os.path.exists(log_path):
+            return 0
+        counter = 0
+        with portalocker.Lock(log_path, &#39;r&#39;, timeout=300) as f:
+            for line in f: #pylint: disable=W0612
+                counter += 1
+        return counter
+
+    def _load_tensor_imagery(self, is_labels, image_index, bbox):
+        &#34;&#34;&#34;Loads a single image as a tensor.&#34;&#34;&#34;
+        data = self._labels if is_labels else self._images
+
+        if not is_labels: # Record each time we write a tile
+            file_path = data[image_index.numpy()]
+            log_path  = self._get_image_read_log_path(file_path)
+            if log_path:
+                with portalocker.Lock(log_path, &#39;a&#39;, timeout=300) as f:
+                    f.write(str(bbox) + &#39;\n&#39;)
+                    # TODO: What to write and when to clear it?
+
+        try:
+            image = loader.load_image(data, image_index.numpy())
+            w = int(bbox[2])
+            h = int(bbox[3])
+            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
+            r = image.read(rect)
+        except Exception as e: #pylint: disable=W0703
+            print(&#39;Caught exception loading tile from image: &#39; + data[image_index.numpy()] + &#39; -&gt; &#39; + str(e)
+                  + &#39;\nSkipping tile: &#39; + str(bbox))
+            if config.general.stop_on_input_error():
+                print(&#39;Aborting processing, set --bypass-input-errors to bypass this error.&#39;)
+                raise
+            # Else just skip this tile
+            r = np.zeros(shape=(0,0,0), dtype=np.float32)
+        return r
+
+    def _tile_images(self):
+        max_block_bytes = config.io.block_size_mb() * 1024 * 1024
+        def tile_generator():
+            tgs = []
+            for i in range(len(self._images)):
+
+                if self._resume_mode:
+                    # TODO: Improve feature to work with multiple epochs
+                    # Skip images which we have already read some number of tiles from
+                    if self._get_image_read_count(self._images[i]) &gt; config.io.resume_cutoff():
+                        continue
+
+                try:
+                    img = loader.load_image(self._images, i)
+
+                    if self._labels: # If we have labels make sure they are the same size as the input images
+                        label = loader.load_image(self._labels, i)
+                        if label.size() != img.size():
+                            raise Exception(&#39;Label file &#39; + self._labels[i] + &#39; with size &#39; + str(label.size())
+                                            + &#39; does not match input image size of &#39; + str(img.size()))
+                    # w * h * bands * 4 * chunk * chunk = max_block_bytes
+                    tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
+                                               config.io.tile_ratio()))
+                    tile_height = int(config.io.tile_ratio() * tile_width)
+                    min_block_size = self._chunk_size ** 2 * config.io.tile_ratio() * img.num_bands() * 4
+                    if max_block_bytes &lt; min_block_size:
+                        print(&#39;Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)&#39;
+                              % (max_block_bytes / 1024 / 1024,
+                                 min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
+                              file=sys.stderr)
+                    if tile_width &lt; self._chunk_size or tile_height &lt; self._chunk_size:
+                        raise ValueError(&#39;max_block_bytes is too low.&#39;)
+                    tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
+                                      overlap=self._chunk_size - 1)
+                except Exception as e: #pylint: disable=W0703
+                    print(&#39;Caught exception tiling image: &#39; + self._images[i] + &#39; -&gt; &#39; + str(e)
+                          + &#39;\nWill not load any tiles from this image&#39;)
+                    if config.general.stop_on_input_error():
+                        print(&#39;Aborting processing, set --bypass-input-errors to bypass this error.&#39;)
+                        raise
+                    tiles = [] # Else move past this image without loading any tiles
+
+                random.Random(0).shuffle(tiles) # gives consistent random ordering so labels will match
+                tgs.append((i, tiles))
+            if not tgs:
+                return
+            while tgs:
+                cur = tgs[:config.io.interleave_images()]
+                tgs = tgs[config.io.interleave_images():]
+                done = False
+                while not done:
+                    done = True
+                    for it in cur:
+                        if not it[1]:
+                            continue
+                        t = it[1].pop(0)
+                        if t:
+                            done = False
+                            yield (it[0], t.min_x, t.min_y, t.max_x, t.max_y)
+                    if done:
+                        break
+        return tf.data.Dataset.from_generator(tile_generator,
+                                              (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32))
+
+    def _load_images(self, is_labels, data_type):
+        &#34;&#34;&#34;
+        Loads a list of images as tensors.
+        If label_list is specified, load labels instead. The corresponding image files are still required however.
+        &#34;&#34;&#34;
+        ds_input = self._tile_images()
+        def load_tile(image_index, x1, y1, x2, y2):
+            img = tf.py_function(functools.partial(self._load_tensor_imagery,
+                                                   is_labels),
+                                 [image_index, [x1, y1, x2, y2]], data_type)
+            return img
+        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
+
+        # Don&#39;t let the entire session be taken down by one bad dataset input.
+        # - Would be better to handle this somehow but it is not clear if TF supports that.
+#        ret = ret.apply(tf.data.experimental.ignore_errors())
+
+        return ret
+
+    def _chunk_image(self, image):
+        &#34;&#34;&#34;Split up a tensor image into tensor chunks&#34;&#34;&#34;
+        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
+        strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
+        rates   = [1, 1, 1, 1]
+        result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
+                                           padding=&#39;VALID&#39;)
+        # Output is [1, M, N, chunk*chunk*bands]
+        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
+
+        return result
+
+    def _reshape_labels(self, labels):
+        &#34;&#34;&#34;Reshape the labels to account for the chunking process.&#34;&#34;&#34;
+        w = (self._chunk_size - self._output_size) // 2
+        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
+                                                             tf.shape(labels)[1] - 2 * w) #pylint: disable=C0330
+
+        ksizes  = [1, self._output_size, self._output_size, 1]
+        strides = [1, self._chunk_stride, self._chunk_stride, 1]
+        rates   = [1, 1, 1, 1]
+        labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
+                                          padding=&#39;VALID&#39;)
+        return tf.reshape(labels, [-1, self._output_size, self._output_size])
+
+    def data(self):
+        &#34;&#34;&#34;
+        Unbatched dataset of image chunks.
+        &#34;&#34;&#34;
+        ret = self._load_images(False, self._data_type)
+        ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        return ret.unbatch()
+
+    def labels(self):
+        &#34;&#34;&#34;
+        Unbatched dataset of labels.
+        &#34;&#34;&#34;
+        label_set = self._load_images(True, self._label_type)
+        label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
+        return label_set.unbatch()
+
+    def dataset(self, class_weights=None):
+        &#34;&#34;&#34;
+        Return the underlying TensorFlow dataset object that this class creates.
+
+        class_weights: a list of weights to apply to the samples in each class, if specified.
+        &#34;&#34;&#34;
+
+        # Pair the data and labels in our dataset
+        ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        # ignore labels with no data
+        if self._labels.nodata_value():
+            ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
+        if class_weights is not None:
+            lookup = tf.constant(class_weights)
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
+        return ds
+
+    def num_bands(self):
+        &#34;&#34;&#34;
+        Return the number of bands in each image of the data set.
+        &#34;&#34;&#34;
+        return self._num_bands
+
+    def chunk_size(self):
+        &#34;&#34;&#34;
+        Size of chunks used for inputs.
+        &#34;&#34;&#34;
+    def output_shape(self):
+        &#34;&#34;&#34;
+        Output size of blocks of labels.
+        &#34;&#34;&#34;
+        return (self._output_size, self._output_size, self._output_dims)
+
+    def image_set(self):
+        &#34;&#34;&#34;
+        Returns set of images.
+        &#34;&#34;&#34;
+        return self._images
+    def label_set(self):
+        &#34;&#34;&#34;
+        Returns set of label images.
+        &#34;&#34;&#34;
+        return self._labels</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.imagery.imagery_dataset.AutoencoderDataset" href="#delta.imagery.imagery_dataset.AutoencoderDataset">AutoencoderDataset</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.chunk_size"><code class="name flex">
+<span>def <span class="ident">chunk_size</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Size of chunks used for inputs.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def chunk_size(self):
+    &#34;&#34;&#34;
+    Size of chunks used for inputs.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.data"><code class="name flex">
+<span>def <span class="ident">data</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Unbatched dataset of image chunks.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def data(self):
+    &#34;&#34;&#34;
+    Unbatched dataset of image chunks.
+    &#34;&#34;&#34;
+    ret = self._load_images(False, self._data_type)
+    ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    return ret.unbatch()</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.dataset"><code class="name flex">
+<span>def <span class="ident">dataset</span></span>(<span>self, class_weights=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the underlying TensorFlow dataset object that this class creates.</p>
+<p>class_weights: a list of weights to apply to the samples in each class, if specified.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dataset(self, class_weights=None):
+    &#34;&#34;&#34;
+    Return the underlying TensorFlow dataset object that this class creates.
+
+    class_weights: a list of weights to apply to the samples in each class, if specified.
+    &#34;&#34;&#34;
+
+    # Pair the data and labels in our dataset
+    ds = tf.data.Dataset.zip((self.data(), self.labels()))
+    # ignore labels with no data
+    if self._labels.nodata_value():
+        ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
+    if class_weights is not None:
+        lookup = tf.constant(class_weights)
+        ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
+    return ds</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.image_set"><code class="name flex">
+<span>def <span class="ident">image_set</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns set of images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def image_set(self):
+    &#34;&#34;&#34;
+    Returns set of images.
+    &#34;&#34;&#34;
+    return self._images</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.label_set"><code class="name flex">
+<span>def <span class="ident">label_set</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns set of label images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def label_set(self):
+    &#34;&#34;&#34;
+    Returns set of label images.
+    &#34;&#34;&#34;
+    return self._labels</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.labels"><code class="name flex">
+<span>def <span class="ident">labels</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Unbatched dataset of labels.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def labels(self):
+    &#34;&#34;&#34;
+    Unbatched dataset of labels.
+    &#34;&#34;&#34;
+    label_set = self._load_images(True, self._label_type)
+    label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
+    return label_set.unbatch()</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.num_bands"><code class="name flex">
+<span>def <span class="ident">num_bands</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the number of bands in each image of the data set.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def num_bands(self):
+    &#34;&#34;&#34;
+    Return the number of bands in each image of the data set.
+    &#34;&#34;&#34;
+    return self._num_bands</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_dataset.ImageryDataset.output_shape"><code class="name flex">
+<span>def <span class="ident">output_shape</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Output size of blocks of labels.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def output_shape(self):
+    &#34;&#34;&#34;
+    Output size of blocks of labels.
+    &#34;&#34;&#34;
+    return (self._output_size, self._output_size, self._output_dims)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.imagery" href="index.html">delta.imagery</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.imagery.imagery_dataset.AutoencoderDataset" href="#delta.imagery.imagery_dataset.AutoencoderDataset">AutoencoderDataset</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_dataset.ImageryDataset" href="#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a></code></h4>
+<ul class="two-column">
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.chunk_size" href="#delta.imagery.imagery_dataset.ImageryDataset.chunk_size">chunk_size</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.data" href="#delta.imagery.imagery_dataset.ImageryDataset.data">data</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.dataset" href="#delta.imagery.imagery_dataset.ImageryDataset.dataset">dataset</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.image_set" href="#delta.imagery.imagery_dataset.ImageryDataset.image_set">image_set</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.label_set" href="#delta.imagery.imagery_dataset.ImageryDataset.label_set">label_set</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.labels" href="#delta.imagery.imagery_dataset.ImageryDataset.labels">labels</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.num_bands" href="#delta.imagery.imagery_dataset.ImageryDataset.num_bands">num_bands</a></code></li>
+<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.output_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.output_shape">output_shape</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>

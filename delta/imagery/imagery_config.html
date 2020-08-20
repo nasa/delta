@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.8.4" />
+<title>delta.imagery.imagery_config API documentation</title>
+<meta name="description" content="Configuration options specific to imagery." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.imagery.imagery_config</code></h1>
+</header>
+<section id="section-intro">
+<p>Configuration options specific to imagery.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Configuration options specific to imagery.
+&#34;&#34;&#34;
+import os
+import os.path
+import numpy as np
+
+import appdirs
+
+from delta.config import config, DeltaConfigComponent, validate_path, validate_positive
+from . import disk_folder_cache
+
+
+class ImageSet:
+    &#34;&#34;&#34;
+    Specifies a set of image files.
+
+    The images can be accessed by using the `ImageSet` as an iterable.
+    &#34;&#34;&#34;
+    def __init__(self, images, image_type, preprocess=None, nodata_value=None):
+        &#34;&#34;&#34;
+        The parameters for the constructor are:
+
+         * An iterable of image filenames `images`
+         * The image type (i.e., tiff, worldview, landsat) `image_type`
+         * An optional preprocessing function to apply to the image,
+           following the signature in `delta.imagery.sources.delta_image.DeltaImage.set_process`.
+         * A `nodata_value` for pixels to disregard
+        &#34;&#34;&#34;
+        self._images = images
+        self._image_type = image_type
+        self._preprocess = preprocess
+        self._nodata_value = nodata_value
+
+    def type(self):
+        &#34;&#34;&#34;
+        The type of the image (used by `delta.imagery.sources.loader`).
+        &#34;&#34;&#34;
+        return self._image_type
+    def preprocess(self):
+        &#34;&#34;&#34;
+        Return the preprocessing function.
+        &#34;&#34;&#34;
+        return self._preprocess
+    def nodata_value(self):
+        &#34;&#34;&#34;
+        Value of pixels to disregard.
+        &#34;&#34;&#34;
+        return self._nodata_value
+    def __len__(self):
+        return len(self._images)
+    def __getitem__(self, index):
+        if index &lt; 0 or index &gt;= len(self):
+            raise IndexError(&#39;Index %s out of range.&#39; % (index))
+        return self._images[index]
+    def __iter__(self):
+        return self._images.__iter__()
+
+__DEFAULT_EXTENSIONS = {&#39;tiff&#39; : &#39;.tiff&#39;,
+                        &#39;worldview&#39; : &#39;.zip&#39;,
+                        &#39;landsat&#39; : &#39;.zip&#39;,
+                        &#39;npy&#39; : &#39;.npy&#39;}
+__DEFAULT_SCALE_FACTORS = {&#39;tiff&#39; : 1024.0,
+                           &#39;worldview&#39; : 2048.0,
+                           &#39;landsat&#39; : 120.0,
+                           &#39;npy&#39; : None}
+def __extension(conf):
+    if conf[&#39;extension&#39;] == &#39;default&#39;:
+        return __DEFAULT_EXTENSIONS.get(conf[&#39;type&#39;])
+    return conf[&#39;extension&#39;]
+def __scale_factor(image_comp):
+    f = image_comp.preprocess.scale_factor()
+    if f == &#39;default&#39;:
+        return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
+    try:
+        return float(f)
+    except ValueError:
+        raise ValueError(&#39;Scale factor is %s, must be a float.&#39; % (f))
+
+def __find_images(conf, matching_images=None, matching_conf=None):
+    &#39;&#39;&#39;
+    Find the images specified by a given configuration, returning a list of images.
+    If matching_images and matching_conf are specified, we find the labels matching these images.
+    &#39;&#39;&#39;
+    images = []
+    if (conf[&#39;files&#39;] is None) != (conf[&#39;file_list&#39;] is None) != (conf[&#39;directory&#39;] is None):
+        raise  ValueError(&#39;&#39;&#39;Too many image specification methods used.\n
+                             Choose one of &#34;files&#34;, &#34;file_list&#34; and &#34;directory&#34; when indicating 
+                             file locations.&#39;&#39;&#39;)
+    if conf[&#39;type&#39;] not in __DEFAULT_EXTENSIONS:
+        raise ValueError(&#39;Unexpected image type %s.&#39; % (conf[&#39;type&#39;]))
+
+    if conf[&#39;files&#39;]:
+        images = conf[&#39;files&#39;]
+    elif conf[&#39;file_list&#39;]:
+        with open(conf[&#39;file_list&#39;], &#39;r&#39;) as f:
+            for line in f:
+                images.append(line)
+    elif conf[&#39;directory&#39;]:
+        extension = __extension(conf)
+        if not os.path.exists(conf[&#39;directory&#39;]):
+            raise ValueError(&#39;Supplied images directory %s does not exist.&#39; % (conf[&#39;directory&#39;]))
+        if matching_images is None:
+            for root, _, filenames in os.walk(conf[&#39;directory&#39;]):
+                for filename in filenames:
+                    if filename.endswith(extension):
+                        images.append(os.path.join(root, filename))
+        else:
+            # find matching labels
+            for m in matching_images:
+                rel_path   = os.path.relpath(m, matching_conf[&#39;directory&#39;])
+                label_path = os.path.join(conf[&#39;directory&#39;], rel_path)
+                images.append(os.path.splitext(label_path)[0] + extension)
+
+    for img in images:
+        if not os.path.exists(img):
+            raise ValueError(&#39;Image file %s does not exist.&#39; % (img))
+    return images
+
+def __preprocess_function(image_comp):
+    if not image_comp.preprocess.enabled():
+        return None
+    f = __scale_factor(image_comp)
+    if f is None:
+        return None
+    return lambda data, _, dummy: data / np.float32(f)
+
+def load_images_labels(images_comp, labels_comp, classes_comp):
+    &#39;&#39;&#39;
+    Takes two configuration subsections and returns (image set, label set). Also takes classes
+    configuration to apply preprocessing function to labels.
+    &#39;&#39;&#39;
+    images_dict = images_comp._config_dict #pylint:disable=protected-access
+    labels_dict = labels_comp._config_dict #pylint:disable=protected-access
+    images = __find_images(images_dict)
+
+    if images_dict[&#39;directory&#39;]:
+        if labels_dict[&#39;files&#39;] or labels_dict[&#39;file_list&#39;]:
+            raise ValueError(&#39;Image directory only supported with label directory.&#39;)
+        if labels_dict[&#39;directory&#39;]:
+            # remove images in same directory ending with label&#39;s extension (can have .tiff and _label.tiff in same dir)
+            if os.path.realpath(labels_dict[&#39;directory&#39;]).startswith(os.path.realpath(images_dict[&#39;directory&#39;])):
+                label_extension = __extension(labels_dict)
+                images = [img for img in images if not img.endswith(label_extension)]
+
+    pre = __preprocess_function(images_comp)
+    imageset = ImageSet(images, images_dict[&#39;type&#39;], pre, images_dict[&#39;nodata_value&#39;])
+
+    if (labels_dict[&#39;files&#39;] is None) and (labels_dict[&#39;file_list&#39;] is None) and (labels_dict[&#39;directory&#39;] is None):
+        return (imageset, None)
+
+    labels = __find_images(labels_dict, images, images_dict)
+
+    if len(labels) != len(images):
+        raise ValueError(&#39;%d images found, but %d labels found.&#39; % (len(images), len(labels)))
+
+    pre = pre_orig = __preprocess_function(labels_comp)
+    conv = classes_comp.classes_to_indices_func()
+    if conv is not None:
+        pre = lambda data, _, dummy: conv(pre_orig(data, _, dummy) if pre_orig is not None else data)
+    return (imageset, ImageSet(labels, labels_dict[&#39;type&#39;],
+                               pre, labels_dict[&#39;nodata_value&#39;]))
+
+class ImagePreprocessConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Turn on preprocessing.&#39;)
+        self.register_field(&#39;scale_factor&#39;, (float, str), &#39;scale_factor&#39;, None, &#39;Image scale factor.&#39;)
+
+def _validate_paths(paths, base_dir):
+    out = []
+    for p in paths:
+        out.append(validate_path(p, base_dir))
+    return out
+
+class ImageSetConfig(DeltaConfigComponent):
+    def __init__(self, name=None):
+        super().__init__()
+        self.register_field(&#39;type&#39;, str, &#39;type&#39;, None, &#39;Image type.&#39;)
+        self.register_field(&#39;files&#39;, list, None, _validate_paths, &#39;List of image files.&#39;)
+        self.register_field(&#39;file_list&#39;, list, None, validate_path, &#39;File listing image files.&#39;)
+        self.register_field(&#39;directory&#39;, str, None, validate_path, &#39;Directory of image files.&#39;)
+        self.register_field(&#39;extension&#39;, str, None, None, &#39;Image file extension.&#39;)
+        self.register_field(&#39;nodata_value&#39;, (float, int), None, None, &#39;Value of pixels to ignore.&#39;)
+
+        if name:
+            self.register_arg(&#39;type&#39;, &#39;--&#39; + name + &#39;-type&#39;)
+            self.register_arg(&#39;file_list&#39;, &#39;--&#39; + name + &#39;-file-list&#39;)
+            self.register_arg(&#39;directory&#39;, &#39;--&#39; + name + &#39;-dir&#39;)
+            self.register_arg(&#39;extension&#39;, &#39;--&#39; + name + &#39;-extension&#39;)
+        self.register_component(ImagePreprocessConfig(), &#39;preprocess&#39;)
+        self._name = name
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        if self._name is None:
+            return
+        super().setup_arg_parser(parser, components)
+        parser.add_argument(&#34;--&#34; + self._name, dest=self._name, required=False,
+                            help=&#34;Specify a single image file.&#34;)
+
+    def parse_args(self, options):
+        if self._name is None:
+            return
+        super().parse_args(options)
+        if hasattr(options, self._name) and getattr(options, self._name) is not None:
+            self._config_dict[&#39;files&#39;] = [getattr(options, self._name)]
+
+class LabelClass:
+    def __init__(self, value, name=None, color=None, weight=None):
+        color_order = [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, \
+                       0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf]
+        if name is None:
+            name = &#39;Class &#39; + str(value)
+        if color is None:
+            color = color_order[value] if value &lt; len(color_order) else 0
+        self.value = value
+        self.name = name
+        self.color = color
+        self.weight = weight
+
+    def __repr__(self):
+        return &#39;Color: &#39; + self.name
+
+class ClassesConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._classes = []
+        self._conversions = []
+
+    def __iter__(self):
+        return self._classes.__iter__()
+
+    def __len__(self):
+        return len(self._classes)
+
+    # overwrite model entirely if updated (don&#39;t want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        self._config_dict = d
+        self._classes = []
+        if isinstance(d, int):
+            for i in range(d):
+                self._classes.append(LabelClass(i))
+        elif isinstance(d, list):
+            for (i, c) in enumerate(d):
+                if isinstance(c, int): # just pixel value
+                    self._classes.append(LabelClass(i))
+                else:
+                    keys = c.keys()
+                    assert len(keys) == 1, &#39;Dict should have name of pixel value.&#39;
+                    k = next(iter(keys))
+                    assert isinstance(k, int), &#39;Class label value must be int.&#39;
+                    inner_dict = c[k]
+                    self._classes.append(LabelClass(k, str(inner_dict.get(&#39;name&#39;)),
+                                                    inner_dict.get(&#39;color&#39;), inner_dict.get(&#39;weight&#39;)))
+        else:
+            raise ValueError(&#39;Expected classes to be an int or list in config, was &#39; + str(d))
+        # make sure the order is consistent for same values, and create preprocessing function
+        self._conversions = []
+        self._classes = sorted(self._classes, key=lambda x: x.value)
+        for (i, v) in enumerate(self._classes):
+            if v.value != i:
+                self._conversions.append(v.value)
+
+    def weights(self):
+        weights = []
+        for c in self._classes:
+            if c.weight is not None:
+                weights.append(c.weight)
+        if not weights:
+            return None
+        assert len(weights) == len(self._classes), &#39;For class weights, either all or none must be specified.&#39;
+        return weights
+
+    def classes_to_indices_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in enumerate(self._conversions):
+                data[data == c] = i
+            return data
+        return convert
+
+    def indices_to_classes_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in reversed(list(enumerate(self._conversions))):
+                data[data == i] = c
+            return data
+        return convert
+
+class DatasetConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__(&#39;Dataset&#39;)
+        self.register_component(ImageSetConfig(&#39;image&#39;), &#39;images&#39;, &#39;__image_comp&#39;)
+        self.register_component(ImageSetConfig(&#39;label&#39;), &#39;labels&#39;, &#39;__label_comp&#39;)
+        self.__images = None
+        self.__labels = None
+        self.register_field(&#39;log_folder&#39;, str, &#39;log_folder&#39;, validate_path,
+                            &#39;Directory where dataset progress is recorded.&#39;)
+        self.register_component(ClassesConfig(), &#39;classes&#39;)
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def images(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the training images.
+        &#34;&#34;&#34;
+        if self.__images is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                self._components[&#39;classes&#39;])
+        return self.__images
+
+    def labels(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the label images.
+        &#34;&#34;&#34;
+        if self.__labels is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                self._components[&#39;classes&#39;])
+        return self.__labels
+
+class CacheConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;dir&#39;, str, None, validate_path, &#39;Cache directory.&#39;)
+        self.register_field(&#39;limit&#39;, int, None, validate_positive, &#39;Number of items to cache.&#39;)
+
+        self._cache_manager = None
+
+    def reset(self):
+        super().reset()
+        self._cache_manager = None
+
+    def manager(self) -&gt; disk_folder_cache.DiskCache:
+        &#34;&#34;&#34;
+        Returns the disk cache object to manage the cache.
+        &#34;&#34;&#34;
+        if self._cache_manager is None:
+            cdir = self._config_dict[&#39;dir&#39;]
+            if cdir == &#39;default&#39;:
+                cdir = appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_cache_dir
+            self._cache_manager = disk_folder_cache.DiskCache(cdir, self._config_dict[&#39;limit&#39;])
+        return self._cache_manager
+
+class IOConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;threads&#39;, int, &#39;threads&#39;, None, &#39;Number of threads to use.&#39;)
+        self.register_field(&#39;block_size_mb&#39;, int, &#39;block_size_mb&#39;, validate_positive,
+                            &#39;Size of an image block to load in memory at once.&#39;)
+        self.register_field(&#39;interleave_images&#39;, int, &#39;interleave_images&#39;, validate_positive,
+                            &#39;Number of images to interleave at a time when training.&#39;)
+        self.register_field(&#39;tile_ratio&#39;, float, &#39;tile_ratio&#39;, validate_positive,
+                            &#39;Width to height ratio of blocks to load in images.&#39;)
+        self.register_field(&#39;resume_cutoff&#39;, int, &#39;resume_cutoff&#39;, None,
+                            &#39;When resuming a dataset, skip images where we have read this many tiles.&#39;)
+
+        self.register_arg(&#39;threads&#39;, &#39;--threads&#39;)
+        self.register_arg(&#39;block_size_mb&#39;, &#39;--block-size-mb&#39;)
+        self.register_arg(&#39;tile_ratio&#39;, &#39;--tile-ratio&#39;)
+
+        self.register_component(CacheConfig(), &#39;cache&#39;)
+
+def register():
+    &#34;&#34;&#34;
+    Registers imagery config options with the global config manager.
+
+    cmd_args enables command line options if set to true.
+    &#34;&#34;&#34;
+    config.register_component(DatasetConfig(), &#39;dataset&#39;)
+    config.register_component(IOConfig(), &#39;io&#39;)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.imagery.imagery_config.load_images_labels"><code class="name flex">
+<span>def <span class="ident">load_images_labels</span></span>(<span>images_comp, labels_comp, classes_comp)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Takes two configuration subsections and returns (image set, label set). Also takes classes
+configuration to apply preprocessing function to labels.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_images_labels(images_comp, labels_comp, classes_comp):
+    &#39;&#39;&#39;
+    Takes two configuration subsections and returns (image set, label set). Also takes classes
+    configuration to apply preprocessing function to labels.
+    &#39;&#39;&#39;
+    images_dict = images_comp._config_dict #pylint:disable=protected-access
+    labels_dict = labels_comp._config_dict #pylint:disable=protected-access
+    images = __find_images(images_dict)
+
+    if images_dict[&#39;directory&#39;]:
+        if labels_dict[&#39;files&#39;] or labels_dict[&#39;file_list&#39;]:
+            raise ValueError(&#39;Image directory only supported with label directory.&#39;)
+        if labels_dict[&#39;directory&#39;]:
+            # remove images in same directory ending with label&#39;s extension (can have .tiff and _label.tiff in same dir)
+            if os.path.realpath(labels_dict[&#39;directory&#39;]).startswith(os.path.realpath(images_dict[&#39;directory&#39;])):
+                label_extension = __extension(labels_dict)
+                images = [img for img in images if not img.endswith(label_extension)]
+
+    pre = __preprocess_function(images_comp)
+    imageset = ImageSet(images, images_dict[&#39;type&#39;], pre, images_dict[&#39;nodata_value&#39;])
+
+    if (labels_dict[&#39;files&#39;] is None) and (labels_dict[&#39;file_list&#39;] is None) and (labels_dict[&#39;directory&#39;] is None):
+        return (imageset, None)
+
+    labels = __find_images(labels_dict, images, images_dict)
+
+    if len(labels) != len(images):
+        raise ValueError(&#39;%d images found, but %d labels found.&#39; % (len(images), len(labels)))
+
+    pre = pre_orig = __preprocess_function(labels_comp)
+    conv = classes_comp.classes_to_indices_func()
+    if conv is not None:
+        pre = lambda data, _, dummy: conv(pre_orig(data, _, dummy) if pre_orig is not None else data)
+    return (imageset, ImageSet(labels, labels_dict[&#39;type&#39;],
+                               pre, labels_dict[&#39;nodata_value&#39;]))</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.register"><code class="name flex">
+<span>def <span class="ident">register</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Registers imagery config options with the global config manager.</p>
+<p>cmd_args enables command line options if set to true.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register():
+    &#34;&#34;&#34;
+    Registers imagery config options with the global config manager.
+
+    cmd_args enables command line options if set to true.
+    &#34;&#34;&#34;
+    config.register_component(DatasetConfig(), &#39;dataset&#39;)
+    config.register_component(IOConfig(), &#39;io&#39;)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.imagery.imagery_config.CacheConfig"><code class="flex name class">
+<span>class <span class="ident">CacheConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class CacheConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;dir&#39;, str, None, validate_path, &#39;Cache directory.&#39;)
+        self.register_field(&#39;limit&#39;, int, None, validate_positive, &#39;Number of items to cache.&#39;)
+
+        self._cache_manager = None
+
+    def reset(self):
+        super().reset()
+        self._cache_manager = None
+
+    def manager(self) -&gt; disk_folder_cache.DiskCache:
+        &#34;&#34;&#34;
+        Returns the disk cache object to manage the cache.
+        &#34;&#34;&#34;
+        if self._cache_manager is None:
+            cdir = self._config_dict[&#39;dir&#39;]
+            if cdir == &#39;default&#39;:
+                cdir = appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_cache_dir
+            self._cache_manager = disk_folder_cache.DiskCache(cdir, self._config_dict[&#39;limit&#39;])
+        return self._cache_manager</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.imagery_config.CacheConfig.manager"><code class="name flex">
+<span>def <span class="ident">manager</span></span>(<span>self) ‑> <a title="delta.imagery.disk_folder_cache.DiskCache" href="disk_folder_cache.html#delta.imagery.disk_folder_cache.DiskCache">DiskCache</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the disk cache object to manage the cache.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def manager(self) -&gt; disk_folder_cache.DiskCache:
+    &#34;&#34;&#34;
+    Returns the disk cache object to manage the cache.
+    &#34;&#34;&#34;
+    if self._cache_manager is None:
+        cdir = self._config_dict[&#39;dir&#39;]
+        if cdir == &#39;default&#39;:
+            cdir = appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_cache_dir
+        self._cache_manager = disk_folder_cache.DiskCache(cdir, self._config_dict[&#39;limit&#39;])
+    return self._cache_manager</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.ClassesConfig"><code class="flex name class">
+<span>class <span class="ident">ClassesConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ClassesConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self._classes = []
+        self._conversions = []
+
+    def __iter__(self):
+        return self._classes.__iter__()
+
+    def __len__(self):
+        return len(self._classes)
+
+    # overwrite model entirely if updated (don&#39;t want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        self._config_dict = d
+        self._classes = []
+        if isinstance(d, int):
+            for i in range(d):
+                self._classes.append(LabelClass(i))
+        elif isinstance(d, list):
+            for (i, c) in enumerate(d):
+                if isinstance(c, int): # just pixel value
+                    self._classes.append(LabelClass(i))
+                else:
+                    keys = c.keys()
+                    assert len(keys) == 1, &#39;Dict should have name of pixel value.&#39;
+                    k = next(iter(keys))
+                    assert isinstance(k, int), &#39;Class label value must be int.&#39;
+                    inner_dict = c[k]
+                    self._classes.append(LabelClass(k, str(inner_dict.get(&#39;name&#39;)),
+                                                    inner_dict.get(&#39;color&#39;), inner_dict.get(&#39;weight&#39;)))
+        else:
+            raise ValueError(&#39;Expected classes to be an int or list in config, was &#39; + str(d))
+        # make sure the order is consistent for same values, and create preprocessing function
+        self._conversions = []
+        self._classes = sorted(self._classes, key=lambda x: x.value)
+        for (i, v) in enumerate(self._classes):
+            if v.value != i:
+                self._conversions.append(v.value)
+
+    def weights(self):
+        weights = []
+        for c in self._classes:
+            if c.weight is not None:
+                weights.append(c.weight)
+        if not weights:
+            return None
+        assert len(weights) == len(self._classes), &#39;For class weights, either all or none must be specified.&#39;
+        return weights
+
+    def classes_to_indices_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in enumerate(self._conversions):
+                data[data == c] = i
+            return data
+        return convert
+
+    def indices_to_classes_func(self):
+        if not self._conversions:
+            return None
+        def convert(data):
+            assert isinstance(data, np.ndarray)
+            for (i, c) in reversed(list(enumerate(self._conversions))):
+                data[data == i] = c
+            return data
+        return convert</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.imagery_config.ClassesConfig.classes_to_indices_func"><code class="name flex">
+<span>def <span class="ident">classes_to_indices_func</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def classes_to_indices_func(self):
+    if not self._conversions:
+        return None
+    def convert(data):
+        assert isinstance(data, np.ndarray)
+        for (i, c) in enumerate(self._conversions):
+            data[data == c] = i
+        return data
+    return convert</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.ClassesConfig.indices_to_classes_func"><code class="name flex">
+<span>def <span class="ident">indices_to_classes_func</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def indices_to_classes_func(self):
+    if not self._conversions:
+        return None
+    def convert(data):
+        assert isinstance(data, np.ndarray)
+        for (i, c) in reversed(list(enumerate(self._conversions))):
+            data[data == i] = c
+        return data
+    return convert</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.ClassesConfig.weights"><code class="name flex">
+<span>def <span class="ident">weights</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def weights(self):
+    weights = []
+    for c in self._classes:
+        if c.weight is not None:
+            weights.append(c.weight)
+    if not weights:
+        return None
+    assert len(weights) == len(self._classes), &#39;For class weights, either all or none must be specified.&#39;
+    return weights</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.DatasetConfig"><code class="flex name class">
+<span>class <span class="ident">DatasetConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DatasetConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__(&#39;Dataset&#39;)
+        self.register_component(ImageSetConfig(&#39;image&#39;), &#39;images&#39;, &#39;__image_comp&#39;)
+        self.register_component(ImageSetConfig(&#39;label&#39;), &#39;labels&#39;, &#39;__label_comp&#39;)
+        self.__images = None
+        self.__labels = None
+        self.register_field(&#39;log_folder&#39;, str, &#39;log_folder&#39;, validate_path,
+                            &#39;Directory where dataset progress is recorded.&#39;)
+        self.register_component(ClassesConfig(), &#39;classes&#39;)
+
+    def reset(self):
+        super().reset()
+        self.__images = None
+        self.__labels = None
+
+    def images(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the training images.
+        &#34;&#34;&#34;
+        if self.__images is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                self._components[&#39;classes&#39;])
+        return self.__images
+
+    def labels(self) -&gt; ImageSet:
+        &#34;&#34;&#34;
+        Returns the label images.
+        &#34;&#34;&#34;
+        if self.__labels is None:
+            (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                                self._components[&#39;labels&#39;],
+                                                                self._components[&#39;classes&#39;])
+        return self.__labels</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.imagery_config.DatasetConfig.images"><code class="name flex">
+<span>def <span class="ident">images</span></span>(<span>self) ‑> <a title="delta.imagery.imagery_config.ImageSet" href="#delta.imagery.imagery_config.ImageSet">ImageSet</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the training images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def images(self) -&gt; ImageSet:
+    &#34;&#34;&#34;
+    Returns the training images.
+    &#34;&#34;&#34;
+    if self.__images is None:
+        (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                            self._components[&#39;labels&#39;],
+                                                            self._components[&#39;classes&#39;])
+    return self.__images</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.DatasetConfig.labels"><code class="name flex">
+<span>def <span class="ident">labels</span></span>(<span>self) ‑> <a title="delta.imagery.imagery_config.ImageSet" href="#delta.imagery.imagery_config.ImageSet">ImageSet</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the label images.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def labels(self) -&gt; ImageSet:
+    &#34;&#34;&#34;
+    Returns the label images.
+    &#34;&#34;&#34;
+    if self.__labels is None:
+        (self.__images, self.__labels) = load_images_labels(self._components[&#39;images&#39;],
+                                                            self._components[&#39;labels&#39;],
+                                                            self._components[&#39;classes&#39;])
+    return self.__labels</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.IOConfig"><code class="flex name class">
+<span>class <span class="ident">IOConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class IOConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;threads&#39;, int, &#39;threads&#39;, None, &#39;Number of threads to use.&#39;)
+        self.register_field(&#39;block_size_mb&#39;, int, &#39;block_size_mb&#39;, validate_positive,
+                            &#39;Size of an image block to load in memory at once.&#39;)
+        self.register_field(&#39;interleave_images&#39;, int, &#39;interleave_images&#39;, validate_positive,
+                            &#39;Number of images to interleave at a time when training.&#39;)
+        self.register_field(&#39;tile_ratio&#39;, float, &#39;tile_ratio&#39;, validate_positive,
+                            &#39;Width to height ratio of blocks to load in images.&#39;)
+        self.register_field(&#39;resume_cutoff&#39;, int, &#39;resume_cutoff&#39;, None,
+                            &#39;When resuming a dataset, skip images where we have read this many tiles.&#39;)
+
+        self.register_arg(&#39;threads&#39;, &#39;--threads&#39;)
+        self.register_arg(&#39;block_size_mb&#39;, &#39;--block-size-mb&#39;)
+        self.register_arg(&#39;tile_ratio&#39;, &#39;--tile-ratio&#39;)
+
+        self.register_component(CacheConfig(), &#39;cache&#39;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.ImagePreprocessConfig"><code class="flex name class">
+<span>class <span class="ident">ImagePreprocessConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ImagePreprocessConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;enabled&#39;, bool, &#39;enabled&#39;, None, &#39;Turn on preprocessing.&#39;)
+        self.register_field(&#39;scale_factor&#39;, (float, str), &#39;scale_factor&#39;, None, &#39;Image scale factor.&#39;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.ImageSet"><code class="flex name class">
+<span>class <span class="ident">ImageSet</span></span>
+<span>(</span><span>images, image_type, preprocess=None, nodata_value=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Specifies a set of image files.</p>
+<p>The images can be accessed by using the <code><a title="delta.imagery.imagery_config.ImageSet" href="#delta.imagery.imagery_config.ImageSet">ImageSet</a></code> as an iterable.</p>
+<p>The parameters for the constructor are:</p>
+<ul>
+<li>An iterable of image filenames <code>images</code></li>
+<li>The image type (i.e., tiff, worldview, landsat) <code>image_type</code></li>
+<li>An optional preprocessing function to apply to the image,
+following the signature in <code>delta.imagery.sources.delta_image.DeltaImage.set_process</code>.</li>
+<li>A <code>nodata_value</code> for pixels to disregard</li>
+</ul></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ImageSet:
+    &#34;&#34;&#34;
+    Specifies a set of image files.
+
+    The images can be accessed by using the `ImageSet` as an iterable.
+    &#34;&#34;&#34;
+    def __init__(self, images, image_type, preprocess=None, nodata_value=None):
+        &#34;&#34;&#34;
+        The parameters for the constructor are:
+
+         * An iterable of image filenames `images`
+         * The image type (i.e., tiff, worldview, landsat) `image_type`
+         * An optional preprocessing function to apply to the image,
+           following the signature in `delta.imagery.sources.delta_image.DeltaImage.set_process`.
+         * A `nodata_value` for pixels to disregard
+        &#34;&#34;&#34;
+        self._images = images
+        self._image_type = image_type
+        self._preprocess = preprocess
+        self._nodata_value = nodata_value
+
+    def type(self):
+        &#34;&#34;&#34;
+        The type of the image (used by `delta.imagery.sources.loader`).
+        &#34;&#34;&#34;
+        return self._image_type
+    def preprocess(self):
+        &#34;&#34;&#34;
+        Return the preprocessing function.
+        &#34;&#34;&#34;
+        return self._preprocess
+    def nodata_value(self):
+        &#34;&#34;&#34;
+        Value of pixels to disregard.
+        &#34;&#34;&#34;
+        return self._nodata_value
+    def __len__(self):
+        return len(self._images)
+    def __getitem__(self, index):
+        if index &lt; 0 or index &gt;= len(self):
+            raise IndexError(&#39;Index %s out of range.&#39; % (index))
+        return self._images[index]
+    def __iter__(self):
+        return self._images.__iter__()</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.imagery_config.ImageSet.nodata_value"><code class="name flex">
+<span>def <span class="ident">nodata_value</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Value of pixels to disregard.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def nodata_value(self):
+    &#34;&#34;&#34;
+    Value of pixels to disregard.
+    &#34;&#34;&#34;
+    return self._nodata_value</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.ImageSet.preprocess"><code class="name flex">
+<span>def <span class="ident">preprocess</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the preprocessing function.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preprocess(self):
+    &#34;&#34;&#34;
+    Return the preprocessing function.
+    &#34;&#34;&#34;
+    return self._preprocess</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.imagery_config.ImageSet.type"><code class="name flex">
+<span>def <span class="ident">type</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>The type of the image (used by <code><a title="delta.imagery.sources.loader" href="sources/loader.html">delta.imagery.sources.loader</a></code>).</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def type(self):
+    &#34;&#34;&#34;
+    The type of the image (used by `delta.imagery.sources.loader`).
+    &#34;&#34;&#34;
+    return self._image_type</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="delta.imagery.imagery_config.ImageSetConfig"><code class="flex name class">
+<span>class <span class="ident">ImageSetConfig</span></span>
+<span>(</span><span>name=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>DELTA configuration component.</p>
+<p>Handles one subsection of a config file. Generally subclasses
+will want to register fields and components in the constructor,
+and possibly override setup_arg_parser and parse_args to handle
+command line options.</p>
+<p>section_header is the title of the section for command line
+arguments in the help.</p>
+<p>Constructs the component.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ImageSetConfig(DeltaConfigComponent):
+    def __init__(self, name=None):
+        super().__init__()
+        self.register_field(&#39;type&#39;, str, &#39;type&#39;, None, &#39;Image type.&#39;)
+        self.register_field(&#39;files&#39;, list, None, _validate_paths, &#39;List of image files.&#39;)
+        self.register_field(&#39;file_list&#39;, list, None, validate_path, &#39;File listing image files.&#39;)
+        self.register_field(&#39;directory&#39;, str, None, validate_path, &#39;Directory of image files.&#39;)
+        self.register_field(&#39;extension&#39;, str, None, None, &#39;Image file extension.&#39;)
+        self.register_field(&#39;nodata_value&#39;, (float, int), None, None, &#39;Value of pixels to ignore.&#39;)
+
+        if name:
+            self.register_arg(&#39;type&#39;, &#39;--&#39; + name + &#39;-type&#39;)
+            self.register_arg(&#39;file_list&#39;, &#39;--&#39; + name + &#39;-file-list&#39;)
+            self.register_arg(&#39;directory&#39;, &#39;--&#39; + name + &#39;-dir&#39;)
+            self.register_arg(&#39;extension&#39;, &#39;--&#39; + name + &#39;-extension&#39;)
+        self.register_component(ImagePreprocessConfig(), &#39;preprocess&#39;)
+        self._name = name
+
+    def setup_arg_parser(self, parser, components = None) -&gt; None:
+        if self._name is None:
+            return
+        super().setup_arg_parser(parser, components)
+        parser.add_argument(&#34;--&#34; + self._name, dest=self._name, required=False,
+                            help=&#34;Specify a single image file.&#34;)
+
+    def parse_args(self, options):
+        if self._name is None:
+            return
+        super().parse_args(options)
+        if hasattr(options, self._name) and getattr(options, self._name) is not None:
+            self._config_dict[&#39;files&#39;] = [getattr(options, self._name)]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.imagery.imagery_config.LabelClass"><code class="flex name class">
+<span>class <span class="ident">LabelClass</span></span>
+<span>(</span><span>value, name=None, color=None, weight=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class LabelClass:
+    def __init__(self, value, name=None, color=None, weight=None):
+        color_order = [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, \
+                       0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf]
+        if name is None:
+            name = &#39;Class &#39; + str(value)
+        if color is None:
+            color = color_order[value] if value &lt; len(color_order) else 0
+        self.value = value
+        self.name = name
+        self.color = color
+        self.weight = weight
+
+    def __repr__(self):
+        return &#39;Color: &#39; + self.name</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.imagery" href="index.html">delta.imagery</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.imagery.imagery_config.load_images_labels" href="#delta.imagery.imagery_config.load_images_labels">load_images_labels</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.register" href="#delta.imagery.imagery_config.register">register</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.CacheConfig" href="#delta.imagery.imagery_config.CacheConfig">CacheConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.imagery.imagery_config.CacheConfig.manager" href="#delta.imagery.imagery_config.CacheConfig.manager">manager</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.ClassesConfig" href="#delta.imagery.imagery_config.ClassesConfig">ClassesConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.imagery.imagery_config.ClassesConfig.classes_to_indices_func" href="#delta.imagery.imagery_config.ClassesConfig.classes_to_indices_func">classes_to_indices_func</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.ClassesConfig.indices_to_classes_func" href="#delta.imagery.imagery_config.ClassesConfig.indices_to_classes_func">indices_to_classes_func</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.ClassesConfig.weights" href="#delta.imagery.imagery_config.ClassesConfig.weights">weights</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.DatasetConfig" href="#delta.imagery.imagery_config.DatasetConfig">DatasetConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.imagery.imagery_config.DatasetConfig.images" href="#delta.imagery.imagery_config.DatasetConfig.images">images</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.DatasetConfig.labels" href="#delta.imagery.imagery_config.DatasetConfig.labels">labels</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.IOConfig" href="#delta.imagery.imagery_config.IOConfig">IOConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.ImagePreprocessConfig" href="#delta.imagery.imagery_config.ImagePreprocessConfig">ImagePreprocessConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.ImageSet" href="#delta.imagery.imagery_config.ImageSet">ImageSet</a></code></h4>
+<ul class="">
+<li><code><a title="delta.imagery.imagery_config.ImageSet.nodata_value" href="#delta.imagery.imagery_config.ImageSet.nodata_value">nodata_value</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.ImageSet.preprocess" href="#delta.imagery.imagery_config.ImageSet.preprocess">preprocess</a></code></li>
+<li><code><a title="delta.imagery.imagery_config.ImageSet.type" href="#delta.imagery.imagery_config.ImageSet.type">type</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.ImageSetConfig" href="#delta.imagery.imagery_config.ImageSetConfig">ImageSetConfig</a></code></h4>
+</li>
+<li>
+<h4><code><a title="delta.imagery.imagery_config.LabelClass" href="#delta.imagery.imagery_config.LabelClass">LabelClass</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+</footer>
+</body>
+</html>
