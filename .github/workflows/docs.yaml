@@ -27,6 +27,11 @@ jobs:
     - name: Install pdoc3
       run: |
         python3 -m pip install pdoc3
+    - name: Install DELTA
+      run: |
+        cd repo
+        ./scripts/setup.sh
+        python3 -m pip install .
     - name: Build Documentation
       run: |
         ./repo/scripts/docs.sh ./docs/
