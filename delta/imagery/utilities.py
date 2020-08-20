@@ -39,11 +39,11 @@ def unpack_to_folder(compressed_path, unpack_folder):
         else: # Assume a tar file
             with tarfile.TarFile(compressed_path, 'r') as tf:
                 tf.extractall(tmpdir)
-    except:
-        shutil.rmtree(tmpdir)
-        raise
-    # make this atomic so we don't have incomplete data
-    os.rename(tmpdir, unpack_folder)
+    except Exception as e:
+        shutil.rmtree(tmpdir) # Clear any partially unpacked results
+        raise RuntimeError('Caught exception unpacking compressed file: ' + compressed_path
+                           + '\n' + str(e))
+    os.rename(tmpdir, unpack_folder) # Clean up
 
 def progress_bar(text, fill_amount, prefix = '', length = 80): #pylint: disable=W0613
     """

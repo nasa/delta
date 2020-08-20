@@ -20,9 +20,14 @@ Functions to support the WorldView satellites.
 """
 
 import math
+import zipfile
 import functools
 import os
+import sys
 import numpy as np
+import portalocker
+
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -64,19 +69,29 @@ class WorldviewImage(tiff.TiffImage):
 
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
-        name = '_'.join([self._sensor, self._date])
-        unpack_folder = config.io.cache.manager().register_item(name)
+        unpack_folder = config.io.cache.manager().register_item(self._name)
 
-        # Check if we already unpacked this data
-        (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
-
-        if imd_path and tif_path:
-            #print('Already have unpacked files in ' + unpack_folder)
-            pass
-        else:
-            print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
-            utilities.unpack_to_folder(paths, unpack_folder)
+        with portalocker.Lock(paths, 'r', timeout=300) as unused: #pylint: disable=W0612
+            # Check if we already unpacked this data
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+
+            if imd_path and tif_path:
+                #tf.print('Already have unpacked files in ' + unpack_folder,
+                #         output_stream=sys.stdout)
+                pass
+            else:
+                tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
+                         output_stream=sys.stdout)
+                utilities.unpack_to_folder(paths, unpack_folder)
+                # some worldview zip files have a subdirectory with the name of the image
+                if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):
+                    subdir = os.path.join(unpack_folder, os.path.splitext(os.path.basename(paths))[0])
+                    if not os.path.exists(os.path.join(subdir, 'vendor_metadata')):
+                        raise Exception('vendor_metadata not found in %s.' % (paths))
+                    for filename in os.listdir(subdir):
+                        os.rename(os.path.join(subdir, filename), os.path.join(unpack_folder, filename))
+                    os.rmdir(subdir)
+                (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
     # This function is currently set up for the HDDS archived WV data, files from other
@@ -87,9 +102,20 @@ class WorldviewImage(tiff.TiffImage):
            TODO: Apply TOA conversion!
         """
         assert isinstance(paths, str)
-        parts = os.path.basename(paths).split('_')
+        (_, ext) = os.path.splitext(paths)
+        assert '.zip' in ext, f'Error: Was assuming a zip file. Found {paths}'
+
+        zip_file = zipfile.ZipFile(paths, 'r')
+        tif_names = list(filter(lambda x: '.tif' in x, zip_file.namelist()))
+        assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
+        assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
+        tif_name = tif_names[0]
+
+
+        parts = os.path.basename(tif_name).split('_')
         self._sensor = parts[0][0:4]
-        self._date = parts[2][6:14]
+        self._date   = parts[2][6:14]
+        self._name   = os.path.splitext(os.path.basename(tif_name))[0]
 
         (tif_path, imd_path) = self._unpack(paths)
 

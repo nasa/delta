@@ -18,6 +18,8 @@
 """
 Configuration options specific to machine learning.
 """
+# Please do not put any tensorflow imports in this file as it will greatly slow loading
+# when tensorflow isn't needed
 import os.path
 
 import appdirs
@@ -26,6 +28,35 @@ import yaml
 
 from delta.imagery.imagery_config import ImageSet, ImageSetConfig, load_images_labels
 import delta.config as config
+
+def loss_function_factory(loss_spec):
+    '''
+    loss_function_factory - Creates a loss function object, if an object is specified in the
+    config file, or a string if that is all that is specified.
+
+    :param: loss_spec Specification of the loss function.  Either a string that is compatible
+    with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
+    of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
+    '''
+    import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
+
+    if isinstance(loss_spec, str):
+        return loss_spec
+
+    if isinstance(loss_spec, list):
+        assert len(loss_spec) == 1, 'Too many loss functions specified'
+        assert isinstance(loss_spec[0], dict), '''Loss functions objects and parameters must
+                                                  be specified as a yaml dictionary object
+                                                  '''
+        assert len(loss_spec[0].keys()) == 1, f'Too many loss functions specified: {dict.keys()}'
+        loss_type = list(loss_spec[0].keys())[0]
+        loss_fn_args = loss_spec[0][loss_type]
+
+        loss_class = getattr(tensorflow.keras.losses, loss_type, None)
+        return loss_class(**loss_fn_args)
+
+    raise RuntimeError(f'Did not recognize the loss function specification: {loss_spec}')
+
 
 class ValidationSet:#pylint:disable=too-few-public-methods
     """
@@ -63,10 +94,10 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
 class NetworkModelConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('yaml_file', str, 'yaml_file', None, config.validate_path,
+        self.register_field('yaml_file', str, 'yaml_file', config.validate_path,
                             'A YAML file describing the network to train.')
-        self.register_field('params', dict, None, None, None, None)
-        self.register_field('layers', list, None, None, None, None)
+        self.register_field('params', dict, None, None, None)
+        self.register_field('layers', list, None, None, None)
 
     # overwrite model entirely if updated (don't want combined layers from multiple files)
     def _load_dict(self, d : dict, base_dir):
@@ -75,34 +106,28 @@ class NetworkModelConfig(config.DeltaConfigComponent):
             self._config_dict['layers'] = None
         elif 'layers' in d:
             self._config_dict['yaml_file'] = None
-
-    def as_dict(self) -> dict:
-        """
-        Returns a dictionary representing the network model for use by `delta.ml.model_parser`.
-        """
-        yaml_file = self._config_dict['yaml_file']
-        if yaml_file is not None:
-            if self._config_dict['layers'] is not None:
-                raise ValueError('Specified both yaml file and layers in model.')
-
+        if 'yaml_file' in d and 'layers' in d and d['yaml_file'] is not None and d['layers'] is not None:
+            raise ValueError('Specified both yaml file and layers in model.')
+        if 'yaml_file' in d and d['yaml_file'] is not None:
+            yaml_file = d['yaml_file']
             resource = os.path.join('config', yaml_file)
             if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
                 yaml_file = pkg_resources.resource_filename('delta', resource)
             if not os.path.exists(yaml_file):
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
-                return yaml.safe_load(f)
-        return self._config_dict
+                self._config_dict.update(yaml.safe_load(f))
 
 class NetworkConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('chunk_size', int, 'chunk_size', '--chunk-size', config.validate_positive,
+        self.register_field('chunk_size', int, 'chunk_size', config.validate_positive,
                             'Width of an image chunk to input to the neural network.')
-        self.register_field('output_size', int, 'output_size', '--output-size', config.validate_positive,
+        self.register_field('output_size', int, 'output_size', config.validate_positive,
                             'Width of an image chunk to output from the neural network.')
-        self.register_field('classes', int, 'classes', '--classes', config.validate_positive,
-                            'Number of label classes.')
+
+        self.register_arg('chunk_size', '--chunk-size')
+        self.register_arg('output_size', '--output-size')
         self.register_component(NetworkModelConfig(), 'model')
 
     def setup_arg_parser(self, parser, components = None) -> None:
@@ -112,12 +137,12 @@ class NetworkConfig(config.DeltaConfigComponent):
 class ValidationConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('steps', int, 'steps', None, config.validate_positive,
+        self.register_field('steps', int, 'steps', config.validate_positive,
                             'If from training, validate for this many steps.')
-        self.register_field('from_training', bool, 'from_training', None, None,
+        self.register_field('from_training', bool, 'from_training', None,
                             'Take validation data from training data.')
-        self.register_component(ImageSetConfig(), 'images')
-        self.register_component(ImageSetConfig(), 'labels')
+        self.register_component(ImageSetConfig(), 'images', '__image_comp')
+        self.register_component(ImageSetConfig(), 'labels', '__label_comp')
         self.__images = None
         self.__labels = None
 
@@ -132,7 +157,8 @@ class ValidationConfig(config.DeltaConfigComponent):
         """
         if self.__images is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                config.config.dataset.classes)
         return self.__images
 
     def labels(self) -> ImageSet:
@@ -141,22 +167,28 @@ class ValidationConfig(config.DeltaConfigComponent):
         """
         if self.__labels is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
-                                                                self._components['labels'])
+                                                                self._components['labels'],
+                                                                config.config.dataset.classes)
         return self.__labels
 
 class TrainingConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('chunk_stride', int, None, '--chunk-stride', config.validate_positive,
+        self.register_field('chunk_stride', int, None, config.validate_positive,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
-        self.register_field('epochs', int, None, '--epochs', config.validate_positive,
+        self.register_field('epochs', int, None, config.validate_positive,
                             'Number of times to repeat training on the dataset.')
-        self.register_field('batch_size', int, None, '--batch-size', config.validate_positive,
+        self.register_field('batch_size', int, None, config.validate_positive,
                             'Features to group into each training batch.')
-        self.register_field('loss_function', str, None, None, None, 'Keras loss function.')
-        self.register_field('metrics', list, None, None, None, 'List of metrics to apply.')
-        self.register_field('steps', int, None, '--steps', config.validate_positive, 'Batches to train per epoch.')
-        self.register_field('optimizer', str, None, None, None, 'Keras optimizer to use.')
+        self.register_field('loss_function', (str, list), None, None, 'Keras loss function.')
+        self.register_field('metrics', list, None, None, 'List of metrics to apply.')
+        self.register_field('steps', int, None, config.validate_positive, 'Batches to train per epoch.')
+        self.register_field('optimizer', str, None, None, 'Keras optimizer to use.')
+
+        self.register_arg('chunk_stride', '--chunk-stride')
+        self.register_arg('epochs', '--epochs')
+        self.register_arg('batch_size', '--batch-size')
+        self.register_arg('steps', '--steps')
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None
@@ -176,9 +208,10 @@ class TrainingConfig(config.DeltaConfigComponent):
             if not from_training:
                 (vimg, vlabels) = (self._components['validation'].images(), self._components['validation'].labels())
             validation = ValidationSet(vimg, vlabels, from_training, vsteps)
+            loss_fn = loss_function_factory(self._config_dict['loss_function'])
             self.__training = TrainingSpec(batch_size=self._config_dict['batch_size'],
                                            epochs=self._config_dict['epochs'],
-                                           loss_function=self._config_dict['loss_function'],
+                                           loss_function=loss_fn,
                                            metrics=self._config_dict['metrics'],
                                            validation=validation,
                                            steps=self._config_dict['steps'],
@@ -190,19 +223,22 @@ class TrainingConfig(config.DeltaConfigComponent):
 class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('frequency', int, 'frequency', None, None,
+        self.register_field('frequency', int, 'frequency', None,
                             'Frequency in batches to store neural network checkpoints.')
-        self.register_field('save_latest', bool, 'save_latest', None, None,
+        self.register_field('only_save_latest', bool, 'only_save_latest', None,
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('enabled', bool, 'enabled', None, None, 'Enable MLFlow.')
-        self.register_field('uri', str, None, None, None, 'URI to store MLFlow data.')
-        self.register_field('frequency', int, 'frequency', None, config.validate_positive,
+        self.register_field('enabled', bool, 'enabled', None, 'Enable MLFlow.')
+        self.register_field('uri', str, None, None, 'URI to store MLFlow data.')
+        self.register_field('frequency', int, 'frequency', config.validate_positive,
                             'Frequency to store metrics.')
-        self.register_field('experiment_name', str, 'experiment', None, None, 'Experiment name in MLFlow.')
+        self.register_field('experiment_name', str, 'experiment', None, 'Experiment name in MLFlow.')
+
+        self.register_arg('enabled', '--disable-mlflow', action='store_const', const=False, type=None)
+        self.register_arg('enabled', '--enable-mlflow', action='store_const', const=True, type=None)
         self.register_component(MLFlowCheckpointsConfig(), 'checkpoints')
 
     def uri(self) -> str:
@@ -217,8 +253,8 @@ class MLFlowConfig(config.DeltaConfigComponent):
 class TensorboardConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('enabled', bool, 'enabled', None, None, 'Enable Tensorboard.')
-        self.register_field('dir', str, None, None, None, 'Directory to store Tensorboard data.')
+        self.register_field('enabled', bool, 'enabled', None, 'Enable Tensorboard.')
+        self.register_field('dir', str, None, None, 'Directory to store Tensorboard data.')
 
     def dir(self) -> str:
         """
@@ -237,7 +273,15 @@ def register():
     """
     if not hasattr(config.config, 'general'):
         config.config.register_component(config.DeltaConfigComponent('General'), 'general')
-    config.config.general.register_field('gpus', int, 'gpus', '--gpus', None, 'Number of gpus to use.')
+
+    config.config.general.register_field('gpus', int, 'gpus', None, 'Number of gpus to use.')
+    config.config.general.register_arg('gpus', '--gpus')
+    config.config.general.register_field('stop_on_input_error', bool, 'stop_on_input_error', None,
+                                         'If false, skip past bad input images.')
+    config.config.general.register_arg('stop_on_input_error', '--bypass-input-errors',
+                                       action='store_const', const=False, type=None)
+    config.config.general.register_arg('stop_on_input_error', '--stop-on-input-error',
+                                       action='store_const', const=True, type=None)
 
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')

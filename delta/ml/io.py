@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright © 2020, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.
@@ -17,9 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+"""
+Functions for IO specific to ML.
+"""
 
-from delta.subcommands import main
+import h5py
 
-if __name__ == "__main__":
-    sys.exit(main.main(sys.argv))
+from delta.config import config
+
+def save_model(model, filename):
+    """
+    Save a model. Includes DELTA configuration.
+    """
+    model.save(filename, save_format='h5')
+    with h5py.File(filename, 'r+') as f:
+        f.attrs['delta'] = config.export()

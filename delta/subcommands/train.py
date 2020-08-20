@@ -20,6 +20,11 @@ Train a neural network.
 """
 
 import sys
+import time
+import os
+
+#import logging
+#logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 
 import tensorflow as tf
 
@@ -28,22 +33,39 @@ from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
+from delta.ml.io import save_model
+
+#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
 def main(options):
+
+    log_folder = config.dataset.log_folder()
+    if log_folder:
+        if not options.resume: # Start fresh and clear the read logs
+            os.system('rm ' + log_folder + '/*')
+            print('Dataset progress recording in: ' + log_folder)
+        else:
+            print('Resuming dataset progress recorded in: ' + log_folder)
+
+    start_time = time.time()
     images = config.dataset.images()
     if not images:
         print('No images specified.', file=sys.stderr)
         return 1
     tc = config.train.spec()
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, config.train.network.chunk_size(), tc.chunk_stride)
+        ids = imagery_dataset.AutoencoderDataset(images, config.train.network.chunk_size(),
+                                                 tc.chunk_stride, resume_mode=options.resume,
+                                                 log_folder=log_folder)
     else:
         labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
         ids = imagery_dataset.ImageryDataset(images, labels, config.train.network.chunk_size(),
-                                             config.train.network.output_size(), tc.chunk_stride)
+                                             config.train.network.output_size(), tc.chunk_stride,
+                                             resume_mode=options.resume,
+                                             log_folder=log_folder)
 
     try:
         if options.resume is not None:
@@ -53,9 +75,11 @@ def main(options):
         model, _ = train(model, ids, tc)
 
         if options.model is not None:
-            model.save(options.model)
+            save_model(model, options.model)
     except KeyboardInterrupt:
         print()
         print('Training cancelled.')
 
+    stop_time = time.time()
+    print('Elapsed time = ', stop_time-start_time)
     return 0

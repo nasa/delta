@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import tensorflow as tf
+from argparse import ArgumentParser
+import h5py
+import pathlib
+
+parser = ArgumentParser(description='Converts a neural network in a *.h5 file to the DELTA configuration langauge')
+parser.add_argument('model_name', type=pathlib.Path, help='The model to convert')
+
+args = parser.parse_args()
+
+print('Configuration File')
+with h5py.File(args.model_name, 'r') as f:
+    if 'delta' not in f.attrs:
+        print(' - Not Available\n')
+    else:
+        print('\n' + f.attrs['delta'] + '\n')
+
+a = tf.keras.models.load_model(args.model_name)
+print('Network Structure')
+for l in a.layers:
+    print('\t- ', type(l).__name__)
+    configs = l.get_config()
+    if isinstance(l.input, list):
+        print('\t\t- input: ['+ ', '.join([x.name.replace('/Identity:0','') for x in l.input])+ ']')
+    else:
+        print('\t\t- input:', l.input.name.replace('/Identity:0',''))
+    for k in configs.keys():
+        if isinstance(configs[k], dict) or configs[k] is None:
+            continue
+        print(f'\t\t- {k}: {configs[k]}')

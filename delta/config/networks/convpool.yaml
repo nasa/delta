@@ -1,6 +1,6 @@
 params:
   dropout_rate: 0.3
-  num_filters: 100
+  num_filters: 64
 layers:
   - Input:
       shape: in_shape

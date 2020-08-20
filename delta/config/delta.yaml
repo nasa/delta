@@ -1,6 +1,7 @@
 general:
   # negative is all
   gpus:              -1
+  stop_on_input_error: true # If false skip past bad input files without halting training
 
 io:
   threads:           1
@@ -10,12 +11,16 @@ io:
   interleave_images: 5
   # ratio of tile width and height when loading images
   tile_ratio:        5.0
+  # When resuming training with a log_folder, skip input image where we have
+  # already loaded this many tiles.
+  resume_cutoff:     5000
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
 
 dataset:
+  log_folder:         ~ # Storage location for any record keeping files about the input dataset
   images:
     type:             tiff
     # preprocess the images when loading (i.e., scaling)
@@ -39,11 +44,33 @@ dataset:
     file_list:        ~
     files:            ~
 
+  # can either be a list of classes or the number of classes,
+  # if the labels are 0, 1, 2, 3
+  classes:            4
+  # labels are 1, 2, 3, 4; with names and display colors
+  # weight is optional, but required for either all or none
+  #classes:
+  #  - 1:
+  #      name: Water
+  #      color: 0x67a9cf
+  #      weight: 5.0
+  #  - 2:
+  #      name: No Water
+  #      color: 0xf6eff7
+  #      weight: 1.0
+  #  - 3:
+  #      name: Maybe Water
+  #      color: 0xbdc9e1
+  #      weight: 1.0
+  #  - 4:
+  #      name: Cloud
+  #      color: 0x02818a
+  #      weight: 1.0
+
 train:
   network:
     chunk_size:      16
     output_size:     8
-    classes:         4
     model:
       yaml_file:     networks/convpool.yaml
       params:        ~
@@ -91,8 +118,8 @@ mlflow:
   experiment_name: Default
   # rate in batches to save model checkpoints
   checkpoints:
-    frequency:     10000
-    save_latest:   true
+    frequency:          10000
+    only_save_latest:   true
 
 tensorboard:
   enabled:        false

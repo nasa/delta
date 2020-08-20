@@ -64,15 +64,15 @@ class Predictor(ABC):
         """
 
     def _predict_array(self, data):
-        net_input_shape = self._model.get_input_shape_at(0)[1:]
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_input_shape = self._model.input_shape[1:]
+        net_output_shape = self._model.output_shape[1:]
 
         assert net_input_shape[2] == data.shape[2],\
                'Model expects %d input channels, data has %d channels' % (net_input_shape[2], data.shape[2])
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
                      data.shape[1] - net_input_shape[1] + net_output_shape[1])
-        out_type = self._model.get_output_at(0).dtype
+        out_type = tf.dtypes.as_dtype(self._model.dtype)
         image = tf.convert_to_tensor(data)
         image = tf.expand_dims(image, 0)
         chunks = tf.image.extract_patches(image, [1, net_input_shape[0], net_input_shape[1], 1],
@@ -101,8 +101,8 @@ class Predictor(ABC):
         Results are limited to `input_bounds`. Returns output, the meaning of which
         depends on the subclass.
         """
-        net_input_shape = self._model.get_input_shape_at(0)[1:]
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_input_shape = self._model.input_shape[1:]
+        net_output_shape = self._model.output_shape[1:]
         offset_r = -net_input_shape[0] + net_output_shape[0]
         offset_c = -net_input_shape[1] + net_output_shape[1]
         block_size_x = net_input_shape[0] * (_TILE_SIZE // net_input_shape[0])
@@ -141,11 +141,12 @@ class Predictor(ABC):
             raise
 
         return self._complete()
+
 class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, output_image=None, show_progress=False,
+    def __init__(self, model, output_image=None, show_progress=False, nodata_value=None, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
         output_image, prob_image, and error_image are all DeltaImageWriter's.
@@ -155,6 +156,16 @@ class LabelPredictor(Predictor):
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
+        if colormap is not None:
+            # convert python list to numpy array
+            if not isinstance(colormap, np.ndarray):
+                a = np.zeros(shape=(len(colormap), 3), dtype=np.uint8)
+                for (i, v) in enumerate(colormap):
+                    a[i][0] = (v >> 16) & 0xFF
+                    a[i][1] = (v >> 8) & 0xFF
+                    a[i][2] = v & 0xFF
+                colormap = a
+        self._nodata_value = nodata_value
         self._colormap = colormap
         self._prob_image = prob_image
         self._error_image = error_image
@@ -166,7 +177,7 @@ class LabelPredictor(Predictor):
         self._errors = None
 
     def _initialize(self, shape, label, image):
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_output_shape = self._model.output_shape[1:]
         self._num_classes = net_output_shape[-1]
         if label:
             self._errors = np.zeros(shape, dtype=np.bool)
@@ -179,7 +190,7 @@ class LabelPredictor(Predictor):
                 self._output_image.initialize((shape[0], shape[1], self._colormap.shape[1]),
                                               self._colormap.dtype, image.metadata())
             else:
-                self._output_image.initialize((shape[0], shape[1]), np.int32, image.metadata())
+                self._output_image.initialize((shape[0], shape[1], 1), np.int32, image.metadata())
         if self._prob_image:
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
         if self._error_image:
@@ -215,7 +226,13 @@ class LabelPredictor(Predictor):
                 self._output_image.write(pred_image, x, y)
 
         if labels is not None:
-            self._error_image.write(self._error_colors[(labels != pred_image).astype(int)], x, y)
+            eimg = self._error_colors[(labels != pred_image).astype(int)]
+            if self._nodata_value is not None:
+                valid = (labels != self._nodata_value)
+                eimg[np.logical_not(valid)] = np.zeros(eimg.shape[-1:], dtype=eimg.dtype)
+                labels = labels[valid]
+                pred_image = pred_image[valid]
+            self._error_image.write(eimg, x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(labels),
                                           np.ndarray.flatten(pred_image),
                                           self._num_classes)
@@ -244,7 +261,7 @@ class ImagePredictor(Predictor):
         self._transform = transform
 
     def _initialize(self, shape, label, image):
-        net_output_shape = self._model.get_output_shape_at(0)[1:]
+        net_output_shape = self._model.output_shape[1:]
         if self._output_image is not None:
             dtype = np.float32 if self._transform is None else self._transform[1]
             bands = net_output_shape[-1] if self._transform is None else self._transform[2]
