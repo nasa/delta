@@ -37,9 +37,15 @@ jobs:
         ./repo/scripts/docs.sh ./docs/
     - name: Commit and Push
       run: |
+        cd repo
+        EMAIL=`git show -s --format='%ae' HEAD`
+        NAME=`git show -s --format='%an' HEAD`
+        cd ..
         cd docs/
-        git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
+        #git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
         git add .
+        git config user.email "$EMAIL"
+        git config user.name "$NAME"
         git commit -m "Automatic update for $GITHUB_SHA."
-        git push github gh-pages
+        git push origin gh-pages
 
