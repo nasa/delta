@@ -4,7 +4,7 @@ name: Build and Push Documentation to gh-pages Branch
 
 on:
   push:
-    branches: [ 'master', 'generate_pages']
+    branches: [ 'master']
 
 jobs:
   build_and_push_docs:
@@ -42,7 +42,6 @@ jobs:
         NAME=`git show -s --format='%an' HEAD`
         cd ..
         cd docs/
-        #git remote add github "https://$GITHUB_ACTOR:$GITHUB_TOKEN@github.com/$GITHUB_REPOSITORY.git"
         git add .
         git config user.email "$EMAIL"
         git config user.name "$NAME"
