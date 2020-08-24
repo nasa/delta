@@ -111,10 +111,11 @@ class ImageryDataset:
             log_path  = self._get_image_read_log_path(file_path)
             if log_path:
                 count = self._read_single_integer_file(log_path)
-                if self._resume_mode and (count > config.io.resume_cutoff()):
-                    # Already read this file too many times, skip it
-                    #print('Skipping ' + file_path)
-                    return np.zeros(shape=(0,0,0), dtype=np.float32)
+                # TODO: Don't stop reading images mid-processing!!!
+                #if self._resume_mode and (count > config.io.resume_cutoff()):
+                #    # Already read this file too many times, skip it
+                #    print('Skipping index ' + str(image_index.numpy()) + ' with count ' + str(count) + ' -> ' + file_path)
+                #    return np.zeros(shape=(0,0,0), dtype=np.float32)
                 # Else increment the value
                 with portalocker.Lock(log_path, 'w', timeout=300) as f:
                     f.write(str(count+1))
@@ -132,6 +133,7 @@ class ImageryDataset:
                 print('Aborting processing, set --bypass-input-errors to bypass this error.')
                 raise
             # Else just skip this tile
+            # TODO: This is not working properly!!!
             r = np.zeros(shape=(0,0,0), dtype=np.float32)
         return r
 
@@ -144,12 +146,29 @@ class ImageryDataset:
 
             # Get a list of input image indices in a random order
             num_images = len(self._images)
-            indices    = range(num_images)
+            indices    = list(range(num_images))
             random.Random(0).shuffle(indices) # Use consistent random ordering
+            print('Num indices = ' + str(len(indices)))
 
             # Local function to get the tile list for a single image index
             def get_image_tile_list(i):
                 try:
+
+                    # TODO: This method is not good for multi-epoch runs!!
+                    # Check if we need to skip this file as part of resume mode.
+                    file_path = self._images[i]
+                    log_path  = self._get_image_read_log_path(file_path)
+                    count = 0
+                    if log_path:
+                        count = self._read_single_integer_file(log_path)
+                        print('For index ' + str(i) + ' read count: ' + str(count))
+                        if self._resume_mode and (count > config.io.resume_cutoff()):
+                            # Already read this file too many times, skip it
+                            print('Skipping tile gen for index ' + str(i) + ' -> ' + file_path)
+                            return (i, [])
+                    print('Generating tiles for index ' + str(i) + ' -> ' + file_path)
+
+
                     img = loader.load_image(self._images, i)
 
                     if self._labels: # If we have labels make sure they are the same size as the input images
@@ -192,9 +211,10 @@ class ImageryDataset:
                 # Convert from indicies into tile lists for this set
                 print('Loading tile lists for set of ' + str(set_size) + ' images.')
                 current_tiles = [get_image_tile_list(i) for i in current_set]
-                print('Done loading set of tile lists.')
+                print('Done loading set of tile lists, '+str(len(indices))+' indices remaining.')
 
                 done = False
+                tile_count = 0
                 while not done:  # Loop through this set of input files and yield interleaved tiles
                     done = True
                     for it in current_tiles:
@@ -203,8 +223,10 @@ class ImageryDataset:
                         roi = it[1].pop(0) # Get the next tile for this input image
                         if roi:
                             done = False
+                            tile_count += 1
                             yield (it[0], roi.min_x, roi.min_y, roi.max_x, roi.max_y)
                     if done:
+                        print('Set done with tile count = ' + str(tile_count))
                         break
 
         # Pass the local function into the dataset generator function
@@ -232,6 +254,7 @@ class ImageryDataset:
 
     def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
+
         ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
         strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
         rates   = [1, 1, 1, 1]
@@ -276,6 +299,7 @@ class ImageryDataset:
         Return the underlying TensorFlow dataset object that this class creates.
         """
 
+        # TODO: Make sure labels track images that may be skipped due to resume feature!
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore labels with no data

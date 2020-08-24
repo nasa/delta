@@ -237,7 +237,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     try:
-        if training_spec.steps > 0:
+        if (training_spec.steps is None) or (training_spec.steps > 0):
             history = model.fit(ds,
                                 epochs=training_spec.epochs,
                                 callbacks=callbacks,
