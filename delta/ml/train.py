@@ -123,7 +123,7 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         print('Finished epoch ' + str(epoch))
         # Leave the counts from the last epoch just as a record
         if epoch != self.last_epoch:
-            self.ids.reset_read_counts()
+            self.ids.reset_access_counts()
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -237,6 +237,12 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     try:
+
+        # Mark that we need to check the dataset counts the
+        # first time we try to read the images.
+        # This won't do anything unless we are resuming training.
+        dataset.reset_access_counts(set_need_check=True)
+
         if (training_spec.steps is None) or (training_spec.steps > 0):
             history = model.fit(ds,
                                 epochs=training_spec.epochs,

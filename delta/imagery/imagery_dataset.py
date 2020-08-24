@@ -72,53 +72,57 @@ class ImageryDataset:
         log_path   = os.path.join(self._log_folder, file_name)
         return log_path
 
-    def _read_single_integer_file(self, path): #pylint: disable=R0201
-        """Reads the only integer in a file or zero if it can't be read"""
+    def _read_access_count_file(self, path): #pylint: disable=R0201
+        """Reads an access count file containing a boolean and a count.
+           The boolean is set to true if we need to check the count."""
         try:
             with portalocker.Lock(path, 'r', timeout=300) as f:
                 line = f.readline()
-                return int(line)
+                parts = line.split()
+                return (bool(parts[0]), int(parts[1]))
         except Exception: #pylint: disable=W0703
-            return 0
+            # If there is a problem reading the count just treat as zero
+            return (False, 0)
 
-    def _get_image_read_count(self, image_path):
-        """Return the number of ROIs we have read from an image"""
-        log_path = self._get_image_read_log_path(image_path)
-        if (not log_path) or not os.path.exists(log_path):
-            return 0
-        # The file should contain a single integer with the read count
-        return self._read_single_integer_file(log_path)
-
-    def reset_read_counts(self):
-        """Reset all input file read counts to zero.
-           This needs to be called after each epoch to use resume_mode."""
+    def reset_access_counts(self, set_need_check=False):
+        """Go through all the access files and reset one of the values.
+           This is needed for resume mode to work.
+           Call with default value to reset the counts to zero.  Call with
+           "set_need_check" to keep the count and mark that it needs to be checked.
+           Call with default after each epoch, call (True) at start of training."""
         if not self._log_folder:
             return
-        print('Resetting read counts in folder: ' + self._log_folder)
+        print('Resetting access counts in folder: ' + self._log_folder)
         file_list = os.listdir(self._log_folder)
         for log_name in file_list:
             if '_read.log' in log_name:
                 log_path = os.path.join(self._log_folder, log_name)
-                with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                    f.write("0")
+                if set_need_check:
+                    _, count = self._read_access_count_file(log_path)
+                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
+                        f.write("1 " + str(count)) # Keep the count, set the bool
+                else: # Reset the access count
+                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
+                        f.write("0 0") # No need to read if we reset the count
 
     def _load_tensor_imagery(self, is_labels, image_index, bbox):
         """Loads a single image as a tensor."""
         data = self._labels if is_labels else self._images
 
-        if not is_labels: # Record each time we write a tile
-            file_path = data[image_index.numpy()]
-            log_path  = self._get_image_read_log_path(file_path)
-            if log_path:
-                count = self._read_single_integer_file(log_path)
-                # TODO: Don't stop reading images mid-processing!!!
-                #if self._resume_mode and (count > config.io.resume_cutoff()):
-                #    # Already read this file too many times, skip it
-                #    print('Skipping index ' + str(image_index.numpy()) + ' with count ' + str(count) + ' -> ' + file_path)
-                #    return np.zeros(shape=(0,0,0), dtype=np.float32)
-                # Else increment the value
+        file_path = self._images[image_index.numpy()]
+        log_path  = self._get_image_read_log_path(file_path)
+        if log_path:
+            (need_to_check, count) = self._read_access_count_file(log_path)
+
+            if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
+                # Read this file too many times in a previous run, skip the image file
+                # and leave the access file alone so we keep skipping it.
+                print('Skipping index ' + str(image_index.numpy()) + ' with count ' + str(count) + ' -> ' + file_path)
+                return np.zeros(shape=(0,0,0), dtype=np.float32)
+
+            if not is_labels: # The count file is shared don't write to it as label
                 with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                    f.write(str(count+1))
+                    f.write("0 " + str(count+1)) # No need to check again
 
         try:
             image = loader.load_image(data, image_index.numpy())
@@ -133,7 +137,6 @@ class ImageryDataset:
                 print('Aborting processing, set --bypass-input-errors to bypass this error.')
                 raise
             # Else just skip this tile
-            # TODO: This is not working properly!!!
             r = np.zeros(shape=(0,0,0), dtype=np.float32)
         return r
 
@@ -153,22 +156,6 @@ class ImageryDataset:
             # Local function to get the tile list for a single image index
             def get_image_tile_list(i):
                 try:
-
-                    # TODO: This method is not good for multi-epoch runs!!
-                    # Check if we need to skip this file as part of resume mode.
-                    file_path = self._images[i]
-                    log_path  = self._get_image_read_log_path(file_path)
-                    count = 0
-                    if log_path:
-                        count = self._read_single_integer_file(log_path)
-                        print('For index ' + str(i) + ' read count: ' + str(count))
-                        if self._resume_mode and (count > config.io.resume_cutoff()):
-                            # Already read this file too many times, skip it
-                            print('Skipping tile gen for index ' + str(i) + ' -> ' + file_path)
-                            return (i, [])
-                    print('Generating tiles for index ' + str(i) + ' -> ' + file_path)
-
-
                     img = loader.load_image(self._images, i)
 
                     if self._labels: # If we have labels make sure they are the same size as the input images
@@ -246,9 +233,14 @@ class ImageryDataset:
             return img
         ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
 
+        # Skip past empty inputs
+        # - When we skip an image as part of resume it shows up as empty
+        ret = ret.filter(lambda n: tf.equal(tf.size(0), 0))
+
+        # TODO: Any remaining cases this would handle?
         # Don't let the entire session be taken down by one bad dataset input.
         # - Would be better to handle this somehow but it is not clear if TF supports that.
-#        ret = ret.apply(tf.data.experimental.ignore_errors())
+        #ret = ret.apply(tf.data.experimental.ignore_errors())
 
         return ret
 
@@ -299,39 +291,29 @@ class ImageryDataset:
         Return the underlying TensorFlow dataset object that this class creates.
         """
 
-        # TODO: Make sure labels track images that may be skipped due to resume feature!
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
-        # ignore labels with no data
+        # Ignore labels with no data
         if self._labels.nodata_value():
             ds = ds.filter(lambda x, y: tf.math.not_equal(y, self._labels.nodata_value()))
         return ds
 
     def num_bands(self):
-        """
-        Return the number of bands in each image of the data set.
-        """
+        """Return the number of bands in each image of the data set"""
         return self._num_bands
 
     def chunk_size(self):
-        """
-        Size of chunks used for inputs.
-        """
+        """Size of chunks used for inputs"""
+        return self._chunk_size
     def output_shape(self):
-        """
-        Output size of blocks of labels.
-        """
+        """Output size of blocks of labels"""
         return (self._output_size, self._output_size, self._output_dims)
 
     def image_set(self):
-        """
-        Returns set of images.
-        """
+        """Returns set of images"""
         return self._images
     def label_set(self):
-        """
-        Returns set of label images.
-        """
+        """Returns set of label images"""
         return self._labels
 
 class AutoencoderDataset(ImageryDataset):
