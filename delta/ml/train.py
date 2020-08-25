@@ -31,6 +31,7 @@ from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
 from .io import save_model
+from .callback_factory import construct_callbacks
 
 def _devices(num_gpus):
     '''
@@ -213,6 +214,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
         #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    callbacks.extend(construct_callbacks())
 
     try:
         history = model.fit(ds,
