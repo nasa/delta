@@ -235,7 +235,7 @@ class ImageryDataset:
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
-        ret = ret.filter(lambda n: tf.equal(tf.size(0), 0))
+        ret = ret.filter(lambda n: tf.math.greater(tf.size(0), 0))
 
         # TODO: Any remaining cases this would handle?
         # Don't let the entire session be taken down by one bad dataset input.
