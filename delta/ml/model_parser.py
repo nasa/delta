@@ -20,6 +20,8 @@ Construct sequential neural networks using the Tensorflow-Keras API from
 dictionaries.  Assumes that the names of the parameters for the layer constructor functions are as
 given in the Tensorflow API documentation.
 """
+import collections
+import copy
 import functools
 from typing import Callable
 
@@ -71,10 +73,10 @@ class _LayerWrapper:
             self._layer = self._layer_constructor
         return self._layer
 
-def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
+def _make_layer(layer_dict, layer_id, prev_layer):
     """
-    Constructs a layer specified in layer_dict, possibly using parameters specified in
-    param_dict.  layer_id is the order in the order in the config file.
+    Constructs a layer specified in layer_dict.
+    layer_id is the order in the order in the config file.
     Assumes layer_dict only contains the properly named parameters for constructing
     the layer, and the additional fields:
 
@@ -90,10 +92,6 @@ def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
     if l is None:
         l = {}
 
-    for (k, v) in l.items():
-        if isinstance(v, str) and v in param_dict.keys():
-            l[k] = param_dict[v]
-
     inputs = [prev_layer]
     if layer_type == 'Input':
         inputs = []
@@ -108,21 +106,40 @@ def _make_layer(layer_dict, layer_id, prev_layer, param_dict):
     return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
 
 def _make_model(model_dict, exposed_params):
-    layer_list = model_dict['layers']
     defined_params = {}
     if 'params' in model_dict and model_dict['params'] is not None:
         defined_params = model_dict['params']
 
     params = {**exposed_params, **defined_params}
+    # replace parameters recursively in all layers
+    def recursive_dict_list_apply(d, func):
+        if isinstance(d, collections.Mapping):
+            for k, v in d.items():
+                d[k] = recursive_dict_list_apply(v, func)
+            return d
+        if isinstance(d, list):
+            return list(map(functools.partial(recursive_dict_list_apply, func=func), d))
+        if isinstance(d, str):
+            return func(d)
+        return d
+    def apply_params(s):
+        for (k, v) in params.items():
+            if s == k:
+                return v
+        return s
+    model_dict_copy = copy.deepcopy(model_dict)
+    recursive_dict_list_apply(model_dict_copy, apply_params)
+
     layer_dict = {}
     last = None
+    layer_list = model_dict_copy['layers']
     first_layer_type = next(layer_list[0].keys().__iter__())
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
         layer_list = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
     #if layer_list[0]['type'] != 'Input' and 'input' not in layer_list[0]:
     prev_layer = 0
     for (i, l) in enumerate(layer_list):
-        (layer_id, layer) = _make_layer(l, i, prev_layer, params)
+        (layer_id, layer) = _make_layer(l, i, prev_layer)
         last = layer
         layer_dict[layer_id] = layer
         prev_layer = layer_id
