@@ -32,12 +32,12 @@ from . import delta_image
 class TiffImage(delta_image.DeltaImage):
     """For geotiffs."""
 
-    def __init__(self, path):
+    def __init__(self, path, nodata_value=None):
         '''
         Opens a geotiff for reading. paths can be either a single filename or a list.
         For a list, the images are opened in order as a multi-band image, assumed to overlap.
         '''
-        super(TiffImage, self).__init__()
+        super(TiffImage, self).__init__(nodata_value)
         paths = self._prep(path)
 
         self._paths = paths
@@ -107,12 +107,13 @@ class TiffImage(delta_image.DeltaImage):
         assert ret
         return ret
 
-    def nodata_value(self, band=0):
-        '''
-        Returns the value that indicates no data is present in a pixel for the specified band.
-        '''
-        self.__asert_open()
-        return self._gdal_band(band).GetNoDataValue()
+    # using custom nodata from config TODO: use both
+    #def nodata_value(self, band=0):
+    #    '''
+    #    Returns the value that indicates no data is present in a pixel for the specified band.
+    #    '''
+    #    self.__asert_open()
+    #    return self._gdal_band(band).GetNoDataValue()
 
     def data_type(self, band=0):
         '''
@@ -149,6 +150,10 @@ class TiffImage(delta_image.DeltaImage):
             gdal.GDT_Float64: 8
         }
         return results.get(self.data_type(band))
+
+    def block_size(self):
+        (bs, _) = self.block_info()
+        return bs
 
     def block_info(self, band=0):
         """Returns ((block height, block width), (num blocks x, num blocks y))"""

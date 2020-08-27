@@ -34,8 +34,9 @@ class DeltaImage(ABC):
     Base class used for wrapping input images in a way that they can be passed
     to Tensorflow dataset objects.
     """
-    def __init__(self):
+    def __init__(self, nodata_value=None):
         self.__preprocess_function = None
+        self.__nodata_value = nodata_value
 
     def read(self, roi: rectangle.Rectangle=None, bands: List[int]=None, buf: np.ndarray=None) -> np.ndarray:
         """
@@ -73,6 +74,12 @@ class DeltaImage(ABC):
         """
         self.__preprocess_function = callback
 
+    def nodata_value(self):
+        """
+        Returns the value of pixels to treat as nodata.
+        """
+        return self.__nodata_value
+
     @abstractmethod
     def _read(self, roi, bands, buf=None):
         """
@@ -98,6 +105,10 @@ class DeltaImage(ABC):
     def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -> rectangle.Rectangle:#pylint:disable=no-self-use
         """Return the block-aligned roi containing this image region, if applicable."""
         return desired_roi
+
+    def block_size(self): #pylint: disable=no-self-use
+        """Return the preferred block size for efficient reading."""
+        return (256, 256)
 
     def width(self) -> int:
         """Return the number of columns."""

@@ -356,7 +356,6 @@ def test_argparser():
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
     im = config.dataset.labels()
-    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])

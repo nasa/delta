@@ -171,12 +171,22 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
     if len(labels) != len(images):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
-    pre = pre_orig = __preprocess_function(labels_comp)
-    conv = classes_comp.classes_to_indices_func()
-    if conv is not None:
-        pre = lambda data, _, dummy: conv(pre_orig(data, _, dummy) if pre_orig is not None else data)
+    labels_nodata = labels_dict['nodata_value']
+    pre_orig = __preprocess_function(labels_comp)
+    def class_shift(data, _, dummy):
+        if pre_orig is not None:
+            data = pre_orig(data, _, dummy)
+        # set any nodata values to be past the expected range
+        if labels_nodata is not None:
+            nodata_indices = (data == labels_nodata)
+        conv = classes_comp.classes_to_indices_func()
+        if conv is not None:
+            data = conv(data)
+        if labels_nodata is not None:
+            data[nodata_indices] = len(classes_comp)
+        return data
     return (imageset, ImageSet(labels, labels_dict['type'],
-                               pre, labels_dict['nodata_value']))
+                               class_shift, labels_dict['nodata_value']))
 
 class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):

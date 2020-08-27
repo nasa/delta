@@ -62,10 +62,10 @@ def _get_files_from_unpack_folder(folder):
 
 class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    def __init__(self, paths):
+    def __init__(self, paths, nodata_value=None):
         self._meta_path = None
         self._meta = None
-        super(WorldviewImage, self).__init__(paths)
+        super(WorldviewImage, self).__init__(paths, nodata_value)
 
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
