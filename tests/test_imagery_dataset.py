@@ -31,49 +31,6 @@ from delta.ml.ml_config import TrainingSpec
 
 import conftest
 
-def load_dataset(source, output_size):
-    config.reset() # don't load any user files
-    (image_path, label_path) = source[0]
-    config.load(yaml_str=
-                '''
-                io:
-                  cache:
-                    dir: %s
-                dataset:
-                  images:
-                    type: %s
-                    directory: %s
-                    extension: %s
-                    preprocess:
-                      enabled: false
-                  labels:
-                    type: %s
-                    directory: %s
-                    extension: %s
-                    preprocess:
-                      enabled: false
-                train:
-                  network:
-                    chunk_size: 3
-                mlflow:
-                  enabled: false''' %
-                (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
-                 source[4], os.path.dirname(label_path), source[3]))
-
-    dataset = imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
-                                             config.train.network.chunk_size(), output_size,
-                                             config.train.spec().chunk_stride)
-    return dataset
-
-@pytest.fixture(scope="function", params=range(conftest.NUM_SOURCES))
-def dataset(all_sources, request):
-    source = all_sources[request.param]
-    return load_dataset(source, 1)
-
-@pytest.fixture(scope="function")
-def dataset_block_label(all_sources):
-    return load_dataset(all_sources[0], 3)
-
 def test_block_label(dataset_block_label): #pylint: disable=redefined-outer-name
     """
     Same as previous test but with dataset that gives labels as 3x3 blocks.
@@ -140,7 +97,7 @@ def test_train(dataset): #pylint: disable=redefined-outer-name
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
     source = all_sources[0]
-    config.reset() # don't load any user files
+    conftest.config_reset()
     (image_path, _) = source[0]
     config.load(yaml_str=
                 '''
@@ -156,9 +113,7 @@ def autoencoder(all_sources):
                       enabled: false
                 train:
                   network:
-                    chunk_size: 3
-                mlflow:
-                  enabled: false''' %
+                    chunk_size: 3''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),
