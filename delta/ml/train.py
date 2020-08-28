@@ -115,7 +115,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
     Callback to log everything for MLFlow.
     """
     def __init__(self, temp_dir):
-        super(_MLFlowCallback, self).__init__()
+        super().__init__()
         self.epoch = 0
         self.batch = 0
         self.temp_dir = temp_dir

@@ -65,7 +65,7 @@ class WorldviewImage(tiff.TiffImage):
     def __init__(self, paths, nodata_value=None):
         self._meta_path = None
         self._meta = None
-        super(WorldviewImage, self).__init__(paths, nodata_value)
+        super().__init__(paths, nodata_value)
 
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
@@ -180,9 +180,9 @@ def _get_esun_value(sat_id, band):
                       1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
     try:
         return VALUES[sat_id][band]
-    except Exception:
+    except Exception as e:
         raise Exception('No ESUN value for ' + sat_id
-                        + ', band ' + str(band))
+                        + ', band ' + str(band)) from e
 
 def _get_earth_sun_distance():
     """Returns the distance between the Earth and the Sun in AU for the given date"""

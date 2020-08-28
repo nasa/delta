@@ -37,7 +37,7 @@ class TiffImage(delta_image.DeltaImage):
         Opens a geotiff for reading. paths can be either a single filename or a list.
         For a list, the images are opened in order as a multi-band image, assumed to overlap.
         '''
-        super(TiffImage, self).__init__(nodata_value)
+        super().__init__(nodata_value)
         paths = self._prep(path)
 
         self._paths = paths

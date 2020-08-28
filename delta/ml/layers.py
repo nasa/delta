@@ -32,13 +32,13 @@ class DeltaLayer(Layer):
 # If layers inherit from callback as well we add them automatically on fit
 class GaussianSample(DeltaLayer):
     def __init__(self, kl_loss=True, **kwargs):
-        super(GaussianSample, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self._use_kl_loss = kl_loss
         self._kl_enabled = K.variable(0.0, name=self.name + ':kl_enabled')
         self.trainable = False
 
     def get_config(self):
-        config = super(GaussianSample, self).get_config()
+        config = super().get_config()
         config.update({'kl_loss': self._use_kl_loss})
         return config
 

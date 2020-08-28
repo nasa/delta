@@ -178,7 +178,7 @@ class LabelPredictor(Predictor):
         output_image, prob_image, and error_image are all DeltaImageWriter's.
         colormap and error_colors are all numpy arrays mapping classes to colors.
         """
-        super(LabelPredictor, self).__init__(model, show_progress)
+        super().__init__(model, show_progress)
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
@@ -299,7 +299,7 @@ class ImagePredictor(Predictor):
         transform is a tuple (function, output numpy type, number of bands) applied
         to the output image.
         """
-        super(ImagePredictor, self).__init__(model, show_progress)
+        super().__init__(model, show_progress)
         self._output_image = output_image
         self._output = None
         self._transform = transform

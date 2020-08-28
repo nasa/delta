@@ -91,8 +91,8 @@ def __scale_factor(image_comp):
         return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
     try:
         return float(f)
-    except ValueError:
-        raise ValueError('Scale factor is %s, must be a float.' % (f))
+    except ValueError as e:
+        raise ValueError('Scale factor is %s, must be a float.' % (f)) from e
 
 def __find_images(conf, matching_images=None, matching_conf=None):
     '''
