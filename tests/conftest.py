@@ -120,7 +120,7 @@ NUM_SOURCES = 1
 def all_sources(worldview_filenames):
     return [(worldview_filenames, '.zip', 'worldview', '_label.tiff', 'tiff')]
 
-def load_dataset(source, output_size):
+def load_dataset(source, output_size, chunk_size=3):
     config_reset()
     (image_path, label_path) = source[0]
     config.load(yaml_str=
@@ -140,15 +140,12 @@ def load_dataset(source, output_size):
                     directory: %s
                     extension: %s
                     preprocess:
-                      enabled: false
-                train:
-                  network:
-                    chunk_size: 3''' %
+                      enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 
     dataset = imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
-                                             config.train.network.chunk_size(), output_size,
+                                             chunk_size, output_size,
                                              config.train.spec().chunk_stride)
     return dataset
 

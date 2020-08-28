@@ -47,9 +47,7 @@ class ImageryDataset:
             os.mkdir(self._log_folder)
 
         # Record some of the config values
-        assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
-        self._chunk_size   = chunk_size
-        self._output_size  = output_size
+        self.set_chunk_output_sizes(chunk_size, output_size)
         self._output_dims  = 1
         self._chunk_stride = chunk_stride
         self._data_type    = tf.float32
@@ -210,7 +208,7 @@ class ImageryDataset:
         """Reshape the labels to account for the chunking process."""
         w = (self._chunk_size - self._output_size) // 2
         labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
-                                                             tf.shape(labels)[1] - 2 * w) #pylint: disable=C0330
+                                                             tf.shape(labels)[1] - 2 * w)
 
         ksizes  = [1, self._output_size, self._output_size, 1]
         strides = [1, self._chunk_stride, self._chunk_stride, 1]
@@ -259,10 +257,15 @@ class ImageryDataset:
         """
         return self._num_bands
 
+    def set_chunk_output_sizes(self, chunk_size, output_size):
+        assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
+        self._chunk_size = chunk_size
+        self._output_size = output_size
     def chunk_size(self):
         """
         Size of chunks used for inputs.
         """
+        return self._chunk_size
     def output_shape(self):
         """
         Output size of blocks of labels.
@@ -287,7 +290,7 @@ class AutoencoderDataset(ImageryDataset):
         """
         The images are used as labels as well.
         """
-        super(AutoencoderDataset, self).__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
+        super().__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
                                                  resume_mode=resume_mode, log_folder=log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
