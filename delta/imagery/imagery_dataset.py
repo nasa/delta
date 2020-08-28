@@ -235,23 +235,22 @@ class ImageryDataset:
         label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
         return label_set.unbatch()
 
-    def dataset(self, classes=None):
+    def dataset(self, class_weights=None):
         """
         Return the underlying TensorFlow dataset object that this class creates.
 
-        classes: Configuration of the classes, including number and weights.
+        class_weights: list of weights in the classes.
+        If class_weights is specified, returns a dataset of (data, labels, weights) instead.
         """
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
-        if classes is not None:
-            # ignore chunks which are all nodata
-            if self._labels.nodata_value() is not None:
-                num_classes = len(classes)
-                ds = ds.filter(lambda x, y: tf.math.reduce_all(tf.math.not_equal(y, num_classes)))
-            if classes.weights() is not None:
-                lookup = tf.constant(classes.weights())
-                ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
+            # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
+        if self._labels.nodata_value() is not None:
+            ds = ds.filter(lambda x, y: tf.math.reduce_all(tf.math.not_equal(y, self._labels.nodata_value())))
+        if class_weights is not None:
+            lookup = tf.constant(class_weights)
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
         return ds
 
     def num_bands(self):

@@ -55,7 +55,7 @@ class Predictor(ABC):
         """Cancel the operation and cleanup neatly."""
 
     @abstractmethod
-    def _process_block(self, pred_image, x, y, labels):
+    def _process_block(self, pred_image, x, y, labels, label_nodata):
         """
         Processes a predicted block. The predictions are in pred_image,
         (sx, sy) is the starting coordinates of the block, and the corresponding labels
@@ -138,6 +138,8 @@ class Predictor(ABC):
 
         self._initialize((input_bounds.width() + offset_r, input_bounds.height() + offset_c), label, image)
 
+        label_nodata = label.nodata_value() if label else None
+
         def callback_function(roi, data):
             pred_image = self._predict_array(data, image.nodata_value())
 
@@ -153,7 +155,7 @@ class Predictor(ABC):
                                                 label_x + pred_image.shape[0], label_y + pred_image.shape[1])
                 labels = np.squeeze(label.read(label_roi))
 
-            self._process_block(pred_image, sx, sy, labels)
+            self._process_block(pred_image, sx, sy, labels, label_nodata)
 
         output_rois = input_bounds.make_tile_rois(block_size_x - offset_r, block_size_y - offset_c,
                                                   include_partials=False, overlap_amount=-offset_r)
@@ -170,7 +172,7 @@ class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, output_image=None, show_progress=False, label_nodata=None, # pylint:disable=too-many-arguments
+    def __init__(self, model, output_image=None, show_progress=False, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
         output_image, prob_image, and error_image are all DeltaImageWriter's.
@@ -189,7 +191,6 @@ class LabelPredictor(Predictor):
                     a[i][1] = (v >> 8) & 0xFF
                     a[i][2] = v & 0xFF
                 colormap = a
-        self._label_nodata = label_nodata
         self._colormap = colormap
         self._prob_image = prob_image
         self._error_image = error_image
@@ -244,7 +245,7 @@ class LabelPredictor(Predictor):
         if self._error_image is not None:
             self._error_image.abort()
 
-    def _process_block(self, pred_image, x, y, labels):
+    def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._prob_image is not None:
             self._prob_image.write(pred_image, x, y)
         prob_image = pred_image
@@ -258,8 +259,8 @@ class LabelPredictor(Predictor):
 
             valid_labels = labels
             valid_pred = pred_image
-            if self._label_nodata is not None:
-                invalid = np.logical_or((labels == self._num_classes), pred_image == -1)
+            if label_nodata is not None:
+                invalid = np.logical_or((labels == label_nodata), pred_image == -1)
                 valid = np.logical_not(invalid)
                 incorrect[invalid] = 0
                 valid_labels = labels[valid]
@@ -275,7 +276,7 @@ class LabelPredictor(Predictor):
             if self._colormap is not None:
                 colormap = np.zeros((self._colormap.shape[0] + 1, self._colormap.shape[1]))
                 colormap[0:-1, :] = self._colormap
-                if labels is not None and self._label_nodata is not None:
+                if labels is not None and label_nodata is not None:
                     pred_image[pred_image == -1] = self._colormap.shape[0]
                 self._output_image.write(colormap[pred_image], x, y)
             else:
@@ -319,7 +320,7 @@ class ImagePredictor(Predictor):
         if self._output_image is not None:
             self._output_image.abort()
 
-    def _process_block(self, pred_image, x, y, labels):
+    def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._output_image is not None:
             im = pred_image
             if self._transform is not None:

@@ -173,6 +173,7 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
 
     labels_nodata = labels_dict['nodata_value']
     pre_orig = __preprocess_function(labels_comp)
+    # we shift the label images to always be 0...n[+1], Class 1, Class 2, ... Class N, [nodata]
     def class_shift(data, _, dummy):
         if pre_orig is not None:
             data = pre_orig(data, _, dummy)
@@ -186,7 +187,7 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
             data[nodata_indices] = len(classes_comp)
         return data
     return (imageset, ImageSet(labels, labels_dict['type'],
-                               class_shift, labels_dict['nodata_value']))
+                               class_shift, len(classes_comp) if labels_nodata is not None else None))
 
 class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):

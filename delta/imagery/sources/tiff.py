@@ -257,7 +257,7 @@ class RGBAImage(TiffImage):
 
         # Get the path to the cached image
         fname = os.path.basename(paths)
-        output_path = config.cache_manager().register_item(fname)
+        output_path = config.io.cache.manager().register_item(fname)
 
         if not os.path.exists(output_path):
             # Just remove the alpha band from the original image
@@ -309,7 +309,7 @@ class TiffWriter:
     """Class to manage block writes to a Geotiff file.
     """
     def __init__(self, path, width, height, num_bands=1, data_type=gdal.GDT_Byte, #pylint:disable=too-many-arguments
-                 tile_width=256, tile_height=256, no_data_value=None, metadata=None):
+                 tile_width=256, tile_height=256, nodata_value=None, metadata=None):
         self._width  = width
         self._height = height
         self._tile_height = tile_height
@@ -329,9 +329,9 @@ class TiffWriter:
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
-        if no_data_value is not None:
+        if nodata_value is not None:
             for i in range(1,num_bands+1):
-                self._handle.GetRasterBand(i).SetNoDataValue(no_data_value)
+                self._handle.GetRasterBand(i).SetNoDataValue(nodata_value)
 
         if metadata:
             self._handle.SetProjection  (metadata['projection'  ])
@@ -418,7 +418,7 @@ class DeltaTiffWriter(delta_image.DeltaImageWriter):
         self._filename = filename
         self._tiff_w = None
 
-    def initialize(self, size, numpy_dtype, metadata=None):
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         """
         Prepare for writing with the given size and dtype.
         """
@@ -426,6 +426,7 @@ class DeltaTiffWriter(delta_image.DeltaImageWriter):
         TILE_SIZE = 256
         self._tiff_w = TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
                                   data_type=numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
+                                  nodata_value=nodata_value,
                                   tile_width=min(TILE_SIZE, size[0]), tile_height=min(TILE_SIZE, size[1]))
 
     def write(self, data, x, y):

@@ -61,7 +61,7 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc, chunk_size, output_size):
-    ds = ids.dataset(config.dataset.classes)
+    ds = ids.dataset(config.dataset.classes.weights())
     ds = ds.batch(tc.batch_size)
     #ds = ds.cache()
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
@@ -80,7 +80,7 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                                               resume_mode=False)
                 else:
                     vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
-                validation = vimagery.dataset(config.dataset.classes).batch(tc.batch_size)
+                validation = vimagery.dataset(config.dataset.classes.weights()).batch(tc.batch_size)
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
         #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)

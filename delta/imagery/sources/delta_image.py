@@ -196,7 +196,7 @@ class DeltaImage(ABC):
 
 class DeltaImageWriter(ABC):
     @abstractmethod
-    def initialize(self, size, numpy_dtype, metadata=None):
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         """
         Prepare for writing with the given size and dtype.
         """
