@@ -24,10 +24,10 @@ import yaml
 import numpy as np
 import tensorflow as tf
 
+from conftest import config_reset
+
 from delta.config import config
 from delta.ml import model_parser
-
-from conftest import config_reset
 
 def test_general():
     config_reset()

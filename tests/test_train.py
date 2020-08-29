@@ -21,11 +21,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 
+import conftest
+
 from delta.imagery.sources import npy
 from delta.ml import train, predict
 from delta.ml.ml_config import TrainingSpec
-
-import conftest
 
 def evaluate_model(model_fn, dataset, output_trim=0):
     model, _ = train.train(model_fn, dataset,

@@ -21,10 +21,10 @@ import os
 import pytest
 import numpy as np
 
+import conftest
+
 from delta.config import config
 from delta.imagery import imagery_dataset
-
-import conftest
 
 def test_block_label(dataset_block_label):
     """
