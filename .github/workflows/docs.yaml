@@ -1,0 +1,50 @@
+# Build documentation and commit to gh-pages branch.
+
+name: Build and Push Documentation to gh-pages Branch
+
+on:
+  push:
+    branches: [ 'master']
+
+jobs:
+  build_and_push_docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: repo/
+    - name: Checkout gh-pages
+      uses: actions/checkout@v2
+      with:
+        path: docs/
+        ref: gh-pages
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install pdoc3
+      run: |
+        python3 -m pip install pdoc3
+    - name: Install DELTA
+      run: |
+        cd repo
+        ./scripts/setup.sh
+        python3 -m pip install .
+    - name: Build Documentation
+      run: |
+        ./repo/scripts/docs.sh ./docs/
+    - name: Commit and Push
+      run: |
+        cd repo
+        EMAIL=`git show -s --format='%ae' HEAD`
+        NAME=`git show -s --format='%an' HEAD`
+        cd ..
+        cd docs/
+        git add .
+        git config user.email "$EMAIL"
+        git config user.name "$NAME"
+        git commit -m "Automatic update for $GITHUB_SHA."
+        git push origin gh-pages
+
