@@ -37,8 +37,8 @@ class DiskCache:
         if not os.path.exists(top_folder):
             try:
                 os.mkdir(top_folder)
-            except:
-                raise Exception('Could not create disk cache folder: ' + top_folder)
+            except Exception as e:
+                raise Exception('Could not create disk cache folder: ' + top_folder) from e
 
         self._limit  = limit
         self._folder = top_folder

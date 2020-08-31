@@ -80,7 +80,7 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                                               resume_mode=False)
                 else:
                     vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
-                validation = vimagery.dataset().batch(tc.batch_size)
+                validation = vimagery.dataset(config.dataset.classes.weights()).batch(tc.batch_size)
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
         #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
@@ -115,7 +115,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
     Callback to log everything for MLFlow.
     """
     def __init__(self, temp_dir):
-        super(_MLFlowCallback, self).__init__()
+        super().__init__()
         self.epoch = 0
         self.batch = 0
         self.temp_dir = temp_dir
@@ -189,8 +189,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert len(output_shape) == 2 or output_shape[1] == output_shape[2], 'Output from network is not chunked'
     assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
     # last element differs for the sparse metrics
-    assert output_shape[1:-1] == dataset.output_shape()[:-1], \
-            'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape())
+    assert output_shape[1:-1] == dataset.output_shape()[:-1] or (output_shape[1] is None), \
+            'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape()[:-1])
 
     (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
 

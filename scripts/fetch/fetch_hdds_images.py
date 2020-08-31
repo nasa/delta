@@ -355,8 +355,8 @@ def main(argsIn): #pylint: disable=R0914,R0912
                              product=download_type)
             try:
                 url = r['data'][0]['url']
-            except:
-                raise Exception('Failed to get download URL from result: ' + str(r))
+            except Exception as e:
+                raise Exception('Failed to get download URL from result: ' + str(r)) from e
 
             print(scene['summary'])
             # Finally download the data!

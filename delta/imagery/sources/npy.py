@@ -29,8 +29,8 @@ class NumpyImage(delta_image.DeltaImage):
     Numpy image data tensorflow dataset wrapper (see imagery_dataset.py).
     Can set either path to load a file, or data to load a numpy array directly.
     """
-    def __init__(self, data=None, path=None):
-        super(NumpyImage, self).__init__()
+    def __init__(self, data=None, path=None, nodata_value=None):
+        super().__init__(nodata_value)
 
         if path:
             assert not data
@@ -66,7 +66,7 @@ class NumpyImageWriter(delta_image.DeltaImageWriter):
     def __init__(self):
         self._buffer = None
 
-    def initialize(self, size, numpy_dtype, metadata=None):
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         self._buffer = np.zeros(shape=size, dtype=numpy_dtype)
 
     def write(self, data, x, y):
