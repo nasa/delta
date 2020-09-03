@@ -30,6 +30,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import imagery_dataset
+from delta.imagery.sources import loader
 from delta.ml.train import train
 from delta.ml.model_parser import config_model
 from delta.ml.layers import ALL_LAYERS
@@ -47,14 +48,24 @@ def main(options):
         else:
             print('Resuming dataset progress recorded in: ' + log_folder)
 
-    start_time = time.time()
     images = config.dataset.images()
     if not images:
         print('No images specified.', file=sys.stderr)
         return 1
+
+    if options.resume is not None:
+        model = tf.keras.models.load_model(options.resume, custom_objects=ALL_LAYERS)
+    else:
+        img = loader.load_image(images, 0)
+        model = config_model(img.num_bands())
+
+    # this one is not built with proper scope, just used to get input and output shapes
+    temp_model = model()
+
+    start_time = time.time()
     tc = config.train.spec()
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, config.train.network.chunk_size(),
+        ids = imagery_dataset.AutoencoderDataset(images, temp_model.input_shape[1],
                                                  tc.chunk_stride, resume_mode=options.resume,
                                                  log_folder=log_folder)
     else:
@@ -62,16 +73,15 @@ def main(options):
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
-        ids = imagery_dataset.ImageryDataset(images, labels, config.train.network.chunk_size(),
-                                             config.train.network.output_size(), tc.chunk_stride,
+        ids = imagery_dataset.ImageryDataset(images, labels, temp_model.input_shape[1],
+                                             temp_model.output_shape[1], tc.chunk_stride,
                                              resume_mode=options.resume,
                                              log_folder=log_folder)
 
+    assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
+    assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
+
     try:
-        if options.resume is not None:
-            model = tf.keras.models.load_model(options.resume, custom_objects=ALL_LAYERS)
-        else:
-            model = config_model(ids.num_bands())
         model, _ = train(model, ids, tc)
 
         if options.model is not None:

@@ -69,8 +69,6 @@ dataset:
 
 train:
   network:
-    chunk_size:      16
-    output_size:     8
     model:
       yaml_file:     networks/convpool.yaml
       params:        ~

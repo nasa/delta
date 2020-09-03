@@ -1,9 +1,10 @@
 params:
   dropout_rate: 0.3
   num_filters: 64
+  out_dims: 27 # 3 * 3 * 3
 layers:
   - Input:
-      shape: in_shape
+      shape: [5, 5, num_bands]
   - Conv2D:
        filters: num_filters
        kernel_size: [5, 5]
@@ -27,6 +28,6 @@ layers:
        units: out_dims
        activation: linear
   - Reshape:
-       target_shape: out_shape
+       target_shape: [3, 3, num_classes]
   - Softmax:
        axis: 3

@@ -81,8 +81,6 @@ These options are used in the `delta train` command.
 
 These options configure the neural network to train with the `delta train` command.
 
- * `chunk_size`: The width and height of each chunks to input to the neural network
- * `output_size`: The width and height of the output from the neural network for each chunk
  * `classes`: The number of classes in the input data. The classes must currently have values
    0 - n in the label images.
  * `model`: The network structure specification.

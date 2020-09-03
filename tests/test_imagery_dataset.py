@@ -84,14 +84,11 @@ def autoencoder(all_sources):
                     directory: %s
                     extension: %s
                     preprocess:
-                      enabled: false
-                train:
-                  network:
-                    chunk_size: 3''' %
+                      enabled: false''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),
-                                                 config.train.network.chunk_size(), config.train.spec().chunk_stride)
+                                                 3, config.train.spec().chunk_stride)
     return dataset
 
 def test_autoencoder(autoencoder):

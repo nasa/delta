@@ -99,7 +99,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Image Type',   images.type())
     mlflow.log_param('Preprocess',   images.preprocess())
     mlflow.log_param('Number of Images',   len(images))
-    mlflow.log_param('Chunk Size',   dataset.chunk_size())
+    mlflow.log_param('Chunk Size',   model.input_shape[1])
     mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
     mlflow.log_param('Output Shape',   dataset.output_shape())
     mlflow.log_param('Steps', training_spec.steps)
