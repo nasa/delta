@@ -42,7 +42,7 @@ def unpack_to_folder(compressed_path, unpack_folder):
     except Exception as e:
         shutil.rmtree(tmpdir) # Clear any partially unpacked results
         raise RuntimeError('Caught exception unpacking compressed file: ' + compressed_path
-                           + '\n' + str(e))
+                           + '\n' + str(e)) from e
     os.rename(tmpdir, unpack_folder) # Clean up
 
 def progress_bar(text, fill_amount, prefix = '', length = 80): #pylint: disable=W0613

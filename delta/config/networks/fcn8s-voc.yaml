@@ -1,0 +1,203 @@
+# fully convolutional neural network
+# based on https://github.com/shelhamer/fcn.berkeleyvision.org/blob/master/voc-fcn8s/net.py
+params:
+  num_classes: 3
+layers:
+  - Input:
+      shape: [~, ~, num_bands]
+
+  - Conv2D:
+       filters: 64
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 64
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - MaxPooling2D:
+       name: pool1
+       pool_size: [2, 2]
+       strides: 2
+
+  - Conv2D:
+       filters: 128
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 128
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - MaxPooling2D:
+       name: pool2
+       pool_size: [2, 2]
+       strides: 2
+
+  - Conv2D:
+       filters: 256
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 256
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 256
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - MaxPooling2D:
+       name: pool3
+       pool_size: [2, 2]
+       strides: 2
+
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - MaxPooling2D:
+       name: pool4
+       pool_size: [2, 2]
+       strides: 2
+
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Conv2D:
+       filters: 512
+       kernel_size: 3
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - MaxPooling2D:
+       name: pool5
+       pool_size: [2, 2]
+       strides: 2
+
+  - Conv2D:
+       filters: 4096
+       kernel_size: 7
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Dropout:
+       rate: 0.5
+  - Conv2D:
+       filters: 4096
+       kernel_size: 1
+       padding: same
+       strides: 1
+  - BatchNormalization:
+  - Activation:
+       activation: 'relu'
+  - Dropout:
+       rate: 0.5
+
+  - Conv2D:
+       filters: num_classes
+       kernel_size: 1
+       strides: 1
+  - Conv2DTranspose:
+       name: upscore2
+       filters: num_classes
+       padding: same
+       kernel_size: 4
+       strides: 2
+       use_bias: false
+
+  - Conv2D:
+       inputs: pool4
+       name: score_pool4
+       filters: num_classes
+       padding: same
+       kernel_size: 1
+  - Add:
+       inputs: [upscore2, score_pool4]
+  - Conv2DTranspose:
+       name: upscore4
+       filters: num_classes
+       padding: same
+       kernel_size: 4
+       strides: 2
+       use_bias: false
+
+  - Conv2D:
+       inputs: pool3
+       name: score_pool3
+       filters: num_classes
+       padding: same
+       kernel_size: 1
+  - Add:
+       inputs: [upscore4, score_pool3]
+  - Conv2DTranspose:
+       name: upscore8
+       filters: num_classes
+       padding: same
+       kernel_size: 16
+       strides: 8
+       use_bias: false
+  - Softmax:
+       axis: 3
