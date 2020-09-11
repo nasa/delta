@@ -40,9 +40,9 @@ def loss_function_factory(loss_spec):
     '''
     import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
 
+    loss = None
     if isinstance(loss_spec, str):
-        return loss_spec
-
+        return getattr(tensorflow.keras.losses, loss_spec, None)
     if isinstance(loss_spec, list):
         assert len(loss_spec) == 1, 'Too many loss functions specified'
         assert isinstance(loss_spec[0], dict), '''Loss functions objects and parameters must
@@ -54,9 +54,7 @@ def loss_function_factory(loss_spec):
 
         loss_class = getattr(tensorflow.keras.losses, loss_type, None)
         return loss_class(**loss_fn_args)
-
     raise RuntimeError(f'Did not recognize the loss function specification: {loss_spec}')
-
 
 class ValidationSet:#pylint:disable=too-few-public-methods
     """

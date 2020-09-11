@@ -39,9 +39,8 @@ def test_general():
       gpus: 3
     io:
       threads: 5
-      block_size_mb: 10
+      tile_size: [5, 5]
       interleave_images: 3
-      tile_ratio: 1.0
       cache:
         dir: nonsense
         limit: 2
@@ -50,9 +49,9 @@ def test_general():
 
     assert config.general.gpus() == 3
     assert config.io.threads() == 5
-    assert config.io.block_size_mb() == 10
+    assert config.io.tile_size()[0] == 5
+    assert config.io.tile_size()[1] == 5
     assert config.io.interleave_images() == 3
-    assert config.io.tile_ratio() == 1.0
     cache = config.io.cache.manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2
@@ -281,7 +280,7 @@ def test_train():
       batch_size: 5
       steps: 10
       epochs: 3
-      loss_function: loss
+      loss_function: SparseCategoricalCrossentropy
       metrics: [metric]
       optimizer: opt
       validation:
@@ -294,7 +293,7 @@ def test_train():
     assert tc.batch_size == 5
     assert tc.steps == 10
     assert tc.epochs == 3
-    assert tc.loss_function == 'loss'
+    assert tc.loss_function == tf.keras.losses.SparseCategoricalCrossentropy
     assert tc.metrics == ['metric']
     assert tc.optimizer == 'opt'
     assert tc.validation.steps == 20
