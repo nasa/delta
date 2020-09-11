@@ -40,7 +40,6 @@ def loss_function_factory(loss_spec):
     '''
     import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
 
-    loss = None
     if isinstance(loss_spec, str):
         return getattr(tensorflow.keras.losses, loss_spec, None)
     if isinstance(loss_spec, list):
