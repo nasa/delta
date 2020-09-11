@@ -257,7 +257,7 @@ class ImageryDataset:
         return self._num_bands
 
     def set_chunk_output_sizes(self, chunk_size, output_size):
-        if not chunk_size:
+        if chunk_size:
             assert (chunk_size % 2) == (output_size % 2), 'Chunk and output sizes must both be even or odd.'
         self._chunk_size = chunk_size
         self._output_size = output_size
