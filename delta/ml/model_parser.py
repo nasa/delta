@@ -47,7 +47,7 @@ class _LayerWrapper:
         self._layer = None
 
     def is_input(self):
-        return self._layer_type == 'Input'
+        return self._layer_type == 'Input' 
 
     # TODO: will crash if there is a cycle in the graph
     def layer(self, layer_dict):
@@ -134,6 +134,7 @@ def _make_model(model_dict, exposed_params):
     last = None
     layer_list = model_dict_copy['layers']
     first_layer_type = next(layer_list[0].keys().__iter__())
+    # want code that checks if the if the first layer is not an Input 
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
         layer_list = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
     #if layer_list[0]['type'] != 'Input' and 'input' not in layer_list[0]:
