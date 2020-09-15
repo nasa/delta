@@ -40,13 +40,13 @@ def register_image_type(image_type, image_class):
     global _IMAGE_TYPES #pylint: disable=global-statement
     _IMAGE_TYPES[image_type] = image_class
 
-def load(filename, image_type, preprocess=False):
+def load(filename, image_type, nodata_value=None, preprocess=False):
     """
     Load an image of the appropriate type and parameters.
     """
     if image_type not in _IMAGE_TYPES:
         raise ValueError('Unexpected image_type %s.' % (image_type))
-    img = _IMAGE_TYPES[image_type](filename)
+    img = _IMAGE_TYPES[image_type](filename, nodata_value)
     if preprocess:
         img.set_preprocess(preprocess)
     return img
@@ -55,4 +55,4 @@ def load_image(image_set, index):
     """
     Load the specified image in the ImageSet.
     """
-    return load(image_set[index], image_set.type(), preprocess=image_set.preprocess())
+    return load(image_set[index], image_set.type(), image_set.nodata_value(), preprocess=image_set.preprocess())

@@ -130,14 +130,22 @@ class DeltaConfigComponent:
             kwargs['default'] = _NotSpecified
         self._cmd_args[argname] = (field, kwargs)
 
+    def to_dict(self) -> dict:
+        """
+        Returns a dictionary representing the config object.
+        """
+        if isinstance(self._config_dict, dict):
+            exp = self._config_dict.copy()
+            for (name, c) in self._components.items():
+                exp[name] = c.to_dict()
+            return exp
+        return self._config_dict
+
     def export(self) -> str:
         """
-        Returns a YAML string of all configuration options.
+        Returns a YAML string of all configuration options, from to_dict.
         """
-        exp = self._config_dict.copy()
-        for (name, c) in self._components.items():
-            exp[name] = c.export()
-        return yaml.dump(exp)
+        return yaml.dump(self.to_dict())
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:

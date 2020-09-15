@@ -20,6 +20,7 @@ Functions to support the WorldView satellites.
 """
 
 import math
+import zipfile
 import functools
 import os
 import sys
@@ -61,10 +62,10 @@ def _get_files_from_unpack_folder(folder):
 
 class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
-    def __init__(self, paths):
+    def __init__(self, paths, nodata_value=None):
         self._meta_path = None
         self._meta = None
-        super(WorldviewImage, self).__init__(paths)
+        super().__init__(paths, nodata_value)
 
     def _unpack(self, paths):
         # Get the folder where this will be stored from the cache manager
@@ -101,10 +102,20 @@ class WorldviewImage(tiff.TiffImage):
            TODO: Apply TOA conversion!
         """
         assert isinstance(paths, str)
-        parts = os.path.basename(paths).split('_')
+        (_, ext) = os.path.splitext(paths)
+        assert '.zip' in ext, f'Error: Was assuming a zip file. Found {paths}'
+
+        zip_file = zipfile.ZipFile(paths, 'r')
+        tif_names = list(filter(lambda x: '.tif' in x, zip_file.namelist()))
+        assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
+        assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
+        tif_name = tif_names[0]
+
+
+        parts = os.path.basename(tif_name).split('_')
         self._sensor = parts[0][0:4]
         self._date   = parts[2][6:14]
-        self._name   = os.path.splitext(os.path.basename(paths))[0]
+        self._name   = os.path.splitext(os.path.basename(tif_name))[0]
 
         (tif_path, imd_path) = self._unpack(paths)
 
@@ -169,9 +180,9 @@ def _get_esun_value(sat_id, band):
                       1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
     try:
         return VALUES[sat_id][band]
-    except Exception:
+    except Exception as e:
         raise Exception('No ESUN value for ' + sat_id
-                        + ', band ' + str(band))
+                        + ', band ' + str(band)) from e
 
 def _get_earth_sun_distance():
     """Returns the distance between the Earth and the Sun in AU for the given date"""

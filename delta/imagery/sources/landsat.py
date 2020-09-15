@@ -193,7 +193,7 @@ class LandsatImage(tiff.TiffImage):
 
         # Get the folder where this will be stored from the cache manager
         name = '_'.join([self._sensor, self._lpath, self._lrow, self._date])
-        untar_folder = config.cache_manager().register_item(name)
+        untar_folder = config.io.cache.manager().register_item(name)
 
         # Check if we already unpacked this data
         all_files_present = False

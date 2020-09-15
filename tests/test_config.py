@@ -21,13 +21,16 @@ import tempfile
 import pytest
 import yaml
 
+import numpy as np
 import tensorflow as tf
+
+from conftest import config_reset
 
 from delta.config import config
 from delta.ml import model_parser
 
 def test_general():
-    config.reset()
+    config_reset()
 
     assert config.general.gpus() == -1
 
@@ -56,7 +59,7 @@ def test_general():
     os.rmdir('nonsense')
 
 def test_images_dir():
-    config.reset()
+    config_reset()
     dir_path = os.path.join(os.path.dirname(__file__), 'data')
     test_str = '''
     dataset:
@@ -75,7 +78,7 @@ def test_images_dir():
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
 
 def test_images_files():
-    config.reset()
+    config_reset()
     file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
     test_str = '''
     dataset:
@@ -92,8 +95,50 @@ def test_images_files():
     assert len(im) == 1
     assert im[0] == file_path
 
+def test_classes():
+    config_reset()
+    test_str = '''
+    dataset:
+      classes: 2
+    '''
+    config.load(yaml_str=test_str)
+    assert len(config.dataset.classes) == 2
+    for (i, c) in enumerate(config.dataset.classes):
+        assert c.value == i
+    assert config.dataset.classes.weights() is None
+    config_reset()
+    test_str = '''
+    dataset:
+      classes:
+        - 2:
+            name: 2
+            color: 2
+            weight: 5.0
+        - 1:
+            name: 1
+            color: 1
+            weight: 1.0
+        - 5:
+            name: 5
+            color: 5
+            weight: 2.0
+    '''
+    config.load(yaml_str=test_str)
+    assert config.dataset.classes
+    values = [1, 2, 5]
+    for (i, c) in enumerate(config.dataset.classes):
+        e = values[i]
+        assert c.value == e
+        assert c.name == str(e)
+        assert c.color == e
+    assert config.dataset.classes.weights() == [1.0, 5.0, 2.0]
+    arr = np.array(values)
+    ind = config.dataset.classes.classes_to_indices_func()(arr)
+    assert np.max(ind) == 2
+    assert (config.dataset.classes.indices_to_classes_func()(ind) == values).all()
+
 def test_model_from_dict():
-    config.reset()
+    config_reset()
     test_str = '''
     params:
         v1 : 10
@@ -119,7 +164,7 @@ def test_model_from_dict():
     assert len(model.layers) == 4 # Input layer is added behind the scenes
 
 def test_pretrained_layer():
-    config.reset()
+    config_reset()
     base_model = '''
     params:
         v1 : 10
@@ -167,25 +212,25 @@ def test_pretrained_layer():
     os.remove(tmp_filename)
 
 def test_network_file():
-    config.reset()
+    config_reset()
     test_str = '''
+    dataset:
+      classes: 3
     train:
       network:
         chunk_size: 5
-        classes: 3
         model:
           yaml_file: networks/convpool.yaml
     '''
     config.load(yaml_str=test_str)
     assert config.train.network.chunk_size() == 5
-    assert config.train.network.classes() == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
     assert model.output_shape == (None, config.train.network.output_size(),
-                                  config.train.network.output_size(), config.train.network.classes())
+                                  config.train.network.output_size(), len(config.dataset.classes))
 
 def test_validate():
-    config.reset()
+    config_reset()
     test_str = '''
     train:
       network:
@@ -193,7 +238,7 @@ def test_validate():
     '''
     with pytest.raises(ValueError):
         config.load(yaml_str=test_str)
-    config.reset()
+    config_reset()
     test_str = '''
     train:
       network:
@@ -203,13 +248,14 @@ def test_validate():
         config.load(yaml_str=test_str)
 
 def test_network_inline():
-    config.reset()
+    config_reset()
     test_str = '''
+    dataset:
+      classes: 3
     train:
       network:
         chunk_size: 5
         output_size: 1
-        classes: 3
         model:
           params:
             v1 : 10
@@ -225,13 +271,13 @@ def test_network_inline():
     '''
     config.load(yaml_str=test_str)
     assert config.train.network.chunk_size() == 5
-    assert config.train.network.classes() == 3
+    assert len(config.dataset.classes) == 3
     model = model_parser.config_model(2)()
     assert model.input_shape == (None, config.train.network.chunk_size(), config.train.network.chunk_size(), 2)
-    assert model.output_shape == (None, config.train.network.classes())
+    assert model.output_shape == (None, len(config.dataset.classes))
 
 def test_train():
-    config.reset()
+    config_reset()
     test_str = '''
     train:
       chunk_stride: 2
@@ -258,9 +304,7 @@ def test_train():
     assert tc.validation.from_training
 
 def test_mlflow():
-    config.reset()
-
-    assert config.mlflow.enabled()
+    config_reset()
 
     test_str = '''
     mlflow:
@@ -280,7 +324,7 @@ def test_mlflow():
     assert config.mlflow.checkpoints.frequency() == 10
 
 def test_tensorboard():
-    config.reset()
+    config_reset()
 
     assert not config.tensorboard.enabled()
 
@@ -295,7 +339,7 @@ def test_tensorboard():
     assert config.tensorboard.dir() == 'nonsense'
 
 def test_argparser():
-    config.reset()
+    config_reset()
 
     parser = argparse.ArgumentParser()
     config.setup_arg_parser(parser)
@@ -312,7 +356,6 @@ def test_argparser():
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
     im = config.dataset.labels()
-    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])

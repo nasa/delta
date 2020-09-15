@@ -33,16 +33,18 @@ import delta.ml.layers
 import delta.imagery.imagery_config
 import delta.ml.ml_config
 
-def save_confusion(cm, filename):
+def save_confusion(cm, class_labels, filename):
     f = plt.figure()
     ax = f.add_subplot(1, 1, 1)
     image = ax.imshow(cm, interpolation='nearest', cmap=plt.get_cmap('inferno'))
     ax.set_title('Confusion Matrix')
     f.colorbar(image)
+    ax.set_xlim(-0.5, cm.shape[0] - 0.5)
+    ax.set_ylim(-0.5, cm.shape[0] - 0.5)
     ax.set_xticks(range(cm.shape[0]))
     ax.set_yticks(range(cm.shape[0]))
-    ax.set_xlim(-0.5, cm.shape[0]-0.5)
-    ax.set_ylim(-0.5, cm.shape[0]-0.5)
+    ax.set_xticklabels(class_labels)
+    ax.set_yticklabels(class_labels)
     m = cm.max()
     total = cm.sum()
 
@@ -51,7 +53,7 @@ def save_confusion(cm, filename):
             ax.text(j, i, '%d\n%.2g%%' % (cm[i, j], cm[i, j] / total * 100), horizontalalignment='center',
                     color='white' if cm[i, j] < m / 2 else 'black')
     ax.set_ylabel('True Label')
-    ax.set_xlabel('Predicated Label')
+    ax.set_xlabel('Predicted Label')
     f.savefig(filename)
 
 def ae_convert(data):
@@ -68,15 +70,7 @@ def main(options):
     else:
         model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
 
-    colors = np.array([[0x0, 0x0, 0x0],
-                       [0x67, 0xa9, 0xcf],
-                       [0xf6, 0xef, 0xf7],
-                       [0xbd, 0xc9, 0xe1],
-                       [0x02, 0x81, 0x8a],
-                       [0x00, 0xff, 0xff], # TODO: Label and clean up colormap
-                       [0xff, 0x00, 0xff],
-                       [0xff, 0xff, 0x00]],
-                      dtype=np.uint8)
+    colors = list(map(lambda x: x.color, config.dataset.classes))
     error_colors = np.array([[0x0, 0x0, 0x0],
                              [0xFF, 0x00, 0x00]], dtype=np.uint8)
     if options.noColormap:
@@ -107,8 +101,9 @@ def main(options):
             label = image
             predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
         else:
-            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors, prob_image=prob_image,
-                                               error_image=error_image, error_colors=error_colors)
+            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors,
+                                               prob_image=prob_image, error_image=error_image,
+                                               error_colors=error_colors)
 
         try:
             if cpuOnly:
@@ -123,7 +118,7 @@ def main(options):
         if labels:
             cm = predictor.confusion_matrix()
             print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
-            save_confusion(cm, 'confusion_' + base_name + '.pdf')
+            save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
             tiff.write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
