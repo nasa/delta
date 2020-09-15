@@ -79,10 +79,27 @@ class ImageryDataset:
             with portalocker.Lock(path, 'r', timeout=300) as f:
                 line = f.readline()
                 parts = line.split()
-                return (bool(parts[0]), int(parts[1]))
+                if len(parts) == 1: # Legacy files
+                    return (True, int(parts[0]))
+                needToCheck = (parts[0] == '1')
+                return (needToCheck, int(parts[1]))
+        except OSError as e:
+            if e.errno == 122: # Disk quota exceeded
+                raise
+            return (False, 0)
         except Exception: #pylint: disable=W0703
             # If there is a problem reading the count just treat as zero
             return (False, 0)
+
+    def _update_access_count_file(self, path, need_check, count):
+        if need_check:
+            bool_str = '1 '
+        else:
+            bool_str = '0 '
+        count_str = str(count+1)
+        with portalocker.Lock(path, 'w', timeout=300) as f:
+            f.write(bool_str + count_str) # No need to check again
+
 
     def reset_access_counts(self, set_need_check=False):
         """Go through all the access files and reset one of the values.
@@ -117,12 +134,11 @@ class ImageryDataset:
             if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
                 # Read this file too many times in a previous run, skip the image file
                 # and leave the access file alone so we keep skipping it.
-                print('Skipping index ' + str(image_index.numpy()) + ' with count ' + str(count) + ' -> ' + file_path)
+                #print('Skipping index ' + str(image_index.numpy()) + ' with count ' + str(count) + ' -> ' + file_path)
                 return np.zeros(shape=(0,0,0), dtype=np.float32)
 
             if not is_labels: # The count file is shared don't write to it as label
-                with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                    f.write("0 " + str(count+1)) # No need to check again
+                self._update_access_count_file(log_path, need_check=False, count=count)
 
         try:
             image = loader.load_image(data, image_index.numpy())
@@ -151,11 +167,25 @@ class ImageryDataset:
             num_images = len(self._images)
             indices    = list(range(num_images))
             random.Random(0).shuffle(indices) # Use consistent random ordering
-            print('Num indices = ' + str(len(indices)))
 
             # Local function to get the tile list for a single image index
             def get_image_tile_list(i):
                 try:
+
+                    # If we need to skip this file because of the read count, no need to look up tiles.
+                    file_path = self._images[i]
+                    log_path  = self._get_image_read_log_path(file_path)
+                    #print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
+                    if log_path:
+                        (need_to_check, count) = self._read_access_count_file(log_path)
+                        if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
+                            #print('Skipping index ' + str(i) + ' tile gen with count ' + str(count) + ' -> ' + file_path)
+                            return (i, [])
+                        #else:
+                        #    print('Computing tile list for index ' + str(i) + ' with count ' + str(count) + ' -> ' + file_path)
+                    #else:
+                    #    print('No read log file for index ' + str(i))
+
                     img = loader.load_image(self._images, i)
 
                     if self._labels: # If we have labels make sure they are the same size as the input images
@@ -198,7 +228,13 @@ class ImageryDataset:
                 # Convert from indicies into tile lists for this set
                 print('Loading tile lists for set of ' + str(set_size) + ' images.')
                 current_tiles = [get_image_tile_list(i) for i in current_set]
-                print('Done loading set of tile lists, '+str(len(indices))+' indices remaining.')
+                #print('Done loading set of tile lists, '+str(len(indices))+' indices remaining.')
+
+                empty_tiles = 0
+                for it in current_tiles:
+                    if not it[1]:
+                        empty_tiles += 1
+                print('In this set, ' + str(empty_tiles) + ' empty groups.')
 
                 done = False
                 tile_count = 0
@@ -213,7 +249,7 @@ class ImageryDataset:
                             tile_count += 1
                             yield (it[0], roi.min_x, roi.min_y, roi.max_x, roi.max_y)
                     if done:
-                        print('Set done with tile count = ' + str(tile_count))
+                        #print('Set done with tile count = ' + str(tile_count))
                         break
 
         # Pass the local function into the dataset generator function
@@ -235,7 +271,7 @@ class ImageryDataset:
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
-        ret = ret.filter(lambda n: tf.math.greater(tf.size(0), 0))
+        ret = ret.filter(lambda n: tf.math.greater(tf.size(n), 0))
 
         # TODO: Any remaining cases this would handle?
         # Don't let the entire session be taken down by one bad dataset input.
