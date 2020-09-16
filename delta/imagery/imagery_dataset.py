@@ -89,7 +89,7 @@ class ImageryDataset:
             # If there is a problem reading the count just treat as zero
             return (False, 0)
 
-    def _update_access_count_file(self, path, need_check, count):
+    def _update_access_count_file(self, path, need_check, count):  #pylint: disable=R0201
         if need_check:
             bool_str = '1 '
         else:
@@ -177,10 +177,10 @@ class ImageryDataset:
                     if log_path:
                         (need_to_check, count) = self._read_access_count_file(log_path)
                         if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
-                            #print('Skipping index ' + str(i) + ' tile gen with count ' + str(count) + ' -> ' + file_path)
+                            #print('Skipping index ' + str(i) + ' tile gen with count ' + str(count) + ' -> ' + file_path) #pylint: disable=C0301
                             return (i, [])
                         #else:
-                        #    print('Computing tile list for index ' + str(i) + ' with count ' + str(count) + ' -> ' + file_path)
+                        #    print('Computing tile list for index ' + str(i) + ' with count ' + str(count) + ' -> ' + file_path) #pylint: disable=C0301
                     #else:
                     #    print('No read log file for index ' + str(i))
 
@@ -295,7 +295,7 @@ class ImageryDataset:
         """Reshape the labels to account for the chunking process."""
         w = (self._chunk_size - self._output_size) // 2
         labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
-                                                             tf.shape(labels)[1] - 2 * w)
+                                                             tf.shape(labels)[1] - 2 * w) #pylint: disable=C0330
 
         ksizes  = [1, self._output_size, self._output_size, 1]
         strides = [1, self._chunk_stride, self._chunk_stride, 1]
@@ -370,7 +370,7 @@ class AutoencoderDataset(ImageryDataset):
         The images are used as labels as well.
         """
         super().__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
-                                                 resume_mode=resume_mode, log_folder=log_folder)
+                         resume_mode=resume_mode, log_folder=log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
 
