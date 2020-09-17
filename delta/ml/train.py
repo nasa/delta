@@ -115,7 +115,7 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
     Reset imagery_dataset file counts on epoch end
     """
     def __init__(self, ids, stop_epoch):
-        super(_EpochResetCallback, self).__init__()
+        super().__init__()
         self.ids = ids
         self.last_epoch = stop_epoch - 1
 
