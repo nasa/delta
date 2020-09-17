@@ -398,6 +398,8 @@ class IOConfig(DeltaConfigComponent):
                             'Width to height ratio of blocks to load in images.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
+        self.register_field('verbose', bool, 'verbose', None,
+                            'Print more information about loading input files.')
 
         self.register_arg('threads', '--threads')
         self.register_arg('block_size_mb', '--block-size-mb')

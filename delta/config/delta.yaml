@@ -18,6 +18,8 @@ io:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
+  # Print more information about loading input files
+  verbose: true
 
 dataset:
   log_folder:         ~ # Storage location for any record keeping files about the input dataset
