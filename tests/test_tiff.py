@@ -66,8 +66,6 @@ def check_same(filename1, filename2, data_only=False):
     assert in1.size() == in2.size()
     assert in1.num_bands() == in2.num_bands()
     for i in range(in1.num_bands()):
-        if not data_only:
-            assert in1.block_info(i) == in2.block_info(i)
         assert in1.data_type(i) == in2.data_type(i)
         assert in1.nodata_value() == in2.nodata_value()
 
