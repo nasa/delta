@@ -26,4 +26,4 @@ For a list of all options and their defaults, see
 `delta/config/delta.yaml`.
 """
 
-from .config import config, DeltaConfigComponent, validate_path, validate_positive
+from .config import config, DeltaConfigComponent, validate_path, validate_positive, validate_non_negative

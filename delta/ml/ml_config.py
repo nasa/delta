@@ -182,7 +182,7 @@ class TrainingConfig(config.DeltaConfigComponent):
                             'Features to group into each training batch.')
         self.register_field('loss_function', (str, list), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
-        self.register_field('steps', int, None, config.validate_positive, 'Batches to train per epoch.')
+        self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
         self.register_field('optimizer', str, None, None, 'Keras optimizer to use.')
 
         self.register_arg('chunk_stride', '--chunk-stride')

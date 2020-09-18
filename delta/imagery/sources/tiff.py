@@ -21,8 +21,8 @@ Block-aligned reading from multiple Geotiff files.
 import os
 import math
 
-from osgeo import gdal
 import numpy as np
+from osgeo import gdal
 
 from delta.config import config
 from delta.imagery import rectangle
@@ -152,6 +152,7 @@ class TiffImage(delta_image.DeltaImage):
         return results.get(self.data_type(band))
 
     def block_size(self):
+        """Returns (block height, block width)"""
         (bs, _) = self.block_info()
         return bs
 
@@ -161,8 +162,8 @@ class TiffImage(delta_image.DeltaImage):
         band_handle = self._gdal_band(band)
         block_size = band_handle.GetBlockSize()
 
-        num_blocks_x = int(math.ceil(self.height() / block_size[1]))
-        num_blocks_y = int(math.ceil(self.width() / block_size[0]))
+        num_blocks_x = int(math.ceil(self.width()  / block_size[0]))
+        num_blocks_y = int(math.ceil(self.height() / block_size[1]))
 
         # we are backwards from gdal I think
         return ((block_size[1], block_size[0]), (num_blocks_x, num_blocks_y))
@@ -216,14 +217,13 @@ class TiffImage(delta_image.DeltaImage):
     def save(self, path, tile_size=(0,0), nodata_value=None, show_progress=False):
         """
         Save a TiffImage to the file output_path, optionally overwriting the tile_size.
+        Input tile size is (width, height)
         """
 
         if nodata_value is None:
             nodata_value = self.nodata_value()
         # Use the input tile size for the block size unless the user specified one.
-        (bs, _) = self.block_info()
-        block_size_x = bs[0]
-        block_size_y = bs[1]
+        block_size_y, block_size_x = self.block_size()
         if tile_size[0] > 0:
             block_size_x = tile_size[0]
         if tile_size[1] > 0:
@@ -318,8 +318,8 @@ class TiffWriter:
 
         # Constants
         options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
-        options += ['BLOCKXSIZE='+str(self._tile_height),
-                    'BLOCKYSIZE='+str(self._tile_width)]
+        options += ['BLOCKXSIZE='+str(self._tile_width),
+                    'BLOCKYSIZE='+str(self._tile_height)]
         MIN_SIZE_FOR_TILES=100
         if width > MIN_SIZE_FOR_TILES or height > MIN_SIZE_FOR_TILES:
             options += ['TILED=YES']

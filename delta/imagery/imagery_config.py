@@ -374,6 +374,12 @@ class CacheConfig(DeltaConfigComponent):
         Returns the disk cache object to manage the cache.
         """
         if self._cache_manager is None:
+            # Auto-populating defaults here is a workaround so small tools can skip the full
+            # command line config setup.  Could be improved!
+            if 'dir' not in self._config_dict:
+                self._config_dict['dir'] = 'default'
+            if 'limit' not in self._config_dict:
+                self._config_dict['limit'] = 8
             cdir = self._config_dict['dir']
             if cdir == 'default':
                 cdir = appdirs.AppDirs('delta', 'nasa').user_cache_dir
@@ -392,6 +398,8 @@ class IOConfig(DeltaConfigComponent):
                             'Width to height ratio of blocks to load in images.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
+        self.register_field('verbose', bool, 'verbose', None,
+                            'Print more information about loading input files.')
 
         self.register_arg('threads', '--threads')
         self.register_arg('block_size_mb', '--block-size-mb')

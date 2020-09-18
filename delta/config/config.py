@@ -35,6 +35,11 @@ def validate_positive(num, _):
         raise ValueError('%d is not positive' % (num))
     return num
 
+def validate_non_negative(num, _):
+    if num < 0:
+        raise ValueError('%d is negative' % (num))
+    return num
+
 class _NotSpecified: #pylint:disable=too-few-public-methods
     pass
 

@@ -35,8 +35,8 @@ def check_landsat_tiff(filename):
     for i in range(0, input_reader.num_bands()):
         (bsize, (blocks_x, blocks_y)) = input_reader.block_info(i)
         assert bsize == (6, 37)
-        assert blocks_x == 7
-        assert blocks_y == 1
+        assert blocks_x == 1
+        assert blocks_y == 7
         assert input_reader.numpy_type(i) == np.float32
 
     meta = input_reader.metadata()
