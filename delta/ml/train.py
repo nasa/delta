@@ -69,7 +69,7 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
             validation = ds.take(tc.validation.steps)
             ds = ds.skip(tc.validation.steps)
         else:
-            vimg = tc.validation.images
+            vimg   = tc.validation.images
             vlabel = tc.validation.labels
             if not vimg:
                 validation = None
@@ -112,6 +112,22 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Optimizer', training_spec.optimizer)
     mlflow.log_param('Model Layers', len(model.layers))
     #mlflow.log_param('Status', 'Running') Illegal to change the value!
+
+class _EpochResetCallback(tf.keras.callbacks.Callback):
+    """
+    Reset imagery_dataset file counts on epoch end
+    """
+    def __init__(self, ids, stop_epoch):
+        super().__init__()
+        self.ids = ids
+        self.last_epoch = stop_epoch - 1
+
+    def on_epoch_end(self, epoch, _=None):
+        if config.io.verbose():
+            print('Finished epoch ' + str(epoch))
+        # Leave the counts from the last epoch just as a record
+        if epoch != self.last_epoch:
+            self.ids.reset_access_counts()
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -169,8 +185,11 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     Trains the specified model on a dataset according to a training
     specification.
     """
+    # This does not work when using the CPU!
     if isinstance(model_fn, tf.keras.Model):
         model = model_fn
+        print('WARNING: Model loaded without TF strategy/device wrapper, this may fail in some configurations!')
+        # May not be able to improve on this until tf 2.2
     else:
         with _strategy(_devices(config.general.gpus())).scope():
             model = model_fn()
@@ -215,16 +234,30 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
-        #print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+        if config.io.verbose():
+            print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     try:
-        history = model.fit(ds,
-                            epochs=training_spec.epochs,
-                            callbacks=callbacks,
-                            validation_data=validation,
-                            validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                            steps_per_epoch=training_spec.steps,
-                            verbose=1)
+
+        # Mark that we need to check the dataset counts the
+        # first time we try to read the images.
+        # This won't do anything unless we are resuming training.
+        dataset.reset_access_counts(set_need_check=True)
+
+        if (training_spec.steps is None) or (training_spec.steps > 0):
+            history = model.fit(ds,
+                                epochs=training_spec.epochs,
+                                callbacks=callbacks,
+                                validation_data=validation,
+                                validation_steps=training_spec.validation.steps if training_spec.validation else None,
+                                steps_per_epoch=training_spec.steps,
+                                verbose=1)
+        else: # Skip training
+            print('Skipping straight to validation')
+            history = model.evaluate(validation, steps=training_spec.validation.steps,
+                                     callbacks=callbacks, verbose=1)
 
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model.h5')
