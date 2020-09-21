@@ -19,6 +19,7 @@
 DELTA specific network layers.
 """
 
+import tensorflow as tf
 import tensorflow.keras.models
 import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
@@ -101,6 +102,7 @@ class Pretrained(DeltaLayer):
                 break
         #self._layers = tensorflow.keras.models.Sequential(output_layers, **kwargs)
         self._layers = output_layers
+        self.input_spec = self._layers[0].input_spec
 
     def get_config(self):
         config = super().get_config()
@@ -111,10 +113,16 @@ class Pretrained(DeltaLayer):
     def call(self, inputs, **_):
         x = inputs
         for l in self._layers:
-            print(l)
             x = l(x)
         return x
 
+    def get_shape(self):
+        return self.shape
+
+    @property
+    def shape(self):
+        print(self._layers[0].input_shape)
+        return tf.TensorShape(self._layers[0].input_shape[0])
 ### end class Pretrained
 
 ALL_LAYERS = {

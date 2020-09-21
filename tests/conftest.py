@@ -154,6 +154,11 @@ def dataset(all_sources, request):
     source = all_sources[request.param]
     return load_dataset(source, 1)
 
+@pytest.fixture(scope="function", params=range(NUM_SOURCES))
+def ae_dataset(all_sources, request):
+    source = all_sources[request.param]
+    return imagery_dataset.AutoencoderDataset(load_dataset(source, 1))
+
 @pytest.fixture(scope="function")
 def dataset_block_label(all_sources):
     return load_dataset(all_sources[0], 3)
