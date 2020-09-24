@@ -394,7 +394,7 @@ def _validate_tile_size(size, _):
 
 class IOConfig(DeltaConfigComponent):
     def __init__(self):
-        super().__init__()
+        super().__init__('IO')
         self.register_field('threads', int, 'threads', None, 'Number of threads to use.')
         self.register_field('tile_size', list, 'tile_size', _validate_tile_size,
                             'Size of an image tile to load in memory at once.')
@@ -422,4 +422,3 @@ def register():
     """
     config.register_component(DatasetConfig(), 'dataset')
     config.register_component(IOConfig(), 'io')
-

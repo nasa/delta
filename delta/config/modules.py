@@ -32,6 +32,8 @@ def register_all():
     config.register_component(DeltaConfigComponent('General'), 'general')
     config.general.register_field('verbose', bool, 'verbose', None,
                                   'Print debugging information.')
+    config.general.register_arg('verbose', '--verbose', action='store_const',
+                                const=True, type=None)
     delta.imagery.imagery_config.register()
     delta.ml.ml_config.register()
     _config_initialized = True
