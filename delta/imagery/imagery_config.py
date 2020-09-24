@@ -394,7 +394,7 @@ def _validate_tile_size(size, _):
 
 class IOConfig(DeltaConfigComponent):
     def __init__(self):
-        super().__init__()
+        super().__init__('IO')
         self.register_field('threads', int, 'threads', None, 'Number of threads to use.')
         self.register_field('tile_size', list, 'tile_size', _validate_tile_size,
                             'Size of an image tile to load in memory at once.')
@@ -402,8 +402,13 @@ class IOConfig(DeltaConfigComponent):
                             'Number of images to interleave at a time when training.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
-        self.register_field('verbose', bool, 'verbose', None,
-                            'Print more information about loading input files.')
+
+        self.register_field('stop_on_input_error', bool, 'stop_on_input_error', None,
+                            'If false, skip past bad input images.')
+        self.register_arg('stop_on_input_error', '--bypass-input-errors',
+                          action='store_const', const=False, type=None)
+        self.register_arg('stop_on_input_error', '--stop-on-input-error',
+                          action='store_const', const=True, type=None)
 
         self.register_arg('threads', '--threads')
 
