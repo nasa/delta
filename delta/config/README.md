@@ -81,8 +81,6 @@ These options are used in the `delta train` command.
 
 These options configure the neural network to train with the `delta train` command.
 
- * `chunk_size`: The width and height of each chunks to input to the neural network
- * `output_size`: The width and height of the output from the neural network for each chunk
  * `classes`: The number of classes in the input data. The classes must currently have values
    0 - n in the label images.
  * `model`: The network structure specification.
@@ -121,8 +119,9 @@ General
 
  * `gpus`: The number of GPUs to use, or `-1` for all.
  * `threads`: The number of threads to use for loading images into tensorflow.
- * `block_size_mb`: The size of blocks in images to load at a time. If too small may be data starved.
- * `tile_ratio` The ratio of block width and height when loading images. Can affect disk use efficiency.
+ * `tile_size`: The size of a tile to load from an image at a time. For convolutional networks (input size is [~, ~, X],
+   an entire tile is one training sample. For fixed size networks the tile is split into chunks. This parameter affects
+   performance: larger tiles will be faster but take more memory (quadratic with chunk size for fixed size networks).
  * `cache`: Configure cacheing options. The subfield `dir` specifies a directory on disk to store cached files,
    and `limit` is the number of files to retain in the cache. Used mainly for image types
    which much be extracted from archive files.

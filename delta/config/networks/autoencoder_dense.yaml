@@ -1,13 +1,12 @@
 layers:
   - Input:
-      shape: in_shape
+      shape: [8, 8, 3]
   - Flatten:
-      input_shape: in_shape
   - Dense:
       units: 300
       activation: relu
   - Dense:
-      units: in_dims
+      units: 192
       activation: relu
   - Reshape:
-      target_shape: in_shape
+      target_shape: [8, 8, 3]

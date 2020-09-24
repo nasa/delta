@@ -386,24 +386,26 @@ class CacheConfig(DeltaConfigComponent):
             self._cache_manager = disk_folder_cache.DiskCache(cdir, self._config_dict['limit'])
         return self._cache_manager
 
+def _validate_tile_size(size, _):
+    assert len(size) == 2, 'Size must have two components.'
+    assert isinstance(size[0], int) and isinstance(size[1], int), 'Size must be integer.'
+    assert size[0] > 0 and size[1] > 1, 'Size must be positive.'
+    return size
+
 class IOConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
         self.register_field('threads', int, 'threads', None, 'Number of threads to use.')
-        self.register_field('block_size_mb', int, 'block_size_mb', validate_positive,
-                            'Size of an image block to load in memory at once.')
+        self.register_field('tile_size', list, 'tile_size', _validate_tile_size,
+                            'Size of an image tile to load in memory at once.')
         self.register_field('interleave_images', int, 'interleave_images', validate_positive,
                             'Number of images to interleave at a time when training.')
-        self.register_field('tile_ratio', float, 'tile_ratio', validate_positive,
-                            'Width to height ratio of blocks to load in images.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
         self.register_field('verbose', bool, 'verbose', None,
                             'Print more information about loading input files.')
 
         self.register_arg('threads', '--threads')
-        self.register_arg('block_size_mb', '--block-size-mb')
-        self.register_arg('tile_ratio', '--tile-ratio')
 
         self.register_component(CacheConfig(), 'cache')
 
