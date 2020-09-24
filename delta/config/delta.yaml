@@ -1,7 +1,8 @@
 general:
   # negative is all
   gpus:              -1
-  stop_on_input_error: true # If false skip past bad input files without halting training
+  # print more debug information
+  verbose: false
 
 io:
   threads:           1
@@ -12,12 +13,11 @@ io:
   # When resuming training with a log_folder, skip input image where we have
   # already loaded this many tiles.
   resume_cutoff:     5000
+  stop_on_input_error: true # If false skip past bad input files without halting training
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
-  # Print more information about loading input files
-  verbose: false
 
 dataset:
   log_folder:         ~ # Storage location for any record keeping files about the input dataset

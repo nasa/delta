@@ -21,6 +21,7 @@ Registers all config modules.
 
 import delta.imagery.imagery_config
 import delta.ml.ml_config
+from .config import config, DeltaConfigComponent
 
 _config_initialized = False
 def register_all():
@@ -28,6 +29,9 @@ def register_all():
     # needed to call twice when testing subcommands and when not
     if _config_initialized:
         return
+    config.register_component(DeltaConfigComponent('General'), 'general')
+    config.general.register_field('verbose', bool, 'verbose', None,
+                                  'Print debugging information.')
     delta.imagery.imagery_config.register()
     delta.ml.ml_config.register()
     _config_initialized = True

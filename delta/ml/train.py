@@ -123,7 +123,7 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         self.last_epoch = stop_epoch - 1
 
     def on_epoch_end(self, epoch, _=None):
-        if config.io.verbose():
+        if config.general.verbose():
             print('Finished epoch ' + str(epoch))
         # Leave the counts from the last epoch just as a record
         if epoch != self.last_epoch:
@@ -234,7 +234,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     if config.mlflow.enabled():
         mcb = _mlflow_train_setup(model, dataset, training_spec)
         callbacks.append(mcb)
-        if config.io.verbose():
+        if config.general.verbose():
             print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))

@@ -261,17 +261,8 @@ def register():
 
     The arguments enable command line arguments for different components.
     """
-    if not hasattr(config.config, 'general'):
-        config.config.register_component(config.DeltaConfigComponent('General'), 'general')
-
     config.config.general.register_field('gpus', int, 'gpus', None, 'Number of gpus to use.')
     config.config.general.register_arg('gpus', '--gpus')
-    config.config.general.register_field('stop_on_input_error', bool, 'stop_on_input_error', None,
-                                         'If false, skip past bad input images.')
-    config.config.general.register_arg('stop_on_input_error', '--bypass-input-errors',
-                                       action='store_const', const=False, type=None)
-    config.config.general.register_arg('stop_on_input_error', '--stop-on-input-error',
-                                       action='store_const', const=True, type=None)
 
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')

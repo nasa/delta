@@ -105,7 +105,7 @@ class ImageryDataset:
            Call with default after each epoch, call (True) at start of training."""
         if not self._log_folder:
             return
-        if config.io.verbose():
+        if config.general.verbose():
             print('Resetting access counts in folder: ' + self._log_folder)
         file_list = os.listdir(self._log_folder)
         for log_name in file_list:
@@ -131,7 +131,7 @@ class ImageryDataset:
             if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
                 # Read this file too many times in a previous run, skip the image file
                 # and leave the access file alone so we keep skipping it.
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Skipping index ' + str(image_index.numpy())
                           +' with count ' + str(count) + ' -> ' + file_path)
                 return np.zeros(shape=(0,0,0), dtype=np.float32)
@@ -148,7 +148,7 @@ class ImageryDataset:
         except Exception as e: #pylint: disable=W0703
             print('Caught exception loading tile from image: ' + data[image_index.numpy()] + ' -> ' + str(e)
                   + '\nSkipping tile: ' + str(bbox))
-            if config.general.stop_on_input_error():
+            if config.io.stop_on_input_error():
                 print('Aborting processing, set --bypass-input-errors to bypass this error.')
                 raise
             # Else just skip this tile
@@ -174,21 +174,21 @@ class ImageryDataset:
                     if self._resume_mode:
                         file_path = self._images[i]
                         log_path  = self._get_image_read_log_path(file_path)
-                        if config.io.verbose():
+                        if config.general.verbose():
                             print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
                         if log_path:
                             (need_to_check, count) = self._read_access_count_file(log_path)
                             if need_to_check and (count > config.io.resume_cutoff()): #pylint: disable=R1705
-                                if config.io.verbose():
+                                if config.general.verbose():
                                     print('Skipping index ' + str(i) + ' tile gen with count '
                                           + str(count) + ' -> ' + file_path)
                                 return (i, [])
                             else:
-                                if config.io.verbose():
+                                if config.general.verbose():
                                     print('Computing tile list for index ' + str(i) + ' with count '
                                           + str(count) + ' -> ' + file_path)
                         else:
-                            if config.io.verbose():
+                            if config.general.verbose():
                                 print('No read log file for index ' + str(i))
 
                     img = loader.load_image(self._images, i)
@@ -210,7 +210,7 @@ class ImageryDataset:
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
-                    if config.general.stop_on_input_error():
+                    if config.io.stop_on_input_error():
                         print('Aborting processing, set --bypass-input-errors to bypass this error.')
                         raise
                     tiles = [] # Else move past this image without loading any tiles
@@ -226,17 +226,17 @@ class ImageryDataset:
                 indices     = indices[set_size:]
 
                 # Convert from indicies into tile lists for this set
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Loading tile lists for set of ' + str(set_size) + ' images.')
                 current_tiles = [get_image_tile_list(i) for i in current_set]
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Done loading set of tile lists, '+str(len(indices))+' indices remaining.')
 
                 empty_tiles = 0
                 for it in current_tiles:
                     if not it[1]:
                         empty_tiles += 1
-                if config.io.verbose():
+                if config.general.verbose():
                     print('In this set, ' + str(empty_tiles) + ' empty groups.')
 
                 done = False
@@ -252,7 +252,7 @@ class ImageryDataset:
                             tile_count += 1
                             yield (it[0], roi.min_x, roi.min_y, roi.max_x, roi.max_y)
                     if done:
-                        if config.io.verbose():
+                        if config.general.verbose():
                             print('Set done with tile count = ' + str(tile_count))
                         break
 
