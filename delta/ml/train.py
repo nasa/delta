@@ -180,10 +180,41 @@ def _mlflow_train_setup(model, dataset, training_spec):
 
     return _MLFlowCallback(temp_dir)
 
-def train(model_fn, dataset : ImageryDataset, training_spec):
+def _build_callbacks(model, dataset, training_spec):
     """
-    Trains the specified model on a dataset according to a training
-    specification.
+    Create callbacks needed based on configuration.
+
+    Returns (list of callbacks, mlflow callback).
+    """
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
+    # add callbacks from DeltaLayers
+    for l in model.layers:
+        if isinstance(l, DeltaLayer):
+            c = l.callback()
+            if c:
+                callbacks.append(c)
+    if config.tensorboard.enabled():
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
+                                             update_freq='epoch',
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
+        callbacks.append(tcb)
+
+    mcb = None
+    if config.mlflow.enabled():
+        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        callbacks.append(mcb)
+        if config.general.verbose():
+            print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+
+    return (callbacks, mcb)
+
+def _compile_model(model_fn, dataset, training_spec):
+    """
+    Compile and check that the model is valid.
     """
     # This does not work when using the CPU!
     if isinstance(model_fn, tf.keras.Model):
@@ -202,7 +233,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
 
     input_shape = model.input_shape
     output_shape = model.output_shape
-    chunk_size = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.'
     assert input_shape[0] is None, 'Input is not batched.'
@@ -214,30 +244,22 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert output_shape[1:-1] == dataset.output_shape()[:-1] or (output_shape[1] is None), \
             'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape()[:-1])
 
-    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
+    if config.general.verbose():
+        print('Training model:')
+        print(model.summary())
 
-    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
-    # add callbacks from DeltaLayers
-    for l in model.layers:
-        if isinstance(l, DeltaLayer):
-            c = l.callback()
-            if c:
-                callbacks.append(c)
-    if config.tensorboard.enabled():
-        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
-                                             update_freq='epoch',
-                                             histogram_freq=1,
-                                             write_images=True,
-                                             embeddings_freq=1)
-        callbacks.append(tcb)
+    return model
 
-    if config.mlflow.enabled():
-        mcb = _mlflow_train_setup(model, dataset, training_spec)
-        callbacks.append(mcb)
-        if config.general.verbose():
-            print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+def train(model_fn, dataset : ImageryDataset, training_spec):
+    """
+    Trains the specified model on a dataset according to a training
+    specification.
+    """
+    model = _compile_model(model_fn, dataset, training_spec)
 
-    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+    (ds, validation) = _prep_datasets(dataset, training_spec, model.input_shape[1], model.output_shape[1])
+
+    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
 
     try:
 
