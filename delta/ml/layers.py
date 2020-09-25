@@ -101,8 +101,8 @@ class Pretrained(DeltaLayer):
             if break_point(idx, l):
                 break
         #self._layers = tensorflow.keras.models.Sequential(output_layers, **kwargs)
-        self._layers = output_layers
-        self.input_spec = self._layers[0].input_spec
+        self.layers = output_layers
+        self.input_spec = self.layers[0].input_spec
 
     def get_config(self):
         config = super().get_config()
@@ -112,18 +112,12 @@ class Pretrained(DeltaLayer):
 
     def call(self, inputs, **_):
         x = inputs
-        for l in self._layers:
+        for l in self.layers:
             x = l(x)
         return x
 
-    def get_shape(self):
-        return self.shape
-
-    @property
     def shape(self):
-        print(self._layers[0].input_shape)
-        return tf.TensorShape(self._layers[0].input_shape[0])
-### end class Pretrained
+        return tf.TensorShape(self.layers[0].input_shape[0])
 
 ALL_LAYERS = {
     'GaussianSample' : GaussianSample,

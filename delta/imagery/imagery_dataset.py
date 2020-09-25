@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#pylint: disable=function-redefined
 """
 Tools for loading input images into the TensorFlow Dataset class.
 """
@@ -386,15 +385,6 @@ class AutoencoderDataset(ImageryDataset):
         """
         super().__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
                          resume_mode=resume_mode, log_folder=log_folder)
-        self._labels = self._images
-        self._output_dims = self.num_bands()
-
-    def __init__(self, that):
-        '''
-        Copy constructor added because I wanted to make an Autoencoder datast from an ImageryDataset
-        '''
-        super().__init__(that._images, None, that._chunk_size, that._chunk_size, chunk_stride=that._chunk_stride,
-                         resume_mode=that._resume_mode, log_folder=that._log_folder)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

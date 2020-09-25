@@ -91,7 +91,7 @@ def test_pretrained(dataset, ae_dataset):
         pretrained_layer = Pretrained(ae_model, 3, trainable=False)(inputs)
         up_samp1 = keras.layers.UpSampling2D((2,2))(pretrained_layer)
         conv1 = keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same')(up_samp1)
-        output = keras.layers.Conv2D(1, (3,3), activation='softmax', padding='same')(conv1)
+        output = keras.layers.Conv2D(2, (3,3), activation='softmax', padding='same')(conv1)
         m = keras.Model(inputs=inputs, outputs=output)
 
         return m
