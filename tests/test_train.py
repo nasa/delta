@@ -16,6 +16,9 @@
 # limitations under the License.
 
 #pylint: disable=redefined-outer-name
+import os
+import shutil
+import tempfile
 
 import numpy as np
 import tensorflow as tf
@@ -26,6 +29,7 @@ import conftest
 from delta.config import config
 from delta.imagery.sources import npy
 from delta.ml import train, predict
+from delta.ml.layers import Pretrained
 from delta.ml.ml_config import TrainingSpec
 
 def evaluate_model(model_fn, dataset, output_trim=0):
@@ -43,6 +47,16 @@ def evaluate_model(model_fn, dataset, output_trim=0):
     # very easy test since we don't train much
     assert sum(sum(np.logical_xor(output_image.buffer()[:,:,0], test_label))) < 200
 
+
+def train_ae(ae_fn, ae_dataset):
+    model, _ = train.train(ae_fn, ae_dataset,
+                           TrainingSpec(100, 5, 'mse', ['accuracy']))
+
+    tmpdir = tempfile.mkdtemp()
+    model_path = os.path.join(tmpdir, 'ae_model.h5')
+    model.save(model_path)
+    return model_path, tmpdir
+
 def test_dense(dataset):
     def model_fn():
         kerasinput = keras.layers.Input((3, 3, 1))
@@ -52,6 +66,39 @@ def test_dense(dataset):
         reshape = keras.layers.Reshape((1, 1, 2))(dense1)
         return keras.Model(inputs=kerasinput, outputs=reshape)
     evaluate_model(model_fn, dataset, 1)
+
+def test_pretrained(dataset, ae_dataset):
+    # 1 create autoencoder
+    ae_dataset.set_chunk_output_sizes(10, 10)
+    def autoencoder_fn():
+        inputs = keras.layers.Input((10, 10, 1))
+        conv1 = keras.layers.Conv2D(filters=16, kernel_size=3, activation='relu', padding='same')(inputs)
+        down_samp1 = keras.layers.MaxPooling2D((2, 2), padding='same')(conv1)
+        encoded = keras.layers.Conv2D(filters=8, kernel_size=3, activation='relu', padding='same')(down_samp1)
+
+        # at this point the representation is (4, 4, 8) i.e. 128-dimensional
+
+        up_samp1 = keras.layers.UpSampling2D((2, 2))(encoded)
+        conv4 = keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same')(up_samp1)
+        decoded = keras.layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(conv4)
+
+        return keras.Model(inputs=inputs, outputs=decoded)
+    # 2 train autoencoder
+    ae_model, tmpdir  = train_ae(autoencoder_fn, ae_dataset)
+    # 3 create model network based on autonecoder.
+    def model_fn():
+        inputs = keras.layers.Input((10, 10, 1))
+        pretrained_layer = Pretrained(ae_model, 3, trainable=False)(inputs)
+        up_samp1 = keras.layers.UpSampling2D((2,2))(pretrained_layer)
+        conv1 = keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same')(up_samp1)
+        output = keras.layers.Conv2D(2, (3,3), activation='softmax', padding='same')(conv1)
+        m = keras.Model(inputs=inputs, outputs=output)
+
+        return m
+
+    dataset.set_chunk_output_sizes(10, 10)
+    evaluate_model(model_fn, dataset)
+    shutil.rmtree(tmpdir)
 
 def test_fcn(dataset):
     conftest.config_reset()
