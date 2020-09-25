@@ -41,8 +41,7 @@ def loss_function_factory(loss_spec):
     import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
 
     if isinstance(loss_spec, str):
-        return loss_spec
-
+        return getattr(tensorflow.keras.losses, loss_spec, None)
     if isinstance(loss_spec, list):
         assert len(loss_spec) == 1, 'Too many loss functions specified'
         assert isinstance(loss_spec[0], dict), '''Loss functions objects and parameters must
@@ -54,9 +53,7 @@ def loss_function_factory(loss_spec):
 
         loss_class = getattr(tensorflow.keras.losses, loss_type, None)
         return loss_class(**loss_fn_args)
-
     raise RuntimeError(f'Did not recognize the loss function specification: {loss_spec}')
-
 
 class ValidationSet:#pylint:disable=too-few-public-methods
     """
@@ -121,13 +118,6 @@ class NetworkModelConfig(config.DeltaConfigComponent):
 class NetworkConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('chunk_size', int, 'chunk_size', config.validate_positive,
-                            'Width of an image chunk to input to the neural network.')
-        self.register_field('output_size', int, 'output_size', config.validate_positive,
-                            'Width of an image chunk to output from the neural network.')
-
-        self.register_arg('chunk_size', '--chunk-size')
-        self.register_arg('output_size', '--output-size')
         self.register_component(NetworkModelConfig(), 'model')
 
     def setup_arg_parser(self, parser, components = None) -> None:
@@ -271,17 +261,8 @@ def register():
 
     The arguments enable command line arguments for different components.
     """
-    if not hasattr(config.config, 'general'):
-        config.config.register_component(config.DeltaConfigComponent('General'), 'general')
-
     config.config.general.register_field('gpus', int, 'gpus', None, 'Number of gpus to use.')
     config.config.general.register_arg('gpus', '--gpus')
-    config.config.general.register_field('stop_on_input_error', bool, 'stop_on_input_error', None,
-                                         'If false, skip past bad input images.')
-    config.config.general.register_arg('stop_on_input_error', '--bypass-input-errors',
-                                       action='store_const', const=False, type=None)
-    config.config.general.register_arg('stop_on_input_error', '--stop-on-input-error',
-                                       action='store_const', const=True, type=None)
 
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')

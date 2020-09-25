@@ -26,6 +26,7 @@ from tensorflow import keras
 
 import conftest
 
+from delta.config import config
 from delta.imagery.sources import npy
 from delta.ml import train, predict
 from delta.ml.layers import Pretrained
@@ -100,8 +101,19 @@ def test_pretrained(dataset, ae_dataset):
     shutil.rmtree(tmpdir)
 
 def test_fcn(dataset):
+    conftest.config_reset()
+
+    assert config.general.gpus() == -1
+
+    test_str = '''
+    io:
+      tile_size: [32, 32]
+    train:
+      batch_size: 50
+    '''
+    config.load(yaml_str=test_str)
     def model_fn():
-        inputs = keras.layers.Input((10, 10, 1))
+        inputs = keras.layers.Input((None, None, 1))
         conv = keras.layers.Conv2D(filters=9, kernel_size=2, padding='same', strides=1)(inputs)
         upscore = keras.layers.Conv2D(filters=2, kernel_size=1, padding='same', strides=1)(conv)
         l = keras.layers.MaxPooling2D(pool_size=(2, 2), strides=2)(conv)
@@ -111,5 +123,5 @@ def test_fcn(dataset):
         #l = keras.layers.Softmax(axis=3)(l)
         m = keras.Model(inputs=inputs, outputs=l)
         return m
-    dataset.set_chunk_output_sizes(10, 10)
+    dataset.set_chunk_output_sizes(None, 10)
     evaluate_model(model_fn, dataset)

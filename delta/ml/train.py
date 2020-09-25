@@ -62,9 +62,8 @@ def _strategy(devices):
 
 def _prep_datasets(ids, tc, chunk_size, output_size):
     ds = ids.dataset(config.dataset.classes.weights())
-    ds = ds.batch(tc.batch_size)
-    #ds = ds.cache()
-    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+
+    validation=None
     if tc.validation:
         if tc.validation.from_training:
             validation = ds.take(tc.validation.steps)
@@ -80,13 +79,17 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                                               resume_mode=False)
                 else:
                     vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
-                validation = vimagery.dataset(config.dataset.classes.weights()).batch(tc.batch_size)
+                validation = vimagery.dataset(config.dataset.classes.weights())
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
-        #validation = validation.prefetch(4)#tf.data.experimental.AUTOTUNE)
+        if validation:
+            validation = validation.batch(tc.batch_size)
     else:
-
         validation = None
+
+    ds = ds.batch(tc.batch_size)
+    #ds = ds.cache()
+    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.steps:
         ds = ds.take(tc.steps)
     #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
@@ -99,7 +102,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Image Type',   images.type())
     mlflow.log_param('Preprocess',   images.preprocess())
     mlflow.log_param('Number of Images',   len(images))
-    mlflow.log_param('Chunk Size',   dataset.chunk_size())
+    mlflow.log_param('Chunk Size',   model.input_shape[1])
     mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
     mlflow.log_param('Output Shape',   dataset.output_shape())
     mlflow.log_param('Steps', training_spec.steps)
@@ -120,7 +123,7 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         self.last_epoch = stop_epoch - 1
 
     def on_epoch_end(self, epoch, _=None):
-        if config.io.verbose():
+        if config.general.verbose():
             print('Finished epoch ' + str(epoch))
         # Leave the counts from the last epoch just as a record
         if epoch != self.last_epoch:
@@ -177,10 +180,41 @@ def _mlflow_train_setup(model, dataset, training_spec):
 
     return _MLFlowCallback(temp_dir)
 
-def train(model_fn, dataset : ImageryDataset, training_spec):
+def _build_callbacks(model, dataset, training_spec):
     """
-    Trains the specified model on a dataset according to a training
-    specification.
+    Create callbacks needed based on configuration.
+
+    Returns (list of callbacks, mlflow callback).
+    """
+    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
+    # add callbacks from DeltaLayers
+    for l in model.layers:
+        if isinstance(l, DeltaLayer):
+            c = l.callback()
+            if c:
+                callbacks.append(c)
+    if config.tensorboard.enabled():
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
+                                             update_freq='epoch',
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
+        callbacks.append(tcb)
+
+    mcb = None
+    if config.mlflow.enabled():
+        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        callbacks.append(mcb)
+        if config.general.verbose():
+            print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+
+    return (callbacks, mcb)
+
+def _compile_model(model_fn, dataset, training_spec):
+    """
+    Compile and check that the model is valid.
     """
     # This does not work when using the CPU!
     if isinstance(model_fn, tf.keras.Model):
@@ -199,7 +233,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
 
     input_shape = model.input_shape
     output_shape = model.output_shape
-    chunk_size = input_shape[1]
 
     assert len(input_shape) == 4, 'Input to network is wrong shape.'
     assert input_shape[0] is None, 'Input is not batched.'
@@ -211,30 +244,22 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert output_shape[1:-1] == dataset.output_shape()[:-1] or (output_shape[1] is None), \
             'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape()[:-1])
 
-    (ds, validation) = _prep_datasets(dataset, training_spec, chunk_size, output_shape[1])
+    if config.general.verbose():
+        print('Training model:')
+        print(model.summary())
 
-    callbacks = [tf.keras.callbacks.TerminateOnNaN()]
-    # add callbacks from DeltaLayers
-    for l in model.layers:
-        if isinstance(l, DeltaLayer):
-            c = l.callback()
-            if c:
-                callbacks.append(c)
-    if config.tensorboard.enabled():
-        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
-                                             update_freq='epoch',
-                                             histogram_freq=1,
-                                             write_images=True,
-                                             embeddings_freq=1)
-        callbacks.append(tcb)
+    return model
 
-    if config.mlflow.enabled():
-        mcb = _mlflow_train_setup(model, dataset, training_spec)
-        callbacks.append(mcb)
-        if config.io.verbose():
-            print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+def train(model_fn, dataset : ImageryDataset, training_spec):
+    """
+    Trains the specified model on a dataset according to a training
+    specification.
+    """
+    model = _compile_model(model_fn, dataset, training_spec)
 
-    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+    (ds, validation) = _prep_datasets(dataset, training_spec, model.input_shape[1], model.output_shape[1])
+
+    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
 
     try:
 

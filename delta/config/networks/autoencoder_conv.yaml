@@ -1,6 +1,6 @@
 layers:
   - Input:
-      shape: in_shape
+      shape: [~, ~, num_bands]
   - Conv2D:
       filters: 50
       kernel_size: [3, 3]

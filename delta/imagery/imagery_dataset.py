@@ -20,9 +20,7 @@
 Tools for loading input images into the TensorFlow Dataset class.
 """
 import functools
-import math
 import random
-import sys
 import os
 import portalocker
 import numpy as np
@@ -108,7 +106,7 @@ class ImageryDataset:
            Call with default after each epoch, call (True) at start of training."""
         if not self._log_folder:
             return
-        if config.io.verbose():
+        if config.general.verbose():
             print('Resetting access counts in folder: ' + self._log_folder)
         file_list = os.listdir(self._log_folder)
         for log_name in file_list:
@@ -134,7 +132,7 @@ class ImageryDataset:
             if self._resume_mode and need_to_check and (count > config.io.resume_cutoff()):
                 # Read this file too many times in a previous run, skip the image file
                 # and leave the access file alone so we keep skipping it.
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Skipping index ' + str(image_index.numpy())
                           +' with count ' + str(count) + ' -> ' + file_path)
                 return np.zeros(shape=(0,0,0), dtype=np.float32)
@@ -151,7 +149,7 @@ class ImageryDataset:
         except Exception as e: #pylint: disable=W0703
             print('Caught exception loading tile from image: ' + data[image_index.numpy()] + ' -> ' + str(e)
                   + '\nSkipping tile: ' + str(bbox))
-            if config.general.stop_on_input_error():
+            if config.io.stop_on_input_error():
                 print('Aborting processing, set --bypass-input-errors to bypass this error.')
                 raise
             # Else just skip this tile
@@ -160,7 +158,6 @@ class ImageryDataset:
 
     def _tile_images(self):
         """Return a Dataset generator object which will cycle through all tiles in all input images"""
-        max_block_bytes = config.io.block_size_mb() * 1024 * 1024
 
         # Define a local generator function to be passed into a TF dataset function.
         def tile_generator():
@@ -178,21 +175,21 @@ class ImageryDataset:
                     if self._resume_mode:
                         file_path = self._images[i]
                         log_path  = self._get_image_read_log_path(file_path)
-                        if config.io.verbose():
+                        if config.general.verbose():
                             print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
                         if log_path:
                             (need_to_check, count) = self._read_access_count_file(log_path)
                             if need_to_check and (count > config.io.resume_cutoff()): #pylint: disable=R1705
-                                if config.io.verbose():
+                                if config.general.verbose():
                                     print('Skipping index ' + str(i) + ' tile gen with count '
                                           + str(count) + ' -> ' + file_path)
                                 return (i, [])
                             else:
-                                if config.io.verbose():
+                                if config.general.verbose():
                                     print('Computing tile list for index ' + str(i) + ' with count '
                                           + str(count) + ' -> ' + file_path)
                         else:
-                            if config.io.verbose():
+                            if config.general.verbose():
                                 print('No read log file for index ' + str(i))
 
                     img = loader.load_image(self._images, i)
@@ -202,24 +199,19 @@ class ImageryDataset:
                         if label.size() != img.size():
                             raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
                                             + ' does not match input image size of ' + str(img.size()))
-                    # w * h * bands * 4 * chunk * chunk = max_block_bytes
-                    tile_width = int(math.sqrt(max_block_bytes / img.num_bands() / self._data_type.size /
-                                               config.io.tile_ratio()))
-                    tile_height = int(config.io.tile_ratio() * tile_width)
-                    min_block_size = self._chunk_size ** 2 * config.io.tile_ratio() * img.num_bands() * 4
-                    if max_block_bytes < min_block_size:
-                        print('Warning: max_block_bytes=%g MB, but %g MB is recommended (minimum: %g MB)'
-                              % (max_block_bytes / 1024 / 1024,
-                                 min_block_size * 2 / 1024 / 1024, min_block_size / 1024/ 1024),
-                              file=sys.stderr)
-                    if tile_width < self._chunk_size or tile_height < self._chunk_size:
-                        raise ValueError('max_block_bytes is too low.')
-                    tiles = img.tiles(tile_width, tile_height, min_width=self._chunk_size, min_height=self._chunk_size,
-                                      overlap=self._chunk_size - 1)
+                    tile_size = config.io.tile_size()
+                    if self._chunk_size:
+                        assert tile_size[0] >= self._chunk_size and tile_size[1] >= self._chunk_size, 'Tile too small.'
+                        tiles = img.tiles(tile_size[1], tile_size[0], min_width=self._chunk_size,
+                                          min_height=self._chunk_size, overlap=self._chunk_size - 1)
+                    else:
+                        # TODO: make overlap configurable for FCN
+                        tiles = img.tiles(tile_size[1], tile_size[0], min_width=tile_size[1], min_height=tile_size[0],
+                                          overlap=0, partials=False)
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
-                    if config.general.stop_on_input_error():
+                    if config.io.stop_on_input_error():
                         print('Aborting processing, set --bypass-input-errors to bypass this error.')
                         raise
                     tiles = [] # Else move past this image without loading any tiles
@@ -235,17 +227,17 @@ class ImageryDataset:
                 indices     = indices[set_size:]
 
                 # Convert from indicies into tile lists for this set
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Loading tile lists for set of ' + str(set_size) + ' images.')
                 current_tiles = [get_image_tile_list(i) for i in current_set]
-                if config.io.verbose():
+                if config.general.verbose():
                     print('Done loading set of tile lists, '+str(len(indices))+' indices remaining.')
 
                 empty_tiles = 0
                 for it in current_tiles:
                     if not it[1]:
                         empty_tiles += 1
-                if config.io.verbose():
+                if config.general.verbose():
                     print('In this set, ' + str(empty_tiles) + ' empty groups.')
 
                 done = False
@@ -261,7 +253,7 @@ class ImageryDataset:
                             tile_count += 1
                             yield (it[0], roi.min_x, roi.min_y, roi.max_x, roi.max_y)
                     if done:
-                        if config.io.verbose():
+                        if config.general.verbose():
                             print('Set done with tile count = ' + str(tile_count))
                         break
 
@@ -275,10 +267,13 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         ds_input = self._tile_images()
+        tile_size = config.io.tile_size()
         def load_tile(image_index, x1, y1, x2, y2):
             img = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                    is_labels),
                                  [image_index, [x1, y1, x2, y2]], data_type)
+            if not self._chunk_size:
+                img.set_shape([tile_size[1], tile_size[0]] + ([1] if is_labels else [self._num_bands]))
             return img
         ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
 
@@ -324,16 +319,20 @@ class ImageryDataset:
         Unbatched dataset of image chunks.
         """
         ret = self._load_images(False, self._data_type)
-        ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-        return ret.unbatch()
+        if self._chunk_size:
+            ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            return ret.unbatch()
+        return ret
 
     def labels(self):
         """
         Unbatched dataset of labels.
         """
         label_set = self._load_images(True, self._label_type)
-        label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
-        return label_set.unbatch()
+        if self._chunk_size:
+            label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
+            return label_set.unbatch()
+        return label_set
 
     def dataset(self, class_weights=None):
         """
@@ -358,7 +357,8 @@ class ImageryDataset:
         return self._num_bands
 
     def set_chunk_output_sizes(self, chunk_size, output_size):
-        assert (chunk_size % 2) == (output_size % 2), 'Chunk size and output size must both be either even or odd.'
+        if chunk_size:
+            assert (chunk_size % 2) == (output_size % 2), 'Chunk and output sizes must both be even or odd.'
         self._chunk_size = chunk_size
         self._output_size = output_size
     def chunk_size(self):

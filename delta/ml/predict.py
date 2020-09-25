@@ -27,7 +27,6 @@ import numpy as np
 import tensorflow as tf
 
 from delta.imagery import rectangle
-from delta.config import config
 
 #pylint: disable=unsubscriptable-object
 # Pylint was barfing lines 32 and 76. See relevant bug report
@@ -88,9 +87,9 @@ class Predictor(ABC):
         chunks = tf.reshape(chunks, (-1,) + net_input_shape)
 
         best = np.zeros((chunks.shape[0],) + net_output_shape, dtype=out_type.as_numpy_dtype)
-        BATCH_SIZE = int(config.io.block_size_mb() * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
-                         net_input_shape[2] / out_type.size)
-        assert BATCH_SIZE > 0, 'block_size_mb too small.'
+        # do 8 MB at a time... this is arbitrary, may want to change in future
+        BATCH_SIZE = max(1, int(8 * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
+                            net_input_shape[2] / out_type.size))
         for i in range(0, chunks.shape[0], BATCH_SIZE):
             best[i:i+BATCH_SIZE] = self._model.predict_on_batch(chunks[i:i+BATCH_SIZE])
 

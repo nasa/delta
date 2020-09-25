@@ -1,25 +1,23 @@
 general:
   # negative is all
   gpus:              -1
-  stop_on_input_error: true # If false skip past bad input files without halting training
+  # print more debug information
+  verbose: false
 
 io:
   threads:           1
-  # size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
-  block_size_mb:     1
+  # size of tile to load into memory at a time as [rows, columns]
+  tile_size:         [256, 1024]
   # number of different images to interleave at a time when loading
   interleave_images: 5
-  # ratio of tile width and height when loading images
-  tile_ratio:        5.0
   # When resuming training with a log_folder, skip input image where we have
   # already loaded this many tiles.
   resume_cutoff:     5000
+  stop_on_input_error: true # If false skip past bad input files without halting training
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
-  # Print more information about loading input files
-  verbose: false
 
 dataset:
   log_folder:         ~ # Storage location for any record keeping files about the input dataset
@@ -71,8 +69,6 @@ dataset:
 
 train:
   network:
-    chunk_size:      16
-    output_size:     8
     model:
       yaml_file:     networks/convpool.yaml
       params:        ~
