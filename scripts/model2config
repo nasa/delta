@@ -4,6 +4,7 @@ import tensorflow as tf
 from argparse import ArgumentParser
 import h5py
 import pathlib
+from delta.ml.layers import ALL_LAYERS
 
 parser = ArgumentParser(description='Converts a neural network in a *.h5 file to the DELTA configuration langauge')
 parser.add_argument('model_name', type=pathlib.Path, help='The model to convert')
@@ -17,7 +18,7 @@ with h5py.File(args.model_name, 'r') as f:
     else:
         print('\n' + f.attrs['delta'] + '\n')
 
-a = tf.keras.models.load_model(args.model_name)
+a = tf.keras.models.load_model(args.model_name, custom_objects=ALL_LAYERS)
 print('Network Structure')
 for l in a.layers:
     print('\t- ', type(l).__name__)
