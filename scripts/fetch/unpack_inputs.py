@@ -99,8 +99,8 @@ def main(argsIn):
                 worldview.unpack_wv_to_folder(image_path, this_output_folder)
 
             # Now check that the the file unpacked properly
-            (tif, imd) = worldview.get_files_from_unpack_folder(this_output_folder)
-            test_image = tiff.TiffImage(tif)
+            (tif, _) = worldview.get_files_from_unpack_folder(this_output_folder)
+            test_image = tiff.TiffImage(tif) #pylint: disable=W0612
 
             if options.delete_inputs:
                 print('Deleting input file: ' + image_path)

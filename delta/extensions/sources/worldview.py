@@ -33,7 +33,7 @@ from . import tiff
 # Use this value for all WorldView nodata values we write, though they usually don't have any nodata.
 OUTPUT_NODATA = 0.0
 
-def _get_files_from_unpack_folder(folder):
+def get_files_from_unpack_folder(folder):
     """Return the image and header file paths from the given unpack folder.
        Returns (None, None) if the files were not found.
     """
@@ -57,36 +57,45 @@ def _get_files_from_unpack_folder(folder):
             break
     return (tif_path, imd_path)
 
+
+def unpack_wv_to_folder(zip_path, unpack_folder):
+
+    with portalocker.Lock(zip_path, 'r', timeout=300) as unused: #pylint: disable=W0612
+        # Check if we already unpacked this data
+        (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+
+        if imd_path and tif_path:
+            pass
+        else:
+            tf.print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder,
+                      output_stream=sys.stdout)
+            utilities.unpack_to_folder(zip_path, unpack_folder)
+            # some worldview zip files have a subdirectory with the name of the image
+            if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):
+                subdir = os.path.join(unpack_folder, os.path.splitext(os.path.basename(zip_path))[0])
+                if not os.path.exists(os.path.join(subdir, 'vendor_metadata')):
+                    raise Exception('vendor_metadata not found in %s.' % (zip_path))
+                for filename in os.listdir(subdir):
+                    os.rename(os.path.join(subdir, filename), os.path.join(unpack_folder, filename))
+                os.rmdir(subdir)
+            (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
+    return (tif_path, imd_path)
+
+
 class WorldviewImage(tiff.TiffImage):
     """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
     def __init__(self, paths, nodata_value=None):
         self._meta_path = None
-        self._meta = None
+        self._meta   = None
+        self._sensor = None
+        self._date   = None
+        self._name   = None
         super().__init__(paths, nodata_value)
 
-    def _unpack(self, paths):
+    def _unpack(self, zip_path):
         # Get the folder where this will be stored from the cache manager
         unpack_folder = config.io.cache.manager().register_item(self._name)
-
-        with portalocker.Lock(paths, 'r', timeout=300) as unused: #pylint: disable=W0612
-            # Check if we already unpacked this data
-            (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
-
-            if imd_path and tif_path:
-                pass
-            else:
-                print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
-                utilities.unpack_to_folder(paths, unpack_folder)
-                # some worldview zip files have a subdirectory with the name of the image
-                if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):
-                    subdir = os.path.join(unpack_folder, os.path.splitext(os.path.basename(paths))[0])
-                    if not os.path.exists(os.path.join(subdir, 'vendor_metadata')):
-                        raise Exception('vendor_metadata not found in %s.' % (paths))
-                    for filename in os.listdir(subdir):
-                        os.rename(os.path.join(subdir, filename), os.path.join(unpack_folder, filename))
-                    os.rmdir(subdir)
-                (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
-        return (tif_path, imd_path)
+        return unpack_wv_to_folder(zip_path, unpack_folder)
 
     def _set_info_from_tif_name(self, tif_name):
         parts = os.path.basename(tif_name).split('_')
@@ -123,7 +132,7 @@ class WorldviewImage(tiff.TiffImage):
             # Both files should be present in the same folder
             tif_name = paths
             unpack_folder = os.path.dirname(paths)
-            (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+            (tif_path, imd_path) = get_files_from_unpack_folder(unpack_folder)
 
             if not (imd_path and tif_path):
                 raise Exception('vendor_metadata not found in %s.' % (paths))
