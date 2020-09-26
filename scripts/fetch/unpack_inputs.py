@@ -40,7 +40,7 @@ def main(argsIn):
         usage  = "usage: unpack_inputs [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
-        parser.add_argument("--image-folder", dest="image_folder", required=True,
+        parser.add_argument("--input-folder", dest="input_folder", required=True,
                             help="Folder containing the input image files.")
 
         parser.add_argument("--output-folder", dest="output_folder", required=True,
@@ -72,7 +72,7 @@ def main(argsIn):
 
     # Recursively find image files, obtaining the full path for each file.
     input_image_list = [os.path.join(root, name)
-                        for root, dirs, files in os.walk(options.image_folder)
+                        for root, dirs, files in os.walk(options.input_folder)
                         for name in files
                         if name.endswith((options.image_extension))]
 
@@ -90,9 +90,12 @@ def main(argsIn):
                 break
             count += 1
 
-            image_name = os.path.basename(os.path.splitext(image_path)[0])
+            # Mirror the input folder structure in the output folder
+            image_name    = os.path.basename(os.path.splitext(image_path)[0])
+            image_folder  = os.path.dirname(image_path)
+            relative_path = os.path.relpath(image_folder, options.input_folder)
             this_output_folder = os.path.join(options.output_folder,
-                                       image_name)
+                                              relative_path, image_name)
 
             if not os.path.exists(this_output_folder):
                 print('Unpacking input file: ' + image_path)
