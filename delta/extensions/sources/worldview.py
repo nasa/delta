@@ -88,6 +88,13 @@ class WorldviewImage(tiff.TiffImage):
                 (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
         return (tif_path, imd_path)
 
+    def _set_info_from_tif_name(self, tif_name):
+        parts = os.path.basename(tif_name).split('_')
+        self._sensor = parts[0][0:4]
+        self._date   = parts[2][6:14]
+        self._name   = os.path.splitext(os.path.basename(tif_name))[0]
+
+
     # This function is currently set up for the HDDS archived WV data, files from other
     #  locations will need to be handled differently.
     def _prep(self, paths):
@@ -97,24 +104,36 @@ class WorldviewImage(tiff.TiffImage):
         """
         assert isinstance(paths, str)
         (_, ext) = os.path.splitext(paths)
-        assert '.zip' in ext, f'Error: Was assuming a zip file. Found {paths}'
+        tif_name = None
 
-        zip_file = zipfile.ZipFile(paths, 'r')
-        tif_names = list(filter(lambda x: x.endswith('.tif') or x.endswith('.TIF'), zip_file.namelist()))
-        assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
-        assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
-        tif_name = tif_names[0]
+        if ext == '.zip': # Need to unpack
 
+            zip_file = zipfile.ZipFile(paths, 'r')
+            tif_names = list(filter(lambda x: x.endswith('.tif') or x.endswith('.TIF'), zip_file.namelist()))
+            assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
+            assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
+            tif_name = tif_names[0]
 
-        parts = os.path.basename(tif_name).split('_')
-        self._sensor = parts[0][0:4]
-        self._date   = parts[2][6:14]
-        self._name   = os.path.splitext(os.path.basename(tif_name))[0]
+            self._set_info_from_tif_name(tif_name)
 
-        (tif_path, imd_path) = self._unpack(paths)
+            (tif_path, imd_path) = self._unpack(paths)
+
+        if ext == '.tif': # Already unpacked
+
+            # Both files should be present in the same folder
+            tif_name = paths
+            unpack_folder = os.path.dirname(paths)
+            (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
+
+            if not (imd_path and tif_path):
+                raise Exception('vendor_metadata not found in %s.' % (paths))
+            self._set_info_from_tif_name(tif_name)
+
+        assert tif_name is not None, f'Error: Unsupported extension {ext}'
 
         self._meta_path = imd_path
         self.__parse_meta_file(imd_path)
+
         return [tif_path]
 
     def meta_path(self):

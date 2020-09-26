@@ -54,12 +54,13 @@ def main(options):
 
     if options.resume is not None:
         model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
+        temp_model = model
     else:
         img = images.load(0)
         model = config_model(img.num_bands())
 
-    # this one is not built with proper scope, just used to get input and output shapes
-    temp_model = model()
+        # this one is not built with proper scope, just used to get input and output shapes
+        temp_model = model()
 
     start_time = time.time()
     tc = config.train.spec()
@@ -88,7 +89,6 @@ def main(options):
         if options.model is not None:
             save_model(model, options.model)
     except KeyboardInterrupt:
-        print()
         print('Training cancelled.')
 
     stop_time = time.time()
