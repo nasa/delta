@@ -15,28 +15,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, List
+from typing import List
 
 import tensorflow
 import tensorflow.keras.callbacks
 
 from delta.config import config
 
-def callback_from_dict(callback_dict) -> Callable[[], tensorflow.keras.callbacks.Callback]:
+def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
     '''
-    Constructs a callback object from a dictionary
+    Constructs a callback object from a dictionary.
     '''
     assert len(callback_dict.keys()) == 1, f'Error: Callback has more than one type {callback_dict.keys()}'
 
-    layer_type = next(callback_dict.keys().__iter__)
+    layer_type = next(iter(callback_dict.keys()))
     callback_class = getattr(tensorflow.keras.callbacks, layer_type, None)
     return callback_class(**callback_dict[layer_type])
 
-def construct_callbacks() -> Callable[[], List[tensorflow.keras.callbacks.Callback]]:
+def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
     '''
     Iterates over the list of callbacks specified in the config file, which is part of the training specification.
     '''
-    retval = []
-    if not config.train.callbacks is None:
-        retval = [callback_from_dict(callback.to_dict()) for callback in config.train.callbacks]
-    return retval
+    if not config.train.callbacks() is None:
+        return [callback_from_dict(callback) for callback in config.train.callbacks()]
+    return []
