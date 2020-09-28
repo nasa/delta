@@ -31,6 +31,7 @@ from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
 from .io import save_model
+from .callback_factory import construct_callbacks
 
 def _devices(num_gpus):
     '''
@@ -260,6 +261,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     (ds, validation) = _prep_datasets(dataset, training_spec, model.input_shape[1], model.output_shape[1])
 
     (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
+
+    callbacks.extend(construct_callbacks())
 
     try:
 
