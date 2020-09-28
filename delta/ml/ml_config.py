@@ -174,7 +174,7 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
         self.register_field('optimizer', str, None, None, 'Keras optimizer to use.')
-
+        self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
         self.register_arg('chunk_stride', '--chunk-stride')
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
@@ -257,7 +257,7 @@ class TensorboardConfig(config.DeltaConfigComponent):
 
 def register():
     """
-    Registers imagery config options with the global config manager.
+    Registers machine learning config options with the global config manager.
 
     The arguments enable command line arguments for different components.
     """

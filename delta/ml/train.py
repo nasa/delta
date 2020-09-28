@@ -31,6 +31,7 @@ from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .layers import DeltaLayer
 from .io import save_model
+from .callbacks import config_callbacks
 
 def _devices(num_gpus):
     '''
@@ -209,6 +210,8 @@ def _build_callbacks(model, dataset, training_spec):
             print('Using mlflow folder: ' + mlflow.get_artifact_uri())
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+
+    callbacks.extend(config_callbacks())
 
     return (callbacks, mcb)
 
