@@ -272,7 +272,7 @@ class ImageryDataset:
             if not self._chunk_size:
                 img.set_shape([tile_size[1], tile_size[0]] + ([1] if is_labels else [self._num_bands]))
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=1).prefetch(5)#tf.data.experimental.AUTOTUNE)#config.io.threads())
+        ret = ds_input.map(load_tile, num_parallel_calls=1).prefetch(5)
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty

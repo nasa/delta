@@ -27,7 +27,7 @@ import tensorflow as tf
 from conftest import config_reset
 
 from delta.config import config
-from delta.ml import model_parser
+from delta.ml import callbacks, model_parser
 
 def test_general():
     config_reset()
@@ -213,6 +213,24 @@ def test_pretrained_layer():
         if m1.layers[i].name == 'encoding':
             break
     os.remove(tmp_filename)
+
+def test_callbacks():
+    config_reset()
+    test_str = '''
+    train:
+      callbacks:
+        - EarlyStopping:
+            verbose: true
+        - ReduceLROnPlateau:
+            factor: 0.5
+    '''
+    config.load(yaml_str=test_str)
+    cbs = callbacks.config_callbacks()
+    assert len(cbs) == 2
+    assert isinstance(cbs[0], tf.keras.callbacks.EarlyStopping)
+    assert cbs[0].verbose
+    assert isinstance(cbs[1], tf.keras.callbacks.ReduceLROnPlateau)
+    assert cbs[1].factor == 0.5
 
 def test_network_file():
     config_reset()
