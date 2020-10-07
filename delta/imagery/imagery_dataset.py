@@ -141,9 +141,7 @@ class ImageryDataset:
 
         try:
             image = loader.load_image(data, image_index.numpy())
-            w = int(bbox[2])
-            h = int(bbox[3])
-            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), w, h)
+            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
             r = image.read(rect)
         except Exception as e: #pylint: disable=W0703
             print('Caught exception loading tile from image: ' + data[image_index.numpy()] + ' -> ' + str(e)
@@ -274,7 +272,7 @@ class ImageryDataset:
             if not self._chunk_size:
                 img.set_shape([tile_size[1], tile_size[0]] + ([1] if is_labels else [self._num_bands]))
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE)#config.io.threads())
+        ret = ds_input.map(load_tile, num_parallel_calls=1).prefetch(5)#tf.data.experimental.AUTOTUNE)#config.io.threads())
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
@@ -390,3 +388,6 @@ class AutoencoderDataset(ImageryDataset):
 
     def labels(self):
         return self.data()
+
+    def dataset(self, class_weights=None):
+        return self.data().map(lambda x: (x, x))

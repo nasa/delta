@@ -164,7 +164,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         for k in logs.keys():
             if k in ('batch', 'size'):
                 continue
-            mlflow.log_metric('validation_' + k, logs[k].item())
+            mlflow.log_metric('validation_' + k, logs[k])
 
 def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.set_tracking_uri(config.mlflow.uri())
