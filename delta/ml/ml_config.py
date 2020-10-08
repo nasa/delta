@@ -39,8 +39,12 @@ def loss_function_factory(loss_spec):
     of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
     '''
     import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
+    from . import losses # pylint: disable=import-outside-toplevel
 
     if isinstance(loss_spec, str):
+        loss = getattr(losses, loss_spec, None)
+        if loss is not None:
+            return loss
         return getattr(tensorflow.keras.losses, loss_spec, None)
     if isinstance(loss_spec, list):
         assert len(loss_spec) == 1, 'Too many loss functions specified'
