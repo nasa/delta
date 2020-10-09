@@ -248,7 +248,8 @@ def EfficientNet(width_coefficient,
                  include_top=True,
                  weights='imagenet',
                  input_tensor=None,
-                 input_shape=None):
+                 input_shape=None,
+                 name=None):
     #pylint: disable=too-many-locals
     if input_tensor is None:
         img_input = layers.Input(shape=input_shape)
@@ -336,7 +337,7 @@ def EfficientNet(width_coefficient,
         inputs = img_input
 
     # Create model.
-    model = models.Model(inputs, x, name=model_name)
+    model = models.Model(inputs, x, name=name if name is not None else model_name)
 
     # Load weights.
     if weights == 'imagenet':
@@ -445,8 +446,8 @@ def EfficientNetB7(include_top=True,
                         input_tensor=input_tensor, input_shape=input_shape,
                         **kwargs)
 
-def DeltaEfficientNetB2(input_shape):
-    return EfficientNetB2(include_top=False, input_shape=input_shape)
+def DeltaEfficientNetB2(input_shape, name=None):
+    return EfficientNetB2(include_top=False, input_shape=input_shape, weights=None, name=name)
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images.
