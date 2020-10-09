@@ -81,18 +81,35 @@ __DEFAULT_SCALE_FACTORS = {'tiff' : 1024.0,
                            'worldview' : 2048.0,
                            'landsat' : 120.0,
                            'npy' : None}
+__DEFAULT_OFFSETS = {'tiff' : None,
+                     'worldview' : None,
+                     'landsat' : None,
+                     'npy' : None}
+
 def __extension(conf):
     if conf['extension'] == 'default':
         return __DEFAULT_EXTENSIONS.get(conf['type'])
     return conf['extension']
 def __scale_factor(image_comp):
     f = image_comp.preprocess.scale_factor()
+    if f is None:
+        return None
     if f == 'default':
         return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
     try:
         return float(f)
     except ValueError as e:
         raise ValueError('Scale factor is %s, must be a float.' % (f)) from e
+def __offset(image_comp):
+    f = image_comp.preprocess.offset()
+    if f is None:
+        return None
+    if f == 'default':
+        return __DEFAULT_OFFSETS.get(image_comp.type())
+    try:
+        return float(f)
+    except ValueError as e:
+        raise ValueError('Offset is %s, must be a float.' % (f)) from e
 
 def __find_images(conf, matching_images=None, matching_conf=None):
     '''
@@ -138,9 +155,14 @@ def __preprocess_function(image_comp):
     if not image_comp.preprocess.enabled():
         return None
     f = __scale_factor(image_comp)
-    if f is None:
+    o = __offset(image_comp)
+    if f is None and o is None:
         return None
-    return lambda data, _, dummy: data / np.float32(f)
+    if o is None:
+        return lambda data, _, dummy: data / np.float32(f)
+    if f is None:
+        return lambda data, _, dummy: data + np.float32(o)
+    return lambda data, _, dummy: (data + np.float32(o)) / np.float32(f)
 
 def load_images_labels(images_comp, labels_comp, classes_comp):
     '''
@@ -193,6 +215,7 @@ class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Turn on preprocessing.')
+        self.register_field('offset', (float, str), 'offset', None, 'Image pixel offset.')
         self.register_field('scale_factor', (float, str), 'scale_factor', None, 'Image scale factor.')
 
 def _validate_paths(paths, base_dir):
