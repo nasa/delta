@@ -26,13 +26,10 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from delta.config import config
+from delta.config.extensions import custom_objects
 from delta.imagery.sources import tiff
 from delta.imagery.sources import loader
 from delta.ml import predict
-import delta.ml.layers
-import delta.imagery.imagery_config
-import delta.ml.ml_config
-from delta.ml.losses import ms_ssim_loss
 
 def save_confusion(cm, class_labels, filename):
     f = plt.figure()
@@ -68,11 +65,9 @@ def main(options):
 
     if cpuOnly:
         with tf.device('/cpu:0'):
-            model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects())
     else:
-        d = delta.ml.layers.ALL_LAYERS.copy()
-        d.update({'ms_ssim_loss': ms_ssim_loss})
-        model = tf.keras.models.load_model(options.model, custom_objects=d)
+        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects())
 
     colors = list(map(lambda x: x.color, config.dataset.classes))
     error_colors = np.array([[0x0, 0x0, 0x0],

@@ -61,3 +61,11 @@ def layer(layer_type : str):
     """
     __initialize()
     return __layers.get(layer_type)
+
+def custom_objects():
+    """
+    Returns a dictionary of all supported custom objects for use
+    by tensorflow.
+    """
+    d = __layers.copy()
+    return d
