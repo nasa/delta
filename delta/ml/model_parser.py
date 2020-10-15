@@ -26,24 +26,23 @@ import functools
 from typing import Callable
 
 import tensorflow
-import tensorflow.keras.models
 import tensorflow.keras.layers
+import tensorflow.keras.models
 
 from delta.config import config
-
-from . import layers
+import delta.config.extensions as extensions
 
 class _LayerWrapper:
     def __init__(self, layer_type, layer_name, inputs, params):
         self._layer_type = layer_type
         self._layer_name = layer_name
         self._inputs = inputs
-        layer_class = getattr(tensorflow.keras.layers, self._layer_type, None)
-        if layer_class is None and self._layer_type in layers.ALL_LAYERS:
-            layer_class = layers.ALL_LAYERS[self._layer_type]
-        if layer_class is None:
-            raise ValueError('Unknown layer type %s.' % (self._layer_type))
-        self._layer_constructor = layer_class(**params)
+        lc = extensions.layer(layer_type)
+        if lc is None:
+            lc = getattr(tensorflow.keras.layers, layer_type, None)
+        if lc is None:
+            raise ValueError('Unknown layer type %s.' % (layer_type))
+        self._layer_constructor = lc(**params)
         self._layer = None
 
     def is_input(self):

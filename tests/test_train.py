@@ -29,7 +29,7 @@ import conftest
 from delta.config import config
 from delta.imagery.sources import npy
 from delta.ml import train, predict
-from delta.ml.layers import Pretrained
+from delta.extensions.layers.pretrained import Pretrained
 from delta.ml.ml_config import TrainingSpec
 
 def evaluate_model(model_fn, dataset, output_trim=0):

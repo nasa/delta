@@ -3,6 +3,8 @@ general:
   gpus:              -1
   # print more debug information
   verbose: false
+  extensions:
+    - delta.extensions
 
 io:
   threads:           1

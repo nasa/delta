@@ -25,13 +25,25 @@ import shutil
 
 import mlflow
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .layers import DeltaLayer
 from .io import save_model
 from .callbacks import config_callbacks
+
+class DeltaLayer(Layer):
+    """
+    Network layer class with extra features specific to DELTA.
+
+    Extentds `tensorflow.keras.layers.Layer`.
+    """
+    def callback(self): # pylint:disable=no-self-use
+        """
+        Returns a Keras callback to be added, or None.
+        """
+        return None
 
 def _devices(num_gpus):
     '''

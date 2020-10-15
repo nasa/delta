@@ -22,6 +22,23 @@ Registers all config modules.
 import delta.imagery.imagery_config
 import delta.ml.ml_config
 from .config import config, DeltaConfigComponent
+from .extensions import register_extension
+
+class ExtensionsConfig(DeltaConfigComponent):
+    def __init__(self):
+        super().__init__()
+
+    # overwrite model entirely if updated (don't want combined layers from multiple files)
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        if isinstance(d, list):
+            for ext in d:
+                register_extension(ext)
+        elif isinstance(d, str):
+            register_extension(d)
+        else:
+            raise ValueError('extensions should be a list or string.')
 
 _config_initialized = False
 def register_all():
@@ -30,6 +47,9 @@ def register_all():
     if _config_initialized:
         return
     config.register_component(DeltaConfigComponent('General'), 'general')
+    config.general.register_component(ExtensionsConfig(), 'extensions')
+    config.general.register_field('extensions', list, 'extensions', None,
+                                  'Python modules to import as extensions.')
     config.general.register_field('verbose', bool, 'verbose', None,
                                   'Print debugging information.')
     config.general.register_arg('verbose', '--verbose', action='store_const',
