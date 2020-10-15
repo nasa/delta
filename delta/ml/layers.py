@@ -25,6 +25,8 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.callbacks import Callback
 
+from . import efficientnet
+
 class DeltaLayer(Layer):
     # optionally return a Keras callback
     def callback(self): # pylint:disable=no-self-use
@@ -121,5 +123,6 @@ class Pretrained(DeltaLayer):
 
 ALL_LAYERS = {
     'GaussianSample' : GaussianSample,
-    'Pretrained' : Pretrained
+    'Pretrained' : Pretrained,
+    'EfficientNetB2' : efficientnet.DeltaEfficientNetB2
 }

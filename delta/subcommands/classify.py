@@ -32,6 +32,7 @@ from delta.ml import predict
 import delta.ml.layers
 import delta.imagery.imagery_config
 import delta.ml.ml_config
+from delta.ml.losses import ms_ssim_loss
 
 def save_confusion(cm, class_labels, filename):
     f = plt.figure()
@@ -57,7 +58,8 @@ def save_confusion(cm, class_labels, filename):
     f.savefig(filename)
 
 def ae_convert(data):
-    return (data[:, :, [4, 2, 1]] * 256.0).astype(np.uint8)
+    r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(256.0)), 0.0, 255.0).astype(np.uint8)
+    return r
 
 def main(options):
 
@@ -68,7 +70,9 @@ def main(options):
         with tf.device('/cpu:0'):
             model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
     else:
-        model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+        d = delta.ml.layers.ALL_LAYERS.copy()
+        d.update({'ms_ssim_loss': ms_ssim_loss})
+        model = tf.keras.models.load_model(options.model, custom_objects=d)
 
     colors = list(map(lambda x: x.color, config.dataset.classes))
     error_colors = np.array([[0x0, 0x0, 0x0],

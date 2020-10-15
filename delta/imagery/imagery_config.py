@@ -81,18 +81,35 @@ __DEFAULT_SCALE_FACTORS = {'tiff' : 1024.0,
                            'worldview' : 2048.0,
                            'landsat' : 120.0,
                            'npy' : None}
+__DEFAULT_OFFSETS = {'tiff' : None,
+                     'worldview' : None,
+                     'landsat' : None,
+                     'npy' : None}
+
 def __extension(conf):
     if conf['extension'] == 'default':
         return __DEFAULT_EXTENSIONS.get(conf['type'])
     return conf['extension']
 def __scale_factor(image_comp):
     f = image_comp.preprocess.scale_factor()
+    if f is None:
+        return None
     if f == 'default':
         return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
     try:
         return float(f)
     except ValueError as e:
         raise ValueError('Scale factor is %s, must be a float.' % (f)) from e
+def __offset(image_comp):
+    f = image_comp.preprocess.offset()
+    if f is None:
+        return None
+    if f == 'default':
+        return __DEFAULT_OFFSETS.get(image_comp.type())
+    try:
+        return float(f)
+    except ValueError as e:
+        raise ValueError('Offset is %s, must be a float.' % (f)) from e
 
 def __find_images(conf, matching_images=None, matching_conf=None):
     '''
@@ -100,19 +117,19 @@ def __find_images(conf, matching_images=None, matching_conf=None):
     If matching_images and matching_conf are specified, we find the labels matching these images.
     '''
     images = []
-    if (conf['files'] is None) != (conf['file_list'] is None) != (conf['directory'] is None):
-        raise  ValueError('''Too many image specification methods used.\n
-                             Choose one of "files", "file_list" and "directory" when indicating 
-                             file locations.''')
     if conf['type'] not in __DEFAULT_EXTENSIONS:
         raise ValueError('Unexpected image type %s.' % (conf['type']))
 
     if conf['files']:
+        assert conf['file_list'] is None and conf['directory'] is None, 'Only one image specification allowed.'
         images = conf['files']
+        for i in range(len(images)):
+            images[i] = os.path.normpath(images[i])
     elif conf['file_list']:
+        assert conf['directory'] is None, 'Only one image specification allowed.'
         with open(conf['file_list'], 'r') as f:
             for line in f:
-                images.append(line)
+                images.append(os.path.normpath(line.strip()))
     elif conf['directory']:
         extension = __extension(conf)
         if not os.path.exists(conf['directory']):
@@ -138,9 +155,14 @@ def __preprocess_function(image_comp):
     if not image_comp.preprocess.enabled():
         return None
     f = __scale_factor(image_comp)
-    if f is None:
+    o = __offset(image_comp)
+    if f is None and o is None:
         return None
-    return lambda data, _, dummy: data / np.float32(f)
+    if o is None:
+        return lambda data, _, dummy: data / np.float32(f)
+    if f is None:
+        return lambda data, _, dummy: data + np.float32(o)
+    return lambda data, _, dummy: (data + np.float32(o)) / np.float32(f)
 
 def load_images_labels(images_comp, labels_comp, classes_comp):
     '''
@@ -193,6 +215,7 @@ class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Turn on preprocessing.')
+        self.register_field('offset', (float, str), 'offset', None, 'Image pixel offset.')
         self.register_field('scale_factor', (float, str), 'scale_factor', None, 'Image scale factor.')
 
 def _validate_paths(paths, base_dir):
@@ -206,7 +229,7 @@ class ImageSetConfig(DeltaConfigComponent):
         super().__init__()
         self.register_field('type', str, 'type', None, 'Image type.')
         self.register_field('files', list, None, _validate_paths, 'List of image files.')
-        self.register_field('file_list', list, None, validate_path, 'File listing image files.')
+        self.register_field('file_list', str, None, validate_path, 'File listing image files.')
         self.register_field('directory', str, None, validate_path, 'Directory of image files.')
         self.register_field('extension', str, None, None, 'Image file extension.')
         self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')

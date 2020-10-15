@@ -89,11 +89,9 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
         validation = None
 
     ds = ds.batch(tc.batch_size)
-    #ds = ds.cache()
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.steps:
         ds = ds.take(tc.steps)
-    #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
     ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
@@ -164,7 +162,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         for k in logs.keys():
             if k in ('batch', 'size'):
                 continue
-            mlflow.log_metric('validation_' + k, logs[k].item())
+            mlflow.log_metric('validation_' + k, logs[k])
 
 def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.set_tracking_uri(config.mlflow.uri())

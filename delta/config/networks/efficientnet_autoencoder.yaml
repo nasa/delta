@@ -1,0 +1,51 @@
+layers:
+  - Input:
+      shape: [~, ~, num_bands]
+  - EfficientNetB2:
+      input_shape: [~, ~, num_bands]
+      name: efficientnet
+  - Conv2DTranspose:
+      filters: 144
+      kernel_size: [5, 5]
+      padding: same
+      strides: 2
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2DTranspose:
+      filters: 64
+      kernel_size: [3, 3]
+      padding: same
+      strides: 2
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2DTranspose:
+      filters: 24
+      kernel_size: [5, 5]
+      padding: same
+      strides: 2
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2DTranspose:
+      filters: 16
+      kernel_size: [3, 3]
+      padding: same
+      strides: 2
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2DTranspose:
+      filters: 16
+      kernel_size: [3, 3]
+      padding: same
+      strides: 2
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: num_bands
+      kernel_size: [7, 7]
+      activation: relu
+      padding: same

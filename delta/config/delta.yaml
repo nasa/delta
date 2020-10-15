@@ -26,6 +26,7 @@ dataset:
     # preprocess the images when loading (i.e., scaling)
     preprocess:
       enabled:        true
+      offset:         default
       scale_factor:   default
     nodata_value:     ~
     directory:        ~
