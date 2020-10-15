@@ -89,11 +89,9 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
         validation = None
 
     ds = ds.batch(tc.batch_size)
-    #ds = ds.cache()
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.steps:
         ds = ds.take(tc.steps)
-    #ds = ds.prefetch(4)#tf.data.experimental.AUTOTUNE)
     ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
