@@ -117,19 +117,19 @@ def __find_images(conf, matching_images=None, matching_conf=None):
     If matching_images and matching_conf are specified, we find the labels matching these images.
     '''
     images = []
-    if (conf['files'] is None) != (conf['file_list'] is None) != (conf['directory'] is None):
-        raise  ValueError('''Too many image specification methods used.\n
-                             Choose one of "files", "file_list" and "directory" when indicating 
-                             file locations.''')
     if conf['type'] not in __DEFAULT_EXTENSIONS:
         raise ValueError('Unexpected image type %s.' % (conf['type']))
 
     if conf['files']:
+        assert conf['file_list'] is None and conf['directory'] is None, 'Only one image specification allowed.'
         images = conf['files']
+        for i in range(len(images)):
+            images[i] = os.path.normpath(images[i])
     elif conf['file_list']:
+        assert conf['directory'] is None, 'Only one image specification allowed.'
         with open(conf['file_list'], 'r') as f:
             for line in f:
-                images.append(line)
+                images.append(os.path.normpath(line.strip()))
     elif conf['directory']:
         extension = __extension(conf)
         if not os.path.exists(conf['directory']):
@@ -229,7 +229,7 @@ class ImageSetConfig(DeltaConfigComponent):
         super().__init__()
         self.register_field('type', str, 'type', None, 'Image type.')
         self.register_field('files', list, None, _validate_paths, 'List of image files.')
-        self.register_field('file_list', list, None, validate_path, 'File listing image files.')
+        self.register_field('file_list', str, None, validate_path, 'File listing image files.')
         self.register_field('directory', str, None, validate_path, 'Directory of image files.')
         self.register_field('extension', str, None, None, 'Image file extension.')
         self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')
