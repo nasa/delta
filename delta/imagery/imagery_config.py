@@ -123,8 +123,8 @@ def __find_images(conf, matching_images=None, matching_conf=None):
     if conf['files']:
         assert conf['file_list'] is None and conf['directory'] is None, 'Only one image specification allowed.'
         images = conf['files']
-        for i in range(len(images)):
-            images[i] = os.path.normpath(images[i])
+        for (i, im) in enumerate(images):
+            images[i] = os.path.normpath(im)
     elif conf['file_list']:
         assert conf['directory'] is None, 'Only one image specification allowed.'
         with open(conf['file_list'], 'r') as f:
