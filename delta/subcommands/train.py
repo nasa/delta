@@ -33,7 +33,7 @@ from delta.config.extensions import custom_objects
 from delta.imagery import imagery_dataset
 from delta.imagery.sources import loader
 from delta.ml.train import train
-from delta.ml.model_parser import config_model
+from delta.ml.config_parser import config_model
 from delta.ml.io import save_model
 
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)

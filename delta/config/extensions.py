@@ -29,6 +29,7 @@ import importlib
 
 __extensions_to_load = set()
 __layers = {}
+__losses = {}
 
 def __initialize():
     """
@@ -50,10 +51,17 @@ def register_extension(name : str):
 
 def register_layer(layer_type : str, layer_constructor):
     """
-    Register a custom layer for use by delta.
+    Register a custom layer for use by DELTA.
     """
     global __layers
     __layers[layer_type] = layer_constructor
+
+def register_loss(loss_type : str, loss_constructor):
+    """
+    Register a custom loss function for use by DELTA.
+    """
+    global __losses
+    __losses[loss_type] = loss_constructor
 
 def layer(layer_type : str):
     """
@@ -62,10 +70,19 @@ def layer(layer_type : str):
     __initialize()
     return __layers.get(layer_type)
 
+def loss(loss_type : str):
+    """
+    Retrieve a custom loss by name.
+    """
+    __initialize()
+    return __losses.get(loss_type)
+
 def custom_objects():
     """
     Returns a dictionary of all supported custom objects for use
     by tensorflow.
     """
+    __initialize()
     d = __layers.copy()
+    d.update(__losses.copy())
     return d

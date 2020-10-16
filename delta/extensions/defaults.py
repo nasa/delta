@@ -18,13 +18,16 @@
 Module to install extensions that come with DELTA.
 """
 
-from delta.config.extensions import register_layer
+from delta.config.extensions import register_layer, register_loss
 
 from .layers import efficientnet
 from .layers import gaussian_sample
 from .layers import pretrained
+from . import losses
 
 def initialize():
     register_layer('Pretrained', pretrained.Pretrained)
     register_layer('GuassianSample', gaussian_sample.GaussianSample)
     register_layer('EfficientNetB2', efficientnet.DeltaEfficientNetB2)
+
+    register_loss('ms_ssim', losses.ms_ssim)

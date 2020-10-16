@@ -16,9 +16,8 @@
 # limitations under the License.
 
 """
-Construct sequential neural networks using the Tensorflow-Keras API from
-dictionaries.  Assumes that the names of the parameters for the layer constructor functions are as
-given in the Tensorflow API documentation.
+Functions to support loading custom ML-related objects from dictionaries specified
+in yaml files. Includes constructing custom neural networks and more.
 """
 import collections
 import copy
@@ -27,6 +26,7 @@ from typing import Callable
 
 import tensorflow
 import tensorflow.keras.layers
+import tensorflow.keras.losses
 import tensorflow.keras.models
 
 from delta.config import config
@@ -156,6 +156,32 @@ def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras
     Creates a function that returns a sequential model from a dictionary.
     """
     return functools.partial(_make_model, model_dict, exposed_params)
+
+def loss_from_dict(loss_spec):
+    '''
+    Creates a loss function object from a dictionary.
+
+    :param: loss_spec Specification of the loss function.  Either a string that is compatible
+    with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
+    of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
+    '''
+    if isinstance(loss_spec, str):
+        name = loss_spec
+        params = {}
+    elif isinstance(loss_spec, dict):
+        assert len(loss_spec) == 1, 'Only one loss function may be specified.'
+        name = list(loss_spec[0].keys())[0]
+        params = loss_spec[name]
+    else:
+        raise ValueError('Unexpected entry for loss function.')
+    lc = extensions.loss(name)
+    if lc is None:
+        lc = getattr(tensorflow.keras.losses, name, None)
+    if lc is None:
+        raise ValueError('Unknown loss type %s.' % (name))
+    if isinstance(lc, tensorflow.keras.losses.Loss):
+        return lc(**params)
+    return lc
 
 def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
