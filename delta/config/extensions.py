@@ -30,6 +30,7 @@ import importlib
 __extensions_to_load = set()
 __layers = {}
 __losses = {}
+__metrics = {}
 
 def __initialize():
     """
@@ -58,10 +59,18 @@ def register_layer(layer_type : str, layer_constructor):
 
 def register_loss(loss_type : str, loss_constructor):
     """
-    Register a custom loss function for use by DELTA.
+    Register a custom loss function for use by DELTA. Loss
+    functions can also be used as metrics.
     """
     global __losses
     __losses[loss_type] = loss_constructor
+
+def register_metric(metric_type : str, metric_constructor):
+    """
+    Register a custom metric for use by DELTA.
+    """
+    global __metrics
+    __metrics[metric_type] = metric_constructor
 
 def layer(layer_type : str):
     """
@@ -76,6 +85,13 @@ def loss(loss_type : str):
     """
     __initialize()
     return __losses.get(loss_type)
+
+def metric(metric_type : str):
+    """
+    Retrieve a custom metric by name.
+    """
+    __initialize()
+    return __metrics.get(metric_type)
 
 def custom_objects():
     """

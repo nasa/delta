@@ -34,7 +34,7 @@ from delta.ml.ml_config import TrainingSpec
 
 def evaluate_model(model_fn, dataset, output_trim=0):
     model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['accuracy']))
+                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['sparse_categorical_accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.70
 
@@ -50,7 +50,7 @@ def evaluate_model(model_fn, dataset, output_trim=0):
 
 def train_ae(ae_fn, ae_dataset):
     model, _ = train.train(ae_fn, ae_dataset,
-                           TrainingSpec(100, 5, 'mse', ['accuracy']))
+                           TrainingSpec(100, 5, 'mse', ['Accuracy']))
 
     tmpdir = tempfile.mkdtemp()
     model_path = os.path.join(tmpdir, 'ae_model.h5')

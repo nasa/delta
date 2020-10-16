@@ -32,7 +32,7 @@ from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .io import save_model
 from .callbacks import config_callbacks
-from .config_parser import loss_from_dict
+from .config_parser import loss_from_dict, metric_from_dict
 
 class DeltaLayer(Layer):
     """
@@ -242,8 +242,9 @@ def _compile_model(model_fn, dataset, training_spec):
                    "Model is not a Tensorflow Keras model"
             loss = loss_from_dict(training_spec.loss_function)
             # TODO: specify learning rate and optimizer parameters, change learning rate over time
+            print([metric_from_dict(m) for m in training_spec.metrics])
             model.compile(optimizer=training_spec.optimizer, loss=loss,
-                          metrics=training_spec.metrics)
+                          metrics=[metric_from_dict(m) for m in training_spec.metrics])
 
     input_shape = model.input_shape
     output_shape = model.output_shape

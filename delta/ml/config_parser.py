@@ -179,9 +179,34 @@ def loss_from_dict(loss_spec):
         lc = getattr(tensorflow.keras.losses, name, None)
     if lc is None:
         raise ValueError('Unknown loss type %s.' % (name))
-    if isinstance(lc, tensorflow.keras.losses.Loss):
+    if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
         return lc(**params)
     return lc
+
+def metric_from_dict(metric_spec):
+    """
+    Creates a metric object from a dictionary or string.
+    """
+    if isinstance(metric_spec, str):
+        name = metric_spec
+        params = {}
+    elif isinstance(metric_spec, dict):
+        assert len(metric_spec) == 1, 'Expecting only one metric.'
+        name = list(metric_spec[0].keys())[0]
+        params = metric_spec[name]
+    else:
+        raise ValueError('Unexpected entry for metric.')
+    mc = extensions.metric(name)
+    if mc is None:
+        mc = getattr(tensorflow.keras.metrics, name, None)
+    if mc is None:
+        try:
+            return loss_from_dict(metric_spec)
+        except:
+            raise ValueError('Unknown metric %s.' % (name)) #pylint:disable=raise-missing-from
+    if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
+        return mc(**params)
+    return mc
 
 def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
