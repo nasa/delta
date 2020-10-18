@@ -52,7 +52,7 @@ def main(argsIn):
         parser.add_argument("--image-ext", dest="image_extension", default='.zip',
                             help="Extension for image files.")
 
-        parser.add_argument("--delete_inputs", action="store_true",
+        parser.add_argument("--delete-inputs", action="store_true",
                             dest="delete_inputs", default=False,
                             help="Delete input files after unpacking.")
 
@@ -84,6 +84,9 @@ def main(argsIn):
     for image_path in input_image_list:
 
         try:
+
+            if count % 10 == 0:
+                print('Progress = ' + str(count) + ' out of ' + str(len(input_image_list)))
 
             if options.image_limit and (count >= options.image_limit):
                 print('Stopping because we hit the image limit.')

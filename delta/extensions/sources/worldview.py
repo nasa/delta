@@ -48,11 +48,13 @@ def get_files_from_unpack_folder(folder):
     main_files   = os.listdir(folder)
     vendor_files = os.listdir(vendor_folder)
     for f in vendor_files:
-        if os.path.splitext(f)[1].lower() == '.imd':
+        ext = os.path.splitext(f)[1]
+        if ext.lower() == '.imd':
             imd_path = os.path.join(vendor_folder, f)
             break
     for f in main_files:
-        if os.path.splitext(f)[1].lower() == '.tif':
+        ext = os.path.splitext(f)[1]
+        if ext.lower() == '.tif':
             tif_path = os.path.join(folder, f)
             break
     return (tif_path, imd_path)
@@ -118,7 +120,7 @@ class WorldviewImage(tiff.TiffImage):
         if ext == '.zip': # Need to unpack
 
             zip_file = zipfile.ZipFile(paths, 'r')
-            tif_names = list(filter(lambda x: x.endswith('.tif') or x.endswith('.TIF'), zip_file.namelist()))
+            tif_names = list(filter(lambda x: x.lower().endswith('.tif'), zip_file.namelist()))
             assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
             assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'
             tif_name = tif_names[0]
