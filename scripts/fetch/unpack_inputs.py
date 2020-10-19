@@ -27,6 +27,7 @@ import sys
 import argparse
 import traceback
 from delta.imagery.sources import worldview
+from delta.imagery.sources import sentinel1
 from delta.imagery.sources import tiff
 
 
@@ -34,6 +35,7 @@ from delta.imagery.sources import tiff
 
 def main(argsIn):
 
+    SUPPORTED_IMAGE_TYPES = ['worldview', 'sentinel1']
 
     try:
 
@@ -47,7 +49,8 @@ def main(argsIn):
                             help="Unpack images to this folder.")
 
         parser.add_argument("--image-type", dest="image_type", default='worldview',
-                            help="Type of image files.")
+                            help="Type of image files: " +
+                                 ', '.join(SUPPORTED_IMAGE_TYPES))
 
         parser.add_argument("--image-ext", dest="image_extension", default='.zip',
                             help="Extension for image files.")
@@ -66,8 +69,8 @@ def main(argsIn):
         print(usage)
         return -1
 
-    if options.image_type != 'worldview':
-        print('Only worldview images are currently supported!')
+    if options.image_type not in SUPPORTED_IMAGE_TYPES:
+        print('Input image type is not supported!')
         return -1
 
     # Recursively find image files, obtaining the full path for each file.
@@ -100,13 +103,23 @@ def main(argsIn):
             this_output_folder = os.path.join(options.output_folder,
                                               relative_path, image_name)
 
+            # TODO: Synch up the unpack functions
+            image_path = None
             if not os.path.exists(this_output_folder):
                 print('Unpacking input file: ' + image_path)
-                worldview.unpack_wv_to_folder(image_path, this_output_folder)
+                if options.image_type == 'worldview':
+                    tif_path = worldview.unpack_wv_to_folder(image_path, this_output_folder)[0]
+                else: # sentinel1
+                    tif_path = sentinel1.unpack_s1_to_folder(image_path, this_output_folder)
 
-            # Now check that the the file unpacked properly
-            (tif, _) = worldview.get_files_from_unpack_folder(this_output_folder)
-            test_image = tiff.TiffImage(tif) #pylint: disable=W0612
+            else: # The folder was already unpacked (at least partially)
+                if options.image_type == 'worldview':
+                    tif_path = worldview.get_files_from_unpack_folder(this_output_folder)[0]
+                else: # sentinel1
+                    tif_path = sentinel1.unpack_s1_to_folder(image_path, this_output_folder)
+
+            # Make sure the unpacked image loads properly
+            test_image = tiff.TiffImage(tif_path) #pylint: disable=W0612
 
             if options.delete_inputs:
                 print('Deleting input file: ' + image_path)
