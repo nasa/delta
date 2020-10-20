@@ -298,7 +298,7 @@ def test_train():
       batch_size: 5
       steps: 10
       epochs: 3
-      loss_function: SparseCategoricalCrossentropy
+      loss: SparseCategoricalCrossentropy
       metrics: [metric]
       optimizer: opt
       validation:
@@ -311,7 +311,7 @@ def test_train():
     assert tc.batch_size == 5
     assert tc.steps == 10
     assert tc.epochs == 3
-    assert isinstance(config_parser.loss_from_dict(tc.loss_function), tf.keras.losses.SparseCategoricalCrossentropy)
+    assert isinstance(config_parser.loss_from_dict(tc.loss), tf.keras.losses.SparseCategoricalCrossentropy)
     assert tc.metrics == ['metric']
     assert tc.optimizer == 'opt'
     assert tc.validation.steps == 20

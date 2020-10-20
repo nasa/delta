@@ -51,11 +51,11 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     """
     Options used in training by `delta.ml.train.train`.
     """
-    def __init__(self, batch_size, epochs, loss_function, metrics, validation=None, steps=None,
-                 chunk_stride=1, optimizer='adam'):
+    def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
+                 chunk_stride=1, optimizer='Adam'):
         self.batch_size = batch_size
         self.epochs = epochs
-        self.loss_function = loss_function
+        self.loss = loss
         self.validation = validation
         self.steps = steps
         self.metrics = metrics
@@ -144,10 +144,10 @@ class TrainingConfig(config.DeltaConfigComponent):
                             'Number of times to repeat training on the dataset.')
         self.register_field('batch_size', int, None, config.validate_positive,
                             'Features to group into each training batch.')
-        self.register_field('loss_function', (str, dict), None, None, 'Keras loss function.')
+        self.register_field('loss', (str, dict), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
-        self.register_field('optimizer', str, None, None, 'Keras optimizer to use.')
+        self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
         self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
         self.register_arg('chunk_stride', '--chunk-stride')
         self.register_arg('epochs', '--epochs')
@@ -174,7 +174,7 @@ class TrainingConfig(config.DeltaConfigComponent):
             validation = ValidationSet(vimg, vlabels, from_training, vsteps)
             self.__training = TrainingSpec(batch_size=self._config_dict['batch_size'],
                                            epochs=self._config_dict['epochs'],
-                                           loss_function=self._config_dict['loss_function'],
+                                           loss=self._config_dict['loss'],
                                            metrics=self._config_dict['metrics'],
                                            validation=validation,
                                            steps=self._config_dict['steps'],

@@ -208,6 +208,24 @@ def metric_from_dict(metric_spec):
         return mc(**params)
     return mc
 
+def optimizer_from_dict(spec):
+    """
+    Creates an optimizer from a dictionary or string.
+    """
+    if isinstance(spec, str):
+        name = spec
+        params = {}
+    elif isinstance(spec, dict):
+        assert len(spec) == 1, 'Expecting only one optimizer.'
+        name = list(spec.keys())[0]
+        params = spec[name]
+    else:
+        raise ValueError('Unexpected entry for optimizer.')
+    mc = getattr(tensorflow.keras.optimizers, name, None)
+    if mc is None:
+        raise ValueError('Unknown optimizer %s.' % (name))
+    return mc(**params)
+
 def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
     Creates the model specified in the configuration.
