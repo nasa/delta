@@ -28,7 +28,7 @@ class ExtensionsConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
 
-    # overwrite model entirely if updated (don't want combined layers from multiple files)
+    # register immediately, don't override
     def _load_dict(self, d : dict, base_dir):
         if not d:
             return
