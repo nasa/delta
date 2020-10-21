@@ -22,6 +22,7 @@ DELTA specific network layers.
 import tensorflow.keras.backend as K
 from tensorflow.keras.callbacks import Callback
 
+from delta.config.extensions import register_layer
 from delta.ml.train import DeltaLayer
 
 # If layers inherit from callback as well we add them automatically on fit
@@ -67,3 +68,5 @@ class GaussianSample(DeltaLayer):
             self.add_metric(kl_loss, aggregation='mean', name=self.name + '_kl_loss')
 
         return result
+
+register_layer('GuassianSample', GaussianSample)

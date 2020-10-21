@@ -22,6 +22,7 @@ DELTA specific network layers.
 import tensorflow as tf
 import tensorflow.keras.models
 
+from delta.config.extensions import register_layer
 from delta.ml.train import DeltaLayer
 
 class Pretrained(DeltaLayer):
@@ -68,3 +69,5 @@ class Pretrained(DeltaLayer):
 
     def shape(self):
         return tf.TensorShape(self.layers[0].input_shape[0])
+
+register_layer('Pretrained', Pretrained)

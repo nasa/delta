@@ -29,6 +29,8 @@ import math
 import tensorflow
 from tensorflow.keras.applications import imagenet_utils
 
+from delta.config.extensions import register_layer
+
 backend = tensorflow.keras.backend
 layers = tensorflow.keras.layers
 models = tensorflow.keras.models
@@ -471,3 +473,5 @@ setattr(EfficientNetB4, '__doc__', EfficientNet.__doc__)
 setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
 setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
 setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
+
+register_layer('EfficientNetB2', DeltaEfficientNetB2)

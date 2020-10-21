@@ -22,7 +22,7 @@ Read data in numpy arrays.
 import os
 import numpy as np
 
-from . import delta_image
+from delta.imagery import delta_image
 
 class NumpyImage(delta_image.DeltaImage):
     """
@@ -62,7 +62,7 @@ class NumpyImage(delta_image.DeltaImage):
         """Return the number of bands in the image."""
         return self._data.shape[2]
 
-class NumpyImageWriter(delta_image.DeltaImageWriter):
+class NumpyWriter(delta_image.DeltaImageWriter):
     def __init__(self):
         self._buffer = None
 

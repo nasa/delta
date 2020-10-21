@@ -21,7 +21,7 @@ Test for worldview class.
 """
 import pytest
 
-from delta.imagery.sources import worldview
+from delta.extensions.sources import worldview
 
 @pytest.fixture(scope="function")
 def wv_image(worldview_filenames):

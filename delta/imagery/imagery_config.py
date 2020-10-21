@@ -25,6 +25,7 @@ import numpy as np
 import appdirs
 
 from delta.config import config, DeltaConfigComponent, validate_path, validate_positive
+from delta.config.extensions import image_reader
 from . import disk_folder_cache
 
 
@@ -51,7 +52,7 @@ class ImageSet:
 
     def type(self):
         """
-        The type of the image (used by `delta.imagery.sources.loader`).
+        The type of the image, a string.
         """
         return self._image_type
     def preprocess(self):
@@ -64,6 +65,13 @@ class ImageSet:
         Value of pixels to disregard.
         """
         return self._nodata_value
+
+    def load(self, index):
+        img = image_reader(self.type())(self[index], self.nodata_value())
+        if self._preprocess:
+            img.set_preprocess(self._preprocess)
+        return img
+
     def __len__(self):
         return len(self._images)
     def __getitem__(self, index):
@@ -123,8 +131,8 @@ def __find_images(conf, matching_images=None, matching_conf=None):
     if conf['files']:
         assert conf['file_list'] is None and conf['directory'] is None, 'Only one image specification allowed.'
         images = conf['files']
-        for i in range(len(images)):
-            images[i] = os.path.normpath(images[i])
+        for (i, img) in enumerate(images):
+            images[i] = os.path.normpath(img)
     elif conf['file_list']:
         assert conf['directory'] is None, 'Only one image specification allowed.'
         with open(conf['file_list'], 'r') as f:

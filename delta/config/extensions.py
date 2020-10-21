@@ -29,6 +29,8 @@ import importlib
 
 __extensions_to_load = set()
 __layers = {}
+__readers = {}
+__writers = {}
 __losses = {}
 __metrics = {}
 
@@ -56,6 +58,20 @@ def register_layer(layer_type : str, layer_constructor):
     """
     global __layers
     __layers[layer_type] = layer_constructor
+
+def register_image_reader(image_type : str, image_constructor):
+    """
+    Register a custom image type for reading by DELTA.
+    """
+    global __readers
+    __readers[image_type] = image_constructor
+
+def register_image_writer(image_type : str, image_constructor):
+    """
+    Register a custom image type for writing by DELTA.
+    """
+    global __writers
+    __writers[image_type] = image_constructor
 
 def register_loss(loss_type : str, loss_constructor):
     """
@@ -102,3 +118,17 @@ def custom_objects():
     d = __layers.copy()
     d.update(__losses.copy())
     return d
+
+def image_reader(reader_type : str):
+    """
+    Get the reader of the given type.
+    """
+    __initialize()
+    return __readers.get(reader_type)
+
+def image_writer(writer_type : str):
+    """
+    Get the writer of the given type.
+    """
+    __initialize()
+    return __writers.get(writer_type)

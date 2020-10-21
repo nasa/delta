@@ -31,7 +31,6 @@ import tensorflow as tf
 from delta.config import config
 from delta.config.extensions import custom_objects
 from delta.imagery import imagery_dataset
-from delta.imagery.sources import loader
 from delta.ml.train import train
 from delta.ml.config_parser import config_model
 from delta.ml.io import save_model
@@ -56,7 +55,7 @@ def main(options):
     if options.resume is not None:
         model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
     else:
-        img = loader.load_image(images, 0)
+        img = images.load(0)
         model = config_model(img.num_bands())
 
     # this one is not built with proper scope, just used to get input and output shapes

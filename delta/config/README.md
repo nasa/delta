@@ -27,7 +27,6 @@ within `dataset`. Both share the
 same underlying options.
 
  * `type`: Indicates which loader to use, e.g., `tiff` for geotiff.
-   The available loaders are listed [here](../imagery/sources/README.md).
  * Files to load must be specified in one of three ways:
    * `directory` and `extension`: Use all images in the directory ending with the given extension.
    * `file_list`: Provide a text file with one image file name per line.

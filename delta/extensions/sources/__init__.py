@@ -16,5 +16,5 @@
 # limitations under the License.
 
 """
-Module for reading imagery.
+Imagery types for DELTA.
 """

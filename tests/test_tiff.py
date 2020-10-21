@@ -23,7 +23,7 @@ import pytest
 import numpy as np
 
 from delta.imagery import rectangle
-from delta.imagery.sources.tiff import TiffImage, write_tiff
+from delta.extensions.sources.tiff import TiffImage, write_tiff
 
 def check_landsat_tiff(filename):
     '''

@@ -26,10 +26,9 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from delta.config import config
-from delta.config.extensions import custom_objects
-from delta.imagery.sources import tiff
-from delta.imagery.sources import loader
+from delta.config.extensions import custom_objects, image_writer
 from delta.ml import predict
+from delta.extensions.sources.tiff import write_tiff
 
 def save_confusion(cm, class_labels, filename):
     f = plt.figure()
@@ -82,19 +81,20 @@ def main(options):
     if options.autoencoder:
         labels = None
     for (i, path) in enumerate(images):
-        image = loader.load_image(images, i)
+        image = images.load(i)
         base_name = os.path.splitext(os.path.basename(path))[0]
-        output_image = tiff.DeltaTiffWriter('predicted_' + base_name + '.tiff')
+        writer = image_writer('tiff')
+        output_image = writer('predicted_' + base_name + '.tiff')
         prob_image = None
         if options.prob:
-            prob_image = tiff.DeltaTiffWriter('prob_' + base_name + '.tiff')
+            prob_image = writer('prob_' + base_name + '.tiff')
         error_image = None
         if labels:
-            error_image = tiff.DeltaTiffWriter('errors_' + base_name + '.tiff')
+            error_image = writer('errors_' + base_name + '.tiff')
 
         label = None
         if labels:
-            label = loader.load_image(config.dataset.labels(), i)
+            label = labels.load(i)
 
         if options.autoencoder:
             label = image
@@ -120,8 +120,8 @@ def main(options):
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
-            tiff.write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
-                            metadata=image.metadata())
+            write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
+                       metadata=image.metadata())
     stop_time = time.time()
     print('Elapsed time = ', stop_time - start_time)
     return 0

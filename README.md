@@ -72,7 +72,7 @@ to each dataset, and separate configuration files to train on or classify that d
 
 Supported Image Formats
 -----------------------
-DELTA supports tiff files and a few other formats, listed [here](./delta/imagery/sources/README.md).
+DELTA supports tiff files and a few other formats.
 Users can extend DELTA with their own custom formats. We are looking to expand DELTA to support other
 useful file formats.
 

@@ -35,7 +35,7 @@ class ValidationSet:#pylint:disable=too-few-public-methods
     """
     def __init__(self, images=None, labels=None, from_training=False, steps=1000):
         """
-        Uses the specified `delta.imagery.sources.ImageSet`s images and labels.
+        Uses the specified `delta.imagery.imagery_config.ImageSet`s images and labels.
 
         If `from_training` is `True`, instead takes samples from the training set
         before they are used for training.

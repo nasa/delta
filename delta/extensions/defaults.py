@@ -18,16 +18,25 @@
 Module to install extensions that come with DELTA.
 """
 
-from delta.config.extensions import register_layer, register_loss
+from delta.config.extensions import register_extension, register_image_reader, register_image_writer
 
-from .layers import efficientnet
-from .layers import gaussian_sample
-from .layers import pretrained
-from . import losses
+from .sources import tiff
+from .sources import landsat
+from .sources import npy
+from .sources import worldview
 
 def initialize():
-    register_layer('Pretrained', pretrained.Pretrained)
-    register_layer('GuassianSample', gaussian_sample.GaussianSample)
-    register_layer('EfficientNetB2', efficientnet.DeltaEfficientNetB2)
+    register_extension('delta.extensions.layers.pretrained')
+    register_extension('delta.extensions.layers.gaussian_sample')
+    register_extension('delta.extensions.layers.efficientnet')
 
-    register_loss('ms_ssim', losses.ms_ssim)
+    register_extension('delta.extensions.losses')
+
+    register_image_reader('tiff', tiff.TiffImage)
+    register_image_reader('rgba', tiff.RGBAImage)
+    register_image_reader('npy', npy.NumpyImage)
+    register_image_reader('landsat', landsat.LandsatImage)
+    register_image_reader('worldview', worldview.WorldviewImage)
+
+    register_image_writer('tiff', tiff.TiffWriter)
+    register_image_writer('npy', npy.NumpyWriter)
