@@ -31,8 +31,7 @@ from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .io import save_model
-from .callbacks import config_callbacks
-from .config_parser import loss_from_dict, metric_from_dict, optimizer_from_dict
+from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
 
 class DeltaLayer(Layer):
     """

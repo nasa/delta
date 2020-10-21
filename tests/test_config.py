@@ -27,7 +27,7 @@ import tensorflow as tf
 from conftest import config_reset
 
 from delta.config import config
-from delta.ml import callbacks, config_parser
+from delta.ml import config_parser
 
 def test_general():
     config_reset()
@@ -225,7 +225,7 @@ def test_callbacks():
             factor: 0.5
     '''
     config.load(yaml_str=test_str)
-    cbs = callbacks.config_callbacks()
+    cbs = config_parser.config_callbacks()
     assert len(cbs) == 2
     assert isinstance(cbs[0], tf.keras.callbacks.EarlyStopping)
     assert cbs[0].verbose

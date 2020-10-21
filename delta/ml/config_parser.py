@@ -22,7 +22,7 @@ in yaml files. Includes constructing custom neural networks and more.
 import collections
 import copy
 import functools
-from typing import Callable
+from typing import Callable, List
 
 import tensorflow
 import tensorflow.keras.layers
@@ -225,6 +225,30 @@ def optimizer_from_dict(spec):
     if mc is None:
         raise ValueError('Unknown optimizer %s.' % (name))
     return mc(**params)
+
+def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
+    '''
+    Constructs a callback object from a dictionary.
+    '''
+    assert len(callback_dict.keys()) == 1, f'Error: Callback has more than one type {callback_dict.keys()}'
+
+    cb_type = next(iter(callback_dict.keys()))
+    callback_class = extensions.callback(cb_type)
+    if callback_class is None:
+        callback_class = getattr(tensorflow.keras.callbacks, cb_type, None)
+    if callback_dict[cb_type] is None:
+        callback_dict[cb_type] = {}
+    if callback_class is None:
+        raise ValueError('Unknown callback %s.' % (cb_type))
+    return callback_class(**callback_dict[cb_type])
+
+def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
+    '''
+    Iterates over the list of callbacks specified in the config file, which is part of the training specification.
+    '''
+    if not config.train.callbacks() is None:
+        return [callback_from_dict(callback) for callback in config.train.callbacks()]
+    return []
 
 def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """

@@ -33,6 +33,7 @@ __readers = {}
 __writers = {}
 __losses = {}
 __metrics = {}
+__callbacks = {}
 
 def __initialize():
     """
@@ -88,6 +89,13 @@ def register_metric(metric_type : str, metric_constructor):
     global __metrics
     __metrics[metric_type] = metric_constructor
 
+def register_callback(cb_type : str, cb_constructor):
+    """
+    Register a custom callback for use by DELTA.
+    """
+    global __callbacks
+    __callbacks[cb_type] = cb_constructor
+
 def layer(layer_type : str):
     """
     Retrieve a custom layer by name.
@@ -108,6 +116,13 @@ def metric(metric_type : str):
     """
     __initialize()
     return __metrics.get(metric_type)
+
+def callback(cb_type : str):
+    """
+    Retrieve a custom callback by name.
+    """
+    __initialize()
+    return __callbacks.get(cb_type)
 
 def custom_objects():
     """

@@ -26,6 +26,8 @@ from .sources import npy
 from .sources import worldview
 
 def initialize():
+    register_extension('delta.extensions.callbacks')
+
     register_extension('delta.extensions.layers.pretrained')
     register_extension('delta.extensions.layers.gaussian_sample')
     register_extension('delta.extensions.layers.efficientnet')
