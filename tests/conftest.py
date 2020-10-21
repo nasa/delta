@@ -29,7 +29,7 @@ import numpy as np
 import pytest
 
 from delta.config import config
-from delta.imagery.sources import tiff
+from delta.extensions.sources import tiff
 
 import delta.config.modules
 delta.config.modules.register_all()

@@ -27,21 +27,21 @@ from tensorflow import keras
 import conftest
 
 from delta.config import config
-from delta.imagery.sources import npy
+from delta.extensions.sources import npy
 from delta.ml import train, predict
-from delta.ml.layers import Pretrained
+from delta.extensions.layers.pretrained import Pretrained
 from delta.ml.ml_config import TrainingSpec
 
 def evaluate_model(model_fn, dataset, output_trim=0):
     model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['accuracy']))
+                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['sparse_categorical_accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > 0.70
 
     (test_image, test_label) = conftest.generate_tile()
     if output_trim > 0:
         test_label = test_label[output_trim:-output_trim, output_trim:-output_trim]
-    output_image = npy.NumpyImageWriter()
+    output_image = npy.NumpyWriter()
     predictor = predict.LabelPredictor(model, output_image=output_image)
     predictor.predict(npy.NumpyImage(test_image))
     # very easy test since we don't train much
@@ -50,7 +50,7 @@ def evaluate_model(model_fn, dataset, output_trim=0):
 
 def train_ae(ae_fn, ae_dataset):
     model, _ = train.train(ae_fn, ae_dataset,
-                           TrainingSpec(100, 5, 'mse', ['accuracy']))
+                           TrainingSpec(100, 5, 'mse', ['Accuracy']))
 
     tmpdir = tempfile.mkdtemp()
     model_path = os.path.join(tmpdir, 'ae_model.h5')

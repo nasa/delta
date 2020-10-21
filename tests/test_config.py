@@ -27,7 +27,7 @@ import tensorflow as tf
 from conftest import config_reset
 
 from delta.config import config
-from delta.ml import callbacks, model_parser
+from delta.ml import config_parser
 
 def test_general():
     config_reset()
@@ -156,7 +156,7 @@ def test_model_from_dict():
     input_shape = (17, 17, 8)
     output_shape = 3
     params_exposed = { 'out_shape' : output_shape, 'in_shape' : input_shape}
-    model = model_parser.model_from_dict(yaml.safe_load(test_str), params_exposed)()
+    model = config_parser.model_from_dict(yaml.safe_load(test_str), params_exposed)()
     model.compile(optimizer='adam', loss='mse')
 
     assert model.input_shape[1:] == input_shape
@@ -183,7 +183,7 @@ def test_pretrained_layer():
     input_shape = (17, 17, 8)
     output_shape = 3
     params_exposed = { 'out_shape' : output_shape, 'in_shape' : input_shape}
-    m1 = model_parser.model_from_dict(yaml.safe_load(base_model), params_exposed)()
+    m1 = config_parser.model_from_dict(yaml.safe_load(base_model), params_exposed)()
     m1.compile(optimizer='adam', loss='mse')
     _, tmp_filename = tempfile.mkstemp(suffix='.h5')
 
@@ -205,7 +205,7 @@ def test_pretrained_layer():
         units: out_shape
         activation: softmax
     ''' % tmp_filename
-    m2 = model_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
+    m2 = config_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
     m2.compile(optimizer='adam', loss='mse')
     assert len(m2.layers[1].layers) == (len(m1.layers) - 1) # also don't take the input layer
     for i in range(1, len(m1.layers)):
@@ -225,7 +225,7 @@ def test_callbacks():
             factor: 0.5
     '''
     config.load(yaml_str=test_str)
-    cbs = callbacks.config_callbacks()
+    cbs = config_parser.config_callbacks()
     assert len(cbs) == 2
     assert isinstance(cbs[0], tf.keras.callbacks.EarlyStopping)
     assert cbs[0].verbose
@@ -243,7 +243,7 @@ def test_network_file():
           yaml_file: networks/convpool.yaml
     '''
     config.load(yaml_str=test_str)
-    model = model_parser.config_model(2)()
+    model = config_parser.config_model(2)()
     assert model.input_shape == (None, 5, 5, 2)
     assert model.output_shape == (None, 3, 3, 3)
 
@@ -286,7 +286,7 @@ def test_network_inline():
     '''
     config.load(yaml_str=test_str)
     assert len(config.dataset.classes) == 3
-    model = model_parser.config_model(2)()
+    model = config_parser.config_model(2)()
     assert model.input_shape == (None, 5, 5, 2)
     assert model.output_shape == (None, len(config.dataset.classes))
 
@@ -298,7 +298,7 @@ def test_train():
       batch_size: 5
       steps: 10
       epochs: 3
-      loss_function: SparseCategoricalCrossentropy
+      loss: SparseCategoricalCrossentropy
       metrics: [metric]
       optimizer: opt
       validation:
@@ -311,7 +311,7 @@ def test_train():
     assert tc.batch_size == 5
     assert tc.steps == 10
     assert tc.epochs == 3
-    assert tc.loss_function == tf.keras.losses.SparseCategoricalCrossentropy
+    assert isinstance(config_parser.loss_from_dict(tc.loss), tf.keras.losses.SparseCategoricalCrossentropy)
     assert tc.metrics == ['metric']
     assert tc.optimizer == 'opt'
     assert tc.validation.steps == 20

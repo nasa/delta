@@ -27,7 +27,6 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import rectangle
-from delta.imagery.sources import loader
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -57,7 +56,7 @@ class ImageryDataset:
         self._labels = labels
 
         # Load the first image to get the number of bands for the input files.
-        self._num_bands = loader.load_image(images, 0).num_bands()
+        self._num_bands = images.load(0).num_bands()
 
     def _get_image_read_log_path(self, image_path):
         """Return the path to the read log for an input image"""
@@ -140,7 +139,7 @@ class ImageryDataset:
                 self._update_access_count_file(log_path, need_check=False, count=count)
 
         try:
-            image = loader.load_image(data, image_index.numpy())
+            image = data.load(image_index.numpy())
             rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
             r = image.read(rect)
         except Exception as e: #pylint: disable=W0703
@@ -189,10 +188,10 @@ class ImageryDataset:
                             if config.general.verbose():
                                 print('No read log file for index ' + str(i))
 
-                    img = loader.load_image(self._images, i)
+                    img = self._images.load(i)
 
                     if self._labels: # If we have labels make sure they are the same size as the input images
-                        label = loader.load_image(self._labels, i)
+                        label = self._labels.load(i)
                         if label.size() != img.size():
                             raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
                                             + ' does not match input image size of ' + str(img.size()))

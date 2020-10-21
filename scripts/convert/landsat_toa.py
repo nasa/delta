@@ -23,7 +23,7 @@ Script to apply Top of Atmosphere correction to Landsat 5, 7, and 8 files.
 import sys
 import argparse
 
-from delta.imagery.sources import landsat
+from delta.extensions.sources import landsat
 
 
 #------------------------------------------------------------------------------

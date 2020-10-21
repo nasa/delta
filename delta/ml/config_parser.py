@@ -16,34 +16,33 @@
 # limitations under the License.
 
 """
-Construct sequential neural networks using the Tensorflow-Keras API from
-dictionaries.  Assumes that the names of the parameters for the layer constructor functions are as
-given in the Tensorflow API documentation.
+Functions to support loading custom ML-related objects from dictionaries specified
+in yaml files. Includes constructing custom neural networks and more.
 """
 import collections
 import copy
 import functools
-from typing import Callable
+from typing import Callable, List
 
 import tensorflow
-import tensorflow.keras.models
 import tensorflow.keras.layers
+import tensorflow.keras.losses
+import tensorflow.keras.models
 
 from delta.config import config
-
-from . import layers
+import delta.config.extensions as extensions
 
 class _LayerWrapper:
     def __init__(self, layer_type, layer_name, inputs, params):
         self._layer_type = layer_type
         self._layer_name = layer_name
         self._inputs = inputs
-        layer_class = getattr(tensorflow.keras.layers, self._layer_type, None)
-        if layer_class is None and self._layer_type in layers.ALL_LAYERS:
-            layer_class = layers.ALL_LAYERS[self._layer_type]
-        if layer_class is None:
-            raise ValueError('Unknown layer type %s.' % (self._layer_type))
-        self._layer_constructor = layer_class(**params)
+        lc = extensions.layer(layer_type)
+        if lc is None:
+            lc = getattr(tensorflow.keras.layers, layer_type, None)
+        if lc is None:
+            raise ValueError('Unknown layer type %s.' % (layer_type))
+        self._layer_constructor = lc(**params)
         self._layer = None
 
     def is_input(self):
@@ -157,6 +156,99 @@ def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras
     Creates a function that returns a sequential model from a dictionary.
     """
     return functools.partial(_make_model, model_dict, exposed_params)
+
+def loss_from_dict(loss_spec):
+    '''
+    Creates a loss function object from a dictionary.
+
+    :param: loss_spec Specification of the loss function.  Either a string that is compatible
+    with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
+    of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
+    '''
+    if isinstance(loss_spec, str):
+        name = loss_spec
+        params = {}
+    elif isinstance(loss_spec, dict):
+        assert len(loss_spec) == 1, 'Only one loss function may be specified.'
+        name = list(loss_spec[0].keys())[0]
+        params = loss_spec[name]
+    else:
+        raise ValueError('Unexpected entry for loss function.')
+    lc = extensions.loss(name)
+    if lc is None:
+        lc = getattr(tensorflow.keras.losses, name, None)
+    if lc is None:
+        raise ValueError('Unknown loss type %s.' % (name))
+    if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
+        return lc(**params)
+    return lc
+
+def metric_from_dict(metric_spec):
+    """
+    Creates a metric object from a dictionary or string.
+    """
+    if isinstance(metric_spec, str):
+        name = metric_spec
+        params = {}
+    elif isinstance(metric_spec, dict):
+        assert len(metric_spec) == 1, 'Expecting only one metric.'
+        name = list(metric_spec[0].keys())[0]
+        params = metric_spec[name]
+    else:
+        raise ValueError('Unexpected entry for metric.')
+    mc = extensions.metric(name)
+    if mc is None:
+        mc = getattr(tensorflow.keras.metrics, name, None)
+    if mc is None:
+        try:
+            return loss_from_dict(metric_spec)
+        except:
+            raise ValueError('Unknown metric %s.' % (name)) #pylint:disable=raise-missing-from
+    if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
+        return mc(**params)
+    return mc
+
+def optimizer_from_dict(spec):
+    """
+    Creates an optimizer from a dictionary or string.
+    """
+    if isinstance(spec, str):
+        name = spec
+        params = {}
+    elif isinstance(spec, dict):
+        assert len(spec) == 1, 'Expecting only one optimizer.'
+        name = list(spec.keys())[0]
+        params = spec[name]
+    else:
+        raise ValueError('Unexpected entry for optimizer.')
+    mc = getattr(tensorflow.keras.optimizers, name, None)
+    if mc is None:
+        raise ValueError('Unknown optimizer %s.' % (name))
+    return mc(**params)
+
+def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
+    '''
+    Constructs a callback object from a dictionary.
+    '''
+    assert len(callback_dict.keys()) == 1, f'Error: Callback has more than one type {callback_dict.keys()}'
+
+    cb_type = next(iter(callback_dict.keys()))
+    callback_class = extensions.callback(cb_type)
+    if callback_class is None:
+        callback_class = getattr(tensorflow.keras.callbacks, cb_type, None)
+    if callback_dict[cb_type] is None:
+        callback_dict[cb_type] = {}
+    if callback_class is None:
+        raise ValueError('Unknown callback %s.' % (cb_type))
+    return callback_class(**callback_dict[cb_type])
+
+def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
+    '''
+    Iterates over the list of callbacks specified in the config file, which is part of the training specification.
+    '''
+    if not config.train.callbacks() is None:
+        return [callback_from_dict(callback) for callback in config.train.callbacks()]
+    return []
 
 def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
     """

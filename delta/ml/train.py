@@ -25,13 +25,25 @@ import shutil
 
 import mlflow
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .layers import DeltaLayer
 from .io import save_model
-from .callbacks import config_callbacks
+from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
+
+class DeltaLayer(Layer):
+    """
+    Network layer class with extra features specific to DELTA.
+
+    Extentds `tensorflow.keras.layers.Layer`.
+    """
+    def callback(self): # pylint:disable=no-self-use
+        """
+        Returns a Keras callback to be added, or None.
+        """
+        return None
 
 def _devices(num_gpus):
     '''
@@ -105,7 +117,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
     mlflow.log_param('Output Shape',   dataset.output_shape())
     mlflow.log_param('Steps', training_spec.steps)
-    mlflow.log_param('Loss Function', training_spec.loss_function)
+    mlflow.log_param('Loss Function', training_spec.loss)
     mlflow.log_param('Epochs', training_spec.epochs)
     mlflow.log_param('Batch Size', training_spec.batch_size)
     mlflow.log_param('Optimizer', training_spec.optimizer)
@@ -227,10 +239,9 @@ def _compile_model(model_fn, dataset, training_spec):
             model = model_fn()
             assert isinstance(model, tf.keras.models.Model),\
                    "Model is not a Tensorflow Keras model"
-            loss = training_spec.loss_function
-            # TODO: specify learning rate and optimizer parameters, change learning rate over time
-            model.compile(optimizer=training_spec.optimizer, loss=loss,
-                          metrics=training_spec.metrics)
+            model.compile(optimizer=optimizer_from_dict(training_spec.optimizer),
+                          loss=loss_from_dict(training_spec.loss),
+                          metrics=[metric_from_dict(m) for m in training_spec.metrics])
 
     input_shape = model.input_shape
     output_shape = model.output_shape

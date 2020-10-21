@@ -15,22 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#pylint:disable=redefined-outer-name
 """
-Test for worldview class.
+Various helpful loss functions.
 """
-import pytest
 
-from delta.extensions.sources import worldview
+import tensorflow as tf
 
-@pytest.fixture(scope="function")
-def wv_image(worldview_filenames):
-    return worldview.WorldviewImage(worldview_filenames[0])
+from delta.config.extensions import register_loss
 
-# very basic, doesn't actually look at content
-def test_wv_image(wv_image):
-    assert wv_image.meta_path() is not None
-    buf = wv_image.read()
-    assert buf.shape == (64, 32, 1)
-    assert len(wv_image.scale()) == 1
-    assert len(wv_image.bandwidth()) == 1
+def ms_ssim(y_true, y_pred):
+    return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
+
+register_loss('ms_ssim', ms_ssim)

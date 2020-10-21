@@ -3,6 +3,8 @@ general:
   gpus:              -1
   # print more debug information
   verbose: false
+  extensions:
+    - delta.extensions
 
 io:
   threads:           1
@@ -78,10 +80,12 @@ train:
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5
-  loss_function:   sparse_categorical_crossentropy
+  loss:   sparse_categorical_crossentropy
   metrics:
     - sparse_categorical_accuracy
-  optimizer:       adam
+  optimizer:
+    Adam:
+      learning_rate: 0.001
   callbacks:       ~
   validation:
     steps:         1000

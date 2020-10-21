@@ -23,11 +23,8 @@ import math
 import zipfile
 import functools
 import os
-import sys
 import numpy as np
 import portalocker
-
-import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -76,12 +73,9 @@ class WorldviewImage(tiff.TiffImage):
             (tif_path, imd_path) = _get_files_from_unpack_folder(unpack_folder)
 
             if imd_path and tif_path:
-                #tf.print('Already have unpacked files in ' + unpack_folder,
-                #         output_stream=sys.stdout)
                 pass
             else:
-                tf.print('Unpacking file ' + paths + ' to folder ' + unpack_folder,
-                         output_stream=sys.stdout)
+                print('Unpacking file ' + paths + ' to folder ' + unpack_folder)
                 utilities.unpack_to_folder(paths, unpack_folder)
                 # some worldview zip files have a subdirectory with the name of the image
                 if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):

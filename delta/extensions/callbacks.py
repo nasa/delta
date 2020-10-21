@@ -15,13 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-from typing import List
+"""
+Custom callbacks that come with DELTA.
+"""
 
 import tensorflow
 import tensorflow.keras.callbacks
 
-from delta.config import config
+from delta.config.extensions import register_callback
 
 class SetTrainable(tensorflow.keras.callbacks.Callback):
     def __init__(self, layer_name, epoch, make_trainable=True):
@@ -41,24 +42,5 @@ def ExponentialLRScheduler(start_epoch=10, multiplier=0.95):
         return multiplier * lr
     return tensorflow.keras.callbacks.LearningRateScheduler(schedule)
 
-def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
-    '''
-    Constructs a callback object from a dictionary.
-    '''
-    assert len(callback_dict.keys()) == 1, f'Error: Callback has more than one type {callback_dict.keys()}'
-
-    layer_type = next(iter(callback_dict.keys()))
-    callback_class = getattr(sys.modules[__name__], layer_type, None)
-    if callback_class is None:
-        callback_class = getattr(tensorflow.keras.callbacks, layer_type, None)
-    if callback_dict[layer_type] is None:
-        callback_dict[layer_type] = {}
-    return callback_class(**callback_dict[layer_type])
-
-def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
-    '''
-    Iterates over the list of callbacks specified in the config file, which is part of the training specification.
-    '''
-    if not config.train.callbacks() is None:
-        return [callback_from_dict(callback) for callback in config.train.callbacks()]
-    return []
+register_callback('SetTrainable', SetTrainable)
+register_callback('ExponentialLRScheduler', ExponentialLRScheduler)

@@ -26,8 +26,8 @@ import os
 import sys
 import argparse
 import traceback
-from delta.imagery.sources import loader
 import delta.config.modules
+from delta.config.extensions import image_reader
 
 # Needed for image cache to be created
 delta.config.modules.register_all()
@@ -82,7 +82,7 @@ def main(argsIn):
     for image_path in input_image_list:
 
         try:
-            loader.load(image_path, options.image_type)
+            image_reader(options.image_type)(image_path)
         except Exception as e: #pylint: disable=W0703
             failed_files.append(image_path)
             print('For file: ' + image_path +

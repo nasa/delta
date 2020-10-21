@@ -27,7 +27,6 @@ within `dataset`. Both share the
 same underlying options.
 
  * `type`: Indicates which loader to use, e.g., `tiff` for geotiff.
-   The available loaders are listed [here](../imagery/sources/README.md).
  * Files to load must be specified in one of three ways:
    * `directory` and `extension`: Use all images in the directory ending with the given extension.
    * `file_list`: Provide a text file with one image file name per line.
@@ -66,7 +65,7 @@ These options are used in the `delta train` command.
    batches allow higher training data throughput, but may encounter memory limitations.
  * `steps`: If specified, stop training for each epoch after the given number of batches.
  * `epochs`: the number of times to iterate through all training data during training.
- * `loss_function`: [Keras loss function](https://keras.io/losses/). For integer classes, use
+ * `loss`: [Keras loss function](https://keras.io/losses/). For integer classes, use
    `sparse_categorical_cross_entropy`.
  * `metrics`: A list of [Keras metrics](https://keras.io/metrics/) to evaluate.
  * `optimizer`: The [Keras optimizer](https://keras.io/optimizers/) to use.
