@@ -65,17 +65,19 @@ def main(options):
     tc = config.train.spec()
     if options.autoencoder:
         ids = imagery_dataset.AutoencoderDataset(images, temp_model.input_shape[1],
-                                                 tc.chunk_stride, resume_mode=options.resume,
-                                                 log_folder=log_folder)
+                                                 tile_size=config.io.tile_size(),
+                                                 chunk_stride=tc.chunk_stride)
     else:
         labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
-        ids = imagery_dataset.ImageryDataset(images, labels, temp_model.input_shape[1],
-                                             temp_model.output_shape[1], tc.chunk_stride,
-                                             resume_mode=options.resume,
-                                             log_folder=log_folder)
+        ids = imagery_dataset.ImageryDataset(images, labels, temp_model.output_shape[1],
+                                             temp_model.input_shape[1],
+                                             tile_size=config.io.tile_size(),
+                                             chunk_stride=tc.chunk_stride)
+    if log_folder is not None:
+        ids.set_resume_mode(options.resume, log_folder)
 
     assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'

@@ -149,10 +149,11 @@ def load_dataset(source, output_size, chunk_size=3, autoencoder=False):
 
     if autoencoder:
         return imagery_dataset.AutoencoderDataset(config.dataset.images(), chunk_size,
-                                                  config.train.spec().chunk_stride)
+                                                  tile_size=config.io.tile_size(),
+                                                  chunk_stride=config.train.spec().chunk_stride)
     return imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
-                                          chunk_size, output_size,
-                                          config.train.spec().chunk_stride)
+                                          output_size, chunk_size, tile_size=config.io.tile_size(),
+                                          chunk_stride=config.train.spec().chunk_stride)
 
 @pytest.fixture(scope="function", params=range(NUM_SOURCES))
 def dataset(all_sources, request):

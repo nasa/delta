@@ -88,7 +88,7 @@ def autoencoder(all_sources):
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),
-                                                 3, config.train.spec().chunk_stride)
+                                                 3, chunk_stride=config.train.spec().chunk_stride)
     return dataset
 
 def test_autoencoder(autoencoder):
