@@ -19,12 +19,15 @@
 Train neural networks.
 """
 
+import datetime
 import os
 import tempfile
 import shutil
 
 import mlflow
+import numpy as np
 import tensorflow as tf
+import tensorflow.keras.backend as K
 from tensorflow.keras.layers import Layer
 
 from delta.config import config
@@ -88,10 +91,11 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = None
             else:
                 if vlabel:
-                    vimagery = ImageryDataset(vimg, vlabel, chunk_size, output_size, tc.chunk_stride,
-                                              resume_mode=False)
+                    vimagery = ImageryDataset(vimg, vlabel, output_size, chunk_size,
+                                              tile_size=config.io.tile_size(), chunk_stride=tc.chunk_stride)
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tc.chunk_stride, resume_mode=False)
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tile_size=config.io.tile_size(),
+                                                  chunk_stride=tc.chunk_stride)
                 validation = vimagery.dataset(config.dataset.classes.weights())
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
@@ -110,18 +114,22 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
 def _log_mlflow_params(model, dataset, training_spec):
     images = dataset.image_set()
     #labels = dataset.label_set()
-    mlflow.log_param('Image Type',   images.type())
-    mlflow.log_param('Preprocess',   images.preprocess())
-    mlflow.log_param('Number of Images',   len(images))
-    mlflow.log_param('Chunk Size',   model.input_shape[1])
-    mlflow.log_param('Chunk Stride', training_spec.chunk_stride)
-    mlflow.log_param('Output Shape',   dataset.output_shape())
-    mlflow.log_param('Steps', training_spec.steps)
-    mlflow.log_param('Loss Function', training_spec.loss)
-    mlflow.log_param('Epochs', training_spec.epochs)
-    mlflow.log_param('Batch Size', training_spec.batch_size)
-    mlflow.log_param('Optimizer', training_spec.optimizer)
-    mlflow.log_param('Model Layers', len(model.layers))
+    mlflow.log_param('Images - Type',   images.type())
+    mlflow.log_param('Images - Count',   len(images))
+    mlflow.log_param('Images - Stride', training_spec.chunk_stride)
+    mlflow.log_param('Images - Tile Size', len(model.layers))
+    mlflow.log_param('Train - Steps', training_spec.steps)
+    mlflow.log_param('Train - Loss Function', training_spec.loss)
+    mlflow.log_param('Train - Epochs', training_spec.epochs)
+    mlflow.log_param('Train - Batch Size', training_spec.batch_size)
+    mlflow.log_param('Train - Optimizer', training_spec.optimizer)
+    mlflow.log_param('Model - Layers', len(model.layers))
+    mlflow.log_param('Model - Parameters - Non-Trainable',
+                     np.sum([K.count_params(w) for w in model.non_trainable_weights]))
+    mlflow.log_param('Model - Parameters - Trainable',
+                     np.sum([K.count_params(w) for w in model.trainable_weights]))
+    mlflow.log_param('Model - Shape - Output',   dataset.output_shape())
+    mlflow.log_param('Model - Shape - Input',   dataset.input_shape())
     #mlflow.log_param('Status', 'Running') Illegal to change the value!
 
 class _EpochResetCallback(tf.keras.callbacks.Callback):
@@ -150,8 +158,13 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
         self.batch = 0
         self.temp_dir = temp_dir
 
-    def on_epoch_end(self, epoch, _=None):
+    def on_epoch_end(self, epoch, logs=None):
         self.epoch = epoch
+        for k in logs.keys():
+            if k.startswith('val_'):
+                mlflow.log_metric('Validation ' + k[4:], logs[k], epoch)
+            else:
+                mlflow.log_metric('Epoch ' + k, logs[k], epoch)
 
     def on_train_batch_end(self, batch, logs=None):
         self.batch = batch
@@ -169,12 +182,6 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 os.rename(old, filename)
             mlflow.log_artifact(filename, 'checkpoints')
             os.remove(filename)
-
-    def on_test_batch_end(self, _, logs=None): # pylint:disable=no-self-use
-        for k in logs.keys():
-            if k in ('batch', 'size'):
-                continue
-            mlflow.log_metric('validation_' + k, logs[k])
 
 def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.set_tracking_uri(config.mlflow.uri())
@@ -204,13 +211,6 @@ def _build_callbacks(model, dataset, training_spec):
             c = l.callback()
             if c:
                 callbacks.append(c)
-    if config.tensorboard.enabled():
-        tcb = tf.keras.callbacks.TensorBoard(log_dir=config.tensorboard.dir(),
-                                             update_freq='epoch',
-                                             histogram_freq=1,
-                                             write_images=True,
-                                             embeddings_freq=1)
-        callbacks.append(tcb)
 
     mcb = None
     if config.mlflow.enabled():
@@ -218,6 +218,20 @@ def _build_callbacks(model, dataset, training_spec):
         callbacks.append(mcb)
         if config.general.verbose():
             print('Using mlflow folder: ' + mlflow.get_artifact_uri())
+
+    if config.tensorboard.enabled():
+        tb_dir = config.tensorboard.dir()
+        if config.mlflow.enabled():
+            tb_dir = os.path.join(tb_dir, str(mlflow.active_run().info.run_id))
+            mlflow.log_param('TensorBoard Directory', tb_dir)
+        else:
+            tb_dir = os.path.join(tb_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        tcb = tf.keras.callbacks.TensorBoard(log_dir=tb_dir,
+                                             update_freq='epoch',
+                                             histogram_freq=1,
+                                             write_images=True,
+                                             embeddings_freq=1)
+        callbacks.append(tcb)
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
@@ -303,6 +317,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     except:
         if config.mlflow.enabled():
             mlflow.log_param('Status', 'Aborted')
+            mlflow.log_param('Epoch', mcb.epoch)
+            mlflow.log_param('Batch', mcb.batch)
             mlflow.end_run('FAILED')
             model_path = os.path.join(mcb.temp_dir, 'aborted_model.h5')
             print('\nAborting, saving current model to %s.' % (mlflow.get_artifact_uri() + '/aborted_model.h5'))
@@ -312,8 +328,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         raise
     finally:
         if config.mlflow.enabled():
-            mlflow.log_param('Epoch', mcb.epoch)
-            mlflow.log_param('Batch', mcb.batch)
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
 

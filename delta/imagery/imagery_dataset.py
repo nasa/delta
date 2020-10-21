@@ -32,16 +32,13 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, chunk_size, output_size, chunk_stride=1,
-                 resume_mode=False, log_folder=None):
+    def __init__(self, images, labels, output_size, chunk_size, chunk_stride=1, tile_size=(256, 256)):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
 
-        self._resume_mode = resume_mode
-        self._log_folder  = log_folder
-        if self._log_folder and not os.path.exists(self._log_folder):
-            os.mkdir(self._log_folder)
+        self._resume_mode = False
+        self._log_folder  = None
 
         # Record some of the config values
         self.set_chunk_output_sizes(chunk_size, output_size)
@@ -49,6 +46,7 @@ class ImageryDataset:
         self._chunk_stride = chunk_stride
         self._data_type    = tf.float32
         self._label_type   = tf.uint8
+        self._tile_size = tile_size
 
         if labels:
             assert len(images) == len(labels)
@@ -57,6 +55,12 @@ class ImageryDataset:
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
+
+    def set_resume_mode(self, resume_mode, log_folder):
+        self._resume_mode = resume_mode
+        self._log_folder = log_folder
+        if self._log_folder and not os.path.exists(self._log_folder):
+            os.mkdir(self._log_folder)
 
     def _get_image_read_log_path(self, image_path):
         """Return the path to the read log for an input image"""
@@ -195,7 +199,7 @@ class ImageryDataset:
                         if label.size() != img.size():
                             raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
                                             + ' does not match input image size of ' + str(img.size()))
-                    tile_size = config.io.tile_size()
+                    tile_size = self._tile_size
                     if self._chunk_size:
                         assert tile_size[0] >= self._chunk_size and tile_size[1] >= self._chunk_size, 'Tile too small.'
                         tiles = img.tiles(tile_size[1], tile_size[0], min_width=self._chunk_size,
@@ -263,7 +267,7 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         ds_input = self._tile_images()
-        tile_size = config.io.tile_size()
+        tile_size = self._tile_size
         def load_tile(image_index, x1, y1, x2, y2):
             img = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                    is_labels),
@@ -362,6 +366,9 @@ class ImageryDataset:
         Size of chunks used for inputs.
         """
         return self._chunk_size
+    def input_shape(self):
+        """Input size for the network."""
+        return (self._chunk_size, self._chunk_size, self._num_bands)
     def output_shape(self):
         """Output size of blocks of labels"""
         return (self._output_size, self._output_size, self._output_dims)
@@ -373,15 +380,22 @@ class ImageryDataset:
         """Returns set of label images"""
         return self._labels
 
+    def set_tile_size(self, tile_size):
+        """Set the tile size."""
+        self._tile_size = tile_size
+
+    def tile_size(self):
+        """Returns tile size."""
+        return self._tile_size
+
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_size, chunk_stride=1, resume_mode=False, log_folder=None):
+    def __init__(self, images, chunk_size, chunk_stride=1, tile_size=(256, 256)):
         """
         The images are used as labels as well.
         """
-        super().__init__(images, None, chunk_size, chunk_size, chunk_stride=chunk_stride,
-                         resume_mode=resume_mode, log_folder=log_folder)
+        super().__init__(images, None, chunk_size, chunk_size, tile_size=tile_size, chunk_stride=chunk_stride)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

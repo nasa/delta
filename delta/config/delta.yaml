@@ -40,6 +40,7 @@ dataset:
     type:             tiff
     preprocess:
       enabled:        false
+      offset:         default
       scale_factor:   default
     nodata_value:     ~
     directory:        ~
@@ -96,6 +97,7 @@ train:
       type:        tiff
       preprocess:
         enabled:        true
+        offset:         default
         scale_factor:   default
       nodata_value: ~
       directory:   ~
@@ -106,6 +108,7 @@ train:
       type:        tiff
       preprocess:
         enabled:        false
+        offset:         default
         scale_factor:   default
       nodata_value: ~
       directory:   ~
