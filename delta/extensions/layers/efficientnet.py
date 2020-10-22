@@ -448,8 +448,8 @@ def EfficientNetB7(include_top=True,
                         input_tensor=input_tensor, input_shape=input_shape,
                         **kwargs)
 
-def DeltaEfficientNetB2(input_shape, name=None):
-    return EfficientNetB2(include_top=False, input_shape=input_shape, weights=None, name=name)
+def DeltaEfficientNet(input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None):
+    return EfficientNet(width_coefficient, depth_coefficient, include_top=False, input_shape=input_shape, weights=None, name=name)
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images.
@@ -474,4 +474,4 @@ setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
 setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
 setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
 
-register_layer('EfficientNetB2', DeltaEfficientNetB2)
+register_layer('EfficientNet', DeltaEfficientNet)

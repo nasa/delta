@@ -54,7 +54,7 @@ def save_confusion(cm, class_labels, filename):
     f.savefig(filename)
 
 def ae_convert(data):
-    r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(256.0)), 0.0, 255.0).astype(np.uint8)
+    r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
 def main(options):
