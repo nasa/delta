@@ -20,10 +20,16 @@ Various helpful loss functions.
 """
 
 import tensorflow as tf
+import tensorflow.keras.losses
+import tensorflow.keras.backend as K
 
 from delta.config.extensions import register_loss
 
 def ms_ssim(y_true, y_pred):
     return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
 
+def ms_ssim_mse(y_true, y_pred):
+    return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
+
 register_loss('ms_ssim', ms_ssim)
+register_loss('ms_ssim_mse', ms_ssim_mse)

@@ -1,9 +1,11 @@
 layers:
   - Input:
       shape: [~, ~, num_bands]
-  - EfficientNetB2:
+  - EfficientNet:
       input_shape: [~, ~, num_bands]
       name: efficientnet
+      width_coefficient: 1.1
+      depth_coefficient: 1.2
   - Conv2DTranspose:
       filters: 144
       kernel_size: [5, 5]
