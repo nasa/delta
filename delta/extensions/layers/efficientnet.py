@@ -449,7 +449,8 @@ def EfficientNetB7(include_top=True,
                         **kwargs)
 
 def DeltaEfficientNet(input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None):
-    return EfficientNet(width_coefficient, depth_coefficient, include_top=False, input_shape=input_shape, weights=None, name=name)
+    return EfficientNet(width_coefficient, depth_coefficient, include_top=False,
+                        input_shape=input_shape, weights=None, name=name)
 
 def preprocess_input(x, data_format=None, **kwargs):
     """Preprocesses a numpy array encoding a batch of images.
