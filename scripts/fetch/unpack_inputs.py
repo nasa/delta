@@ -104,7 +104,7 @@ def main(argsIn):
                                               relative_path, image_name)
 
             # TODO: Synch up the unpack functions
-            image_path = None
+            tif_path = None
             if not os.path.exists(this_output_folder):
                 print('Unpacking input file: ' + image_path)
                 if options.image_type == 'worldview':

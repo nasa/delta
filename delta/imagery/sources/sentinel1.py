@@ -85,10 +85,14 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
         utilities.unpack_to_folder(zip_path, unpack_folder)
         source_image_paths = get_files_from_unpack_folder(unpack_folder)
 
+        if not source_image_paths:
+            raise Exception('Did not find any image files in ' + zip_path)
+
         # Generate a merged file containing all input images as an N channel image
         cmd = 'gdalbuildvrt -separate ' + merged_path
         for f in source_image_paths:
             cmd += ' ' + f
+        print(cmd)
         os.system(cmd)
 
         # Verify that we generated a valid image file
