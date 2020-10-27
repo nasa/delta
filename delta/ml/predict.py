@@ -75,7 +75,7 @@ class Predictor(ABC):
         if net_input_shape[0] is None and net_input_shape[1] is None:
             result = np.squeeze(self._model.predict_on_batch(image))
             if image_nodata_value is not None:
-                result[data[:, :, 0] == image_nodata_value, :] = -math.inf
+                result[data[:, :, 0] == image_nodata_value, :] = math.nan
             return result
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
@@ -103,7 +103,7 @@ class Predictor(ABC):
             ox = (data.shape[0] - out_shape[0]) // 2
             oy = (data.shape[1] - out_shape[1]) // 2
             output_slice = data[ox:-ox, oy:-oy, 0]
-            retval[output_slice == image_nodata_value] = -math.inf
+            retval[output_slice == image_nodata_value] = math.nan
 
         return retval
 
@@ -250,8 +250,8 @@ class LabelPredictor(Predictor):
         prob_image = pred_image
         pred_image = np.argmax(pred_image, axis=2)
 
-        # nodata pixels were set to -inf in the probability image
-        pred_image[prob_image[:, :, 0] == -math.inf] = -1
+        # nodata pixels were set to nan in the probability image
+        pred_image[prob_image[:, :, 0] == math.nan] = -1
 
         if labels is not None:
             incorrect = (labels != pred_image).astype(int)
