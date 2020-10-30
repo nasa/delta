@@ -69,7 +69,7 @@ def test_dense(dataset):
 
 def test_pretrained(dataset, ae_dataset):
     # 1 create autoencoder
-    ae_dataset.set_chunk_output_sizes(10, 10)
+    ae_dataset.set_chunk_output_shapes((10, 10), (10, 10))
     def autoencoder_fn():
         inputs = keras.layers.Input((10, 10, 1))
         conv1 = keras.layers.Conv2D(filters=16, kernel_size=3, activation='relu', padding='same')(inputs)
@@ -96,7 +96,7 @@ def test_pretrained(dataset, ae_dataset):
 
         return m
 
-    dataset.set_chunk_output_sizes(10, 10)
+    dataset.set_chunk_output_shapes((10, 10), (10, 10))
     evaluate_model(model_fn, dataset)
     shutil.rmtree(tmpdir)
 
@@ -123,6 +123,6 @@ def test_fcn(dataset):
         #l = keras.layers.Softmax(axis=3)(l)
         m = keras.Model(inputs=inputs, outputs=l)
         return m
-    dataset.set_chunk_output_sizes(None, 10)
-    dataset.set_tile_size((32, 32))
+    dataset.set_chunk_output_shapes(None, None)
+    dataset.set_tile_shape((32, 32))
     evaluate_model(model_fn, dataset)

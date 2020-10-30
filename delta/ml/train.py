@@ -91,10 +91,10 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = None
             else:
                 if vlabel:
-                    vimagery = ImageryDataset(vimg, vlabel, output_size, chunk_size,
-                                              tile_size=config.io.tile_size(), chunk_stride=tc.chunk_stride)
+                    vimagery = ImageryDataset(vimg, vlabel, (output_size, output_size), (chunk_size, chunk_size),
+                                              tile_shape=config.io.tile_size(), chunk_stride=tc.chunk_stride)
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tile_size=config.io.tile_size(),
+                    vimagery = AutoencoderDataset(vimg, chunk_size, tile_shape=config.io.tile_size(),
                                                   chunk_stride=tc.chunk_stride)
                 validation = vimagery.dataset(config.dataset.classes.weights())
                 if tc.validation.steps:
@@ -282,8 +282,17 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     specification.
     """
     model = _compile_model(model_fn, dataset, training_spec)
+    in_shape = model.input_shape
+    out_shape = model.output_shape
+    # fully convolutional, need to compute the shape for our tile size
+    if in_shape[1] is None and out_shape[1] is None:
+        in_shape = (0, config.io.tile_size()[0], config.io.tile_size()[1], in_shape[3])
+        out_shape = model.compute_output_shape((0, in_shape[1], in_shape[2], in_shape[3]))
+        if out_shape[1] != in_shape[1] or out_shape[2] != in_shape[2]:
+            dataset.set_chunk_output_shapes(None, (out_shape[1], out_shape[2]))
 
-    (ds, validation) = _prep_datasets(dataset, training_spec, model.input_shape[1], model.output_shape[1])
+    # TODO: extend to rectangles
+    (ds, validation) = _prep_datasets(dataset, training_spec, in_shape[1], out_shape[1])
 
     (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
 

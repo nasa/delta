@@ -207,7 +207,8 @@ class LabelPredictor(Predictor):
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
 
         if self._colormap is not None and self._num_classes != self._colormap.shape[0]:
-            print('Warning: Defined number of defined classes in configuration does not match network.')
+            print('Warning: Defined defined classes (%d) in config do not match network (%d).' %
+                  (self._colormap.shape[0], self._num_classes))
             if self._colormap.shape[0] > self._num_classes:
                 self._num_classes = self._colormap.shape[0]
 
