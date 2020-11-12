@@ -98,7 +98,8 @@ def main(options):
 
         if options.autoencoder:
             label = image
-            predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
+            predictor = predict.ImagePredictor(model, output_image, True,
+                                               None if options.noColormap else (ae_convert, np.uint8, 3))
         else:
             predictor = predict.LabelPredictor(model, output_image, True, colormap=colors,
                                                prob_image=prob_image, error_image=error_image,
@@ -120,7 +121,7 @@ def main(options):
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
-            write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
+            write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
                        metadata=image.metadata())
     stop_time = time.time()
     print('Elapsed time = ', stop_time - start_time)

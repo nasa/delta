@@ -251,7 +251,7 @@ class LabelPredictor(Predictor):
         pred_image = np.argmax(pred_image, axis=2)
 
         # nodata pixels were set to nan in the probability image
-        pred_image[prob_image[:, :, 0] == math.nan] = -1
+        pred_image[np.isnan(prob_image[:, :, 0])] = -1
 
         if labels is not None:
             incorrect = (labels != pred_image).astype(int)
