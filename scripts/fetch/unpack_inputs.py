@@ -26,9 +26,9 @@ import os
 import sys
 import argparse
 import traceback
-from delta.imagery.sources import worldview
-from delta.imagery.sources import sentinel1
-from delta.imagery.sources import tiff
+from delta.extensions.sources import worldview
+from delta.extensions.sources import sentinel1
+from delta.extensions.sources import tiff
 
 
 #------------------------------------------------------------------------------

@@ -31,6 +31,7 @@ import yaml
 
 #------------------------------------------------------------------------------
 
+# TODO: Need a good system for this that handles unpacked images!!!
 def get_label_path(image_name, options):
     """Return the label file path for a given input image or throw if it is
        not found at the expected location."""
@@ -63,6 +64,10 @@ def main(argsIn):
                             help="Extension for image files.")
         parser.add_argument("--label-ext", dest="label_extension", default='.tif',
                             help="Extension for label files.")
+
+        parser.add_argument("--link-folders", action="store_true",
+                            dest="link_folders", default=False,
+                            help="Link the files containing the detected folders")
 
         parser.add_argument("--image-limit", dest="image_limit", default=None, type=int,
                             help="Only use this many image files total.")
@@ -116,7 +121,8 @@ def main(argsIn):
     for image_path in input_image_list:
 
         # If an image list was provided skip images which are not in the list.
-        image_name = os.path.basename(image_path)
+        image_name   = os.path.basename(image_path)
+        image_folder = os.path.dirname(image_path)
         if images_to_use and (os.path.splitext(image_name)[0] not in images_to_use):
             continue
 
@@ -124,13 +130,19 @@ def main(argsIn):
         use_for_valid = (random.random() < options.validate_fraction)
 
         # Handle the image file
+        target_name = image_name
+        if options.link_folders:
+            target_name = os.path.basename(image_folder) # Last folder name
         if use_for_valid:
-            image_dest = os.path.join(valid_image_folder, image_name)
+            image_dest = os.path.join(valid_image_folder, target_name)
             valid_count += 1
         else:
-            image_dest = os.path.join(train_image_folder, image_name)
+            image_dest = os.path.join(train_image_folder, target_name)
             train_count += 1
-        os.symlink(image_path, image_dest)
+        if options.link_folders:
+            os.symlink(image_folder, image_dest)
+        else:
+            os.symlink(image_path, image_dest)
 
         if options.label_folder:  # Handle the label file
             label_path = get_label_path(image_name, options)

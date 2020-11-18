@@ -24,6 +24,7 @@ from .sources import tiff
 from .sources import landsat
 from .sources import npy
 from .sources import worldview
+from .sources import sentinel1
 
 def initialize():
     register_extension('delta.extensions.callbacks')
@@ -39,6 +40,7 @@ def initialize():
     register_image_reader('npy', npy.NumpyImage)
     register_image_reader('landsat', landsat.LandsatImage)
     register_image_reader('worldview', worldview.WorldviewImage)
+    register_image_reader('sentinel1', sentinel1.Sentinel1Image)
 
     register_image_writer('tiff', tiff.TiffWriter)
     register_image_writer('npy', npy.NumpyWriter)

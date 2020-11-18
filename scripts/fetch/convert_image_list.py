@@ -28,6 +28,7 @@ def main(argsIn): #pylint: disable=R0914,R0912
 
     if len(argsIn) != 2:
         print("usage: convert_image_list.py <input_path> <output_path>")
+        return -1
 
     input_path  = argsIn[0]
     output_path = argsIn[1]

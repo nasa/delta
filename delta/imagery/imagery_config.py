@@ -84,15 +84,18 @@ class ImageSet:
 __DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                         'worldview' : '.zip',
                         'landsat' : '.zip',
-                        'npy' : '.npy'}
+                        'npy' : '.npy',
+                        'sentinel1' : '.zip'}
 __DEFAULT_SCALE_FACTORS = {'tiff' : 1024.0,
                            'worldview' : 2048.0,
                            'landsat' : 120.0,
-                           'npy' : None}
+                           'npy' : None,
+                           'sentinel1' : None}
 __DEFAULT_OFFSETS = {'tiff' : None,
                      'worldview' : None,
                      'landsat' : None,
-                     'npy' : None}
+                     'npy' : None,
+                     'sentinel1' : None}
 
 def __extension(conf):
     if conf['extension'] == 'default':
@@ -143,7 +146,8 @@ def __find_images(conf, matching_images=None, matching_conf=None):
         if not os.path.exists(conf['directory']):
             raise ValueError('Supplied images directory %s does not exist.' % (conf['directory']))
         if matching_images is None:
-            for root, _, filenames in os.walk(conf['directory']):
+            for root, _, filenames in os.walk(conf['directory'],
+                                              followlinks=True):
                 for filename in filenames:
                     if filename.endswith(extension):
                         images.append(os.path.join(root, filename))
