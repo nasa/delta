@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Functions to support the WorldView satellites.
+Functions to support Sentinel1 satellites.
 """
 
 import os
@@ -29,14 +29,12 @@ from delta.config import config
 from delta.imagery import utilities
 from . import tiff
 
-# Use this value for all WorldView nodata values we write, though they usually don't have any nodata.
-OUTPUT_NODATA = 0.0
 
 # Unpack procedure:
 # - Start with .zip files
 # - Unpack to .SAFE folders containing .tif files
 # - Use gdalbuildvrt to creat a merged.vrt file
-# - TODO: Still need to perform terrain correction using SNAP??
+# - TODO: Still need to perform terrain correction using SNAP!!
 
 def get_merged_path(unpack_folder):
     return os.path.join(unpack_folder, 'merged.vrt')
