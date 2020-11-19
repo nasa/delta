@@ -87,9 +87,10 @@ class TiffImage(delta_image.DeltaImage):
 
     def _read(self, roi, bands, buf=None):
         self.__asert_open()
+        num_bands = len(bands) if bands else self.num_bands()
 
         if buf is None:
-            buf = np.zeros(shape=(self.num_bands(), roi.width(), roi.height()), dtype=self.numpy_type())
+            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.numpy_type())
         for i, b in enumerate(bands):
             band_handle = self._gdal_band(b)
             s = buf[i, :, :].shape

@@ -13,8 +13,8 @@ echo "Converting ${in_file} to ${out_file}, using area and resolution of ${srs_f
 data_type=$(gdalinfo ${in_file} | sed -n -e 's/.*Type=\(.*\),.*/\1/p' | head -1)
 num_bands=$(gdalinfo ${in_file} | grep "^Band" | wc -l)
 band_arg=$(printf -- '-b 1 %.0s' $(eval echo "{1..$num_bands}"))
-empty1_file=$(mktemp /tmp/empty1.tiff)
-empty2_file=$(mktemp /tmp/empty2.tiff)
+empty1_file=/tmp/empty1.tiff
+empty2_file=/tmp/empty2.tiff
 gdal_merge.py -createonly -init "0 0 0" -ot ${data_type} -o ${empty1_file} ${srs_file}
 gdal_translate -ot ${data_type} ${band_arg} ${empty1_file} ${empty2_file}
 rm ${empty1_file}

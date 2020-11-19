@@ -19,7 +19,7 @@
 Functions to support loading custom ML-related objects from dictionaries specified
 in yaml files. Includes constructing custom neural networks and more.
 """
-import collections
+from collections.abc import Mapping
 import copy
 import functools
 from typing import Callable, List
@@ -112,7 +112,7 @@ def _make_model(model_dict, exposed_params):
     params = {**exposed_params, **defined_params}
     # replace parameters recursively in all layers
     def recursive_dict_list_apply(d, func):
-        if isinstance(d, collections.Mapping):
+        if isinstance(d, Mapping):
             for k, v in d.items():
                 d[k] = recursive_dict_list_apply(v, func)
             return d
