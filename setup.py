@@ -46,16 +46,16 @@ setuptools.setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[
+        'tensorflow>=2.1',
         'usgs',
-        'numpy',
         'scipy',
         'matplotlib',
-        'tensorflow>=2.1',
         'mlflow',
         'portalocker',
         'appdirs',
-        'gdal',
-        'h5py'
+        'gdal'
+        #'numpy', # these are included by tensorflow with restrictions
+        #'h5py'
     ],
     scripts=scripts,
     include_package_data = True,
