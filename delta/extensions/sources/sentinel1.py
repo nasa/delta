@@ -20,10 +20,7 @@ Functions to support Sentinel1 satellites.
 """
 
 import os
-import sys
 import portalocker
-
-import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -73,13 +70,11 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             test_image = None
 
         if test_image: # Merged image is ready to use
-            tf.print('Already have unpacked files in ' + unpack_folder,
-                     output_stream=sys.stdout)
+            print('Already have unpacked files in ' + unpack_folder)
             return merged_path
         # Otherwise go through the entire unpack process
 
-        tf.print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder,
-                 output_stream=sys.stdout)
+        print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder)
         utilities.unpack_to_folder(zip_path, unpack_folder)
         subdirs = os.listdir(unpack_folder)
         if len(subdirs) != 1:
