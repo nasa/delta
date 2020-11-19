@@ -50,7 +50,7 @@ def main(argsIn):
 
         parser.add_argument("--image-type", dest="image_type", default='worldview',
                             help="Type of image files: " +
-                                 ', '.join(SUPPORTED_IMAGE_TYPES))
+                            ', '.join(SUPPORTED_IMAGE_TYPES))
 
         parser.add_argument("--image-ext", dest="image_extension", default='.zip',
                             help="Extension for image files.")

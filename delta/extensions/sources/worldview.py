@@ -19,12 +19,15 @@
 Functions to support the WorldView satellites.
 """
 
+import sys
 import math
 import zipfile
 import functools
 import os
 import numpy as np
 import portalocker
+
+import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import utilities
@@ -70,7 +73,7 @@ def unpack_wv_to_folder(zip_path, unpack_folder):
             pass
         else:
             tf.print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder,
-                      output_stream=sys.stdout)
+                     output_stream=sys.stdout)
             utilities.unpack_to_folder(zip_path, unpack_folder)
             # some worldview zip files have a subdirectory with the name of the image
             if not os.path.exists(os.path.join(unpack_folder, 'vendor_metadata')):

@@ -79,7 +79,7 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
         # Otherwise go through the entire unpack process
 
         tf.print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder,
-                  output_stream=sys.stdout)
+                 output_stream=sys.stdout)
         utilities.unpack_to_folder(zip_path, unpack_folder)
         subdirs = os.listdir(unpack_folder)
         if len(subdirs) != 1:

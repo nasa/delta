@@ -42,7 +42,7 @@ def get_label_path(image_name, options):
         raise Exception('Expected label file does not exist: ' + label_path)
     return label_path
 
-def main(argsIn):
+def main(argsIn): #pylint: disable=R0912
 
     try:
 
