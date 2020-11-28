@@ -119,6 +119,9 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
                    + unpack_folder + ' ' + temp_out_path)
             print(cmd)
             os.system(cmd)
+            if not os.path.exists(temp_out_path):
+                raise Exception('Failed to run ESA SNAP preprocessing.\n'
+                                +'Do you have SNAP installed in the default location?')
             os.system('mv ' + temp_out_path + ' ' + merged_path)
         else:
             # Generate a merged file containing all input images as an N channel image
