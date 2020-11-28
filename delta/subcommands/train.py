@@ -42,7 +42,7 @@ def main(options):
     log_folder = config.dataset.log_folder()
     if log_folder:
         if not options.resume: # Start fresh and clear the read logs
-            os.system('rm ' + log_folder + '/*')
+            os.system('rm -f ' + log_folder + '/*')
             print('Dataset progress recording in: ' + log_folder)
         else:
             print('Resuming dataset progress recorded in: ' + log_folder)

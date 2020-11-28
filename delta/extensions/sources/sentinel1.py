@@ -30,9 +30,19 @@ from . import tiff
 # Unpack procedure:
 # - Start with .zip files
 # - Unpack to .SAFE folders containing .tif files
-# - Use gdalbuildvrt to creat a merged.vrt file
-# - TODO: Still need to perform terrain correction using SNAP!!
+# - Use SNAP to
+# - (or) Use gdalbuildvrt to creat a merged.vrt file
 
+
+this_folder = os.path.dirname(os.path.abspath(__file__))
+SNAP_GRAPH_PATH = os.path.join(this_folder,
+                               'sentinel1_default_snap_preprocess_graph.xml')
+SNAP_SCRIPT_PATH = os.path.join(this_folder, 'snap_process_sentinel1.sh')
+
+
+# Using the .vrt does not make much sense with SNAP but it is consistent
+#  with the gdalbuildvrt option and makes it easier to search for unpacked
+#  Sentinel1 images
 def get_merged_path(unpack_folder):
     return os.path.join(unpack_folder, 'merged.vrt')
 
@@ -52,7 +62,6 @@ def get_files_from_unpack_folder(folder):
         ext = os.path.splitext(f)[1]
         if (ext.lower() == '.tiff') or (ext.lower() == '.tif'):
             tiff_files.append(os.path.join(measurement_folder, f))
-            break
 
     return tiff_files
 
@@ -74,25 +83,50 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             return merged_path
         # Otherwise go through the entire unpack process
 
-        print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder)
-        utilities.unpack_to_folder(zip_path, unpack_folder)
-        subdirs = os.listdir(unpack_folder)
-        if len(subdirs) != 1:
-            raise Exception('Unexpected Sentinel1 subdirectories: ' + str(subdirs))
-        cmd = 'mv ' + os.path.join(unpack_folder, subdirs[0]) +'/* ' + unpack_folder
-        print(cmd)
-        os.system(cmd)
+        NUM_SOURCE_CHANNELS = 2
+        need_to_unpack = True
+        if os.path.exists(unpack_folder):
+            source_image_paths = get_files_from_unpack_folder(unpack_folder)
+            if len(source_image_paths) == NUM_SOURCE_CHANNELS:
+                need_to_unpack = False
+                print('Already have files')
+            else:
+                print('Clearing unpack folder missing image files.')
+                os.system('rm -rf ' + unpack_folder)
+
+        if need_to_unpack:
+            print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder)
+            utilities.unpack_to_folder(zip_path, unpack_folder)
+            subdirs = os.listdir(unpack_folder)
+            if len(subdirs) != 1:
+                raise Exception('Unexpected Sentinel1 subdirectories: ' + str(subdirs))
+            cmd = 'mv ' + os.path.join(unpack_folder, subdirs[0]) +'/* ' + unpack_folder
+            print(cmd)
+            os.system(cmd)
         source_image_paths = get_files_from_unpack_folder(unpack_folder)
 
-        if not source_image_paths:
-            raise Exception('Did not find any image files in ' + zip_path)
+        if len(source_image_paths) != NUM_SOURCE_CHANNELS:
+            raise Exception('Did not find two image files in ' + zip_path)
 
-        # Generate a merged file containing all input images as an N channel image
-        cmd = 'gdalbuildvrt -separate ' + merged_path
-        for f in source_image_paths:
-            cmd += ' ' + f
-        print(cmd)
-        os.system(cmd)
+        USE_SNAP = True # To get real results we need to use SNAP
+
+        if USE_SNAP: # Requires the Sentinel1 processing software to be installed
+            # Run the preconfigured SNAP preprocessing graph
+            # - The SNAP tool *must* write to a .tif extension, so we have to
+            #   rename the file if we want something else.
+            temp_out_path = merged_path.replace('.vrt', '.tif')
+            cmd = (SNAP_SCRIPT_PATH + ' ' + SNAP_GRAPH_PATH + ' '
+                   + unpack_folder + ' ' + temp_out_path)
+            print(cmd)
+            os.system(cmd)
+            os.system('mv ' + temp_out_path + ' ' + merged_path)
+        else:
+            # Generate a merged file containing all input images as an N channel image
+            cmd = 'gdalbuildvrt -separate ' + merged_path
+            for f in source_image_paths:
+                cmd += ' ' + f
+            print(cmd)
+            os.system(cmd)
 
         # Verify that we generated a valid image file
         try:
