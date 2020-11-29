@@ -27,4 +27,4 @@ sourceFile="$2"
 targetFile="$3"
 
 # Execute the graph
-${gptPath} ${graphXmlPath} -e -t ${targetFile} ${sourceFile}
+${gptPath} ${graphXmlPath} -e -PtargetProduct=${targetFile} ${sourceFile}
