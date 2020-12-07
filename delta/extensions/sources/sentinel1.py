@@ -119,9 +119,12 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
                    + unpack_folder + ' ' + temp_out_path)
             print(cmd)
             os.system(cmd)
+            MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger
             if not os.path.exists(temp_out_path):
                 raise Exception('Failed to run ESA SNAP preprocessing.\n'
                                 +'Do you have SNAP installed in the default location?')
+            if os.path.getsize(temp_out_path) < MIN_IMAGE_SIZE:
+                raise Exception('SNAP encountered a problem processing the file!')
             os.system('mv ' + temp_out_path + ' ' + merged_path)
         else:
             # Generate a merged file containing all input images as an N channel image
