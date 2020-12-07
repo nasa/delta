@@ -27,6 +27,13 @@ from osgeo import gdal
 from delta.config import config
 from delta.imagery import delta_image, rectangle
 
+
+# Suppress GDAL warnings, errors become exceptions so we get them
+gdal.SetConfigOption('CPL_LOG', '/dev/null')
+gdal.UseExceptions()
+
+
+
 class TiffImage(delta_image.DeltaImage):
     """For geotiffs."""
 
