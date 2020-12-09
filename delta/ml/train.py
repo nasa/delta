@@ -108,7 +108,6 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     if tc.steps:
         ds = ds.take(tc.steps)
-    ds = ds.repeat(tc.epochs)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -308,9 +307,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                                 epochs=training_spec.epochs,
                                 callbacks=callbacks,
                                 validation_data=validation,
-                                validation_steps=training_spec.validation.steps if training_spec.validation else None,
-                                steps_per_epoch=training_spec.steps,
-                                verbose=1)
+                                validation_steps=None, # Steps are controlled in the dataset setup
+                                steps_per_epoch=None,
+                                verbose=1) # Set to 2 when logging
         else: # Skip training
             print('Skipping straight to validation')
             history = model.evaluate(validation, steps=training_spec.validation.steps,

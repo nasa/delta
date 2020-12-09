@@ -42,7 +42,7 @@ def main(options):
     log_folder = config.dataset.log_folder()
     if log_folder:
         if not options.resume: # Start fresh and clear the read logs
-            os.system('rm ' + log_folder + '/*')
+            os.system('rm -f ' + log_folder + '/*')
             print('Dataset progress recording in: ' + log_folder)
         else:
             print('Resuming dataset progress recorded in: ' + log_folder)
@@ -54,12 +54,13 @@ def main(options):
 
     if options.resume is not None:
         model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
+        temp_model = model
     else:
         img = images.load(0)
         model = config_model(img.num_bands())
 
-    # this one is not built with proper scope, just used to get input and output shapes
-    temp_model = model()
+        # this one is not built with proper scope, just used to get input and output shapes
+        temp_model = model()
 
     start_time = time.time()
     tc = config.train.spec()
@@ -89,7 +90,6 @@ def main(options):
         if options.model is not None:
             save_model(model, options.model)
     except KeyboardInterrupt:
-        print()
         print('Training cancelled.')
 
     stop_time = time.time()
