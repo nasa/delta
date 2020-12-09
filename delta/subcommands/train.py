@@ -64,18 +64,19 @@ def main(options):
 
     start_time = time.time()
     tc = config.train.spec()
+    out_shape = temp_model.output_shape[1:3] if temp_model.output_shape and temp_model.output_shape[1] else None
+    in_shape = temp_model.input_shape[1:3] if temp_model.input_shape and temp_model.input_shape[1] else None
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, temp_model.input_shape[1],
-                                                 tile_size=config.io.tile_size(),
+        ids = imagery_dataset.AutoencoderDataset(images, in_shape,
+                                                 tile_shape=config.io.tile_size(),
                                                  chunk_stride=tc.chunk_stride)
     else:
         labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
-        ids = imagery_dataset.ImageryDataset(images, labels, temp_model.output_shape[1],
-                                             temp_model.input_shape[1],
-                                             tile_size=config.io.tile_size(),
+        ids = imagery_dataset.ImageryDataset(images, labels, out_shape, in_shape,
+                                             tile_shape=config.io.tile_size(),
                                              chunk_stride=tc.chunk_stride)
     if log_folder is not None:
         ids.set_resume_mode(options.resume, log_folder)

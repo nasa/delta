@@ -32,7 +32,7 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, output_size, chunk_size, chunk_stride=1, tile_size=(256, 256)):
+    def __init__(self, images, labels, output_shape, chunk_shape, chunk_stride=1, tile_shape=(256, 256)):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
@@ -41,12 +41,12 @@ class ImageryDataset:
         self._log_folder  = None
 
         # Record some of the config values
-        self.set_chunk_output_sizes(chunk_size, output_size)
+        self.set_chunk_output_shapes(chunk_shape, output_shape)
         self._output_dims  = 1
         self._chunk_stride = chunk_stride
         self._data_type    = tf.float32
         self._label_type   = tf.uint8
-        self._tile_size = tile_size
+        self._tile_shape = tile_shape
 
         if labels:
             assert len(images) == len(labels)
@@ -199,15 +199,16 @@ class ImageryDataset:
                         if label.size() != img.size():
                             raise Exception('Label file ' + self._labels[i] + ' with size ' + str(label.size())
                                             + ' does not match input image size of ' + str(img.size()))
-                    tile_size = self._tile_size
-                    if self._chunk_size:
-                        assert tile_size[0] >= self._chunk_size and tile_size[1] >= self._chunk_size, 'Tile too small.'
-                        tiles = img.tiles(tile_size[1], tile_size[0], min_width=self._chunk_size,
-                                          min_height=self._chunk_size, overlap=self._chunk_size - 1)
+                    tile_shape = self._tile_shape
+                    if self._chunk_shape:
+                        assert tile_shape[0] >= self._chunk_shape[0] and \
+                               tile_shape[1] >= self._chunk_shape[1], 'Tile too small.'
+                        tiles = img.tiles(tile_shape[0], tile_shape[1], min_width=self._chunk_shape[0],
+                                          min_height=self._chunk_shape[1], overlap=self._chunk_shape[0] - 1)
                     else:
                         # TODO: make overlap configurable for FCN
-                        tiles = img.tiles(tile_size[1], tile_size[0], min_width=tile_size[1], min_height=tile_size[0],
-                                          overlap=0, partials=False)
+                        tiles = img.tiles(tile_shape[0], tile_shape[1], min_width=tile_shape[0],
+                                          min_height=tile_shape[1], overlap=0, partials=False)
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
@@ -267,13 +268,13 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         ds_input = self._tile_images()
-        tile_size = self._tile_size
+        tile_shape = self._tile_shape
         def load_tile(image_index, x1, y1, x2, y2):
             img = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                    is_labels),
                                  [image_index, [x1, y1, x2, y2]], data_type)
-            if not self._chunk_size:
-                img.set_shape([tile_size[1], tile_size[0]] + ([1] if is_labels else [self._num_bands]))
+            if not self._chunk_shape:
+                img.set_shape([tile_shape[0], tile_shape[1]] + ([1] if is_labels else [self._num_bands]))
             return img
         ret = ds_input.map(load_tile, num_parallel_calls=1).prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -291,35 +292,43 @@ class ImageryDataset:
     def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
 
-        ksizes  = [1, self._chunk_size, self._chunk_size, 1] # Size of the chunks
+        ksizes  = [1, self._chunk_shape[0], self._chunk_shape[1], 1] # Size of the chunks
         strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
         rates   = [1, 1, 1, 1]
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
         # Output is [1, M, N, chunk*chunk*bands]
-        result = tf.reshape(result, [-1, self._chunk_size, self._chunk_size, self._num_bands])
+        result = tf.reshape(result, [-1, self._chunk_shape[0], self._chunk_shape[1], self._num_bands])
 
         return result
 
     def _reshape_labels(self, labels):
         """Reshape the labels to account for the chunking process."""
-        w = (self._chunk_size - self._output_size) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, w, tf.shape(labels)[0] - 2 * w,
-                                               tf.shape(labels)[1] - 2 * w)
+        if self._chunk_shape:
+            w = (self._chunk_shape[0] - self._output_shape[0]) // 2
+            h = (self._chunk_shape[1] - self._output_shape[1]) // 2
+        else:
+            w = (self._tile_shape[0] - self._output_shape[0]) // 2
+            h = (self._tile_shape[1] - self._output_shape[1]) // 2
+        labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
+                                               tf.shape(labels)[1] - 2 * h)
+        if not self._chunk_shape:
+            return labels
 
-        ksizes  = [1, self._output_size, self._output_size, 1]
+        ksizes  = [1, self._output_shape[0], self._output_shape[1], 1]
         strides = [1, self._chunk_stride, self._chunk_stride, 1]
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding='VALID')
-        return tf.reshape(labels, [-1, self._output_size, self._output_size])
+        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1]])
+        return result
 
     def data(self):
         """
         Unbatched dataset of image chunks.
         """
         ret = self._load_images(False, self._data_type)
-        if self._chunk_size:
+        if self._chunk_shape:
             ret = ret.map(self._chunk_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
             return ret.unbatch()
         return ret
@@ -329,9 +338,10 @@ class ImageryDataset:
         Unbatched dataset of labels.
         """
         label_set = self._load_images(True, self._label_type)
-        if self._chunk_size:
+        if self._chunk_shape or self._output_shape:
             label_set = label_set.map(self._reshape_labels, num_parallel_calls=tf.data.experimental.AUTOTUNE) #pylint: disable=C0301
-            return label_set.unbatch()
+            if self._chunk_shape:
+                return label_set.unbatch()
         return label_set
 
     def dataset(self, class_weights=None):
@@ -356,22 +366,31 @@ class ImageryDataset:
         """Return the number of bands in each image of the data set"""
         return self._num_bands
 
-    def set_chunk_output_sizes(self, chunk_size, output_size):
-        if chunk_size:
-            assert (chunk_size % 2) == (output_size % 2), 'Chunk and output sizes must both be even or odd.'
-        self._chunk_size = chunk_size
-        self._output_size = output_size
-    def chunk_size(self):
+    def set_chunk_output_shapes(self, chunk_shape, output_shape):
+        if chunk_shape:
+            assert len(chunk_shape) == 2, 'Chunk must be two dimensional.'
+            assert (chunk_shape[0] % 2) == (chunk_shape[1] % 2) == \
+                   (output_shape[0] % 2) == (output_shape[1] % 2), 'Chunk and output shapes must both be even or odd.'
+        if output_shape:
+            assert len(output_shape) == 2, 'Output must be two dimensional.'
+        self._chunk_shape = chunk_shape
+        self._output_shape = output_shape
+
+    def chunk_shape(self):
         """
         Size of chunks used for inputs.
         """
-        return self._chunk_size
+        return self._chunk_shape
     def input_shape(self):
         """Input size for the network."""
-        return (self._chunk_size, self._chunk_size, self._num_bands)
+        if self._chunk_shape:
+            return (self._chunk_shape[0], self._chunk_shape[1], self._num_bands)
+        return (None, None, self._num_bands)
     def output_shape(self):
         """Output size of blocks of labels"""
-        return (self._output_size, self._output_size, self._output_dims)
+        if self._output_shape:
+            return (self._output_shape[0], self._output_shape[1], self._output_dims)
+        return (None, None, self._output_dims)
 
     def image_set(self):
         """Returns set of images"""
@@ -380,22 +399,22 @@ class ImageryDataset:
         """Returns set of label images"""
         return self._labels
 
-    def set_tile_size(self, tile_size):
+    def set_tile_shape(self, tile_shape):
         """Set the tile size."""
-        self._tile_size = tile_size
+        self._tile_shape = tile_shape
 
-    def tile_size(self):
+    def tile_shape(self):
         """Returns tile size."""
-        return self._tile_size
+        return self._tile_shape
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_size, chunk_stride=1, tile_size=(256, 256)):
+    def __init__(self, images, chunk_shape, chunk_stride=1, tile_shape=(256, 256)):
         """
         The images are used as labels as well.
         """
-        super().__init__(images, None, chunk_size, chunk_size, tile_size=tile_size, chunk_stride=chunk_stride)
+        super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape, chunk_stride=chunk_stride)
         self._labels = self._images
         self._output_dims = self.num_bands()
 
