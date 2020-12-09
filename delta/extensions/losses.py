@@ -31,5 +31,15 @@ def ms_ssim(y_true, y_pred):
 def ms_ssim_mse(y_true, y_pred):
     return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
 
+class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
+    # this is cross entropy, but first replaces the labels with
+    # a probability distribution from a lookup table
+    def __init__(self, map_list):
+        super().__init__()
+        self._lookup = tf.constant(map_list)
+    def call(self, y_true, y_pred):
+        return tensorflow.keras.losses.categorical_crossentropy(tf.gather(self._lookup, y_true, axis=None), y_pred)
+
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
+register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
