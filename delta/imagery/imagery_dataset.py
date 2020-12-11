@@ -276,16 +276,11 @@ class ImageryDataset:
             if not self._chunk_shape:
                 img.set_shape([tile_shape[0], tile_shape[1]] + ([1] if is_labels else [self._num_bands]))
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=1).prefetch(tf.data.experimental.AUTOTUNE)
+        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(tf.data.experimental.AUTOTUNE)
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
         ret = ret.filter(lambda n: tf.math.greater(tf.size(n), 0))
-
-        # TODO: Any remaining cases this would handle?
-        # Don't let the entire session be taken down by one bad dataset input.
-        # - Would be better to handle this somehow but it is not clear if TF supports that.
-        #ret = ret.apply(tf.data.experimental.ignore_errors())
 
         return ret
 
@@ -356,10 +351,12 @@ class ImageryDataset:
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
         if self._labels.nodata_value() is not None:
-            ds = ds.filter(lambda x, y: tf.math.reduce_all(tf.math.not_equal(y, self._labels.nodata_value())))
+            ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
+        class_weights.append(0.0)
         if class_weights is not None:
             lookup = tf.constant(class_weights)
-            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)))
+            ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)),
+                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
         return ds
 
     def num_bands(self):
