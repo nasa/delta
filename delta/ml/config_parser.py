@@ -169,8 +169,8 @@ def loss_from_dict(loss_spec):
         name = loss_spec
         params = {}
     elif isinstance(loss_spec, dict):
-        assert len(loss_spec) == 1, 'Only one loss function may be specified.'
-        name = list(loss_spec[0].keys())[0]
+        assert len(loss_spec.keys()) == 1, 'Only one loss function may be specified.'
+        name = list(loss_spec.keys())[0]
         params = loss_spec[name]
     else:
         raise ValueError('Unexpected entry for loss function.')
