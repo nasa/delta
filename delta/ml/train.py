@@ -94,7 +94,8 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                     vimagery = ImageryDataset(vimg, vlabel, (output_size, output_size), (chunk_size, chunk_size),
                                               tile_shape=config.io.tile_size(), chunk_stride=tc.chunk_stride)
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tile_shape=config.io.tile_size(),
+                    vimagery = AutoencoderDataset(vimg, chunk_size,
+                                                  tile_shape=(config.io.tile_size(), config.io.tile_size()),
                                                   chunk_stride=tc.chunk_stride)
                 validation = vimagery.dataset(config.dataset.classes.weights())
                 if tc.validation.steps:
