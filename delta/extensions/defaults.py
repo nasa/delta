@@ -35,6 +35,8 @@ def initialize():
 
     register_extension('delta.extensions.losses')
 
+    register_extension('delta.extensions.metrics')
+
     register_image_reader('tiff', tiff.TiffImage)
     register_image_reader('rgba', tiff.RGBAImage)
     register_image_reader('npy', npy.NumpyImage)

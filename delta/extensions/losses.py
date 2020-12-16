@@ -38,7 +38,9 @@ class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
         super().__init__()
         self._lookup = tf.constant(map_list)
     def call(self, y_true, y_pred):
-        return tensorflow.keras.losses.categorical_crossentropy(tf.gather(self._lookup, y_true, axis=None), y_pred)
+        y_true = tf.squeeze(y_true)
+        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
+        return tensorflow.keras.losses.categorical_crossentropy(true_convert, y_pred)
 
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
