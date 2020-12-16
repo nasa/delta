@@ -32,7 +32,8 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, output_shape, chunk_shape, chunk_stride=1, tile_shape=(256, 256)):
+    def __init__(self, images, labels, output_shape, chunk_shape, chunk_stride=(1, 1),
+                 tile_shape=(256, 256)):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
@@ -170,7 +171,6 @@ class ImageryDataset:
             # Local function to get the tile list for a single image index
             def get_image_tile_list(i):
                 try:
-
                     # If we need to skip this file because of the read count, no need to look up tiles.
                     if self._resume_mode:
                         file_path = self._images[i]
@@ -207,8 +207,7 @@ class ImageryDataset:
                                           min_height=self._chunk_shape[1], overlap=self._chunk_shape[0] - 1)
                     else:
                         # TODO: make overlap configurable for FCN
-                        tiles = img.tiles(tile_shape[0], tile_shape[1], min_width=tile_shape[0],
-                                          min_height=tile_shape[1], overlap=0, partials=False)
+                        tiles = img.tiles(tile_shape[0], tile_shape[1], overlap=0, partials=False, partials_overlap=True)
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
@@ -288,7 +287,7 @@ class ImageryDataset:
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_shape[0], self._chunk_shape[1], 1] # Size of the chunks
-        strides = [1, self._chunk_stride, self._chunk_stride, 1] # Spacing between chunk starts
+        strides = [1, self._chunk_stride[0], self._chunk_stride[1], 1] # Spacing between chunk starts
         rates   = [1, 1, 1, 1]
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
@@ -303,15 +302,15 @@ class ImageryDataset:
             w = (self._chunk_shape[0] - self._output_shape[0]) // 2
             h = (self._chunk_shape[1] - self._output_shape[1]) // 2
         else:
-            w = (self._tile_shape[0] - self._output_shape[0]) // 2
-            h = (self._tile_shape[1] - self._output_shape[1]) // 2
+            w = (tf.shape(labels)[0] - self._output_shape[0]) // 2
+            h = (tf.shape(labels)[1] - self._output_shape[1]) // 2
         labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
                                                tf.shape(labels)[1] - 2 * h)
         if not self._chunk_shape:
             return labels
 
         ksizes  = [1, self._output_shape[0], self._output_shape[1], 1]
-        strides = [1, self._chunk_stride, self._chunk_stride, 1]
+        strides = [1, self._chunk_stride[0], self._chunk_stride[1], 1]
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding='VALID')
@@ -407,11 +406,12 @@ class ImageryDataset:
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_shape, chunk_stride=1, tile_shape=(256, 256)):
+    def __init__(self, images, chunk_shape, chunk_stride=(1, 1), tile_shape=(256, 256)):
         """
         The images are used as labels as well.
         """
-        super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape, chunk_stride=chunk_stride)
+        super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
+                         chunk_stride=chunk_stride)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

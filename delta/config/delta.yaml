@@ -77,7 +77,7 @@ train:
       yaml_file:     networks/convpool.yaml
       params:        ~
       layers:        ~
-  chunk_stride:    1
+  chunk_stride:    ~
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5

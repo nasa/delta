@@ -158,8 +158,15 @@ class Rectangle:
         return overlap_area.has_area()
 
     def make_tile_rois(self, tile_width, tile_height, min_width=0, min_height=0,
-                       include_partials=True, overlap_amount=0):
-        '''Return a list of tiles encompassing the entire area of this Rectangle'''
+                       include_partials=True, partials_overlap=False, overlap_amount=0):
+        '''
+        Return a list of tiles encompassing the entire area of this Rectangle.
+        tile_width, tile_height: size of tiles
+        min_width, min_height: if include_partials, include border tiles if bigger than this
+        overlap_amount: overlap tiles by this many pixels
+        partials_overlap: if not include_partials, if there are border regions not part of a tile,
+                          make a full size tile including them, and nearby area may be in two tiles
+        '''
 
         tile_spacing_x = tile_width  - overlap_amount
         tile_spacing_y = tile_height - overlap_amount
@@ -181,4 +188,11 @@ class Rectangle:
                 else: # Only use it if the uncropped tile fits entirely in this Rectangle
                     if self.contains_rect(tile):
                         output_tiles.append(tile)
+                    elif partials_overlap:
+                        r = Rectangle(min(self.max_x, tile.max_x) - tile_width,
+                                      min(self.max_y, tile.max_y) - tile_height,
+                                      width=tile_width, height=tile_height)
+                        if self.contains_rect(r):
+                            output_tiles.append(r)
+
         return output_tiles
