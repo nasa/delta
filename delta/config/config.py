@@ -164,6 +164,8 @@ class DeltaConfigComponent:
         """
         Loads the dictionary d, assuming it came from the given base_dir (for relative paths).
         """
+        if not d:
+            return
         for (k, v) in d.items():
             if k in self._components:
                 self._components[k]._load_dict(v, base_dir) #pylint:disable=protected-access

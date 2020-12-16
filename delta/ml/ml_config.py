@@ -73,13 +73,12 @@ class NetworkModelConfig(config.DeltaConfigComponent):
     # overwrite model entirely if updated (don't want combined layers from multiple files)
     def _load_dict(self, d : dict, base_dir):
         super()._load_dict(d, base_dir)
-        if 'yaml_file' in d:
-            self._config_dict['layers'] = None
-        elif 'layers' in d:
+        if 'layers' in d and d['layers'] is not None:
             self._config_dict['yaml_file'] = None
-        if 'yaml_file' in d and 'layers' in d and d['yaml_file'] is not None and d['layers'] is not None:
-            raise ValueError('Specified both yaml file and layers in model.')
-        if 'yaml_file' in d and d['yaml_file'] is not None:
+        elif 'yaml_file' in d and d['yaml_file'] is not None:
+            self._config_dict['layers'] = None
+            if 'layers' in d and d['layers'] is not None:
+                raise ValueError('Specified both yaml file and layers in model.')
             yaml_file = d['yaml_file']
             resource = os.path.join('config', yaml_file)
             if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
