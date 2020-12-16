@@ -157,19 +157,22 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_width, tile_height, min_width=0, min_height=0,
-                       include_partials=True, partials_overlap=False, overlap_amount=0):
+    def make_tile_rois(self, tile_shape, overlap_shape=0, include_partials=True, min_shape=(0, 0),
+                       partials_overlap=False):
         '''
         Return a list of tiles encompassing the entire area of this Rectangle.
-        tile_width, tile_height: size of tiles
-        min_width, min_height: if include_partials, include border tiles if bigger than this
-        overlap_amount: overlap tiles by this many pixels
+        tile_shape: (width, height) of tiles
+        overlap_shape: (x, y) overlap tiles by this many pixels in respective dimension
+        include_partials: include tiles that don't tile evenly
+        min_shape: minimum size of partial tiles to include with include_partials
         partials_overlap: if not include_partials, if there are border regions not part of a tile,
                           make a full size tile including them, and nearby area may be in two tiles
         '''
+        tile_width, tile_height = tile_shape
+        min_width, min_height = min_shape
 
-        tile_spacing_x = tile_width  - overlap_amount
-        tile_spacing_y = tile_height - overlap_amount
+        tile_spacing_x = tile_width  - overlap_shape[0]
+        tile_spacing_y = tile_height - overlap_shape[1]
         num_tiles = (int(math.ceil(self.width()  / tile_spacing_x )),
                      int(math.ceil(self.height() / tile_spacing_y)))
         output_tiles = []

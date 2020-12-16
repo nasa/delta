@@ -26,6 +26,7 @@ import numpy as np
 
 import tensorflow as tf
 
+from delta.config import config
 from delta.imagery import rectangle
 
 #pylint: disable=unsubscriptable-object
@@ -75,7 +76,9 @@ class Predictor(ABC):
         if net_input_shape[0] is None and net_input_shape[1] is None:
             result = np.squeeze(self._model.predict_on_batch(image))
             if image_nodata_value is not None:
-                result[data[:, :, 0] == image_nodata_value, :] = math.nan
+                x0 = (data.shape[0] - result.shape[0]) // 2
+                y0 = (data.shape[1] - result.shape[1]) // 2
+                result[data[x0:x0 + result.shape[0], y0:y0 + result.shape[1], 0] == image_nodata_value, :] = math.nan
             return result
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
@@ -115,27 +118,30 @@ class Predictor(ABC):
         """
         net_input_shape = self._model.input_shape[1:]
         net_output_shape = self._model.output_shape[1:]
-        block_size = image.block_size()
-
-        if net_input_shape[0] is None and net_input_shape[1] is None:
-            assert net_output_shape[0] is None and net_output_shape[1] is None
-            # TODO: currently without fixed input shape, we only support the same output shape
-            offset_r = 0
-            offset_c = 0
-            # we will not chunk the inputs so memory is less of an issue here (but make power of 2 size)
-            block_size_x = (max(512, min(block_size[0], 2048)) // 512) * 512
-            block_size_y = (max(512, min(block_size[1], 2048)) // 512) * 512
-        else:
-            offset_r = -net_input_shape[0] + net_output_shape[0]
-            offset_c = -net_input_shape[1] + net_output_shape[1]
-            block_size_x = net_input_shape[0] * max(1, min(block_size[0], 256) // net_input_shape[0])
-            block_size_y = net_input_shape[1] * max(1, min(block_size[1], 256) // net_input_shape[1])
 
         # Set up the output image
         if not input_bounds:
             input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
+        output_shape = (input_bounds.width(), input_bounds.height())
 
-        self._initialize((input_bounds.width() + offset_r, input_bounds.height() + offset_c), label, image)
+        ts = config.io.tile_size()
+        if net_input_shape[0] is None and net_input_shape[1] is None:
+            assert net_output_shape[0] is None and net_output_shape[1] is None
+            out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
+            tiles = input_bounds.make_tile_rois(config.io.tile_size(), include_partials=False,
+                                                overlap_shape=(ts[0] - out_shape[1], ts[1] - out_shape[2]),
+                                                partials_overlap=True)
+
+        else:
+            offset_r = -net_input_shape[0] + net_output_shape[0]
+            offset_c = -net_input_shape[1] + net_output_shape[1]
+            output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
+            block_size_x = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
+            block_size_y = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
+            tiles = input_bounds.make_tile_rois((block_size_x - offset_r, block_size_y - offset_c),
+                                                include_partials=False, overlap_shape=(-offset_r, -offset_c))
+
+        self._initialize(output_shape, label, image)
 
         label_nodata = label.nodata_value() if label else None
 
@@ -156,11 +162,8 @@ class Predictor(ABC):
 
             self._process_block(pred_image, sx, sy, labels, label_nodata)
 
-        output_rois = input_bounds.make_tile_rois(block_size_x - offset_r, block_size_y - offset_c,
-                                                  include_partials=False, overlap_amount=-offset_r)
-
         try:
-            image.process_rois(output_rois, callback_function, show_progress=self._show_progress)
+            image.process_rois(tiles, callback_function, show_progress=self._show_progress)
         except KeyboardInterrupt:
             self._abort()
             raise
@@ -278,7 +281,11 @@ class LabelPredictor(Predictor):
                 colormap[0:-1, :] = self._colormap
                 if labels is not None and label_nodata is not None:
                     pred_image[pred_image == -1] = self._colormap.shape[0]
-                self._output_image.write(colormap[pred_image], x, y)
+                result = np.zeros((pred_image.shape[0], pred_image.shape[1], self._colormap.shape[1]))
+                for i in range(prob_image.shape[2]):
+                    result += (colormap[i, :] * prob_image[:, :, i, np.newaxis]).astype(colormap.dtype)
+                self._output_image.write(result, x, y)
+                #self._output_image.write(colormap[pred_image], x, y)
             else:
                 self._output_image.write(pred_image, x, y)
 

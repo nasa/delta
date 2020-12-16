@@ -64,9 +64,9 @@ def main(options):
 
     if cpuOnly:
         with tf.device('/cpu:0'):
-            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects())
+            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
     else:
-        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects())
+        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
 
     colors = list(map(lambda x: x.color, config.dataset.classes))
     error_colors = np.array([[0x0, 0x0, 0x0],

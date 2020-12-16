@@ -240,7 +240,7 @@ class TiffImage(delta_image.DeltaImage):
                          self.data_type(), block_size_x, block_size_y,
                          nodata_value, self.metadata()) as writer:
             input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
-            output_rois = input_bounds.make_tile_rois(block_size_x, block_size_y, include_partials=True)
+            output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
 
             def callback_function(output_roi, data):
                 """Callback function to write the first channel to the output file."""

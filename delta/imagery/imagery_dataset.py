@@ -203,11 +203,11 @@ class ImageryDataset:
                     if self._chunk_shape:
                         assert tile_shape[0] >= self._chunk_shape[0] and \
                                tile_shape[1] >= self._chunk_shape[1], 'Tile too small.'
-                        tiles = img.tiles(tile_shape[0], tile_shape[1], min_width=self._chunk_shape[0],
-                                          min_height=self._chunk_shape[1], overlap=self._chunk_shape[0] - 1)
+                        tiles = img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
+                                          overlap=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1))
                     else:
                         # TODO: make overlap configurable for FCN
-                        tiles = img.tiles(tile_shape[0], tile_shape[1], overlap=0, partials=False, partials_overlap=True)
+                        tiles = img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True)
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
@@ -275,7 +275,8 @@ class ImageryDataset:
             if not self._chunk_shape:
                 img.set_shape([tile_shape[0], tile_shape[1]] + ([1] if is_labels else [self._num_bands]))
             return img
-        ret = ds_input.map(load_tile, num_parallel_calls=tf.data.experimental.AUTOTUNE).prefetch(tf.data.experimental.AUTOTUNE)
+        ret = ds_input.map(load_tile, num_parallel_calls=
+                           tf.data.experimental.AUTOTUNE).prefetch(tf.data.experimental.AUTOTUNE)
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
