@@ -45,7 +45,8 @@ def evaluate_model(model_fn, dataset, output_trim=0):
     predictor = predict.LabelPredictor(model, output_image=output_image)
     predictor.predict(npy.NumpyImage(test_image))
     # very easy test since we don't train much
-    assert sum(sum(np.logical_xor(output_image.buffer()[:,:,0], test_label))) < 200
+    print(sum(output_image.buffer()), sum(test_label))
+    assert sum(sum(np.logical_xor(output_image.buffer()[:,:], test_label))) < 200
 
 
 def train_ae(ae_fn, ae_dataset):
@@ -123,6 +124,6 @@ def test_fcn(dataset):
         #l = keras.layers.Softmax(axis=3)(l)
         m = keras.Model(inputs=inputs, outputs=l)
         return m
-    dataset.set_chunk_output_shapes(None, None)
+    dataset.set_chunk_output_shapes(None, (32, 32))
     dataset.set_tile_shape((32, 32))
     evaluate_model(model_fn, dataset)

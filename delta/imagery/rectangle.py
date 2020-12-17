@@ -157,7 +157,7 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_shape, overlap_shape=0, include_partials=True, min_shape=(0, 0),
+    def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0),
                        partials_overlap=False):
         '''
         Return a list of tiles encompassing the entire area of this Rectangle.

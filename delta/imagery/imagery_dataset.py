@@ -204,7 +204,7 @@ class ImageryDataset:
                         assert tile_shape[0] >= self._chunk_shape[0] and \
                                tile_shape[1] >= self._chunk_shape[1], 'Tile too small.'
                         tiles = img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
-                                          overlap=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1))
+                                          overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1))
                     else:
                         # TODO: make overlap configurable for FCN
                         tiles = img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True)
@@ -352,8 +352,8 @@ class ImageryDataset:
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
         if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
-        class_weights.append(0.0)
         if class_weights is not None:
+            class_weights.append(0.0)
             lookup = tf.constant(class_weights)
             ds = ds.map(lambda x, y: (x, y, tf.gather(lookup, tf.cast(y, tf.int32), axis=None)),
                         num_parallel_calls=tf.data.experimental.AUTOTUNE)
