@@ -32,8 +32,8 @@ class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
     """
 
-    def __init__(self, images, labels, output_shape, chunk_shape, chunk_stride=(1, 1),
-                 tile_shape=(256, 256)):
+    def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
+                 tile_shape=(256, 256), tile_overlap=None):
         """
         Initialize the dataset based on the specified image and label ImageSets
         """
@@ -44,10 +44,15 @@ class ImageryDataset:
         # Record some of the config values
         self.set_chunk_output_shapes(chunk_shape, output_shape)
         self._output_dims  = 1
-        self._chunk_stride = chunk_stride
+        if stride is None:
+            stride = (1, 1)
+        self._stride = stride
         self._data_type    = tf.float32
         self._label_type   = tf.uint8
         self._tile_shape = tile_shape
+        if tile_overlap is None:
+            tile_overlap = (0, 0)
+        self._tile_overlap = tile_overlap
 
         if labels:
             assert len(images) == len(labels)
@@ -207,7 +212,8 @@ class ImageryDataset:
                                           overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1))
                     else:
                         # TODO: make overlap configurable for FCN
-                        tiles = img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True)
+                        tiles = img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
+                                         overlap_shape=self._tile_overlap)
                 except Exception as e: #pylint: disable=W0703
                     print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
                           + '\nWill not load any tiles from this image')
@@ -288,7 +294,7 @@ class ImageryDataset:
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_shape[0], self._chunk_shape[1], 1] # Size of the chunks
-        strides = [1, self._chunk_stride[0], self._chunk_stride[1], 1] # Spacing between chunk starts
+        strides = [1, self._stride[0], self._stride[1], 1] # Spacing between chunk starts
         rates   = [1, 1, 1, 1]
         result  = tf.image.extract_patches(tf.expand_dims(image, 0), ksizes, strides, rates,
                                            padding='VALID')
@@ -311,7 +317,7 @@ class ImageryDataset:
             return labels
 
         ksizes  = [1, self._output_shape[0], self._output_shape[1], 1]
-        strides = [1, self._chunk_stride[0], self._chunk_stride[1], 1]
+        strides = [1, self._stride[0], self._stride[1], 1]
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding='VALID')
@@ -378,11 +384,13 @@ class ImageryDataset:
         Size of chunks used for inputs.
         """
         return self._chunk_shape
+
     def input_shape(self):
         """Input size for the network."""
         if self._chunk_shape:
             return (self._chunk_shape[0], self._chunk_shape[1], self._num_bands)
         return (None, None, self._num_bands)
+
     def output_shape(self):
         """Output size of blocks of labels"""
         if self._output_shape:
@@ -404,15 +412,19 @@ class ImageryDataset:
         """Returns tile size."""
         return self._tile_shape
 
+    def tile_overlap(self):
+        """Returns the amount tiles overlap, for FCNS."""
+        return self._tile_overlap
+
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
 
-    def __init__(self, images, chunk_shape, chunk_stride=(1, 1), tile_shape=(256, 256)):
+    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None):
         """
         The images are used as labels as well.
         """
         super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
-                         chunk_stride=chunk_stride)
+                         stride=stride, tile_overlap=tile_overlap)
         self._labels = self._images
         self._output_dims = self.num_bands()
 

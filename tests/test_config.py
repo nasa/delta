@@ -251,14 +251,14 @@ def test_validate():
     config_reset()
     test_str = '''
     train:
-      chunk_stride: -1
+      stride: -1
     '''
     with pytest.raises(AssertionError):
         config.load(yaml_str=test_str)
     config_reset()
     test_str = '''
     train:
-      chunk_stride: string
+      stride: string
     '''
     with pytest.raises(TypeError):
         config.load(yaml_str=test_str)
@@ -294,7 +294,7 @@ def test_train():
     config_reset()
     test_str = '''
     train:
-      chunk_stride: 2
+      stride: 2
       batch_size: 5
       steps: 10
       epochs: 3
@@ -307,7 +307,7 @@ def test_train():
     '''
     config.load(yaml_str=test_str)
     tc = config.train.spec()
-    assert tc.chunk_stride == (2, 2)
+    assert tc.stride == (2, 2)
     assert tc.batch_size == 5
     assert tc.steps == 10
     assert tc.epochs == 3

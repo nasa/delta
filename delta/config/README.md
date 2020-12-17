@@ -59,7 +59,7 @@ Train
 These options are used in the `delta train` command.
 
  * `network`: The nueral network to train. See the next section for details.
- * `chunk_stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
+ * `stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
    default of 1 to use all available training data.
  * `batch_size`: The number of chunks to train on in a group. May affect convergence speed. Larger
    batches allow higher training data throughput, but may encounter memory limitations.

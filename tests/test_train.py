@@ -32,7 +32,7 @@ from delta.ml import train, predict
 from delta.extensions.layers.pretrained import Pretrained
 from delta.ml.ml_config import TrainingSpec
 
-def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.5, min_correct=200):
+def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.5, max_wrong=200):
     model, _ = train.train(model_fn, dataset,
                            TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['sparse_categorical_accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
@@ -45,7 +45,7 @@ def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.5, min_correct=
     predictor = predict.LabelPredictor(model, output_image=output_image)
     predictor.predict(npy.NumpyImage(test_image))
     # very easy test since we don't train much
-    assert sum(sum(np.logical_xor(output_image.buffer()[:,:,0], test_label))) < min_correct
+    assert sum(sum(np.logical_xor(output_image.buffer()[:,:], test_label))) < max_wrong
 
 def train_ae(ae_fn, ae_dataset):
     model, _ = train.train(ae_fn, ae_dataset,
@@ -132,4 +132,4 @@ def test_fcn(dataset):
         assert d[1].shape == (32, 32, 1)
     assert count == 2
     # don't actually test correctness, this is not enough data for this size network
-    evaluate_model(model_fn, dataset, 0.0, 0)
+    evaluate_model(model_fn, dataset, threshold=0.0, max_wrong=10000)

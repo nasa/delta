@@ -52,14 +52,14 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     """
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 chunk_stride=None, optimizer='Adam'):
+                 stride=None, optimizer='Adam'):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
         self.validation = validation
         self.steps = steps
         self.metrics = metrics
-        self.chunk_stride = chunk_stride
+        self.stride = stride
         self.optimizer = optimizer
 
 class NetworkModelConfig(config.DeltaConfigComponent):
@@ -142,7 +142,7 @@ class ValidationConfig(config.DeltaConfigComponent):
                                                                 config.config.dataset.classes)
         return self.__labels
 
-def _validate_chunk_stride(stride, _):
+def _validate_stride(stride, _):
     if stride is None:
         return None
     if isinstance(stride, int):
@@ -155,7 +155,7 @@ def _validate_chunk_stride(stride, _):
 class TrainingConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('chunk_stride', (list, int, None), None, _validate_chunk_stride,
+        self.register_field('stride', (list, int, None), None, _validate_stride,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
         self.register_field('epochs', int, None, config.validate_positive,
                             'Number of times to repeat training on the dataset.')
@@ -194,7 +194,7 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            metrics=self._config_dict['metrics'],
                                            validation=validation,
                                            steps=self._config_dict['steps'],
-                                           chunk_stride=self._config_dict['chunk_stride'],
+                                           stride=self._config_dict['stride'],
                                            optimizer=self._config_dict['optimizer'])
         return self.__training
 
