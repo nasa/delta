@@ -24,7 +24,7 @@ import copy
 import functools
 from typing import Callable, List
 
-import tensorflow as tf
+import tensorflow
 import tensorflow.keras.layers
 import tensorflow.keras.losses
 import tensorflow.keras.models
@@ -132,6 +132,8 @@ def _make_model(model_dict, exposed_params):
     layer_dict = {}
     last = None
     layer_list = model_dict_copy['layers']
+    if layer_list is None:
+        raise Exception('No model specified!')
     first_layer_type = next(layer_list[0].keys().__iter__())
     # want code that checks if the if the first layer is not an Input
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
