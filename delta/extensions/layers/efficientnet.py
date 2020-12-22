@@ -27,7 +27,7 @@ from copy import deepcopy
 import math
 
 import tensorflow
-from tensorflow.keras.applications import imagenet_utils
+#from tensorflow.keras.applications import imagenet_utils
 
 from delta.config.extensions import register_layer
 
@@ -36,27 +36,27 @@ layers = tensorflow.keras.layers
 models = tensorflow.keras.models
 keras_utils = tensorflow.keras.utils
 
-BASE_WEIGHTS_PATH = (
-    'https://github.com/Callidior/keras-applications/'
-    'releases/download/efficientnet/')
-WEIGHTS_HASHES = {
-    'b0': ('e9e877068bd0af75e0a36691e03c072c',
-           '345255ed8048c2f22c793070a9c1a130'),
-    'b1': ('8f83b9aecab222a9a2480219843049a1',
-           'b20160ab7b79b7a92897fcb33d52cc61'),
-    'b2': ('b6185fdcd190285d516936c09dceeaa4',
-           'c6e46333e8cddfa702f4d8b8b6340d70'),
-    'b3': ('b2db0f8aac7c553657abb2cb46dcbfbb',
-           'e0cf8654fad9d3625190e30d70d0c17d'),
-    'b4': ('ab314d28135fe552e2f9312b31da6926',
-           'b46702e4754d2022d62897e0618edc7b'),
-    'b5': ('8d60b903aff50b09c6acf8eaba098e09',
-           '0a839ac36e46552a881f2975aaab442f'),
-    'b6': ('a967457886eac4f5ab44139bdd827920',
-           '375a35c17ef70d46f9c664b03b4437f2'),
-    'b7': ('e964fd6e26e9a4c144bcb811f2a10f20',
-           'd55674cc46b805f4382d18bc08ed43c1')
-}
+#BASE_WEIGHTS_PATH = (
+#    'https://github.com/Callidior/keras-applications/'
+#    'releases/download/efficientnet/')
+#WEIGHTS_HASHES = {
+#    'b0': ('e9e877068bd0af75e0a36691e03c072c',
+#           '345255ed8048c2f22c793070a9c1a130'),
+#    'b1': ('8f83b9aecab222a9a2480219843049a1',
+#           'b20160ab7b79b7a92897fcb33d52cc61'),
+#    'b2': ('b6185fdcd190285d516936c09dceeaa4',
+#           'c6e46333e8cddfa702f4d8b8b6340d70'),
+#    'b3': ('b2db0f8aac7c553657abb2cb46dcbfbb',
+#           'e0cf8654fad9d3625190e30d70d0c17d'),
+#    'b4': ('ab314d28135fe552e2f9312b31da6926',
+#           'b46702e4754d2022d62897e0618edc7b'),
+#    'b5': ('8d60b903aff50b09c6acf8eaba098e09',
+#           '0a839ac36e46552a881f2975aaab442f'),
+#    'b6': ('a967457886eac4f5ab44139bdd827920',
+#           '375a35c17ef70d46f9c664b03b4437f2'),
+#    'b7': ('e964fd6e26e9a4c144bcb811f2a10f20',
+#           'd55674cc46b805f4382d18bc08ed43c1')
+#}
 
 DEFAULT_BLOCKS_ARGS = [
     {'kernel_size': 3, 'repeats': 1, 'filters_in': 32, 'filters_out': 16,
@@ -247,7 +247,6 @@ def EfficientNet(width_coefficient,
                  activation_fn=swish,
                  blocks_args=DEFAULT_BLOCKS_ARGS,
                  model_name='efficientnet',
-                 include_top=True,
                  weights='imagenet',
                  input_tensor=None,
                  input_shape=None,
@@ -342,137 +341,137 @@ def EfficientNet(width_coefficient,
     model = models.Model(inputs, x, name=name if name is not None else model_name)
 
     # Load weights.
-    if weights == 'imagenet':
-        if include_top:
-            file_suff = '_weights_tf_dim_ordering_tf_kernels_autoaugment.h5'
-            file_hash = WEIGHTS_HASHES[model_name[-2:]][0]
-        else:
-            file_suff = '_weights_tf_dim_ordering_tf_kernels_autoaugment_notop.h5'
-            file_hash = WEIGHTS_HASHES[model_name[-2:]][1]
-        file_name = model_name + file_suff
-        weights_path = keras_utils.get_file(file_name,
-                                            BASE_WEIGHTS_PATH + file_name,
-                                            cache_subdir='models',
-                                            file_hash=file_hash)
-        model.load_weights(weights_path, by_name=True, skip_mismatch=True)
-    elif weights is not None:
+    #if weights == 'imagenet':
+    #    if include_top:
+    #        file_suff = '_weights_tf_dim_ordering_tf_kernels_autoaugment.h5'
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][0]
+    #    else:
+    #        file_suff = '_weights_tf_dim_ordering_tf_kernels_autoaugment_notop.h5'
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][1]
+    #    file_name = model_name + file_suff
+    #    weights_path = keras_utils.get_file(file_name,
+    #                                        BASE_WEIGHTS_PATH + file_name,
+    #                                        cache_subdir='models',
+    #                                        file_hash=file_hash)
+    #    model.load_weights(weights_path, by_name=True, skip_mismatch=True)
+    if weights is not None:
         model.load_weights(weights)
 
     return model
 
 
-def EfficientNetB0(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.0, 1.0,
-                        model_name='efficientnet-b0',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB1(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.0, 1.1,
-                        model_name='efficientnet-b1',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB2(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.1, 1.2,
-                        model_name='efficientnet-b2',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB3(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.2, 1.4,
-                        model_name='efficientnet-b3',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB4(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.4, 1.8,
-                        model_name='efficientnet-b4',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB5(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.6, 2.2,
-                        model_name='efficientnet-b5',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB6(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(1.8, 2.6,
-                        model_name='efficientnet-b6',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
-
-
-def EfficientNetB7(include_top=True,
-                   input_tensor=None,
-                   input_shape=None,
-                   **kwargs):
-    return EfficientNet(2.0, 3.1,
-                        model_name='efficientnet-b7',
-                        include_top=include_top,
-                        input_tensor=input_tensor, input_shape=input_shape,
-                        **kwargs)
+#def EfficientNetB0(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.0, 1.0,
+#                        model_name='efficientnet-b0',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB1(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.0, 1.1,
+#                        model_name='efficientnet-b1',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB2(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.1, 1.2,
+#                        model_name='efficientnet-b2',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB3(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.2, 1.4,
+#                        model_name='efficientnet-b3',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB4(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.4, 1.8,
+#                        model_name='efficientnet-b4',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB5(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.6, 2.2,
+#                        model_name='efficientnet-b5',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB6(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.8, 2.6,
+#                        model_name='efficientnet-b6',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB7(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(2.0, 3.1,
+#                        model_name='efficientnet-b7',
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
 
 def DeltaEfficientNet(input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None):
-    return EfficientNet(width_coefficient, depth_coefficient, include_top=False,
+    return EfficientNet(width_coefficient, depth_coefficient,
                         input_shape=input_shape, weights=None, name=name)
 
-def preprocess_input(x, data_format=None, **kwargs):
-    """Preprocesses a numpy array encoding a batch of images.
+#def preprocess_input(x, data_format=None, **kwargs):
+#    """Preprocesses a numpy array encoding a batch of images.
+#
+#    # Arguments
+#        x: a 3D or 4D numpy array consists of RGB values within [0, 255].
+#        data_format: data format of the image tensor.
+#
+#    # Returns
+#        Preprocessed array.
+#    """
+#    return imagenet_utils.preprocess_input(x, data_format,
+#                                           mode='torch', **kwargs)
 
-    # Arguments
-        x: a 3D or 4D numpy array consists of RGB values within [0, 255].
-        data_format: data format of the image tensor.
 
-    # Returns
-        Preprocessed array.
-    """
-    return imagenet_utils.preprocess_input(x, data_format,
-                                           mode='torch', **kwargs)
-
-
-setattr(EfficientNetB0, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB1, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB2, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB3, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB4, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
-setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB0, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB1, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB2, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB3, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB4, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB5, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB6, '__doc__', EfficientNet.__doc__)
+#setattr(EfficientNetB7, '__doc__', EfficientNet.__doc__)
 
 register_layer('EfficientNet', DeltaEfficientNet)

@@ -92,27 +92,21 @@ def get_scene_info(path):
     output['date'  ] = parts[3]
     return output
 
+__LANDSAT_BANDS_DICT = {
+  '5': [1, 2, 3, 4, 5, 6, 7],
+  '7': [1, 2, 3, 4, 5, 6, 7], # Don't forget the extra thermal band!
+  '8': [1, 2, 3, 4, 5, 6, 7, 9]
+}
+
 def _get_landsat_bands_to_use(sensor_name):
     """Return the list of one-based band indices that we are currently
        using to process the given landsat sensor.
     """
 
-    # For now just the 30 meter bands, in original order.
-    LS5_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7]
-    LS7_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7] # Don't forget the extra thermal band!
-    LS8_DESIRED_BANDS = [1, 2, 3, 4, 5, 6, 7, 9]
-
-    if '5' in sensor_name:
-        bands = LS5_DESIRED_BANDS
-    else:
-        if '7' in sensor_name:
-            bands = LS7_DESIRED_BANDS
-        else:
-            if '8' in sensor_name:
-                bands = LS8_DESIRED_BANDS
-            else:
-                raise Exception('Unknown landsat type: ' + sensor_name)
-    return bands
+    for (k, v) in __LANDSAT_BANDS_DICT.items():
+        if k in sensor_name:
+            return v
+    raise Exception('Unknown landsat type: ' + sensor_name)
 
 def _get_band_paths(mtl_data, folder, bands_to_use=None):
     """Return full paths to all band files that should be in the folder.
