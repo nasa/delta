@@ -104,13 +104,6 @@ def test_fcn(dataset):
 
     assert config.general.gpus() == -1
 
-    test_str = '''
-    io:
-      tile_size: [32, 32]
-    train:
-      batch_size: 50
-    '''
-    config.load(yaml_str=test_str)
     def model_fn():
         inputs = keras.layers.Input((None, None, 1))
         conv = keras.layers.Conv2D(filters=9, kernel_size=2, padding='same', strides=1)(inputs)
