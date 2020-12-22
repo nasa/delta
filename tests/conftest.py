@@ -17,16 +17,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#pylint:disable=redefined-outer-name
+#pylint:disable=redefined-outer-name,wrong-import-position
 import os
 import random
 import shutil
 import sys
 import tempfile
+import warnings
 import zipfile
 
 import numpy as np
 import pytest
+
+# conftest.py loaded before pytest.ini warning filters apparently
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='osgeo')
 
 from delta.config import config
 from delta.extensions.sources import tiff
@@ -113,6 +117,40 @@ def worldview_filenames(original_file):
     z.write(image_path, arcname=image_name + '.tif')
     z.write(imd_path, arcname=os.path.join('vendor_metadata', imd_name))
     z.close()
+
+    yield (zip_path, label_path)
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="session")
+def landsat_filenames(original_file):
+    tmpdir = tempfile.mkdtemp()
+    image_name = 'L1_IGNORE_AAABBB_DATE'
+    mtl_name = image_name + '_MTL.txt'
+    mtl_path = os.path.join(tmpdir, mtl_name)
+    zip_path = os.path.join(tmpdir, image_name + '.zip')
+    # not really a valid file but this is all we need, only one band in image
+    with open(mtl_path, 'a') as f:
+        f.write('SPACECRAFT_ID = LANDSAT_1\n')
+        f.write('SUN_ELEVATION = 5.8\n')
+        f.write('FILE_NAME_BAND_1 = 1.tiff\n')
+        f.write('RADIANCE_MULT_BAND_1 = 2.0\n')
+        f.write('RADIANCE_ADD_BAND_1 = 2.0\n')
+        f.write('REFLECTANCE_MULT_BAND_1 = 2.0\n')
+        f.write('REFLECTANCE_ADD_BAND_1 = 2.0\n')
+        f.write('K1_CONSTANT_BAND_1 = 2.0\n')
+        f.write('K2_CONSTANT_BAND_1 = 2.0\n')
+
+    image_path = os.path.join(tmpdir, '1.tiff')
+    tiff.TiffImage(original_file[0]).save(image_path)
+
+    z = zipfile.ZipFile(zip_path, mode='x')
+    z.write(image_path, arcname='1.tiff')
+    z.write(mtl_path, arcname=mtl_name)
+    z.close()
+
+    label_path = os.path.join(tmpdir, image_name + '_label.tiff')
+    tiff.TiffImage(original_file[1]).save(label_path)
 
     yield (zip_path, label_path)
 

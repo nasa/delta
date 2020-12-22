@@ -32,26 +32,6 @@ from . import tiff
 # Use this for all the output Landsat data we write.
 OUTPUT_NODATA = 0.0
 
-def _allocate_bands_for_spacecraft(landsat_number):
-    """Set up value storage for _parse_mtl_file()"""
-
-    BAND_COUNTS = {'5':7, '7':9, '8':11}
-
-    num_bands = BAND_COUNTS[landsat_number]
-    data = dict()
-
-    # There are fewer K constants but we store in the the
-    # appropriate band indices.
-    data['FILE_NAME'       ] = [''] * num_bands
-    data['RADIANCE_MULT'   ] = [None] * num_bands
-    data['RADIANCE_ADD'    ] = [None] * num_bands
-    data['REFLECTANCE_MULT'] = [None] * num_bands
-    data['REFLECTANCE_ADD' ] = [None] * num_bands
-    data['K1_CONSTANT'     ] = [None] * num_bands
-    data['K2_CONSTANT'     ] = [None] * num_bands
-
-    return data
-
 def _parse_mtl_file(mtl_path):
     """Parse out the needed values from the MTL file"""
 
@@ -63,16 +43,10 @@ def _parse_mtl_file(mtl_path):
                     'REFLECTANCE_MULT', 'REFLECTANCE_ADD',
                     'K1_CONSTANT', 'K2_CONSTANT']
 
-    data = None
+    data = dict()
     with open(mtl_path, 'r') as f:
         for line in f:
-
             line = line.replace('"','') # Clean up
-
-            # Get the spacecraft ID and allocate storage
-            if 'SPACECRAFT_ID = LANDSAT_' in line:
-                spacecraft_id = line.split('_')[-1].strip()
-                data = _allocate_bands_for_spacecraft(spacecraft_id)
 
             if 'SUN_ELEVATION = ' in line:
                 value = line.split('=')[-1].strip()
@@ -97,6 +71,8 @@ def _parse_mtl_file(mtl_path):
                     except ValueError: # Means this is not a proper match
                         break
 
+                    if tag not in data:
+                        data[tag] = dict()
                     if tag == 'FILE_NAME':
                         data[tag][band] = value # String
                     else:
@@ -177,6 +153,9 @@ def _find_mtl_file(folder):
 class LandsatImage(tiff.TiffImage):
     """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
 
+    def __init__(self, paths, nodata_value=None, bands=None):
+        self._bands = bands
+        super().__init__(paths, nodata_value)
 
     def _prep(self, paths):
         """Prepares a Landsat file from the archive for processing.
@@ -209,7 +188,7 @@ class LandsatImage(tiff.TiffImage):
             print('Unpacking tar file ' + paths + ' to folder ' + untar_folder)
             utilities.unpack_to_folder(paths, untar_folder)
 
-        bands_to_use = _get_landsat_bands_to_use(self._sensor)
+        bands_to_use = _get_landsat_bands_to_use(self._sensor) if self._bands is None else self._bands
 
         # Generate all the band file names (the MTL file is not returned)
         self._mtl_path = _find_mtl_file(untar_folder)
