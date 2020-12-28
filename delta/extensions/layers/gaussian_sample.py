@@ -69,4 +69,4 @@ class GaussianSample(DeltaLayer):
 
         return result
 
-register_layer('GuassianSample', GaussianSample)
+register_layer('GaussianSample', GaussianSample)
