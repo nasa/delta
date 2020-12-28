@@ -19,11 +19,13 @@ if args.size is not None:
     assert len(t) == 2
     args.size = (int(t[0]), int(t[1]))
 
-#print('Configuration File')
-#with h5py.File(args.model_name, 'r') as f:
-#    if 'delta' not in f.attrs:
-#        print(' - Not Available\n')
-#    else:
-#        print('\n' + f.attrs['delta'] + '\n')
+print('Configuration File')
+with h5py.File(args.model_name, 'r') as f:
+    if 'delta' not in f.attrs:
+        print(' - Not Available\n')
+    else:
+        print('\n' + f.attrs['delta'] + '\n')
+
+print('Network')
 a = tf.keras.models.load_model(args.model_name, custom_objects=custom_objects(), compile=False)
 print_network(a, args.size)
