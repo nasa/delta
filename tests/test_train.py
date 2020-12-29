@@ -90,6 +90,7 @@ def test_pretrained(dataset, ae_dataset):
         pretrained_layer = Pretrained(ae_model, 3, trainable=False)
         assert pretrained_layer.get_config()['filename'] == ae_model
         assert pretrained_layer.get_config()['encoding_layer'] == 3
+        assert pretrained_layer.shape().as_list() == [None, 10, 10, 1]
         pretrained_layer = pretrained_layer(inputs)
         up_samp1 = keras.layers.UpSampling2D((2,2))(pretrained_layer)
         conv1 = keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same')(up_samp1)

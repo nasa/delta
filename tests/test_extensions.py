@@ -37,3 +37,37 @@ def test_gaussian_sample():
     assert n.get_config()['kl_loss']
     result = n((tf.zeros((1, 3, 3, 3)), tf.ones((1, 3, 3, 3))))
     assert result.shape == (1, 3, 3, 3)
+    assert isinstance(n.callback(), tf.keras.callbacks.Callback)
+
+def test_ms_ssim():
+    l = ext.loss('ms_ssim')
+    assert l(tf.zeros((1, 180, 180, 1)), tf.zeros((1, 180, 180, 1))) == 0.0
+    l = ext.loss('ms_ssim_mse')
+    assert l(tf.zeros((1, 180, 180, 1)), tf.zeros((1, 180, 180, 1))) == 0.0
+
+def test_mapped():
+    mcce = ext.loss('MappedCategoricalCrossentropy')
+    z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)
+    o = tf.ones((3, 3, 3, 3), dtype=tf.float32)
+    assert tf.reduce_sum(mcce([0, 0]).call(z, o)) == 0.0
+    assert tf.reduce_sum(mcce([1, 0]).call(z, o)) > 10.0
+
+def test_sparse_recall():
+    m0 = ext.metric('SparseRecall')(0)
+    m1 = ext.metric('SparseRecall')(1)
+    z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)
+    o = tf.ones((3, 3, 3, 3), dtype=tf.int32)
+
+    m0.reset_state()
+    m1.reset_state()
+    m0.update_state(z, z)
+    m1.update_state(z, z)
+    assert m0.result() == 1.0
+    assert m1.result() == 0.0
+
+    m0.reset_state()
+    m1.reset_state()
+    m0.update_state(o, z)
+    m1.update_state(o, z)
+    assert m0.result() == 0.0
+    assert m1.result() == 0.0

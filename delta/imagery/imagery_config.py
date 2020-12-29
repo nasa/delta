@@ -66,6 +66,12 @@ class ImageSet:
         """
         return self._nodata_value
 
+    def set_nodata_value(self, nodata):
+        """
+        Set the pixel value to disregard.
+        """
+        self._nodata_value = nodata
+
     def load(self, index):
         img = image_reader(self.type())(self[index], self.nodata_value())
         if self._preprocess:

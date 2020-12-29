@@ -23,7 +23,7 @@ import pytest
 import numpy as np
 
 from delta.imagery import rectangle
-from delta.extensions.sources.tiff import TiffImage, write_tiff
+from delta.extensions.sources.tiff import TiffImage, TiffWriter, write_tiff
 
 def check_landsat_tiff(filename):
     '''
@@ -122,6 +122,17 @@ def test_geotiff_write(tmpdir):
     filename = str(tmpdir / 'test.tiff')
 
     write_tiff(filename, numpy_image)
+
+    img = TiffImage(filename)
+    data = np.squeeze(img.read())
+
+    assert numpy_image.shape == data.shape
+    assert np.allclose(numpy_image, data)
+
+    writer = TiffWriter(filename)
+    writer.initialize((3, 5, 1), numpy_image.dtype)
+    writer.write(numpy_image, 0, 0)
+    writer.close()
 
     img = TiffImage(filename)
     data = np.squeeze(img.read())

@@ -24,11 +24,23 @@ import numpy as np
 import conftest
 
 from delta.config import config
-from delta.imagery import imagery_dataset
+from delta.imagery import imagery_dataset, rectangle
+
+def test_basics(dataset_block_label):
+    """
+    Tests basic methods of a dataset.
+    """
+    d = dataset_block_label
+    assert d.chunk_shape() == (3, 3)
+    assert d.input_shape() == (3, 3, 1)
+    assert d.output_shape() == (3, 3, 1)
+    assert len(d.image_set()) == len(d.label_set())
+    assert d.tile_shape() == [256, 1024]
+    assert d.tile_overlap() == (0, 0)
 
 def test_block_label(dataset_block_label):
     """
-    Same as previous test but with dataset that gives labels as 3x3 blocks.
+    Tests basic functionality of a dataset on 3x3 blocks.
     """
     num_data = 0
     for image in dataset_block_label.data():
@@ -67,6 +79,59 @@ def test_block_label(dataset_block_label):
         v8 = image[2][2][0] == 0
         if v6 or v7 or v8:
             assert label[1, 1] == 0
+
+def test_nodata(dataset_block_label):
+    """
+    Tests that this filters out blocks where labels are all 0.
+    """
+    dataset_block_label.label_set().set_nodata_value(0)
+    try:
+        ds = dataset_block_label.dataset()
+        for (_, label) in ds.take(100):
+            assert np.sum(label) > 0
+    finally:
+        dataset_block_label.label_set().set_nodata_value(None)
+
+def test_class_weights(dataset_block_label):
+    """
+    Tests that this filters out blocks where labels are all 0.
+    """
+    lookup = np.asarray([1.0, 2.0])
+    ds = dataset_block_label.dataset(class_weights=[1.0, 2.0])
+    for (_, label, weights) in ds.take(100):
+        assert np.all(lookup[label.numpy()] == weights)
+
+def test_rectangle():
+    """
+    Tests the Rectangle class basics.
+    """
+    r = rectangle.Rectangle(5, 10, 15, 30)
+    assert r.min_x == 5
+    assert r.min_y == 10
+    assert r.max_x == 15
+    assert r.max_y == 30
+    assert r.bounds() == (5, 15, 10, 30)
+    assert r.has_area()
+    assert r.get_min_coord() == (5, 10)
+    assert r.perimeter() == 60
+    assert r.area() == 200
+    r.shift(-5, -10)
+    assert r.bounds() == (0, 10, 0, 20)
+    r.scale_by_constant(2, 1)
+    assert r.bounds() == (0, 20, 0, 20)
+    r.expand(0, 0, -10, -5)
+    assert r.bounds() == (0, 10, 0, 15)
+    r.expand_to_contain_pt(14, 14)
+    assert r.bounds() == (0, 15, 0, 15)
+
+    r2 = rectangle.Rectangle(-5, -5, 5, 10)
+    assert r.get_intersection(r2).bounds() == (0, 5, 0, 10)
+    assert not r.contains_rect(r2)
+    assert r.overlaps(r2)
+    assert not r.contains_pt(-1, -1)
+    assert r2.contains_pt(-1, -1)
+    r.expand_to_contain_rect(r2)
+    assert r.bounds() == (-5, 15, -5, 15)
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):

@@ -50,7 +50,7 @@ class NumpyImage(delta_image.DeltaImage):
         """
         if buf is None:
             buf = np.zeros(shape=(roi.width(), roi.height(), self.num_bands() ), dtype=self._data.dtype)
-        (min_x, max_x, min_y, max_y) = roi.get_bounds()
+        (min_x, max_x, min_y, max_y) = roi.bounds()
         buf = self._data[min_y:max_y,min_x:max_x,:]
         return buf
 

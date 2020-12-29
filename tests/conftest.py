@@ -47,7 +47,7 @@ tf.get_logger().setLevel('ERROR')
 
 def config_reset():
     """
-    Rests the configuration with useful default options for testing.
+    Resets the configuration with useful default options for testing.
     """
     config.reset() # don't load any user files
     config.load(yaml_str=

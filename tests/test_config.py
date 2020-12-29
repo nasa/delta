@@ -258,7 +258,7 @@ def test_validate():
     config_reset()
     test_str = '''
     train:
-      stride: string
+      stride: 0.5
     '''
     with pytest.raises(TypeError):
         config.load(yaml_str=test_str)
@@ -372,3 +372,36 @@ def test_argparser():
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
+
+def test_argparser_config_file(tmp_path):
+    config_reset()
+
+    test_str = '''
+    tensorboard:
+      enabled: false
+      dir: nonsense
+    '''
+    p = tmp_path / "temp.yaml"
+    p.write_text(test_str)
+
+    parser = argparse.ArgumentParser()
+    config.setup_arg_parser(parser)
+    options = parser.parse_args(['--config', str(p)])
+    config.initialize(options, [])
+
+    assert not config.tensorboard.enabled()
+    assert config.tensorboard.dir() == 'nonsense'
+
+def test_missing_file():
+    config_reset()
+
+    parser = argparse.ArgumentParser()
+    config.setup_arg_parser(parser)
+    options = parser.parse_args(['--config', 'garbage.yaml'])
+    with pytest.raises(FileNotFoundError):
+        config.initialize(options, [])
+
+def test_dump():
+    config_reset()
+
+    assert config.to_dict() == yaml.load(config.export())

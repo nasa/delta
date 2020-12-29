@@ -128,7 +128,7 @@ class ImageryDataset:
                     with portalocker.Lock(log_path, 'w', timeout=300) as f:
                         f.write("0 0") # No need to read if we reset the count
 
-    def _load_tensor_imagery(self, is_labels, image_index, bbox):
+    def _load_tensor_imagery(self, is_labels, image_index, bbox): # pragma: no cover
         """Loads a single image as a tensor."""
         data = self._labels if is_labels else self._images
 
@@ -166,7 +166,7 @@ class ImageryDataset:
         """Return a Dataset generator object which will cycle through all tiles in all input images"""
 
         # Define a local generator function to be passed into a TF dataset function.
-        def tile_generator():
+        def tile_generator(): # pragma: no cover
 
             # Get a list of input image indices in a random order
             num_images = len(self._images)
@@ -274,7 +274,7 @@ class ImageryDataset:
         """
         ds_input = self._tile_images()
         tile_shape = self._tile_shape
-        def load_tile(image_index, x1, y1, x2, y2):
+        def load_tile(image_index, x1, y1, x2, y2): # pragma: no cover
             img = tf.py_function(functools.partial(self._load_tensor_imagery,
                                                    is_labels),
                                  [image_index, [x1, y1, x2, y2]], data_type)
@@ -290,7 +290,7 @@ class ImageryDataset:
 
         return ret
 
-    def _chunk_image(self, image):
+    def _chunk_image(self, image): # pragma: no cover
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_shape[0], self._chunk_shape[1], 1] # Size of the chunks
@@ -303,7 +303,7 @@ class ImageryDataset:
 
         return result
 
-    def _reshape_labels(self, labels):
+    def _reshape_labels(self, labels): # pragma: no cover
         """Reshape the labels to account for the chunking process."""
         if self._chunk_shape:
             w = (self._chunk_shape[0] - self._output_shape[0]) // 2

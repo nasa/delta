@@ -155,9 +155,8 @@ class DeltaConfigComponent:
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
-            except:
-                print('Value %s for %s is invalid.' % (value, name))
-                raise
+            except Exception as e:
+                raise AssertionError('Value %s for %s is invalid.' % (value, name)) from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
@@ -217,9 +216,8 @@ class DeltaConfig(DeltaConfigComponent):
         """
         base_path = None
         if yaml_file:
-            #print("Loading config file: " + yaml_file)
             if not os.path.exists(yaml_file):
-                raise Exception('Config file does not exist: ' + yaml_file)
+                raise FileNotFoundError('Config file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))

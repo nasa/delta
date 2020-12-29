@@ -32,7 +32,14 @@ from delta.imagery import delta_image, rectangle
 gdal.SetConfigOption('CPL_LOG', '/dev/null')
 gdal.UseExceptions()
 
-
+_GDAL_TO_NUMPY_TYPES = {
+    gdal.GDT_Byte:    np.dtype(np.uint8),
+    gdal.GDT_UInt16:  np.dtype(np.uint16),
+    gdal.GDT_UInt32:  np.dtype(np.uint32),
+    gdal.GDT_Float32: np.dtype(np.float32),
+    gdal.GDT_Float64: np.dtype(np.float64)
+}
+_NUMPY_TO_GDAL_TYPES = {v: k for k, v in _GDAL_TO_NUMPY_TYPES.items()}
 
 class TiffImage(delta_image.DeltaImage):
     """For geotiffs."""
@@ -131,16 +138,8 @@ class TiffImage(delta_image.DeltaImage):
     def numpy_type(self, band=0):
         self.__asert_open()
         dtype = self.data_type(band)
-        if dtype == gdal.GDT_Byte:
-            return np.uint8
-        if dtype == gdal.GDT_UInt16:
-            return np.uint16
-        if dtype == gdal.GDT_UInt32:
-            return np.uint32
-        if dtype == gdal.GDT_Float32:
-            return np.float32
-        if dtype == gdal.GDT_Float64:
-            return np.float64
+        if dtype in _GDAL_TO_NUMPY_TYPES:
+            return _GDAL_TO_NUMPY_TYPES[dtype]
         raise Exception('Unrecognized gdal data type: ' + str(dtype))
 
     def bytes_per_pixel(self, band=0):
@@ -148,14 +147,7 @@ class TiffImage(delta_image.DeltaImage):
         Returns the number of bytes per pixel
         '''
         self.__asert_open()
-        results = {
-            gdal.GDT_Byte:    1,
-            gdal.GDT_UInt16:  2,
-            gdal.GDT_UInt32:  4,
-            gdal.GDT_Float32: 4,
-            gdal.GDT_Float64: 8
-        }
-        return results.get(self.data_type(band))
+        return gdal.GetDataTypeSize(self.data_type(band)) // 8
 
     def block_size(self):
         """Returns (block height, block width)"""
@@ -272,20 +264,8 @@ class RGBAImage(TiffImage):
         return [output_path]
 
 def numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
-    if dtype == np.uint8:
-        return gdal.GDT_Byte
-    if dtype == np.uint16:
-        return gdal.GDT_UInt16
-    if dtype == np.uint32:
-        return gdal.GDT_UInt32
-    if dtype == np.int16:
-        return gdal.GDT_Int16
-    if dtype == np.int32:
-        return gdal.GDT_Int32
-    if dtype == np.float32:
-        return gdal.GDT_Float32
-    if dtype == np.float64:
-        return gdal.GDT_Float64
+    if dtype in _NUMPY_TO_GDAL_TYPES:
+        return _NUMPY_TO_GDAL_TYPES[dtype]
     raise Exception('Unrecognized numpy data type: ' + str(dtype))
 
 def write_tiff(output_path, data, metadata=None):
@@ -360,12 +340,6 @@ class _TiffWriter:
         if self._handle is not None:
             self._handle.FlushCache()
             self._handle = None
-
-    def get_size(self):
-        return (self._width, self._height)
-
-    def get_tile_size(self):
-        return (self._tile_width, self._tile_height)
 
     def get_num_tiles(self):
         num_x = int(math.ceil(self._width  / self._tile_width))

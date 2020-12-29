@@ -53,5 +53,13 @@ def test_landsat_image(landsat_image):
     assert landsat_image.k1_constant()[0] == 2.0
     assert landsat_image.k2_constant()[0] == 2.0
     assert landsat_image.sun_elevation() == 5.8
+
     landsat.toa_preprocess(landsat_image, calc_reflectance=True)
+    landsat_image.read()
+    assert buf.shape == (64, 32, 1)
+    assert buf[0, 0, 0] == 0.0
+
     landsat.toa_preprocess(landsat_image)
+    landsat_image.read()
+    assert buf.shape == (64, 32, 1)
+    assert buf[0, 0, 0] == 0.0

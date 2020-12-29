@@ -36,7 +36,7 @@ def _parse_mtl_file(mtl_path):
     """Parse out the needed values from the MTL file"""
 
     if not os.path.exists(mtl_path):
-        raise Exception('MTL file not found: ' + mtl_path)
+        raise FileNotFoundError('MTL file not found: ' + mtl_path)
 
     # These are all the values we want to read in
     DESIRED_TAGS = ['FILE_NAME', 'RADIANCE_MULT', 'RADIANCE_ADD',
