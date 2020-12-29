@@ -375,7 +375,9 @@ class ImageryDataset:
             assert (chunk_shape[0] % 2) == (chunk_shape[1] % 2) == \
                    (output_shape[0] % 2) == (output_shape[1] % 2), 'Chunk and output shapes must both be even or odd.'
         if output_shape:
-            assert len(output_shape) == 2, 'Output must be two dimensional.'
+            assert len(output_shape) == 2 or len(output_shape) == 3, 'Output must be two or three dimensional.'
+            if len(output_shape) == 3:
+                output_shape = output_shape[0:2]
         self._chunk_shape = chunk_shape
         self._output_shape = output_shape
 
@@ -415,6 +417,9 @@ class ImageryDataset:
     def tile_overlap(self):
         """Returns the amount tiles overlap, for FCNS."""
         return self._tile_overlap
+
+    def stride(self):
+        return self._stride
 
 class AutoencoderDataset(ImageryDataset):
     """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
