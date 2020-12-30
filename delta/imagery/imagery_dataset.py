@@ -199,9 +199,12 @@ class ImageryDataset:
             buf = cur_buf.result()
             (rect, sub_tiles) = tiles[c]
             for s in sub_tiles:
-                t = copy.copy(s)
-                t.shift(rect.min_x, rect.min_y)
-                yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
+                if preprocess:
+                    t = copy.copy(s)
+                    t.shift(rect.min_x, rect.min_y)
+                    yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
+                else:
+                    yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
 
             if not is_labels: # update access count per row
                 self._update_access_count_file(self._images[i], need_check=False)
