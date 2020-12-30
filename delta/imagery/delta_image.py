@@ -74,6 +74,12 @@ class DeltaImage(ABC):
         """
         self.__preprocess_function = callback
 
+    def get_preprocess(self):
+        """
+        Returns the preprocess function.
+        """
+        return self.__preprocess_function
+
     def nodata_value(self):
         """
         Returns the value of pixels to treat as nodata.
@@ -119,11 +125,12 @@ class DeltaImage(ABC):
         return self.size()[1]
 
     def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
-              partials_overlap: bool=False) -> Iterator[rectangle.Rectangle]:
+              partials_overlap: bool=False, by_block=False) -> Iterator[rectangle.Rectangle]:
         """Generator to yield ROIs for the image."""
         input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
-                                           min_shape=min_shape, partials_overlap=partials_overlap)
+                                           min_shape=min_shape, partials_overlap=partials_overlap,
+                                           by_block=by_block)
 
     def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -> Iterator[rectangle.Rectangle]:
         """
