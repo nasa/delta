@@ -26,7 +26,6 @@ import numpy as np
 import tensorflow as tf
 
 from delta.config import config
-from delta.imagery import rectangle
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -132,7 +131,7 @@ class ImageryDataset:
         """Loads a single image as a tensor."""
         data = self._labels if is_labels else self._images
 
-        file_path = self._images[image_index.numpy()]
+        file_path = self._images[image_index]
         log_path  = self._get_image_read_log_path(file_path)
         if log_path:
             (need_to_check, count) = self._read_access_count_file(log_path)
@@ -141,7 +140,7 @@ class ImageryDataset:
                 # Read this file too many times in a previous run, skip the image file
                 # and leave the access file alone so we keep skipping it.
                 if config.general.verbose():
-                    print('Skipping index ' + str(image_index.numpy())
+                    print('Skipping index ' + str(image_index)
                           +' with count ' + str(count) + ' -> ' + file_path)
                 return np.zeros(shape=(0,0,0), dtype=np.float32)
 
@@ -149,11 +148,10 @@ class ImageryDataset:
                 self._update_access_count_file(log_path, need_check=False, count=count)
 
         try:
-            image = data.load(image_index.numpy())
-            rect = rectangle.Rectangle(int(bbox[0]), int(bbox[1]), int(bbox[2]), int(bbox[3]))
-            r = image.read(rect)
+            image = data.load(image_index)
+            r = image.read(bbox)
         except Exception as e: #pylint: disable=W0703
-            print('Caught exception loading tile from image: ' + data[image_index.numpy()] + ' -> ' + str(e)
+            print('Caught exception loading tile from image: ' + data[image_index] + ' -> ' + str(e)
                   + '\nSkipping tile: ' + str(bbox))
             if config.io.stop_on_input_error():
                 print('Aborting processing, set --bypass-input-errors to bypass this error.')
@@ -267,28 +265,86 @@ class ImageryDataset:
         return tf.data.Dataset.from_generator(tile_generator,
                                               (tf.int32, tf.int32, tf.int32, tf.int32, tf.int32))
 
+    def _tile_generator(self, i, is_labels):
+        try:
+            i = int(i)
+            # If we need to skip this file because of the read count, no need to look up tiles.
+            if self._resume_mode:
+                file_path = self._images[i]
+                log_path  = self._get_image_read_log_path(file_path)
+                if log_path:
+                    if config.general.verbose():
+                        print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
+                    (need_to_check, count) = self._read_access_count_file(log_path)
+                    if need_to_check and (count > config.io.resume_cutoff()): #pylint: disable=R1705
+                        if config.general.verbose():
+                            print('Skipping index ' + str(i) + ' tile gen with count '
+                                  + str(count) + ' -> ' + file_path)
+                        return
+                    else:
+                        if config.general.verbose():
+                            print('Computing tile list for index ' + str(i) + ' with count '
+                                  + str(count) + ' -> ' + file_path)
+                else:
+                    if config.general.verbose():
+                        print('No read log file for index ' + str(i))
+
+            img = self._images.load(i)
+
+            if self._labels: # If we have labels make sure they are the same size as the input images
+                label = self._labels.load(i)
+                if label.size() != img.size():
+                    raise AssertionError('Label file ' + self._labels[i] + ' with size ' + str(label.size())
+                                         + ' does not match input image size of ' + str(img.size()))
+            tile_shape = self._tile_shape
+            if self._chunk_shape:
+                assert tile_shape[0] >= self._chunk_shape[0] and \
+                       tile_shape[1] >= self._chunk_shape[1], 'Tile too small.'
+                tiles = img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
+                                  overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1))
+            else:
+                tiles = img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
+                                 overlap_shape=self._tile_overlap)
+        except Exception as e: #pylint: disable=W0703
+            print('Caught exception tiling image: ' + self._images[i] + ' -> ' + str(e)
+                  + '\nWill not load any tiles from this image')
+            if config.io.stop_on_input_error():
+                print('Aborting processing, set --bypass-input-errors to bypass this error.')
+                raise
+            return
+
+        random.Random(0).shuffle(tiles) # Gives consistent random ordering so labels will match
+
+        for t in tiles:
+            yield self._load_tensor_imagery(is_labels, i, t)
+
     def _load_images(self, is_labels, data_type):
         """
         Loads a list of images as tensors.
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
-        ds_input = self._tile_images()
-        tile_shape = self._tile_shape
-        def load_tile(image_index, x1, y1, x2, y2):
-            img = tf.py_function(functools.partial(self._load_tensor_imagery,
-                                                   is_labels),
-                                 [image_index, [x1, y1, x2, y2]], data_type)
-            if not self._chunk_shape:
-                img.set_shape([tile_shape[0], tile_shape[1]] + ([1] if is_labels else [self._num_bands]))
-            return img
-        ret = ds_input.map(load_tile, num_parallel_calls=
-                           tf.data.experimental.AUTOTUNE).prefetch(tf.data.experimental.AUTOTUNE)
+        r = tf.data.Dataset.range(len(self._images))
+        gen_func = lambda x: tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
+                                                                              is_labels=is_labels),
+                                                            data_type, args=(x,))
+        return r.interleave(gen_func, cycle_length=config.io.interleave_images(), num_parallel_calls=1)
+        #ds_input = self._tile_images()
+        #tile_shape = self._tile_shape
+        #def load_tile(image_index, x1, y1, x2, y2):
+        #    img = tf.py_function(functools.partial(self._load_tensor_imagery,
+        #                                           is_labels),
+        #                         [image_index, [x1, y1, x2, y2]], data_type)
+        #    if not self._chunk_shape:
+        #        img.set_shape([tile_shape[0], tile_shape[1]] + ([1] if is_labels else [self._num_bands]))
+        #    return img
+        #ret = ds_input.map(load_tile, num_parallel_calls=
+        #                   tf.data.experimental.AUTOTUNE).prefetch(tf.data.experimental.AUTOTUNE)
 
         # Skip past empty inputs
         # - When we skip an image as part of resume it shows up as empty
-        ret = ret.filter(lambda n: tf.math.greater(tf.size(n), 0))
+        #ret = ret.filter(lambda n: tf.math.greater(tf.size(n), 0))
 
-        return ret
+        #return ret
 
     def _chunk_image(self, image):
         """Split up a tensor image into tensor chunks"""
