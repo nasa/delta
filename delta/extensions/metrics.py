@@ -38,7 +38,7 @@ class SparseRecall(tensorflow.keras.metrics.Metric):
         for s in self.variables:
             s.assign(tf.zeros(shape=s.shape))
 
-    def update_state(self, y_true, y_pred, _=None): #pylint: disable=arguments-differ
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         y_pred = tf.math.argmax(y_pred, axis=-1)
 

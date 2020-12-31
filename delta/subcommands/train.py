@@ -68,14 +68,14 @@ def main(options):
     stride = config.train.spec().stride
 
     # compute input and output sizes
-    if model.input_shape[1] is None:
+    if temp_model.input_shape[1] is None:
         in_shape = None
-        out_shape = model.compute_output_shape((0, tile_size[0], tile_size[1], model.input_shape[3]))
-        out_shape = out_shape[1:2]
+        out_shape = temp_model.compute_output_shape((0, tile_size[0], tile_size[1], temp_model.input_shape[3]))
+        out_shape = out_shape[1:3]
         tile_overlap = (tile_size[0] - out_shape[0], tile_size[1] - out_shape[1])
     else:
-        in_shape = model.input_shape[1:2]
-        out_shape = model.output_shape[1:2]
+        in_shape = temp_model.input_shape[1:3]
+        out_shape = temp_model.output_shape[1:3]
 
     if options.autoencoder:
         ids = imagery_dataset.AutoencoderDataset(images, in_shape, tile_shape=tile_size,

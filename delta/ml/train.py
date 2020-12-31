@@ -101,12 +101,12 @@ def _prep_datasets(ids, tc):
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
         if validation:
-            validation = validation.batch(tc.batch_size)
+            validation = validation.batch(tc.batch_size).prefetch(1)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size)
-    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+    ds = ds.prefetch(1)
     if tc.steps:
         ds = ds.take(tc.steps)
     return (ds, validation)
