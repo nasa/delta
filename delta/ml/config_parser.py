@@ -159,6 +159,15 @@ def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras
     """
     return functools.partial(_make_model, model_dict, exposed_params)
 
+def _parse_str_or_dict(spec, type_name):
+    if isinstance(spec, str):
+        return (spec, {})
+    if isinstance(spec, dict):
+        assert len(spec.keys()) == 1, 'Only one %s may be specified.' % (type_name)
+        name = list(spec.keys())[0]
+        return (name, spec[name])
+    raise ValueError('Unexpected entry for %s.' % (type_name))
+
 def loss_from_dict(loss_spec):
     '''
     Creates a loss function object from a dictionary.
@@ -167,15 +176,7 @@ def loss_from_dict(loss_spec):
     with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
     of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
     '''
-    if isinstance(loss_spec, str):
-        name = loss_spec
-        params = {}
-    elif isinstance(loss_spec, dict):
-        assert len(loss_spec.keys()) == 1, 'Only one loss function may be specified.'
-        name = list(loss_spec.keys())[0]
-        params = loss_spec[name]
-    else:
-        raise ValueError('Unexpected entry for loss function.')
+    (name, params) = _parse_str_or_dict(loss_spec, 'loss function')
     lc = extensions.loss(name)
     if lc is None:
         lc = getattr(tensorflow.keras.losses, name, None)
@@ -189,15 +190,7 @@ def metric_from_dict(metric_spec):
     """
     Creates a metric object from a dictionary or string.
     """
-    if isinstance(metric_spec, str):
-        name = metric_spec
-        params = {}
-    elif isinstance(metric_spec, dict):
-        assert len(metric_spec) == 1, 'Expecting only one metric.'
-        name = list(metric_spec.keys())[0]
-        params = metric_spec[name]
-    else:
-        raise ValueError('Unexpected entry for metric.')
+    (name, params) = _parse_str_or_dict(metric_spec, 'metric')
     mc = extensions.metric(name)
     if mc is None:
         mc = getattr(tensorflow.keras.metrics, name, None)
@@ -214,15 +207,7 @@ def optimizer_from_dict(spec):
     """
     Creates an optimizer from a dictionary or string.
     """
-    if isinstance(spec, str):
-        name = spec
-        params = {}
-    elif isinstance(spec, dict):
-        assert len(spec) == 1, 'Expecting only one optimizer.'
-        name = list(spec.keys())[0]
-        params = spec[name]
-    else:
-        raise ValueError('Unexpected entry for optimizer.')
+    (name, params) = _parse_str_or_dict(spec, 'optimizer')
     mc = getattr(tensorflow.keras.optimizers, name, None)
     if mc is None:
         raise ValueError('Unknown optimizer %s.' % (name))

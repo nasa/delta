@@ -52,6 +52,7 @@ class TiffImage(delta_image.DeltaImage):
         super().__init__(nodata_value)
         paths = self._prep(path)
 
+        self._path = path
         self._paths = paths
         self._handles = []
         for p in paths:
@@ -90,6 +91,9 @@ class TiffImage(delta_image.DeltaImage):
         self._handles = None # gdal doesn't have a close function for some reason
         self._band_map = None
         self._paths = None
+
+    def path(self):
+        return self._path
 
     def num_bands(self):
         self.__asert_open()

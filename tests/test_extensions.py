@@ -71,3 +71,21 @@ def test_sparse_recall():
     m1.update_state(o, z)
     assert m0.result() == 0.0
     assert m1.result() == 0.0
+
+def test_callbacks():
+    inputs = tf.keras.layers.Input((10, 10, 1))
+    out = tf.keras.layers.Conv2D(name='out', filters=16, kernel_size=3)(inputs)
+    m = tf.keras.Model(inputs, out)
+
+    c = ext.callback('SetTrainable')('out', 1)
+    c.model = m
+    out = m.get_layer('out')
+    out.trainable = False
+    assert not out.trainable
+    c.on_epoch_begin(0)
+    assert not out.trainable
+    c.on_epoch_begin(1)
+    assert out.trainable
+
+    c = ext.callback('ExponentialLRScheduler')(start_epoch=2, multiplier=0.95)
+    assert isinstance(c, tf.keras.callbacks.LearningRateScheduler)

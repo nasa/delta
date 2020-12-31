@@ -50,8 +50,7 @@ def print_network(a, tile_shape=None):
     if tile_shape is not None:
         in_shape = (in_shape[0], tile_shape[0], tile_shape[1], in_shape[3])
     out_shape = a.compute_output_shape(in_shape)
-    print('Size: %dx%dx%d --> %dx%dx%d' % (in_shape[1], in_shape[2], in_shape[3],
-                                           out_shape[1], out_shape[2], out_shape[3]))
+    print('Size: ' + str(in_shape[1:]) + ' --> ' + str(out_shape[1:]))
     if out_shape[1] is not None and out_shape[2] is not None:
         print('Compression Rate - ', out_shape[1] * out_shape[2] * out_shape[3] /
                                      (in_shape[1] * in_shape[2] * in_shape[3]))

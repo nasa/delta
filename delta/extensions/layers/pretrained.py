@@ -61,7 +61,7 @@ class Pretrained(DeltaLayer):
         config.update({'encoding_layer': self._encoding_layer})
         return config
 
-    def call(self, inputs, **_):
+    def call(self, inputs, **_): # pragma: no cover
         x = inputs
         for l in self.layers:
             x = l(x)

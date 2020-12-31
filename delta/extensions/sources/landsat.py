@@ -106,7 +106,8 @@ def _get_landsat_bands_to_use(sensor_name):
     for (k, v) in __LANDSAT_BANDS_DICT.items():
         if k in sensor_name:
             return v
-    raise Exception('Unknown landsat type: ' + sensor_name)
+    print('Unknown landsat type: ' + sensor_name)
+    return None
 
 def _get_band_paths(mtl_data, folder, bands_to_use=None):
     """Return full paths to all band files that should be in the folder.

@@ -24,7 +24,7 @@ import tensorflow.keras.metrics
 
 from delta.config.extensions import register_metric
 
-class SparseRecall(tensorflow.keras.metrics.Metric):
+class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
     # this is cross entropy, but first replaces the labels with
     # a probability distribution from a lookup table
     def __init__(self, class_id, name=None, label_id=None):
