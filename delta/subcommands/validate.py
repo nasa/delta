@@ -20,28 +20,19 @@ Check if the input data is valid.
 """
 
 import sys
-import time
-import os
-
-import numpy as np
 
 from delta.config import config
-from delta.config.extensions import custom_objects
-from delta.imagery import imagery_dataset
-from delta.ml.train import train
-from delta.ml.config_parser import config_model
-from delta.ml.io import save_model
 
 def check_image(images, labels, i):
     img = images.load(i)
     if labels:
-       label = labels.load(i)
-       if label.size() != img.size():
-           return 'Error: size mismatch for %s and %s.\n' % (images[i], labels[i])
-       #print('Values for %s: ' % (labels[i]), np.unique(label.read()))
+        label = labels.load(i)
+        if label.size() != img.size():
+            return 'Error: size mismatch for %s and %s.\n' % (images[i], labels[i])
+        #print('Values for %s: ' % (labels[i]), np.unique(label.read()))
     return ''
 
-def main(options):
+def main(_):
     images = config.dataset.images()
     labels = config.dataset.labels()
     if not images:
