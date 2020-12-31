@@ -35,6 +35,10 @@ def main_mlflow_ui(options):
     from .import mlflow_ui
     mlflow_ui.main(options)
 
+def main_validate(options):
+    from .import validate
+    validate.main(options)
+
 def setup_classify(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
     config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
@@ -62,5 +66,10 @@ def setup_mlflow_ui(subparsers):
 
     sub.set_defaults(function=main_mlflow_ui)
 
+def setup_validate(subparsers):
+    sub = subparsers.add_parser('validate', help='Validate input dataset.')
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset', 'train'])
 
-SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui]
+    sub.set_defaults(function=main_validate)
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]

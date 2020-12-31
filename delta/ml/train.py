@@ -76,7 +76,7 @@ def _strategy(devices):
         strategy = tf.distribute.MirroredStrategy(devices=devices)
     return strategy
 
-def _prep_datasets(ids, tc, chunk_size, output_size):
+def _prep_datasets(ids, tc):
     ds = ids.dataset(config.dataset.classes.weights())
 
     validation=None
@@ -91,21 +91,22 @@ def _prep_datasets(ids, tc, chunk_size, output_size):
                 validation = None
             else:
                 if vlabel:
-                    vimagery = ImageryDataset(vimg, vlabel, (output_size, output_size), (chunk_size, chunk_size),
-                                              tile_shape=config.io.tile_size(), chunk_stride=tc.chunk_stride)
+                    vimagery = ImageryDataset(vimg, vlabel, ids.output_shape(), ids.chunk_shape(),
+                                              tile_shape=ids.tile_shape(), stride=ids.stride(),
+                                              tile_overlap=ids.tile_overlap())
                 else:
-                    vimagery = AutoencoderDataset(vimg, chunk_size, tile_shape=config.io.tile_size(),
-                                                  chunk_stride=tc.chunk_stride)
+                    vimagery = AutoencoderDataset(vimg, ids.chunk_shape(), tile_shape=ids.tile_shape(),
+                                                  stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
                 if tc.validation.steps:
                     validation = validation.take(tc.validation.steps)
         if validation:
-            validation = validation.batch(tc.batch_size)
+            validation = validation.batch(tc.batch_size).prefetch(1)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size)
-    ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
+    ds = ds.prefetch(1)
     if tc.steps:
         ds = ds.take(tc.steps)
     return (ds, validation)
@@ -115,7 +116,7 @@ def _log_mlflow_params(model, dataset, training_spec):
     #labels = dataset.label_set()
     mlflow.log_param('Images - Type',   images.type())
     mlflow.log_param('Images - Count',   len(images))
-    mlflow.log_param('Images - Stride', training_spec.chunk_stride)
+    mlflow.log_param('Images - Stride', training_spec.stride)
     mlflow.log_param('Images - Tile Size', len(model.layers))
     mlflow.log_param('Train - Steps', training_spec.steps)
     mlflow.log_param('Train - Loss Function', training_spec.loss)
@@ -281,17 +282,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     specification.
     """
     model = _compile_model(model_fn, dataset, training_spec)
-    in_shape = model.input_shape
-    out_shape = model.output_shape
-    # fully convolutional, need to compute the shape for our tile size
-    if in_shape[1] is None and out_shape[1] is None:
-        in_shape = (0, config.io.tile_size()[0], config.io.tile_size()[1], in_shape[3])
-        out_shape = model.compute_output_shape((0, in_shape[1], in_shape[2], in_shape[3]))
-        if out_shape[1] != in_shape[1] or out_shape[2] != in_shape[2]:
-            dataset.set_chunk_output_shapes(None, (out_shape[1], out_shape[2]))
 
-    # TODO: extend to rectangles
-    (ds, validation) = _prep_datasets(dataset, training_spec, in_shape[1], out_shape[1])
+    (ds, validation) = _prep_datasets(dataset, training_spec)
 
     (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
 

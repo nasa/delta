@@ -157,18 +157,30 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_width, tile_height, min_width=0, min_height=0,
-                       include_partials=True, overlap_amount=0):
-        '''Return a list of tiles encompassing the entire area of this Rectangle'''
+    def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0),
+                       partials_overlap=False, by_block=False):
+        '''
+        Return a list of tiles encompassing the entire area of this Rectangle.
+        tile_shape: (width, height) of tiles
+        overlap_shape: (x, y) overlap tiles by this many pixels in respective dimension
+        include_partials: include tiles that don't tile evenly
+        min_shape: minimum size of partial tiles to include with include_partials
+        partials_overlap: if not include_partials, if there are border regions not part of a tile,
+                          make a full size tile including them, and nearby area may be in two tiles
+        by_block: Returns a list of (block_rect, [r1, r2, ..., rn]) tuples instead, where block_rect
+                  is the bounding box of a row and rn are the subrectangles in that row
+        '''
+        tile_width, tile_height = tile_shape
+        min_width, min_height = min_shape
 
-        tile_spacing_x = tile_width  - overlap_amount
-        tile_spacing_y = tile_height - overlap_amount
+        tile_spacing_x = tile_width  - overlap_shape[0]
+        tile_spacing_y = tile_height - overlap_shape[1]
         num_tiles = (int(math.ceil(self.width()  / tile_spacing_x )),
                      int(math.ceil(self.height() / tile_spacing_y)))
         output_tiles = []
         for c in range(0, num_tiles[0]):
+            row_tiles = []
             for r in range(0, num_tiles[1]):
-
                 tile = Rectangle(self.min_x + c*tile_spacing_x,
                                  self.min_y + r*tile_spacing_y,
                                  width=tile_width, height=tile_height)
@@ -177,8 +189,24 @@ class Rectangle:
                     tile = tile.get_intersection(self)
                     if tile.width() < min_width or tile.height() < min_height:
                         continue
-                    output_tiles.append(tile)
                 else: # Only use it if the uncropped tile fits entirely in this Rectangle
-                    if self.contains_rect(tile):
-                        output_tiles.append(tile)
+                    if not self.contains_rect(tile):
+                        if not partials_overlap:
+                            continue
+                        tile = Rectangle(min(self.max_x, tile.max_x) - tile_width,
+                                         min(self.max_y, tile.max_y) - tile_height,
+                                         width=tile_width, height=tile_height)
+                        if not self.contains_rect(tile):
+                            continue
+                if by_block:
+                    row_tiles.append(tile)
+                else:
+                    output_tiles.append(tile)
+
+            if by_block and row_tiles:
+                row_rect = Rectangle(row_tiles[0].min_x, row_tiles[0].min_y, row_tiles[-1].max_x, row_tiles[-1].max_y)
+                for r in row_tiles:
+                    r.shift(-row_rect.min_x, -row_rect.min_y)
+                output_tiles.append((row_rect, row_tiles))
+
         return output_tiles

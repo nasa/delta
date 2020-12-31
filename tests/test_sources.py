@@ -21,16 +21,37 @@ Test for worldview class.
 """
 import pytest
 
-from delta.extensions.sources import worldview
+from delta.extensions.sources import landsat, worldview
 
 @pytest.fixture(scope="function")
 def wv_image(worldview_filenames):
     return worldview.WorldviewImage(worldview_filenames[0])
 
+@pytest.fixture(scope="function")
+def landsat_image(landsat_filenames):
+    return landsat.LandsatImage(landsat_filenames[0], bands=[1])
+
 # very basic, doesn't actually look at content
 def test_wv_image(wv_image):
-    assert wv_image.meta_path() is not None
     buf = wv_image.read()
     assert buf.shape == (64, 32, 1)
+    assert buf[0, 0, 0] == 0.0
+
+    assert wv_image.meta_path() is not None
     assert len(wv_image.scale()) == 1
     assert len(wv_image.bandwidth()) == 1
+
+def test_landsat_image(landsat_image):
+    buf = landsat_image.read()
+    assert buf.shape == (64, 32, 1)
+    assert buf[0, 0, 0] == 0.0
+
+    assert landsat_image.radiance_mult()[0] == 2.0
+    assert landsat_image.radiance_add()[0] == 2.0
+    assert landsat_image.reflectance_mult()[0] == 2.0
+    assert landsat_image.reflectance_add()[0] == 2.0
+    assert landsat_image.k1_constant()[0] == 2.0
+    assert landsat_image.k2_constant()[0] == 2.0
+    assert landsat_image.sun_elevation() == 5.8
+    landsat.toa_preprocess(landsat_image, calc_reflectance=True)
+    landsat.toa_preprocess(landsat_image)

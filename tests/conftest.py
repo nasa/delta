@@ -17,16 +17,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#pylint:disable=redefined-outer-name
+#pylint:disable=redefined-outer-name,wrong-import-position
 import os
 import random
 import shutil
 import sys
 import tempfile
+import warnings
 import zipfile
 
 import numpy as np
 import pytest
+
+# conftest.py loaded before pytest.ini warning filters apparently
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='osgeo')
 
 from delta.config import config
 from delta.extensions.sources import tiff
@@ -118,6 +122,40 @@ def worldview_filenames(original_file):
 
     shutil.rmtree(tmpdir)
 
+@pytest.fixture(scope="session")
+def landsat_filenames(original_file):
+    tmpdir = tempfile.mkdtemp()
+    image_name = 'L1_IGNORE_AAABBB_DATE'
+    mtl_name = image_name + '_MTL.txt'
+    mtl_path = os.path.join(tmpdir, mtl_name)
+    zip_path = os.path.join(tmpdir, image_name + '.zip')
+    # not really a valid file but this is all we need, only one band in image
+    with open(mtl_path, 'a') as f:
+        f.write('SPACECRAFT_ID = LANDSAT_1\n')
+        f.write('SUN_ELEVATION = 5.8\n')
+        f.write('FILE_NAME_BAND_1 = 1.tiff\n')
+        f.write('RADIANCE_MULT_BAND_1 = 2.0\n')
+        f.write('RADIANCE_ADD_BAND_1 = 2.0\n')
+        f.write('REFLECTANCE_MULT_BAND_1 = 2.0\n')
+        f.write('REFLECTANCE_ADD_BAND_1 = 2.0\n')
+        f.write('K1_CONSTANT_BAND_1 = 2.0\n')
+        f.write('K2_CONSTANT_BAND_1 = 2.0\n')
+
+    image_path = os.path.join(tmpdir, '1.tiff')
+    tiff.TiffImage(original_file[0]).save(image_path)
+
+    z = zipfile.ZipFile(zip_path, mode='x')
+    z.write(image_path, arcname='1.tiff')
+    z.write(mtl_path, arcname=mtl_name)
+    z.close()
+
+    label_path = os.path.join(tmpdir, image_name + '_label.tiff')
+    tiff.TiffImage(original_file[1]).save(label_path)
+
+    yield (zip_path, label_path)
+
+    shutil.rmtree(tmpdir)
+
 NUM_SOURCES = 1
 @pytest.fixture(scope="session")
 def all_sources(worldview_filenames):
@@ -150,11 +188,11 @@ def load_dataset(source, output_size, chunk_size=3, autoencoder=False):
     if autoencoder:
         return imagery_dataset.AutoencoderDataset(config.dataset.images(), (chunk_size, chunk_size),
                                                   tile_shape=config.io.tile_size(),
-                                                  chunk_stride=config.train.spec().chunk_stride)
+                                                  stride=config.train.spec().stride)
     return imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
                                           (output_size, output_size),
                                           (chunk_size, chunk_size), tile_shape=config.io.tile_size(),
-                                          chunk_stride=config.train.spec().chunk_stride)
+                                          stride=config.train.spec().stride)
 
 @pytest.fixture(scope="function", params=range(NUM_SOURCES))
 def dataset(all_sources, request):

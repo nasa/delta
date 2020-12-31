@@ -63,21 +63,31 @@ def main(options):
         temp_model = model()
 
     start_time = time.time()
-    tc = config.train.spec()
-    out_shape = temp_model.output_shape[1:3] if temp_model.output_shape and temp_model.output_shape[1] else None
-    in_shape = temp_model.input_shape[1:3] if temp_model.input_shape and temp_model.input_shape[1] else None
+    tile_size = config.io.tile_size()
+    tile_overlap = None
+    stride = config.train.spec().stride
+
+    # compute input and output sizes
+    if temp_model.input_shape[1] is None:
+        in_shape = None
+        out_shape = temp_model.compute_output_shape((0, tile_size[0], tile_size[1], temp_model.input_shape[3]))
+        out_shape = out_shape[1:3]
+        tile_overlap = (tile_size[0] - out_shape[0], tile_size[1] - out_shape[1])
+    else:
+        in_shape = temp_model.input_shape[1:3]
+        out_shape = temp_model.output_shape[1:3]
+
     if options.autoencoder:
-        ids = imagery_dataset.AutoencoderDataset(images, in_shape,
-                                                 tile_shape=config.io.tile_size(),
-                                                 chunk_stride=tc.chunk_stride)
+        ids = imagery_dataset.AutoencoderDataset(images, in_shape, tile_shape=tile_size,
+                                                 tile_overlap=tile_overlap, stride=stride)
     else:
         labels = config.dataset.labels()
         if not labels:
             print('No labels specified.', file=sys.stderr)
             return 1
         ids = imagery_dataset.ImageryDataset(images, labels, out_shape, in_shape,
-                                             tile_shape=config.io.tile_size(),
-                                             chunk_stride=tc.chunk_stride)
+                                             tile_shape=tile_size, tile_overlap=tile_overlap,
+                                             stride=stride)
     if log_folder is not None:
         ids.set_resume_mode(options.resume, log_folder)
 
@@ -85,7 +95,7 @@ def main(options):
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
 
     try:
-        model, _ = train(model, ids, tc)
+        model, _ = train(model, ids, config.train.spec())
 
         if options.model is not None:
             save_model(model, options.model)

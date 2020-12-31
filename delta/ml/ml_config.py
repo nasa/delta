@@ -52,14 +52,14 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     """
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 chunk_stride=1, optimizer='Adam'):
+                 stride=None, optimizer='Adam'):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
         self.validation = validation
         self.steps = steps
         self.metrics = metrics
-        self.chunk_stride = chunk_stride
+        self.stride = stride
         self.optimizer = optimizer
 
 class NetworkModelConfig(config.DeltaConfigComponent):
@@ -87,6 +87,14 @@ class NetworkModelConfig(config.DeltaConfigComponent):
                 raise ValueError('Model yaml_file does not exist: ' + yaml_file)
             with open(yaml_file, 'r') as f:
                 self._config_dict.update(yaml.safe_load(f))
+
+def validate_size(size, _):
+    if size is None:
+        return size
+    assert len(size) == 2, 'Size must be tuple.'
+    assert isinstance(size[0], int) and isinstance(size[1], int), 'Size must be integer.'
+    assert size[0] > 0 and size[1] > 0, 'Size must be positive.'
+    return size
 
 class NetworkConfig(config.DeltaConfigComponent):
     def __init__(self):
@@ -134,10 +142,20 @@ class ValidationConfig(config.DeltaConfigComponent):
                                                                 config.config.dataset.classes)
         return self.__labels
 
+def _validate_stride(stride, _):
+    if stride is None:
+        return None
+    if isinstance(stride, int):
+        stride = (stride, stride)
+    assert len(stride) == 2, 'Stride must have two components.'
+    assert isinstance(stride[0], int) and isinstance(stride[1], int), 'Stride must be integer.'
+    assert stride[0] > 0 and stride[1] > 0, 'Stride must be positive.'
+    return stride
+
 class TrainingConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('chunk_stride', int, None, config.validate_positive,
+        self.register_field('stride', (list, int, None), None, _validate_stride,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
         self.register_field('epochs', int, None, config.validate_positive,
                             'Number of times to repeat training on the dataset.')
@@ -148,7 +166,6 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
         self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
         self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
-        self.register_arg('chunk_stride', '--chunk-stride')
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
@@ -177,7 +194,7 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            metrics=self._config_dict['metrics'],
                                            validation=validation,
                                            steps=self._config_dict['steps'],
-                                           chunk_stride=self._config_dict['chunk_stride'],
+                                           stride=self._config_dict['stride'],
                                            optimizer=self._config_dict['optimizer'])
         return self.__training
 

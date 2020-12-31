@@ -45,7 +45,7 @@ def callback_function(roi, data):
     output_image.write(out, roi.min_x, roi.min_y)
 
 input_bounds = rectangle.Rectangle(0, 0, width=img1.width(), height=img1.height())
-output_rois = input_bounds.make_tile_rois(2048, 2048, include_partials=True)
+output_rois = input_bounds.make_tile_rois((2048, 2048), include_partials=True)
 
 img1.process_rois(output_rois, callback_function, show_progress=True)
 

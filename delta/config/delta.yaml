@@ -15,7 +15,6 @@ io:
   # When resuming training with a log_folder, skip input image where we have
   # already loaded this many tiles.
   resume_cutoff:     5000
-  stop_on_input_error: true # If false skip past bad input files without halting training
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
@@ -77,7 +76,7 @@ train:
       yaml_file:     networks/convpool.yaml
       params:        ~
       layers:        ~
-  chunk_stride:    1
+  stride:    ~
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5

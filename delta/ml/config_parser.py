@@ -171,8 +171,8 @@ def loss_from_dict(loss_spec):
         name = loss_spec
         params = {}
     elif isinstance(loss_spec, dict):
-        assert len(loss_spec) == 1, 'Only one loss function may be specified.'
-        name = list(loss_spec[0].keys())[0]
+        assert len(loss_spec.keys()) == 1, 'Only one loss function may be specified.'
+        name = list(loss_spec.keys())[0]
         params = loss_spec[name]
     else:
         raise ValueError('Unexpected entry for loss function.')
@@ -182,7 +182,7 @@ def loss_from_dict(loss_spec):
     if lc is None:
         raise ValueError('Unknown loss type %s.' % (name))
     if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
-        return lc(**params)
+        lc = lc(**params)
     return lc
 
 def metric_from_dict(metric_spec):
@@ -194,7 +194,7 @@ def metric_from_dict(metric_spec):
         params = {}
     elif isinstance(metric_spec, dict):
         assert len(metric_spec) == 1, 'Expecting only one metric.'
-        name = list(metric_spec[0].keys())[0]
+        name = list(metric_spec.keys())[0]
         params = metric_spec[name]
     else:
         raise ValueError('Unexpected entry for metric.')
@@ -203,11 +203,11 @@ def metric_from_dict(metric_spec):
         mc = getattr(tensorflow.keras.metrics, name, None)
     if mc is None:
         try:
-            return loss_from_dict(metric_spec)
+            mc = loss_from_dict(metric_spec)
         except:
             raise ValueError('Unknown metric %s.' % (name)) #pylint:disable=raise-missing-from
     if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
-        return mc(**params)
+        mc = mc(**params)
     return mc
 
 def optimizer_from_dict(spec):
