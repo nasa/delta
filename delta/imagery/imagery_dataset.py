@@ -212,7 +212,8 @@ class ImageryDataset:
         r = tf.data.Dataset.range(len(self._images))
         gen_func = lambda x: tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
                                                                               is_labels=is_labels),
-                                                            data_type, args=(x,))
+                                                            output_types=data_type,
+                                                            output_shapes=tf.TensorShape((None, None, None)), args=(x,))
         return r.interleave(gen_func, cycle_length=config.io.interleave_images(),
                             num_parallel_calls=config.io.threads())
 
