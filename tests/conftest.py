@@ -93,6 +93,20 @@ def original_file():
     shutil.rmtree(tmpdir)
 
 @pytest.fixture(scope="session")
+def doubling_tiff_filenames():
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    image = np.random.random((128, 128)) #pylint: disable=no-member
+    label = 2 * image
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
+    yield ([image_path], [label_path])
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="session")
 def worldview_filenames(original_file):
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
