@@ -87,7 +87,7 @@ __DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                         'npy' : '.npy',
                         'sentinel1' : '.zip'}
 __DEFAULT_SCALE_FACTORS = {'tiff' : 1024.0,
-                           'worldview' : 2048.0,
+                           'worldview' : 1024.0,
                            'landsat' : 120.0,
                            'npy' : None,
                            'sentinel1' : None}
