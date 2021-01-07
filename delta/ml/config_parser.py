@@ -60,10 +60,17 @@ class _LayerWrapper:
         for k in self._inputs:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
-                continue
-            if k not in layer_dict:
+            elif isinstance(k, list):
+                if k[0] not in layer_dict:
+                    raise ValueError('Input layer ' + str(k) + ' not found.')
+                cur_node = layer_dict[k[0]].layer(layer_dict)
+                # TODO: is there a better way to get the tensor inside a model?
+                t = cur_node.graph.get_tensor_by_name(k[0] + '/' + k[1] + ':0')
+                inputs.append(t)
+            elif k in layer_dict:
+                inputs.append(layer_dict[k].layer(layer_dict))
+            else:
                 raise ValueError('Input layer ' + str(k) + ' not found.')
-            inputs.append(layer_dict[k].layer(layer_dict))
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]

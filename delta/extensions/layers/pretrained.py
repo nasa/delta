@@ -48,7 +48,8 @@ class Pretrained(DeltaLayer):
 
         for idx, l in enumerate(temp_model.layers):
             output_layers.append(l)
-            output_layers[-1].trainable = trainable
+            if not isinstance(l, tf.keras.layers.BatchNormalization):
+                output_layers[-1].trainable = trainable
             if break_point(idx, l):
                 break
         #self._layers = tensorflow.keras.models.Sequential(output_layers, **kwargs)
