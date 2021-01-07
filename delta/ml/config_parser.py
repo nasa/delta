@@ -66,16 +66,19 @@ class _LayerWrapper:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
                 continue
-            input_layer = k[0] if isinstance(k, list) else k
+            if isinstance(k, int) or '/' not in k:
+                inputs.append(self._all_layers[k].output_tensor())
+                continue
+            # getting nested layer
+            parts = k.split('/')
+            input_layer = parts[0]
             if input_layer not in self._all_layers:
                 raise ValueError('Input layer ' + str(input_layer) + ' not found.')
-            input_layer = self._all_layers[input_layer].output_tensor()
-            if isinstance(k, list):
-                # TODO: is there a better way to get the tensor inside a model?
-                t = input_layer.graph.get_tensor_by_name(k[0] + '/' + k[1] + ':0')
-                inputs.append(t)
-            else:
-                inputs.append(input_layer)
+            self._all_layers[input_layer].output_tensor() # make sure it has been computed
+            cur = self._layer
+            for p in parts[1:]:
+                cur = cur.get_layer(p)
+            inputs.append(cur.output)
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]
