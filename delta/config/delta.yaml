@@ -29,6 +29,7 @@ dataset:
       enabled:        true
       offset:         default
       scale_factor:   default
+      clip:           ~
     nodata_value:     ~
     directory:        ~
     extension:        default
@@ -98,6 +99,7 @@ train:
         enabled:        true
         offset:         default
         scale_factor:   default
+        clip:           ~
       nodata_value: ~
       directory:   ~
       extension:   default

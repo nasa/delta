@@ -166,15 +166,29 @@ def __find_images(conf, matching_images=None, matching_conf=None):
 def __preprocess_function(image_comp):
     if not image_comp.preprocess.enabled():
         return None
+    c = image_comp.preprocess.clip()
     f = __scale_factor(image_comp)
     o = __offset(image_comp)
-    if f is None and o is None:
-        return None
-    if o is None:
-        return lambda data, _, dummy: data / np.float32(f)
-    if f is None:
-        return lambda data, _, dummy: data + np.float32(o)
-    return lambda data, _, dummy: (data + np.float32(o)) / np.float32(f)
+    prep = lambda data, _, dummy: data
+    if c is not None:
+        if c[0] is not None:
+            c[0] = np.float32(c[0])
+        if c[1] is not None:
+            c[1] = np.float32(c[1])
+        assert len(c) == 2, 'Clip must specify min and max.'
+        def clip(prep=prep):
+            return lambda data, a, b: np.clip(prep(data, a, b), c[0], c[1])
+        prep = clip()
+    if o is not None:
+        # do it this way to put current value of prep in closure
+        def offset(prep=prep):
+            return lambda data, a, b: prep(data, a, b) + np.float32(o)
+        prep = offset()
+    if f is not None:
+        def scale(prep=prep):
+            return lambda data, a, b: prep(data, a, b) / np.float32(f)
+        prep = scale()
+    return prep
 
 def load_images_labels(images_comp, labels_comp, classes_comp):
     '''
@@ -229,6 +243,7 @@ class ImagePreprocessConfig(DeltaConfigComponent):
         self.register_field('enabled', bool, 'enabled', None, 'Turn on preprocessing.')
         self.register_field('offset', (float, str), 'offset', None, 'Image pixel offset.')
         self.register_field('scale_factor', (float, str), 'scale_factor', None, 'Image scale factor.')
+        self.register_field('clip', (list, str), 'clip', None, 'Image clip range [min, max] (either can be ~.).')
 
 def _validate_paths(paths, base_dir):
     out = []
