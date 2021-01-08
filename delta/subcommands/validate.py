@@ -21,7 +21,18 @@ Check if the input data is valid.
 
 import sys
 
+import numpy as np
+
 from delta.config import config
+
+def get_class_dict():
+    d = {}
+    classes = config.dataset.classes
+    for c in config.dataset.classes:
+        d[c.end_value] = c.name
+    if config.dataset.labels().nodata_value():
+        d[len(config.dataset.classes)] = 'nodata'
+    return d
 
 def check_image(images, labels, i):
     img = images.load(i)
@@ -29,6 +40,17 @@ def check_image(images, labels, i):
         label = labels.load(i)
         if label.size() != img.size():
             return 'Error: size mismatch for %s and %s.\n' % (images[i], labels[i])
+        v, counts = np.unique(label.read(), return_counts=True)
+        total = sum(counts)
+
+        d = get_class_dict()
+        values = { k:0 for (k, _) in d.items() }
+        for j in range(len(v)):
+            values[v[j]] = counts[j]
+        s = ''
+        for (j, name) in d.items():
+            s += '%s: %6.2f%%     ' % (name, values[j] / total * 100)
+        print(s + labels[i].split('/')[-1])
         #print('Values for %s: ' % (labels[i]), np.unique(label.read()))
     return ''
 

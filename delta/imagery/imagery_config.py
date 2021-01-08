@@ -295,6 +295,7 @@ class LabelClass:
         self.name = name
         self.color = color
         self.weight = weight
+        self.end_value = None
 
     def __repr__(self):
         return 'Color: ' + self.name
@@ -340,6 +341,7 @@ class ClassesConfig(DeltaConfigComponent):
         for (i, v) in enumerate(self._classes):
             if v.value != i:
                 self._conversions.append(v.value)
+            v.end_value = i
 
     def weights(self):
         weights = []
