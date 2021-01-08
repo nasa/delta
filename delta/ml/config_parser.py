@@ -67,22 +67,31 @@ class _LayerWrapper:
                 inputs.append(k)
                 continue
             if isinstance(k, int) or '/' not in k:
-                inputs.append(self._all_layers[k].output_tensor())
+                self._all_layers[k].output_tensor()
+                l = self._all_layers[k]._layer
+                if isinstance(l, tensorflow.Tensor):
+                    inputs.append(l)
+                else:
+                    inputs.append(l.get_output_at(len(l.inbound_nodes) - 1))
                 continue
             # getting nested layer
             parts = k.split('/')
             input_layer = parts[0]
             if input_layer not in self._all_layers:
                 raise ValueError('Input layer ' + str(input_layer) + ' not found.')
-            self._all_layers[input_layer].output_tensor() # make sure it has been computed
-            cur = self._layer
+            self._all_layers[input_layer].output_tensor() # compute it if it hasn't been
+            cur = self._all_layers[input_layer]._layer
             for p in parts[1:]:
                 cur = cur.get_layer(p)
-            inputs.append(cur.output)
+
+            # submodels can create multiple nodes, we want to take the outermost one
+            # uses deprecated functionality but can't figure out another way to do it
+            inputs.append(cur.get_output_at(len(cur.inbound_nodes) - 1))
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]
             self._tensor = self._layer(inputs)
+            self._tensor = self._layer.get_output_at(len(self._layer.inbound_nodes) - 1)
         else:
             self._tensor = self._layer
         return self._tensor
@@ -113,6 +122,7 @@ def _make_layer(layer_dict, layer_id, prev_layer, all_layers):
         layer_id = l['name']
     if 'inputs' in l:
         inputs = l['inputs']
+        l = copy.copy(l) # don't modify original dict
         del l['inputs']
         if isinstance(inputs, (int, str)):
             inputs = [inputs]

@@ -27,6 +27,9 @@ def pretrained(filename, encoding_layer, **kwargs):
     model = tensorflow.keras.models.load_model(filename, compile=False)
     output_layer = model.get_layer(index=encoding_layer) if isinstance(encoding_layer, int) else \
                    model.get_layer(encoding_layer)
-    return tensorflow.keras.Model(model.input, output_layer.output, **kwargs)
+    inputs = output_layer.inputs if hasattr(output_layer, 'inputs') else output_layer.input
+    model(model.input) # call it once so you can get the output
+    m = tensorflow.keras.Model(inputs=model.get_layer(index=0).output, outputs=output_layer.get_output_at(1), **kwargs)
+    return m
 
 register_layer('Pretrained', pretrained)

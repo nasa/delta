@@ -33,7 +33,7 @@ from tensorflow.keras.layers import Layer
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .io import save_model
+from .io import save_model, print_network
 from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
 
 class DeltaLayer(Layer):
@@ -269,7 +269,8 @@ def compile_model(model_fn, training_spec):
 
     if config.general.verbose():
         print('Training model:')
-        print(model.summary())
+        print_network(model, (512, 512, 8))
+        print(model.summary(line_length=120))
 
     return model
 
