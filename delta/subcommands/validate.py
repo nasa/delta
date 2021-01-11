@@ -80,6 +80,12 @@ def evaluate_images(images, labels):
         errors += check_image(images, labels, classes, counts, i)
     print('-' * len(header))
     print(classes_string(classes, counts, 'Total'))
+    print()
+    if config.dataset.labels().nodata_value():
+        nodata_c = counts[len(config.dataset.classes)]
+        total = sum(counts.values())
+        print('Nodata is %6.2f%% of the data. Total Pixels: %.2f million.' % \
+              (nodata_c / total * 100, (total - nodata_c) / 1000000))
     return errors
 
 def main(_):
