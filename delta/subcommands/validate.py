@@ -27,32 +27,60 @@ from delta.config import config
 
 def get_class_dict():
     d = {}
-    classes = config.dataset.classes
     for c in config.dataset.classes:
         d[c.end_value] = c.name
     if config.dataset.labels().nodata_value():
         d[len(config.dataset.classes)] = 'nodata'
     return d
 
-def check_image(images, labels, i):
+def classes_string(classes, values, image_name):
+    s = '%-20s   ' % (image_name)
+    is_numeric = np.issubdtype(type(values[0]), np.integer)
+    if is_numeric:
+        total = sum(values.values())
+        nodata_class = None
+        if config.dataset.labels().nodata_value():
+            nodata_class = len(config.dataset.classes)
+            total -= values[nodata_class]
+    for (j, name) in classes.items():
+        if name == 'nodata':
+            continue
+        if is_numeric:
+            v = values[j] if j in values else 0
+            s += '%12.2f%% ' % (v / total * 100, )
+        else:
+            s += '%12s  ' % (values[j], )
+    return s
+
+def check_image(images, labels, classes, total_counts, i):
     img = images.load(i)
     if labels:
         label = labels.load(i)
         if label.size() != img.size():
             return 'Error: size mismatch for %s and %s.\n' % (images[i], labels[i])
         v, counts = np.unique(label.read(), return_counts=True)
-        total = sum(counts)
 
-        d = get_class_dict()
-        values = { k:0 for (k, _) in d.items() }
-        for j in range(len(v)):
-            values[v[j]] = counts[j]
-        s = ''
-        for (j, name) in d.items():
-            s += '%s: %6.2f%%     ' % (name, values[j] / total * 100)
-        print(s + labels[i].split('/')[-1])
-        #print('Values for %s: ' % (labels[i]), np.unique(label.read()))
+        values = { k:0 for (k, _) in classes.items() }
+        for (j, value) in enumerate(v):
+            values[value] = counts[j]
+            if value not in total_counts:
+                total_counts[value] = 0
+            total_counts[value] += counts[j]
+        print(classes_string(classes, values, labels[i].split('/')[-1]))
     return ''
+
+def evaluate_images(images, labels):
+    errors = ''
+    counts = {}
+    classes = get_class_dict()
+    header = classes_string(classes, classes, 'Image')
+    print(header)
+    print('-' * len(header))
+    for i in range(len(images)):
+        errors += check_image(images, labels, classes, counts, i)
+    print('-' * len(header))
+    print(classes_string(classes, counts, 'Total'))
+    return errors
 
 def main(_):
     images = config.dataset.images()
@@ -65,18 +93,14 @@ def main(_):
     else:
         assert len(images) == len(labels)
     print('Validating %d images.' % (len(images)))
-    errors = ''
-    for i in range(len(images)):
-        errors += check_image(images, labels, i)
+    errors = evaluate_images(images, labels)
     tc = config.train.spec()
-    images = tc.validation.images
-    labels = tc.validation.labels
-    if images:
-        print('Validating %d validation images.' % (len(images)))
-        for i in range(len(images)):
-            errors += check_image(images, labels, i)
-    if not errors:
-        errors = 'Validation successful.'
-    print(errors, file=sys.stderr)
+    if tc.validation.images:
+        print('Validating %d validation images.' % (len(tc.validation.images)))
+        errors += evaluate_images(tc.validation.images, tc.validation.labels)
+    if errors:
+        print(errors, file=sys.stderr)
+        return -1
 
+    print('Validation successful.')
     return 0
