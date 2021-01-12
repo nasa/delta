@@ -6,17 +6,24 @@ layers:
       name: efficientnet
       width_coefficient: 1.1
       depth_coefficient: 1.2
+  - UpSampling2D:
+      size: 2
   - Conv2D:
-      filters: 144
-      kernel_size: [5, 5]
+      filters: 240
+      kernel_size: [2, 2]
       padding: same
   - BatchNormalization:
   - Activation:
       activation: relu
-  - UpSampling2D:
-      size: 2
   - Conv2D:
-      filters: 64
+      filters: 240
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 240
       kernel_size: [3, 3]
       padding: same
   - BatchNormalization:
@@ -25,14 +32,81 @@ layers:
   - UpSampling2D:
       size: 2
   - Conv2D:
-      filters: 24
-      kernel_size: [5, 5]
+      filters: 240
+      kernel_size: [2, 2]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 96
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 96
+      kernel_size: [3, 3]
       padding: same
   - BatchNormalization:
   - Activation:
       activation: relu
   - UpSampling2D:
       size: 2
+  - Conv2D:
+      filters: 96
+      kernel_size: [2, 2]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 48
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 48
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - UpSampling2D:
+      size: 2
+  - Conv2D:
+      filters: 48
+      kernel_size: [2, 2]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 32
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - Conv2D:
+      filters: 32
+      kernel_size: [3, 3]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
+  - UpSampling2D:
+      size: 2
+  - Conv2D:
+      filters: 32
+      kernel_size: [2, 2]
+      padding: same
+  - BatchNormalization:
+  - Activation:
+      activation: relu
   - Conv2D:
       filters: 16
       kernel_size: [3, 3]
@@ -40,8 +114,6 @@ layers:
   - BatchNormalization:
   - Activation:
       activation: relu
-  - UpSampling2D:
-      size: 2
   - Conv2D:
       filters: 16
       kernel_size: [3, 3]
@@ -49,10 +121,8 @@ layers:
   - BatchNormalization:
   - Activation:
       activation: relu
-  - UpSampling2D:
-      size: 2
   - Conv2D:
       filters: num_bands
-      kernel_size: [7, 7]
+      kernel_size: [3, 3]
       activation: relu
       padding: same
