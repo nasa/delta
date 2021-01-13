@@ -30,10 +30,10 @@ from delta.extensions.sources.tiff import TiffImage
 
 def plot_band(names, band):
     imgs = [TiffImage(n) for n in names]
-    max_value = 8.0
+    max_value = 2.0
     for img in imgs:
         data = np.ndarray.flatten(img.read(bands=band))
-        data = data[data != 0.0]
+        data = data[data > 0.0]
         data[data > max_value] = max_value
         plt.hist(data, bins=200, alpha=0.5)
         plt.title('Band ' + str(band))
@@ -43,5 +43,6 @@ def plot_band(names, band):
 assert len(sys.argv) > 1, 'No  input tiffs specified.'
 
 with PdfPages('output.pdf') as pdf:
-    for i in range(8):
+    a = TiffImage(sys.argv[1])
+    for i in range(a.num_bands()):
         plot_band(sys.argv[1:], i)

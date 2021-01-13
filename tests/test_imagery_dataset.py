@@ -83,8 +83,7 @@ def autoencoder(all_sources):
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false''' %
+                    preprocess: ~''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),

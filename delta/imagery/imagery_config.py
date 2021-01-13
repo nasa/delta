@@ -25,7 +25,7 @@ import numpy as np
 import appdirs
 
 from delta.config import config, DeltaConfigComponent, validate_path, validate_positive
-from delta.config.extensions import image_reader
+from delta.config.extensions import image_reader, preprocess_function
 from . import disk_folder_cache
 
 
@@ -86,41 +86,11 @@ __DEFAULT_EXTENSIONS = {'tiff' : '.tiff',
                         'landsat' : '.zip',
                         'npy' : '.npy',
                         'sentinel1' : '.zip'}
-__DEFAULT_SCALE_FACTORS = {'tiff' : 1024.0,
-                           'worldview' : 1024.0,
-                           'landsat' : 120.0,
-                           'npy' : None,
-                           'sentinel1' : None}
-__DEFAULT_OFFSETS = {'tiff' : None,
-                     'worldview' : None,
-                     'landsat' : None,
-                     'npy' : None,
-                     'sentinel1' : None}
 
 def __extension(conf):
     if conf['extension'] == 'default':
         return __DEFAULT_EXTENSIONS.get(conf['type'])
     return conf['extension']
-def __scale_factor(image_comp):
-    f = image_comp.preprocess.scale_factor()
-    if f is None:
-        return None
-    if f == 'default':
-        return __DEFAULT_SCALE_FACTORS.get(image_comp.type())
-    try:
-        return float(f)
-    except ValueError as e:
-        raise ValueError('Scale factor is %s, must be a float.' % (f)) from e
-def __offset(image_comp):
-    f = image_comp.preprocess.offset()
-    if f is None:
-        return None
-    if f == 'default':
-        return __DEFAULT_OFFSETS.get(image_comp.type())
-    try:
-        return float(f)
-    except ValueError as e:
-        raise ValueError('Offset is %s, must be a float.' % (f)) from e
 
 def __find_images(conf, matching_images=None, matching_conf=None):
     '''
@@ -163,33 +133,6 @@ def __find_images(conf, matching_images=None, matching_conf=None):
             raise ValueError('Image file %s does not exist.' % (img))
     return images
 
-def __preprocess_function(image_comp):
-    if not image_comp.preprocess.enabled():
-        return None
-    c = image_comp.preprocess.clip()
-    f = __scale_factor(image_comp)
-    o = __offset(image_comp)
-    prep = lambda data, _, dummy: data
-    if c is not None:
-        if c[0] is not None:
-            c[0] = np.float32(c[0])
-        if c[1] is not None:
-            c[1] = np.float32(c[1])
-        assert len(c) == 2, 'Clip must specify min and max.'
-        def clip(prep=prep):
-            return lambda data, a, b: np.clip(prep(data, a, b), c[0], c[1])
-        prep = clip()
-    if o is not None:
-        # do it this way to put current value of prep in closure
-        def offset(prep=prep):
-            return lambda data, a, b: prep(data, a, b) + np.float32(o)
-        prep = offset()
-    if f is not None:
-        def scale(prep=prep):
-            return lambda data, a, b: prep(data, a, b) / np.float32(f)
-        prep = scale()
-    return prep
-
 def load_images_labels(images_comp, labels_comp, classes_comp):
     '''
     Takes two configuration subsections and returns (image set, label set). Also takes classes
@@ -208,7 +151,7 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
                 label_extension = __extension(labels_dict)
                 images = [img for img in images if not img.endswith(label_extension)]
 
-    pre = __preprocess_function(images_comp)
+    pre = images_comp.preprocess_function()
     imageset = ImageSet(images, images_dict['type'], pre, images_dict['nodata_value'])
 
     if (labels_dict['files'] is None) and (labels_dict['file_list'] is None) and (labels_dict['directory'] is None):
@@ -220,7 +163,7 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
         raise ValueError('%d images found, but %d labels found.' % (len(images), len(labels)))
 
     labels_nodata = labels_dict['nodata_value']
-    pre_orig = __preprocess_function(labels_comp)
+    pre_orig = labels_comp.preprocess_function()
     # we shift the label images to always be 0...n[+1], Class 1, Class 2, ... Class N, [nodata]
     def class_shift(data, _, dummy):
         if pre_orig is not None:
@@ -240,10 +183,33 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
 class ImagePreprocessConfig(DeltaConfigComponent):
     def __init__(self):
         super().__init__()
-        self.register_field('enabled', bool, 'enabled', None, 'Turn on preprocessing.')
-        self.register_field('offset', (float, str), 'offset', None, 'Image pixel offset.')
-        self.register_field('scale_factor', (float, str), 'scale_factor', None, 'Image scale factor.')
-        self.register_field('clip', (list, str), 'clip', None, 'Image clip range [min, max] (either can be ~.).')
+        self._functions = []
+
+    def _load_dict(self, d, base_dir):
+        if d is None:
+            self._functions = []
+            return
+        if not d:
+            return
+        self._functions = []
+        assert isinstance(d, list), 'preprocess should be list of commands'
+        for func in d:
+            if isinstance(func, str):
+                self._functions.append((func, {}))
+            else:
+                assert isinstance(func, dict), 'preprocess items must be strings or dicts'
+                assert len(func) == 1, 'One preprocess item per list entry.'
+                name = list(func.keys())[0]
+                self._functions.append((name, func[name]))
+
+    def function(self, image_type):
+        prep = lambda data, _, dummy: data
+        for (name, args) in self._functions:
+            p = preprocess_function(name)(image_type=image_type, **args)
+            def helper(cur, prev):
+                return lambda data, roi, bands: cur(prev(data, roi, bands), roi, bands)
+            prep = helper(p, prep)
+        return prep
 
 def _validate_paths(paths, base_dir):
     out = []
@@ -268,6 +234,9 @@ class ImageSetConfig(DeltaConfigComponent):
             self.register_arg('extension', '--' + name + '-extension')
         self.register_component(ImagePreprocessConfig(), 'preprocess')
         self._name = name
+
+    def preprocess_function(self):
+        return self._components['preprocess'].function(self._config_dict['type'])
 
     def setup_arg_parser(self, parser, components = None) -> None:
         if self._name is None:

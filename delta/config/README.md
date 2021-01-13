@@ -31,10 +31,12 @@ same underlying options.
    * `directory` and `extension`: Use all images in the directory ending with the given extension.
    * `file_list`: Provide a text file with one image file name per line.
    * `files`: Provide a list of file names in yaml.
- * `preprocess`: Supports limited image preprocessing. Currently only scaling is supported. We recommend
+ * `preprocess`: Supports limited image preprocessing. We recommend
    scaling input imagery in the range 0.0 to 1.0 for best results with most of our networks.
-   * `enabled`: Turn preprocessing on or off.
-   * `scale_factor`: Factor to scale all readings by.
+   DELTA also supports custom preprocessing commands. Default actions include:
+   * `scale` with `factor` argument: Divide all values by amount.
+   * `offset` with `factor` argument: Add `factor` to pixel values.
+   * `clip` with `bounds` argument: clip all pixels to bounds.
  * `nodata_value`: A pixel value to ignore in the images.
 
 As an example:
