@@ -33,7 +33,7 @@ from tensorflow.keras.layers import Layer
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .io import save_model
+from .io import save_model, print_network
 from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
 
 class DeltaLayer(Layer):
@@ -239,23 +239,24 @@ def _build_callbacks(model, dataset, training_spec):
 
     return (callbacks, mcb)
 
-def _compile_model(model_fn, dataset, training_spec):
+def _compile_helper(model, training_spec):
+    model.compile(optimizer=optimizer_from_dict(training_spec.optimizer),
+                  loss=loss_from_dict(training_spec.loss),
+                  metrics=[metric_from_dict(m) for m in training_spec.metrics])
+
+def compile_model(model_fn, training_spec):
     """
     Compile and check that the model is valid.
     """
-    # This does not work when using the CPU!
     if isinstance(model_fn, tf.keras.Model):
         model = model_fn
-        print('WARNING: Model loaded without TF strategy/device wrapper, this may fail in some configurations!')
-        # May not be able to improve on this until tf 2.2
+        _compile_helper(model, training_spec)
     else:
         with _strategy(_devices(config.general.gpus())).scope():
             model = model_fn()
             assert isinstance(model, tf.keras.models.Model),\
                    "Model is not a Tensorflow Keras model"
-            model.compile(optimizer=optimizer_from_dict(training_spec.optimizer),
-                          loss=loss_from_dict(training_spec.loss),
-                          metrics=[metric_from_dict(m) for m in training_spec.metrics])
+            _compile_helper(model, training_spec)
 
     input_shape = model.input_shape
     output_shape = model.output_shape
@@ -265,14 +266,11 @@ def _compile_model(model_fn, dataset, training_spec):
     # The below may no longer be valid if we move to convolutional architectures.
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
     assert len(output_shape) == 2 or output_shape[1] == output_shape[2], 'Output from network is not chunked'
-    assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
-    # last element differs for the sparse metrics
-    assert output_shape[1:-1] == dataset.output_shape()[:-1] or (output_shape[1] is None), \
-            'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape()[:-1])
 
     if config.general.verbose():
         print('Training model:')
-        print(model.summary())
+        print_network(model, (512, 512, 8))
+        print(model.summary(line_length=120))
 
     return model
 
@@ -281,7 +279,12 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     Trains the specified model on a dataset according to a training
     specification.
     """
-    model = _compile_model(model_fn, dataset, training_spec)
+    model = compile_model(model_fn, training_spec)
+    assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
+    # last element differs for the sparse metrics
+    assert model.output_shape[1:-1] == dataset.output_shape()[:-1] or (model.output_shape[1] is None), \
+            'Network output shape %s does not match label shape %s.' % \
+            (model.output_shape[1:], dataset.output_shape()[:-1])
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 

@@ -105,12 +105,13 @@ def main(options):
                                                prob_image=prob_image, error_image=error_image,
                                                error_colors=error_colors)
 
+        overlap = (options.overlap, options.overlap)
         try:
             if cpuOnly:
                 with tf.device('/cpu:0'):
-                    predictor.predict(image, label)
+                    predictor.predict(image, label, overlap=overlap)
             else:
-                predictor.predict(image, label)
+                predictor.predict(image, label, overlap=overlap)
         except KeyboardInterrupt:
             print('\nAborted.')
             return 0

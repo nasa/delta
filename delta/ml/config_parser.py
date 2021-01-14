@@ -33,53 +33,77 @@ from delta.config import config
 import delta.config.extensions as extensions
 
 class _LayerWrapper:
-    def __init__(self, layer_type, layer_name, inputs, params):
+    def __init__(self, layer_type, layer_name, inputs, params, all_layers):
+        """
+        all_layers is a name indexed dictionary of LayerWrappers for all the layers,
+        shared between them.
+        """
         self._layer_type = layer_type
-        self._layer_name = layer_name
+        self.name = layer_name
         self._inputs = inputs
         lc = extensions.layer(layer_type)
         if lc is None:
             lc = getattr(tensorflow.keras.layers, layer_type, None)
         if lc is None:
             raise ValueError('Unknown layer type %s.' % (layer_type))
-        self._layer_constructor = lc(**params)
-        self._layer = None
+        self.layer = lc(**params)
+        self._tensor = None
+        all_layers[layer_name] = self
+        self._all_layers = all_layers
 
     def is_input(self):
         return self._layer_type == 'Input'
 
     # TODO: will crash if there is a cycle in the graph
-    def layer(self, layer_dict):
+    def output_tensor(self):
         """
-        Constructs the layers with preceding layers as inputs. layer_dict is a name
-        indexed dictionary of LayerWrappers for all the layers.
+        Constructs the output tensor with preceding layers as inputs.
         """
-        if self._layer is not None:
-            return self._layer
+        if self._tensor is not None:
+            return self._tensor
         inputs = []
         for k in self._inputs:
             if isinstance(k, tensorflow.Tensor):
                 inputs.append(k)
                 continue
-            if k not in layer_dict:
-                raise ValueError('Input layer ' + str(k) + ' not found.')
-            inputs.append(layer_dict[k].layer(layer_dict))
+            if isinstance(k, int) or '/' not in k:
+                self._all_layers[k].output_tensor()
+                l = self._all_layers[k].layer
+                if isinstance(l, tensorflow.Tensor):
+                    inputs.append(l)
+                else:
+                    inputs.append(l.get_output_at(len(l.inbound_nodes) - 1))
+                continue
+            # getting nested layer
+            parts = k.split('/')
+            input_layer = parts[0]
+            if input_layer not in self._all_layers:
+                raise ValueError('Input layer ' + str(input_layer) + ' not found.')
+            self._all_layers[input_layer].output_tensor() # compute it if it hasn't been
+            cur = self._all_layers[input_layer].layer
+            for p in parts[1:]:
+                cur = cur.get_layer(p)
+
+            # submodels can create multiple nodes, we want to take the outermost one
+            # uses deprecated functionality but can't figure out another way to do it
+            inputs.append(cur.get_output_at(len(cur.inbound_nodes) - 1))
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]
-            self._layer = self._layer_constructor(inputs)
+            self._tensor = self.layer(inputs)
+            self._tensor = self.layer.get_output_at(len(self.layer.inbound_nodes) - 1)
         else:
-            self._layer = self._layer_constructor
-        return self._layer
+            self._tensor = self.layer
+        return self._tensor
 
-def _make_layer(layer_dict, layer_id, prev_layer):
+def _make_layer(layer_dict, layer_id, prev_layer, all_layers):
     """
     Constructs a layer specified in layer_dict.
     layer_id is the order in the order in the config file.
-    Assumes layer_dict only contains the properly named parameters for constructing
+    Assumes layer_dict only contains the key which is the
+    layer type, mapped to a sub-dict with properly named parameters for constructing
     the layer, and the additional fields:
 
-     * `type`: the type of keras layer.
      * `name` (optional): a name to refer to the layer by
      * `inputs` (optional): the name or a list of names of
        the preceding layers (defaults to previous in list)
@@ -98,13 +122,38 @@ def _make_layer(layer_dict, layer_id, prev_layer):
         layer_id = l['name']
     if 'inputs' in l:
         inputs = l['inputs']
+        l = copy.copy(l) # don't modify original dict
         del l['inputs']
         if isinstance(inputs, (int, str)):
             inputs = [inputs]
 
-    return (layer_id, _LayerWrapper(layer_type, layer_id, inputs, l))
+    return _LayerWrapper(layer_type, layer_id, inputs, l, all_layers)
 
-def _make_model(model_dict, exposed_params):
+def _make_model(layer_list):
+    """
+    Makes a model from a list of layers.
+    """
+    assert layer_list is not None, 'No model specified!'
+
+    prev_layer = 0
+    last = None
+    all_layers = {}
+    for (i, l) in enumerate(layer_list):
+        last = _make_layer(l, i, prev_layer, all_layers)
+        prev_layer = last.name
+
+    outputs = last.output_tensor()
+    inputs = [l.output_tensor() for l in all_layers.values() if l.is_input()]
+
+    if len(inputs) == 1:
+        inputs = inputs[0]
+    return tensorflow.keras.models.Model(inputs=inputs, outputs=outputs)
+
+def _apply_params(model_dict, exposed_params):
+    """
+    Apply the parameters in exposed_params and in model_dict['params']
+    to the fields in model_dict, returning a copy.
+    """
     defined_params = {}
     if 'params' in model_dict and model_dict['params'] is not None:
         defined_params = model_dict['params']
@@ -129,35 +178,21 @@ def _make_model(model_dict, exposed_params):
     model_dict_copy = copy.deepcopy(model_dict)
     recursive_dict_list_apply(model_dict_copy, apply_params)
 
-    layer_dict = {}
-    last = None
+    # checks if the first layer is an Input, if not insert one
     layer_list = model_dict_copy['layers']
-    if layer_list is None:
-        raise Exception('No model specified!')
+    assert layer_list is not None, 'No model specified!'
     first_layer_type = next(layer_list[0].keys().__iter__())
-    # want code that checks if the if the first layer is not an Input
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
-        layer_list = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
-    #if layer_list[0]['type'] != 'Input' and 'input' not in layer_list[0]:
-    prev_layer = 0
-    for (i, l) in enumerate(layer_list):
-        (layer_id, layer) = _make_layer(l, i, prev_layer)
-        last = layer
-        layer_dict[layer_id] = layer
-        prev_layer = layer_id
+        model_dict_copy['layers'] = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
 
-    outputs = last.layer(layer_dict)
-    inputs = [l.layer(layer_dict) for l in layer_dict.values() if l.is_input()]
-
-    if len(inputs) == 1:
-        inputs = inputs[0]
-    return tensorflow.keras.models.Model(inputs=inputs, outputs=outputs)
+    return model_dict_copy
 
 def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras.models.Sequential]:
     """
     Creates a function that returns a sequential model from a dictionary.
     """
-    return functools.partial(_make_model, model_dict, exposed_params)
+    model_dict = _apply_params(model_dict, exposed_params)
+    return functools.partial(_make_model, model_dict['layers'])
 
 def loss_from_dict(loss_spec):
     '''

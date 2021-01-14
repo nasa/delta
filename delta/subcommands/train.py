@@ -93,6 +93,7 @@ def main(options):
 
     assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
+    tf.keras.backend.clear_session()
 
     try:
         model, _ = train(model, ids, config.train.spec())
