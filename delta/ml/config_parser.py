@@ -46,7 +46,7 @@ class _LayerWrapper:
             lc = getattr(tensorflow.keras.layers, layer_type, None)
         if lc is None:
             raise ValueError('Unknown layer type %s.' % (layer_type))
-        self._layer = lc(**params)
+        self.layer = lc(**params)
         self._tensor = None
         all_layers[layer_name] = self
         self._all_layers = all_layers
@@ -68,7 +68,7 @@ class _LayerWrapper:
                 continue
             if isinstance(k, int) or '/' not in k:
                 self._all_layers[k].output_tensor()
-                l = self._all_layers[k]._layer
+                l = self._all_layers[k].layer
                 if isinstance(l, tensorflow.Tensor):
                     inputs.append(l)
                 else:
@@ -80,7 +80,7 @@ class _LayerWrapper:
             if input_layer not in self._all_layers:
                 raise ValueError('Input layer ' + str(input_layer) + ' not found.')
             self._all_layers[input_layer].output_tensor() # compute it if it hasn't been
-            cur = self._all_layers[input_layer]._layer
+            cur = self._all_layers[input_layer].layer
             for p in parts[1:]:
                 cur = cur.get_layer(p)
 
@@ -90,10 +90,10 @@ class _LayerWrapper:
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]
-            self._tensor = self._layer(inputs)
-            self._tensor = self._layer.get_output_at(len(self._layer.inbound_nodes) - 1)
+            self._tensor = self.layer(inputs)
+            self._tensor = self.layer.get_output_at(len(self.layer.inbound_nodes) - 1)
         else:
-            self._tensor = self._layer
+            self._tensor = self.layer
         return self._tensor
 
 def _make_layer(layer_dict, layer_id, prev_layer, all_layers):

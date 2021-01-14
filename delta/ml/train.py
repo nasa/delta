@@ -283,7 +283,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
     # last element differs for the sparse metrics
     assert model.output_shape[1:-1] == dataset.output_shape()[:-1] or (model.output_shape[1] is None), \
-            'Network output shape %s does not match label shape %s.' % (model.output_shape[1:], dataset.output_shape()[:-1])
+            'Network output shape %s does not match label shape %s.' % \
+            (model.output_shape[1:], dataset.output_shape()[:-1])
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 
