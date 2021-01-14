@@ -72,6 +72,7 @@ train:
       params:        ~
       layers:        ~
   stride:    ~
+  max_tile_offset:   ~ # if set to integer, offset tiles by +1 each epoch modulus max_tile_offset
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5

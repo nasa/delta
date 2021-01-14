@@ -52,7 +52,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     """
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 stride=None, optimizer='Adam'):
+                 stride=None, optimizer='Adam', max_tile_offset=None):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
@@ -61,6 +61,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.metrics = metrics
         self.stride = stride
         self.optimizer = optimizer
+        self.max_tile_offset = max_tile_offset
 
 class NetworkModelConfig(config.DeltaConfigComponent):
     def __init__(self):
@@ -164,6 +165,8 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field('loss', (str, dict), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
+        self.register_field('max_tile_offset', int, None, config.validate_non_negative,
+                            'Each epoch, offset tiles by +1 up to max.')
         self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
         self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
         self.register_arg('epochs', '--epochs')
@@ -195,7 +198,8 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            validation=validation,
                                            steps=self._config_dict['steps'],
                                            stride=self._config_dict['stride'],
-                                           optimizer=self._config_dict['optimizer'])
+                                           optimizer=self._config_dict['optimizer'],
+                                           max_tile_offset=self._config_dict['max_tile_offset'])
         return self.__training
 
 

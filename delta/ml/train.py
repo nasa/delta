@@ -148,6 +148,25 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         if epoch != self.last_epoch:
             self.ids.reset_access_counts()
 
+class _TileOffsetCallback(tf.keras.callbacks.Callback):
+    """
+    Reset imagery_dataset file counts on epoch end
+    """
+    def __init__(self, ids, max_tile_offset):
+        super().__init__()
+        self.ids = ids
+        self.max_tile_offset = max_tile_offset
+
+    def on_epoch_end(self, epoch, _=None):
+        (tox, toy) = self.ids.tile_offset()
+        tox += 1
+        if tox == self.max_tile_offset:
+            tox = 0
+            toy += 1
+            if toy == self.max_tile_offset:
+                toy = 0
+        self.ids.set_tile_offset((tox, toy))
+
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
@@ -234,6 +253,8 @@ def _build_callbacks(model, dataset, training_spec):
         callbacks.append(tcb)
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+    if training_spec.max_tile_offset:
+        callbacks.append(_TileOffsetCallback(dataset, training_spec.max_tile_offset))
 
     callbacks.extend(config_callbacks())
 

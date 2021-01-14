@@ -54,6 +54,7 @@ class ImageryDataset:
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
+        self._tile_offset = (0, 0)
 
         if labels:
             assert len(images) == len(labels)
@@ -169,7 +170,7 @@ class ImageryDataset:
                              overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
-                         overlap_shape=self._tile_overlap, by_block=True)
+                         overlap_shape=self._tile_overlap, by_block=True, offset=self._tile_offset)
 
     def _tile_generator(self, i, is_labels):
         """
@@ -349,6 +350,14 @@ class ImageryDataset:
     def tile_overlap(self):
         """Returns the amount tiles overlap, for FCNS."""
         return self._tile_overlap
+
+    def tile_offset(self):
+        """Offset for start of tiles when tiling (for FCNs)."""
+        return self._tile_offset
+
+    def set_tile_offset(self, offset):
+        """Set offset for start of tiles when tiling (for FCNs)."""
+        self._tile_offset = offset
 
     def stride(self):
         return self._stride
