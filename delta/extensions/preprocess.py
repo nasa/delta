@@ -51,8 +51,12 @@ def cbrt(image_type):
 def sqrt(image_type):
     return lambda data, _, dummy: np.sqrt(data)
 
+def gauss_mult_noise(image_type, stddev):
+    return lambda data, _, dummy: data * np.random.normal(1.0, stddev, data.shape)
+
 register_preprocess('scale', scale)
 register_preprocess('offset', offset)
 register_preprocess('clip', clip)
 register_preprocess('sqrt', sqrt)
 register_preprocess('cbrt', cbrt)
+register_preprocess('gauss_mult_noise', gauss_mult_noise)
