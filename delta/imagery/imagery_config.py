@@ -251,6 +251,8 @@ class ImageSetConfig(DeltaConfigComponent):
         super().parse_args(options)
         if hasattr(options, self._name) and getattr(options, self._name) is not None:
             self._config_dict['files'] = [getattr(options, self._name)]
+            self._config_dict['directory'] = None
+            self._config_dict['file_list'] = None
 
 class LabelClass:
     def __init__(self, value, name=None, color=None, weight=None):
