@@ -85,21 +85,21 @@ def check_image(images, measures, total_counts, i):
 
     # Accumulate statistics
     if not total_counts:
-        for band in stats:
+        for band in stats: #pylint: disable=W0612
             total_counts.append({'min'   : 0.0,
                                  'max'   : 0.0,
                                  'mean'  : 0.0,
                                  'stddev': 0.0})
 
-    for b in range(0,len(stats)):
-        total_counts[b]['min'   ] += stats[b][0]
-        total_counts[b]['max'   ] += stats[b][1]
-        total_counts[b]['mean'  ] += stats[b][2]
-        total_counts[b]['stddev'] += stats[b][3]
+    for (b, bandstats) in enumerate(stats):
+        total_counts[b]['min'   ] += bandstats[0]
+        total_counts[b]['max'   ] += bandstats[1]
+        total_counts[b]['mean'  ] += bandstats[2]
+        total_counts[b]['stddev'] += bandstats[3]
         name = ''
         if b == 0:
             name = os.path.basename(images[i])
-        print(classes_string(measures, stats[b], name))
+        print(classes_string(measures, bandstats, name))
 
     return ''
 
@@ -109,7 +109,7 @@ def print_image_totals(images, measures, total_counts):
     num_bands  = len(total_counts)
     for b in range(0,num_bands):
         values = []
-        for m in range(0,len(measures)):
+        for m in range(0,len(measures)): #pylint: disable=C0200
             values.append(total_counts[b][measures[m]]/num_images)
         name = ''
         if b == 0:
