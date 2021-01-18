@@ -95,6 +95,7 @@ def main(options):
         label = None
         if labels:
             label = labels.load(i)
+            assert image.size() == label.size(), 'Image and label do not match.'
 
         if options.autoencoder:
             label = image
