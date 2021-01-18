@@ -265,17 +265,29 @@ def _compile_helper(model, training_spec):
                   loss=loss_from_dict(training_spec.loss),
                   metrics=[metric_from_dict(m) for m in training_spec.metrics])
 
+class ContinueTrainingException(Exception):
+    """
+    Callbacks can raise this exception to modify the model, recompile, and
+    continue training.
+    """
+    def __init__(self, msg=None, completed_epochs=0, recompile_model=False):
+        super().__init__(msg)
+        self.completed_epochs = completed_epochs
+        self.recompile_model = recompile_model
+
 def compile_model(model_fn, training_spec):
     """
     Compile and check that the model is valid.
     """
-    if isinstance(model_fn, tf.keras.Model):
-        model = model_fn
-        _compile_helper(model, training_spec)
-    else:
-        with _strategy(_devices(config.general.gpus())).scope():
+    if not hasattr(training_spec, 'strategy'):
+        training_spec.strategy = _strategy(_devices(config.general.gpus()))
+    with training_spec.strategy.scope():
+        if isinstance(model_fn, tf.keras.Model):
+            model = model_fn
+            _compile_helper(model, training_spec)
+        else:
             model = model_fn()
-            assert isinstance(model, tf.keras.models.Model),\
+            assert isinstance(model, tf.keras.models.Model), \
                    "Model is not a Tensorflow Keras model"
             _compile_helper(model, training_spec)
 
@@ -319,13 +331,23 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         dataset.reset_access_counts(set_need_check=True)
 
         if (training_spec.steps is None) or (training_spec.steps > 0):
-            history = model.fit(ds,
-                                epochs=training_spec.epochs,
-                                callbacks=callbacks,
-                                validation_data=validation,
-                                validation_steps=None, # Steps are controlled in the dataset setup
-                                steps_per_epoch=None,
-                                verbose=1) # Set to 2 when logging
+            done = False
+            epochs = training_spec.epochs
+            while not done:
+                try:
+                    history = model.fit(ds,
+                                        epochs=epochs,
+                                        callbacks=callbacks,
+                                        validation_data=validation,
+                                        validation_steps=None, # Steps are controlled in the dataset setup
+                                        steps_per_epoch=None,
+                                        verbose=1) # Set to 2 when logging
+                    done = True
+                except ContinueTrainingException as cte:
+                    print('Recompiling model and resuming training.')
+                    epochs -= cte.completed_epochs
+                    if cte.recompile_model:
+                        model = compile_model(model, training_spec)
         else: # Skip training
             print('Skipping straight to validation')
             history = model.evaluate(validation, steps=training_spec.validation.steps,
