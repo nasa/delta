@@ -125,9 +125,9 @@ class DeltaImage(ABC):
         return self.size()[1]
 
     def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
-              partials_overlap: bool=False, by_block=False) -> Iterator[rectangle.Rectangle]:
+              partials_overlap: bool=False, by_block=False, offset=(0, 0)) -> Iterator[rectangle.Rectangle]:
         """Generator to yield ROIs for the image."""
-        input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        input_bounds = rectangle.Rectangle(offset[0], offset[1], max_x=self.width(), max_y=self.height())
         return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
                                            min_shape=min_shape, partials_overlap=partials_overlap,
                                            by_block=by_block)

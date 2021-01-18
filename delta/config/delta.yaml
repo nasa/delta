@@ -26,9 +26,7 @@ dataset:
     type:             tiff
     # preprocess the images when loading (i.e., scaling)
     preprocess:
-      enabled:        true
-      offset:         default
-      scale_factor:   default
+      - scale
     nodata_value:     ~
     directory:        ~
     extension:        default
@@ -37,10 +35,7 @@ dataset:
   
   labels:
     type:             tiff
-    preprocess:
-      enabled:        false
-      offset:         default
-      scale_factor:   default
+    preprocess:       ~
     nodata_value:     ~
     directory:        ~
     extension:        default
@@ -77,6 +72,7 @@ train:
       params:        ~
       layers:        ~
   stride:    ~
+  max_tile_offset:   ~ # if set to integer, offset tiles by +1 each epoch modulus max_tile_offset
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5
@@ -95,9 +91,7 @@ train:
     images:
       type:        tiff
       preprocess:
-        enabled:        true
-        offset:         default
-        scale_factor:   default
+        - scale
       nodata_value: ~
       directory:   ~
       extension:   default
@@ -105,10 +99,7 @@ train:
       files:       ~
     labels:
       type:        tiff
-      preprocess:
-        enabled:        false
-        offset:         default
-        scale_factor:   default
+      preprocess:  ~
       nodata_value: ~
       directory:   ~
       extension:   default

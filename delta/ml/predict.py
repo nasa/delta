@@ -167,7 +167,7 @@ class Predictor(ABC):
             br = (br[0] - (overlap[0] // 2 if roi.max_x < input_bounds.max_x else 0),
                   br[1] - (overlap[1] // 2 if roi.max_x < input_bounds.max_x else 0))
             self._process_block(pred_image[tl[0]:br[0], tl[1]:br[1], :], sx + tl[0], sy + tl[1],
-                                labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
+                                None if labels is None else labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
 
         try:
             image.process_rois(tiles, callback_function, show_progress=self._show_progress)

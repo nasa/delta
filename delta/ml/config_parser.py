@@ -72,7 +72,10 @@ class _LayerWrapper:
                 if isinstance(l, tensorflow.Tensor):
                     inputs.append(l)
                 else:
-                    inputs.append(l.get_output_at(len(l.inbound_nodes) - 1))
+                    if hasattr(l, 'get_output_at'): # tf < 2.4.0
+                        inputs.append(l.get_output_at(len(l.inbound_nodes) - 1))
+                    else: # tf > 2.4.0
+                        inputs.append(l)
                 continue
             # getting nested layer
             parts = k.split('/')
@@ -86,7 +89,10 @@ class _LayerWrapper:
 
             # submodels can create multiple nodes, we want to take the outermost one
             # uses deprecated functionality but can't figure out another way to do it
-            inputs.append(cur.get_output_at(len(cur.inbound_nodes) - 1))
+            if hasattr(cur, 'get_output_at'): # tf < 2.4.0
+                inputs.append(cur.get_output_at(len(cur.inbound_nodes) - 1))
+            else: # tf > 2.4.0
+                inputs.append(cur)
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]

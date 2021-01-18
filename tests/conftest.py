@@ -174,14 +174,12 @@ def load_dataset(source, output_size, chunk_size=3, autoencoder=False):
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false
+                    preprocess: ~
                   labels:
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false''' %
+                    preprocess: ~''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 

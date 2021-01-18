@@ -34,6 +34,7 @@ __writers = {}
 __losses = {}
 __metrics = {}
 __callbacks = {}
+__prep_funcs = {}
 
 def __initialize():
     """
@@ -96,6 +97,15 @@ def register_callback(cb_type : str, cb_constructor):
     global __callbacks
     __callbacks[cb_type] = cb_constructor
 
+def register_preprocess(function_name : str, prep_function):
+    """
+    Register a preprocessing function for use in delta.
+
+    preprocess_function(data, rectangle, bands_list) should return a numpy array.
+    """
+    global __prep_funcs
+    __prep_funcs[function_name] = prep_function
+
 def layer(layer_type : str):
     """
     Retrieve a custom layer by name.
@@ -123,6 +133,13 @@ def callback(cb_type : str):
     """
     __initialize()
     return __callbacks.get(cb_type)
+
+def preprocess_function(prep_type : str):
+    """
+    Retrieve a custom callback by name.
+    """
+    __initialize()
+    return __prep_funcs.get(prep_type)
 
 def custom_objects():
     """
