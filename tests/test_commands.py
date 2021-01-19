@@ -21,9 +21,12 @@ import os
 import shutil
 import tempfile
 
+import numpy as np
 import pytest
 import tensorflow as tf
 
+from delta.extensions.sources.tiff import TiffImage
+from delta.ml.predict import LabelPredictor
 from delta.subcommands.main import main
 
 @pytest.fixture(scope="session")
@@ -51,10 +54,30 @@ def identity_config(binary_identity_tiff_filenames):
 
     shutil.rmtree(tmpdir)
 
-def test_predict(identity_config, tmp_path):
+def test_predict_main(identity_config, tmp_path):
     model_path = tmp_path / 'model.h5'
     inputs = tf.keras.layers.Input((32, 32, 2))
-    #out = tf.keras.layers.Add()([inputs, inputs])
     tf.keras.Model(inputs, inputs).save(model_path)
     args = 'delta classify --config %s %s' % (identity_config, model_path)
+    os.chdir(tmp_path) # put temporary outputs here
     main(args.split())
+
+def test_predict(binary_identity_tiff_filenames):
+    inputs = tf.keras.layers.Input((32, 32, 2))
+    model = tf.keras.Model(inputs, inputs)
+    pred = LabelPredictor(model)
+    image = TiffImage(binary_identity_tiff_filenames[0])
+    label = TiffImage(binary_identity_tiff_filenames[1])
+    pred.predict(image, label)
+    cm = pred.confusion_matrix()
+    assert np.sum(np.diag(cm)) == np.sum(cm)
+
+def test_predict_nodata(binary_identity_tiff_filenames):
+    inputs = tf.keras.layers.Input((32, 32, 2))
+    model = tf.keras.Model(inputs, inputs)
+    pred = LabelPredictor(model)
+    image = TiffImage(binary_identity_tiff_filenames[0])
+    label = TiffImage(binary_identity_tiff_filenames[1], 1)
+    pred.predict(image, label)
+    cm = pred.confusion_matrix()
+    assert cm[0, 0] == np.sum(cm)

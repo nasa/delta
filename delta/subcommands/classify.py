@@ -100,12 +100,13 @@ def main(options):
             label = labels.load(i)
             assert image.size() == label.size(), 'Image and label do not match.'
 
+        ts = config.io.tile_size()
         if options.autoencoder:
             label = image
-            predictor = predict.ImagePredictor(model, output_image, True,
+            predictor = predict.ImagePredictor(model, ts, output_image, True,
                                                None if options.noColormap else (ae_convert, np.uint8, 3))
         else:
-            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors,
+            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
                                                prob_image=prob_image, error_image=error_image,
                                                error_colors=error_colors)
 
