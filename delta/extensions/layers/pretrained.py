@@ -26,11 +26,11 @@ from delta.config.extensions import register_layer
 
 def pretrained(filename, encoding_layer, **kwargs):
     model = tensorflow.keras.models.load_model(filename, compile=False)
+    model(model.input) # call it once so you can get the output
     output_layer = model.get_layer(index=encoding_layer) if isinstance(encoding_layer, int) else \
                    model.get_layer(encoding_layer)
-    model(model.input) # call it once so you can get the output
     # thanks tensorflow api changes
-    out = output_layer.output if version.parse(tensorflow.__version__) >= version.parse('2.4.0') else \
+    out = output_layer.get_output_at(0) if version.parse(tensorflow.__version__) >= version.parse('2.4.0') else \
           output_layer.get_output_at(1)
     m = tensorflow.keras.Model(inputs=model.get_layer(index=0).output, outputs=out, **kwargs)
     return m

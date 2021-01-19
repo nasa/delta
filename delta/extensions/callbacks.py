@@ -22,9 +22,8 @@ Custom callbacks that come with DELTA.
 import tensorflow
 import tensorflow.keras.callbacks
 
-from delta.config import config
 from delta.config.extensions import register_callback
-from delta.ml.train import compile_model
+from delta.ml.train import ContinueTrainingException
 
 class SetTrainable(tensorflow.keras.callbacks.Callback):
     def __init__(self, layer_name, epoch, trainable=True):
@@ -43,7 +42,8 @@ class SetTrainable(tensorflow.keras.callbacks.Callback):
                         a.trainable = self._make_trainable
             else:
                 l.trainable = self._make_trainable
-            compile_model(self.model, config.train.spec())
+            # have to abort, recompile changed model, and continue training
+            raise ContinueTrainingException(completed_epochs=epoch, recompile_model=True)
 
 def ExponentialLRScheduler(start_epoch=10, multiplier=0.95):
     def schedule(epoch, lr):
