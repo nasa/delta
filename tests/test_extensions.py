@@ -19,12 +19,14 @@
 """
 Test for worldview class.
 """
+import pytest
 import tensorflow as tf
 
 from conftest import config_reset
 
 from delta.config import config
 import delta.config.extensions as ext
+from delta.ml.train import ContinueTrainingException
 
 def test_efficientnet():
     l = ext.layer('EfficientNet')
@@ -106,7 +108,8 @@ def test_callbacks():
     assert not out.trainable
     c.on_epoch_begin(0)
     assert not out.trainable
-    c.on_epoch_begin(1)
+    with pytest.raises(ContinueTrainingException):
+        c.on_epoch_begin(1)
     assert out.trainable
 
     c = ext.callback('ExponentialLRScheduler')(start_epoch=2, multiplier=0.95)

@@ -110,7 +110,7 @@ class Predictor(ABC):
 
         return retval
 
-    def predict(self, image, label=None, input_bounds=None):
+    def predict(self, image, label=None, input_bounds=None, overlap=(0, 0)):
         """
         Runs the model on `image`, comparing the results to `label` if specified.
         Results are limited to `input_bounds`. Returns output, the meaning of which
@@ -129,12 +129,13 @@ class Predictor(ABC):
             assert net_output_shape[0] is None and net_output_shape[1] is None
             out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
             tiles = input_bounds.make_tile_rois(config.io.tile_size(), include_partials=False,
-                                                overlap_shape=(ts[0] - out_shape[1], ts[1] - out_shape[2]),
+                                                overlap_shape=(ts[0] - out_shape[1] + overlap[0],
+                                                               ts[1] - out_shape[2] + overlap[1]),
                                                 partials_overlap=True)
 
         else:
-            offset_r = -net_input_shape[0] + net_output_shape[0]
-            offset_c = -net_input_shape[1] + net_output_shape[1]
+            offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
+            offset_c = -net_input_shape[1] + net_output_shape[1] + overlap[1]
             output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
             block_size_x = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
             block_size_y = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
@@ -160,7 +161,13 @@ class Predictor(ABC):
                                                 label_x + pred_image.shape[0], label_y + pred_image.shape[1])
                 labels = np.squeeze(label.read(label_roi))
 
-            self._process_block(pred_image, sx, sy, labels, label_nodata)
+            tl = [0, 0]
+            tl = (overlap[0] // 2 if block_x > 0 else 0, overlap[1] // 2 if block_y > 0 else 0)
+            br = (roi.max_x - roi.min_x, roi.max_y - roi.min_y)
+            br = (br[0] - (overlap[0] // 2 if roi.max_x < input_bounds.max_x else 0),
+                  br[1] - (overlap[1] // 2 if roi.max_x < input_bounds.max_x else 0))
+            self._process_block(pred_image[tl[0]:br[0], tl[1]:br[1], :], sx + tl[0], sy + tl[1],
+                                None if labels is None else labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
 
         try:
             image.process_rois(tiles, callback_function, show_progress=self._show_progress)

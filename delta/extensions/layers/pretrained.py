@@ -18,56 +18,21 @@
 """
 DELTA specific network layers.
 """
-
-import tensorflow as tf
+from packaging import version
+import tensorflow
 import tensorflow.keras.models
 
 from delta.config.extensions import register_layer
-from delta.ml.train import DeltaLayer
 
-class Pretrained(DeltaLayer):
-    def __init__(self, filename, encoding_layer, trainable=False, **kwargs):
-        '''
-        Loads a pretrained model and extracts the enocoding layers.
-        '''
-        super().__init__(**kwargs)
-        assert filename is not None, 'Did not specify pre-trained model.'
-        assert encoding_layer is not None, 'Did not specify encoding layer point.'
+def pretrained(filename, encoding_layer, **kwargs):
+    model = tensorflow.keras.models.load_model(filename, compile=False)
+    model(model.input) # call it once so you can get the output
+    output_layer = model.get_layer(index=encoding_layer) if isinstance(encoding_layer, int) else \
+                   model.get_layer(encoding_layer)
+    # thanks tensorflow api changes
+    out = output_layer.get_output_at(0) if version.parse(tensorflow.__version__) >= version.parse('2.4.0') else \
+          output_layer.get_output_at(1)
+    m = tensorflow.keras.Model(inputs=model.get_layer(index=0).output, outputs=out, **kwargs)
+    return m
 
-        self._filename = filename
-        self._encoding_layer = encoding_layer
-        self.trainable = trainable
-
-        temp_model = tensorflow.keras.models.load_model(filename, compile=False)
-
-        output_layers = []
-        if isinstance(encoding_layer, int):
-            break_point = lambda x, y: x == encoding_layer
-        elif isinstance(encoding_layer, str):
-            break_point = lambda x, y: y.name == encoding_layer
-
-        for idx, l in enumerate(temp_model.layers):
-            output_layers.append(l)
-            output_layers[-1].trainable = trainable
-            if break_point(idx, l):
-                break
-        #self._layers = tensorflow.keras.models.Sequential(output_layers, **kwargs)
-        self.layers = output_layers
-        self.input_spec = self.layers[0].input_spec
-
-    def get_config(self):
-        config = super().get_config()
-        config.update({'filename': self._filename})
-        config.update({'encoding_layer': self._encoding_layer})
-        return config
-
-    def call(self, inputs, **_): # pragma: no cover
-        x = inputs
-        for l in self.layers:
-            x = l(x)
-        return x
-
-    def shape(self):
-        return tf.TensorShape(self.layers[0].input_shape[0])
-
-register_layer('Pretrained', Pretrained)
+register_layer('Pretrained', pretrained)

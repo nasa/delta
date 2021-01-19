@@ -107,6 +107,20 @@ def doubling_tiff_filenames():
     shutil.rmtree(tmpdir)
 
 @pytest.fixture(scope="session")
+def binary_identity_tiff_filenames():
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    label = np.random.randint(0, 2, (128, 128), np.uint8) #pylint: disable=no-member
+    image = np.take(np.asarray([[1.0, 0.0], [0.0, 1.0]]), label, axis=0)
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
+    yield ([image_path], [label_path])
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="session")
 def worldview_filenames(original_file):
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
@@ -188,14 +202,12 @@ def load_dataset(source, output_size, chunk_size=3, autoencoder=False):
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false
+                    preprocess: ~
                   labels:
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false''' %
+                    preprocess: ~''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
                  source[4], os.path.dirname(label_path), source[3]))
 

@@ -64,17 +64,35 @@ def test_images_dir():
     dataset:
       images:
         type: tiff
-        preprocess:
-          enabled: false
+        preprocess: ~
         directory: %s/
         extension: .tiff
     ''' % (dir_path)
     config.load(yaml_str=test_str)
     im = config.dataset.images()
-    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
+
+def test_preprocess():
+    config_reset()
+    test_str = '''
+    dataset:
+      images:
+        preprocess:
+          - scale:
+              factor: 2.0
+          - offset:
+              factor: 1.0
+          - clip:
+              bounds: [0, 5]
+    '''
+    config.load(yaml_str=test_str)
+    f = config.dataset.images().preprocess()
+    assert f(np.asarray([0.0]), None, None) == 1.0
+    assert f(np.asarray([2.0]), None, None) == 2.0
+    assert f(np.asarray([-5.0]), None, None) == 0.0
+    assert f(np.asarray([20.0]), None, None) == 5.0
 
 def test_images_files():
     config_reset()
@@ -83,13 +101,11 @@ def test_images_files():
     dataset:
       images:
         type: tiff
-        preprocess:
-          enabled: false
+        preprocess: ~
         files: [%s]
     ''' % (file_path)
     config.load(yaml_str=test_str)
     im = config.dataset.images()
-    assert im.preprocess() is None
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0] == file_path

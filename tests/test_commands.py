@@ -27,44 +27,34 @@ import tensorflow as tf
 from delta.subcommands.main import main
 
 @pytest.fixture(scope="session")
-def doubling_config(doubling_tiff_filenames):
+def identity_config(binary_identity_tiff_filenames):
     tmpdir = tempfile.mkdtemp()
 
     config_path = os.path.join(tmpdir, 'dataset.yaml')
     with open(config_path, 'w') as f:
         f.write('dataset:\n')
         f.write('  images:\n')
-        f.write('    nodata_value: 10.0\n')
+        f.write('    nodata_value: ~\n')
         f.write('    files:\n')
-        for fn in doubling_tiff_filenames[0]:
+        for fn in binary_identity_tiff_filenames[0]:
             f.write('      - %s\n' % (fn))
         f.write('  labels:\n')
-        f.write('    nodata_value: 10.0\n')
+        f.write('    nodata_value: ~\n')
         f.write('    files:\n')
-        for fn in doubling_tiff_filenames[1]:
+        for fn in binary_identity_tiff_filenames[1]:
             f.write('      - %s\n' % (fn))
+        f.write('  classes: 2\n')
+        f.write('io:\n')
+        f.write('  tile_size: [128, 128]\n')
 
     yield config_path
 
     shutil.rmtree(tmpdir)
 
-def test_predict(doubling_config, tmp_path):
+def test_predict(identity_config, tmp_path):
     model_path = tmp_path / 'model.h5'
-    print(open(doubling_config, 'r').read())
-    inputs = tf.keras.layers.Input((32, 32, 1))
-    out = tf.keras.layers.Add()([inputs, inputs])
-    tf.keras.Model(inputs, out).save(model_path)
-    #with open(config_path, 'w') as f:
-    #    f.write("""train:
-    #                 network:
-    #                   model:
-    #                     layers:
-    #                       - Input:
-    #                           shape: [~, ~, num_bands]
-    #                           name: input_layer
-    #                       - Add:
-    #                           inputs: [input_layer, input_layer]
-    #                 epochs: 1
-    #            """)
-    args = 'delta classify --config %s %s' % (doubling_config, model_path)
+    inputs = tf.keras.layers.Input((32, 32, 2))
+    #out = tf.keras.layers.Add()([inputs, inputs])
+    tf.keras.Model(inputs, inputs).save(model_path)
+    args = 'delta classify --config %s %s' % (identity_config, model_path)
     main(args.split())

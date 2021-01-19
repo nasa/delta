@@ -30,7 +30,7 @@ import h5py
 from delta.config import config
 from delta.extensions.sources import npy
 from delta.ml import train, predict, io
-from delta.extensions.layers.pretrained import Pretrained
+from delta.extensions.layers.pretrained import pretrained
 from delta.ml.ml_config import TrainingSpec
 
 def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.3, max_wrong=200):
@@ -88,11 +88,7 @@ def test_pretrained(dataset, ae_dataset):
     # 3 create model network based on autonecoder.
     def model_fn():
         inputs = keras.layers.Input((10, 10, 1))
-        pretrained_layer = Pretrained(ae_model, 3, trainable=False)
-        assert pretrained_layer.get_config()['filename'] == ae_model
-        assert pretrained_layer.get_config()['encoding_layer'] == 3
-        assert pretrained_layer.shape().as_list() == [None, 10, 10, 1]
-        pretrained_layer = pretrained_layer(inputs)
+        pretrained_layer = pretrained(ae_model, 3, trainable=False)(inputs)
         up_samp1 = keras.layers.UpSampling2D((2,2))(pretrained_layer)
         conv1 = keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same')(up_samp1)
         output = keras.layers.Conv2D(2, (3,3), activation='softmax', padding='same')(conv1)

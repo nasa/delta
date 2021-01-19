@@ -34,8 +34,8 @@ def initialize():
     register_extension('delta.extensions.layers.efficientnet')
 
     register_extension('delta.extensions.losses')
-
     register_extension('delta.extensions.metrics')
+    register_extension('delta.extensions.preprocess')
 
     register_image_reader('tiff', tiff.TiffImage)
     register_image_reader('rgba', tiff.RGBAImage)

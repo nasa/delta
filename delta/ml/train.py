@@ -33,7 +33,7 @@ from tensorflow.keras.layers import Layer
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .io import save_model
+from .io import save_model, print_network
 from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
 
 class DeltaLayer(Layer):
@@ -148,6 +148,25 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         if epoch != self.last_epoch:
             self.ids.reset_access_counts()
 
+class _TileOffsetCallback(tf.keras.callbacks.Callback):
+    """
+    Reset imagery_dataset file counts on epoch end
+    """
+    def __init__(self, ids, max_tile_offset):
+        super().__init__()
+        self.ids = ids
+        self.max_tile_offset = max_tile_offset
+
+    def on_epoch_end(self, epoch, _=None):
+        (tox, toy) = self.ids.tile_offset()
+        tox += 1
+        if tox == self.max_tile_offset:
+            tox = 0
+            toy += 1
+            if toy == self.max_tile_offset:
+                toy = 0
+        self.ids.set_tile_offset((tox, toy))
+
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
@@ -234,28 +253,43 @@ def _build_callbacks(model, dataset, training_spec):
         callbacks.append(tcb)
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
+    if training_spec.max_tile_offset:
+        callbacks.append(_TileOffsetCallback(dataset, training_spec.max_tile_offset))
 
     callbacks.extend(config_callbacks())
 
     return (callbacks, mcb)
 
-def _compile_model(model_fn, dataset, training_spec):
+def _compile_helper(model, training_spec):
+    model.compile(optimizer=optimizer_from_dict(training_spec.optimizer),
+                  loss=loss_from_dict(training_spec.loss),
+                  metrics=[metric_from_dict(m) for m in training_spec.metrics])
+
+class ContinueTrainingException(Exception):
+    """
+    Callbacks can raise this exception to modify the model, recompile, and
+    continue training.
+    """
+    def __init__(self, msg=None, completed_epochs=0, recompile_model=False):
+        super().__init__(msg)
+        self.completed_epochs = completed_epochs
+        self.recompile_model = recompile_model
+
+def compile_model(model_fn, training_spec):
     """
     Compile and check that the model is valid.
     """
-    # This does not work when using the CPU!
-    if isinstance(model_fn, tf.keras.Model):
-        model = model_fn
-        print('WARNING: Model loaded without TF strategy/device wrapper, this may fail in some configurations!')
-        # May not be able to improve on this until tf 2.2
-    else:
-        with _strategy(_devices(config.general.gpus())).scope():
+    if not hasattr(training_spec, 'strategy'):
+        training_spec.strategy = _strategy(_devices(config.general.gpus()))
+    with training_spec.strategy.scope():
+        if isinstance(model_fn, tf.keras.Model):
+            model = model_fn
+            _compile_helper(model, training_spec)
+        else:
             model = model_fn()
-            assert isinstance(model, tf.keras.models.Model),\
+            assert isinstance(model, tf.keras.models.Model), \
                    "Model is not a Tensorflow Keras model"
-            model.compile(optimizer=optimizer_from_dict(training_spec.optimizer),
-                          loss=loss_from_dict(training_spec.loss),
-                          metrics=[metric_from_dict(m) for m in training_spec.metrics])
+            _compile_helper(model, training_spec)
 
     input_shape = model.input_shape
     output_shape = model.output_shape
@@ -265,14 +299,11 @@ def _compile_model(model_fn, dataset, training_spec):
     # The below may no longer be valid if we move to convolutional architectures.
     assert input_shape[1] == input_shape[2], 'Input to network is not chunked'
     assert len(output_shape) == 2 or output_shape[1] == output_shape[2], 'Output from network is not chunked'
-    assert input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
-    # last element differs for the sparse metrics
-    assert output_shape[1:-1] == dataset.output_shape()[:-1] or (output_shape[1] is None), \
-            'Network output shape %s does not match label shape %s.' % (output_shape[1:], dataset.output_shape()[:-1])
 
     if config.general.verbose():
         print('Training model:')
-        print(model.summary())
+        print_network(model, (512, 512, 8))
+        print(model.summary(line_length=120))
 
     return model
 
@@ -281,7 +312,12 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
     Trains the specified model on a dataset according to a training
     specification.
     """
-    model = _compile_model(model_fn, dataset, training_spec)
+    model = compile_model(model_fn, training_spec)
+    assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
+    # last element differs for the sparse metrics
+    assert model.output_shape[1:-1] == dataset.output_shape()[:-1] or (model.output_shape[1] is None), \
+            'Network output shape %s does not match label shape %s.' % \
+            (model.output_shape[1:], dataset.output_shape()[:-1])
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 
@@ -295,13 +331,23 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         dataset.reset_access_counts(set_need_check=True)
 
         if (training_spec.steps is None) or (training_spec.steps > 0):
-            history = model.fit(ds,
-                                epochs=training_spec.epochs,
-                                callbacks=callbacks,
-                                validation_data=validation,
-                                validation_steps=None, # Steps are controlled in the dataset setup
-                                steps_per_epoch=None,
-                                verbose=1) # Set to 2 when logging
+            done = False
+            epochs = training_spec.epochs
+            while not done:
+                try:
+                    history = model.fit(ds,
+                                        epochs=epochs,
+                                        callbacks=callbacks,
+                                        validation_data=validation,
+                                        validation_steps=None, # Steps are controlled in the dataset setup
+                                        steps_per_epoch=None,
+                                        verbose=1) # Set to 2 when logging
+                    done = True
+                except ContinueTrainingException as cte:
+                    print('Recompiling model and resuming training.')
+                    epochs -= cte.completed_epochs
+                    if cte.recompile_model:
+                        model = compile_model(model, training_spec)
         else: # Skip training
             print('Skipping straight to validation')
             history = model.evaluate(validation, steps=training_spec.validation.steps,
