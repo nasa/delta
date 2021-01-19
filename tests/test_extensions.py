@@ -21,6 +21,9 @@ Test for worldview class.
 """
 import tensorflow as tf
 
+from conftest import config_reset
+
+from delta.config import config
 import delta.config.extensions as ext
 
 def test_efficientnet():
@@ -51,6 +54,25 @@ def test_mapped():
     o = tf.ones((3, 3, 3, 3), dtype=tf.float32)
     assert tf.reduce_sum(mcce([0, 0]).call(z, o)) == 0.0
     assert tf.reduce_sum(mcce([1, 0]).call(z, o)) > 10.0
+    oo = tf.ones((3, 3, 3, 3, 2), dtype=tf.float32)
+    assert tf.reduce_sum(mcce([[0, 0], [1, 1]]).call(z, oo)) == 0.0
+    assert tf.reduce_sum(mcce([[1, 1], [0, 0]]).call(z, oo)) > 10.0
+
+    config_reset()
+    test_str = '''
+    dataset:
+      classes:
+        - 0:
+            name: class_0
+        - 1:
+            name: class_1
+    '''
+    config.load(yaml_str=test_str)
+
+    assert tf.reduce_sum(mcce({0: 0, 1:0}).call(z, o)) == 0.0
+    assert tf.reduce_sum(mcce({'class_0': 0, 'class_1':0}).call(z, o)) == 0.0
+    assert tf.reduce_sum(mcce({0:1, 1:0}).call(z, o)) > 10.0
+    assert tf.reduce_sum(mcce({'class_0': 1, 'class_1':0}).call(z, o)) > 10.0
 
 def test_sparse_recall():
     m0 = ext.metric('SparseRecall')(0)

@@ -337,6 +337,18 @@ class ClassesConfig(DeltaConfigComponent):
             if v.value != i:
                 self._conversions.append(v.value)
 
+    def class_id(self, class_name):
+        """
+        class_name can either be an int (original pixel value in images) or the name of a class.
+        Returns the ID of the class in the labels after transformation in image preprocessing.
+        """
+        if class_name == len(self._classes) or class_name == 'nodata':
+            return len(self._classes)
+        for (i, c) in enumerate(self._classes):
+            if class_name in (c.value, c.name):
+                return i
+        raise ValueError('Class ' + class_name + ' not found.')
+
     def weights(self):
         weights = []
         for c in self._classes:
