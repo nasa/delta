@@ -48,7 +48,7 @@ def identity_config(binary_identity_tiff_filenames):
             f.write('      - %s\n' % (fn))
         f.write('''
           labels:
-            nodata_value: ~
+            nodata_value: 2
             files:
         ''')
         for fn in binary_identity_tiff_filenames[1]:
@@ -115,7 +115,7 @@ def test_train_validate(identity_config, binary_identity_tiff_filenames, tmp_pat
             model:
               layers:
                 - Input:
-                    shape: [1, 1, num_bands]
+                    shape: [~, ~, num_bands]
                 - Conv2D:
                     filters: 2
                     kernel_size: [1, 1]
