@@ -143,6 +143,8 @@ def evaluate_images(images, labels):
 
     # Evaluate labels first
     counts = {}
+    if config.dataset.labels().nodata_value():
+        counts[len(config.dataset.classes)] = 0
     header = classes_string(classes, classes, 'Label')
     print(header)
     print('-' * len(header))

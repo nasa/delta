@@ -22,13 +22,16 @@ import os.path
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
 import tensorflow as tf
 
 from delta.config import config
 from delta.config.extensions import custom_objects, image_writer
 from delta.ml import predict
 from delta.extensions.sources.tiff import write_tiff
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 
 def save_confusion(cm, class_labels, filename):
     f = plt.figure()
@@ -97,12 +100,13 @@ def main(options):
             label = labels.load(i)
             assert image.size() == label.size(), 'Image and label do not match.'
 
+        ts = config.io.tile_size()
         if options.autoencoder:
             label = image
-            predictor = predict.ImagePredictor(model, output_image, True,
+            predictor = predict.ImagePredictor(model, ts, output_image, True,
                                                None if options.noColormap else (ae_convert, np.uint8, 3))
         else:
-            predictor = predict.LabelPredictor(model, output_image, True, colormap=colors,
+            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
                                                prob_image=prob_image, error_image=error_image,
                                                error_colors=error_colors)
 
@@ -119,7 +123,7 @@ def main(options):
 
         if labels:
             cm = predictor.confusion_matrix()
-            print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
+            print('%.2f%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:

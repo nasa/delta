@@ -66,6 +66,12 @@ class ImageSet:
         """
         return self._nodata_value
 
+    def set_nodata_value(self, nodata):
+        """
+        Set the pixel value to disregard.
+        """
+        self._nodata_value = nodata
+
     def load(self, index):
         img = image_reader(self.type())(self[index], self.nodata_value())
         if self._preprocess:
@@ -304,6 +310,11 @@ class ClassesConfig(DeltaConfigComponent):
                     inner_dict = c[k]
                     self._classes.append(LabelClass(k, str(inner_dict.get('name')),
                                                     inner_dict.get('color'), inner_dict.get('weight')))
+        elif isinstance(d, dict):
+            for k in d:
+                assert isinstance(k, int), 'Class label value must be int.'
+                self._classes.append(LabelClass(k, str(d[k].get('name')),
+                                                d[k].get('color'), d[k].get('weight')))
         else:
             raise ValueError('Expected classes to be an int or list in config, was ' + str(d))
         # make sure the order is consistent for same values, and create preprocessing function
@@ -313,6 +324,18 @@ class ClassesConfig(DeltaConfigComponent):
             if v.value != i:
                 self._conversions.append(v.value)
             v.end_value = i
+
+    def class_id(self, class_name):
+        """
+        class_name can either be an int (original pixel value in images) or the name of a class.
+        Returns the ID of the class in the labels after transformation in image preprocessing.
+        """
+        if class_name == len(self._classes) or class_name == 'nodata':
+            return len(self._classes)
+        for (i, c) in enumerate(self._classes):
+            if class_name in (c.value, c.name):
+                return i
+        raise ValueError('Class ' + class_name + ' not found.')
 
     def weights(self):
         weights = []

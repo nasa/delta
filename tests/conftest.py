@@ -47,7 +47,7 @@ tf.get_logger().setLevel('ERROR')
 
 def config_reset():
     """
-    Rests the configuration with useful default options for testing.
+    Resets the configuration with useful default options for testing.
     """
     config.reset() # don't load any user files
     config.load(yaml_str=
@@ -89,6 +89,34 @@ def original_file():
     tiff.write_tiff(image_path, image)
     tiff.write_tiff(label_path, label)
     yield (image_path, label_path)
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="session")
+def doubling_tiff_filenames():
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    image = np.random.random((128, 128)) #pylint: disable=no-member
+    label = 2 * image
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
+    yield ([image_path], [label_path])
+
+    shutil.rmtree(tmpdir)
+
+@pytest.fixture(scope="session")
+def binary_identity_tiff_filenames():
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    label = np.random.randint(0, 2, (128, 128), np.uint8) #pylint: disable=no-member
+    image = np.take(np.asarray([[1.0, 0.0], [0.0, 1.0]]), label, axis=0)
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
+    yield ([image_path], [label_path])
 
     shutil.rmtree(tmpdir)
 

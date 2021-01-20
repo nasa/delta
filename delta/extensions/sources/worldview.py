@@ -19,7 +19,6 @@
 Functions to support the WorldView satellites.
 """
 
-import math
 import zipfile
 import functools
 import os
@@ -194,23 +193,23 @@ class WorldviewImage(tiff.TiffImage):
         return self._meta['EFFECTIVEBANDWIDTH']
 
 # TOA correction
-def _get_esun_value(sat_id, band):
-    """Get the ESUN value for the given satellite and band"""
+#def _get_esun_value(sat_id, band):
+#    """Get the ESUN value for the given satellite and band"""
+#
+#    VALUES = {'WV02':[1580.814, 1758.2229, 1974.2416, 1856.4104,
+#                      1738.4791, 1559.4555, 1342.0695, 1069.7302, 861.2866],
+#              'WV03':[1583.58, 1743.81, 1971.48, 1856.26,
+#                      1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
+#    try:
+#        return VALUES[sat_id][band]
+#    except Exception as e:
+#        raise Exception('No ESUN value for ' + sat_id
+#                        + ', band ' + str(band)) from e
 
-    VALUES = {'WV02':[1580.814, 1758.2229, 1974.2416, 1856.4104,
-                      1738.4791, 1559.4555, 1342.0695, 1069.7302, 861.2866],
-              'WV03':[1583.58, 1743.81, 1971.48, 1856.26,
-                      1749.4, 1555.11, 1343.95, 1071.98, 863.296]}
-    try:
-        return VALUES[sat_id][band]
-    except Exception as e:
-        raise Exception('No ESUN value for ' + sat_id
-                        + ', band ' + str(band)) from e
-
-def _get_earth_sun_distance():
-    """Returns the distance between the Earth and the Sun in AU for the given date"""
-    # TODO: Copy the calculation from the WV manuals.
-    return 1.0
+#def _get_earth_sun_distance():
+#    """Returns the distance between the Earth and the Sun in AU for the given date"""
+#    # TODO: Copy the calculation from the WV manuals.
+#    return 1.0
 
 # The np.where clause handles input nodata values.
 
@@ -223,17 +222,17 @@ def _apply_toa_radiance(data, _, bands, factors, widths):
         buf[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)
     return buf
 
-def _apply_toa_reflectance(data, band, factor, width, sun_elevation,
-                           satellite, earth_sun_distance):
-    """Apply a top of atmosphere reflectance conversion to WorldView data"""
-    f = factor[band]
-    w = width [band]
-
-    esun    = _get_esun_value(satellite, band)
-    des2    = earth_sun_distance*earth_sun_distance
-    theta   = np.pi/2.0 - sun_elevation
-    scaling = (des2*np.pi) / (esun*math.cos(theta))
-    return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
+#def _apply_toa_reflectance(data, band, factor, width, sun_elevation,
+#                           satellite, earth_sun_distance):
+#    """Apply a top of atmosphere reflectance conversion to WorldView data"""
+#    f = factor[band]
+#    w = width [band]
+#
+#    esun    = _get_esun_value(satellite, band)
+#    des2    = earth_sun_distance*earth_sun_distance
+#    theta   = np.pi/2.0 - sun_elevation
+#    scaling = (des2*np.pi) / (esun*math.cos(theta))
+#    return np.where(data>0, ((data*f)/w)*scaling, OUTPUT_NODATA)
 
 
 def toa_preprocess(image, calc_reflectance=False):

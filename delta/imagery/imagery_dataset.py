@@ -64,24 +64,32 @@ class ImageryDataset:
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
 
+    # TODO: I am skeptical that this works with multiple epochs.
+    # It is also less important now that training is so much faster.
+    # I think we should probably get rid of it at some point.
     def set_resume_mode(self, resume_mode, log_folder):
+        """
+        Enable / disable resume mode and set a folder to store read log files.
+        """
         self._resume_mode = resume_mode
         self._log_folder = log_folder
         if self._log_folder and not os.path.exists(self._log_folder):
             os.mkdir(self._log_folder)
 
-    def _get_image_read_log_path(self, image_path):
+    def _resume_log_path(self, image_id):
         """Return the path to the read log for an input image"""
         if not self._log_folder:
             return None
+        image_path = self._images[image_id]
         image_name = os.path.basename(image_path)
         file_name  = os.path.splitext(image_name)[0] + '_read.log'
         log_path   = os.path.join(self._log_folder, file_name)
         return log_path
 
-    def _read_access_count_file(self, path): #pylint: disable=R0201
+    def resume_log_read(self, image_id): #pylint: disable=R0201
         """Reads an access count file containing a boolean and a count.
            The boolean is set to true if we need to check the count."""
+        path = self._resume_log_path(image_id)
         try:
             with portalocker.Lock(path, 'r', timeout=300) as f:
                 line = f.readline()
@@ -98,18 +106,15 @@ class ImageryDataset:
             # If there is a problem reading the count just treat as zero
             return (False, 0)
 
-    def _update_access_count_file(self, path, need_check):  #pylint: disable=R0201
-        log_path  = self._get_image_read_log_path(path)
+    def resume_log_update(self, image_id, count=None, need_check=False):  #pylint: disable=R0201
+        log_path  = self._resume_log_path(image_id)
         if not log_path:
             return
-        (_, count) = self._read_access_count_file(log_path)
-        if need_check:
-            bool_str = '1 '
-        else:
-            bool_str = '0 '
-        count_str = str(count+1)
+        if count is None:
+            (_, count) = self.resume_log_read(image_id)
+            count += 1
         with portalocker.Lock(log_path, 'w', timeout=300) as f:
-            f.write(bool_str + count_str) # No need to check again
+            f.write('%d %d' % (int(need_check), count))
 
     def reset_access_counts(self, set_need_check=False):
         """Go through all the access files and reset one of the values.
@@ -121,36 +126,26 @@ class ImageryDataset:
             return
         if config.general.verbose():
             print('Resetting access counts in folder: ' + self._log_folder)
-        file_list = os.listdir(self._log_folder)
-        for log_name in file_list:
-            if '_read.log' in log_name:
-                log_path = os.path.join(self._log_folder, log_name)
-                if set_need_check:
-                    _, count = self._read_access_count_file(log_path)
-                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                        f.write("1 " + str(count)) # Keep the count, set the bool
-                else: # Reset the access count
-                    with portalocker.Lock(log_path, 'w', timeout=300) as f:
-                        f.write("0 0") # No need to read if we reset the count
+        for i in range(len(self._images)):
+            self.resume_log_update(i, count=0, need_check=set_need_check)
 
-    def _list_tiles(self, i):
+    def _list_tiles(self, i): # pragma: no cover
         # If we need to skip this file because of the read count, no need to look up tiles.
         if self._resume_mode:
             file_path = self._images[i]
-            log_path  = self._get_image_read_log_path(file_path)
+            log_path  = self._resume_log_path(i)
             if log_path:
                 if config.general.verbose():
                     print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
-                (need_to_check, count) = self._read_access_count_file(log_path)
-                if need_to_check and (count > config.io.resume_cutoff()): #pylint: disable=R1705
+                (need_to_check, count) = self.resume_log_read(i)
+                if need_to_check and (count > config.io.resume_cutoff()):
                     if config.general.verbose():
                         print('Skipping index ' + str(i) + ' tile gen with count '
                               + str(count) + ' -> ' + file_path)
                     return []
-                else:
-                    if config.general.verbose():
-                        print('Computing tile list for index ' + str(i) + ' with count '
-                              + str(count) + ' -> ' + file_path)
+                if config.general.verbose():
+                    print('Computing tile list for index ' + str(i) + ' with count '
+                          + str(count) + ' -> ' + file_path)
             else:
                 if config.general.verbose():
                     print('No read log file for index ' + str(i))
@@ -172,7 +167,7 @@ class ImageryDataset:
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
                          overlap_shape=self._tile_overlap, by_block=True, offset=self._tile_offset)
 
-    def _tile_generator(self, i, is_labels):
+    def _tile_generator(self, i, is_labels): # pragma: no cover
         """
         A generator that yields image tiles from the given image.
         """
@@ -208,7 +203,7 @@ class ImageryDataset:
                     yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
 
             if not is_labels: # update access count per row
-                self._update_access_count_file(self._images[i], need_check=False)
+                self.resume_log_update(i, need_check=False)
 
     def _load_images(self, is_labels, data_type):
         """
@@ -223,7 +218,7 @@ class ImageryDataset:
         return r.interleave(gen_func, cycle_length=config.io.interleave_images(),
                             num_parallel_calls=config.io.threads())
 
-    def _chunk_image(self, image):
+    def _chunk_image(self, image): # pragma: no cover
         """Split up a tensor image into tensor chunks"""
 
         ksizes  = [1, self._chunk_shape[0], self._chunk_shape[1], 1] # Size of the chunks
@@ -236,7 +231,7 @@ class ImageryDataset:
 
         return result
 
-    def _reshape_labels(self, labels):
+    def _reshape_labels(self, labels): # pragma: no cover
         """Reshape the labels to account for the chunking process."""
         if self._chunk_shape:
             w = (self._chunk_shape[0] - self._output_shape[0]) // 2

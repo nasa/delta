@@ -26,7 +26,6 @@ import numpy as np
 
 import tensorflow as tf
 
-from delta.config import config
 from delta.imagery import rectangle
 
 #pylint: disable=unsubscriptable-object
@@ -37,9 +36,10 @@ class Predictor(ABC):
     """
     Abstract class to run prediction for an image given a model.
     """
-    def __init__(self, model, show_progress=False):
+    def __init__(self, model, tile_shape=None, show_progress=False):
         self._model = model
         self._show_progress = show_progress
+        self._tile_shape = tile_shape
 
     @abstractmethod
     def _initialize(self, shape, label, image):
@@ -124,11 +124,11 @@ class Predictor(ABC):
             input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
         output_shape = (input_bounds.width(), input_bounds.height())
 
-        ts = config.io.tile_size()
+        ts = self._tile_shape if self._tile_shape else (image.width(), image.height())
         if net_input_shape[0] is None and net_input_shape[1] is None:
             assert net_output_shape[0] is None and net_output_shape[1] is None
             out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
-            tiles = input_bounds.make_tile_rois(config.io.tile_size(), include_partials=False,
+            tiles = input_bounds.make_tile_rois(ts, include_partials=False,
                                                 overlap_shape=(ts[0] - out_shape[1] + overlap[0],
                                                                ts[1] - out_shape[2] + overlap[1]),
                                                 partials_overlap=True)
@@ -181,13 +181,13 @@ class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, output_image=None, show_progress=False, # pylint:disable=too-many-arguments
+    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
         output_image, prob_image, and error_image are all DeltaImageWriter's.
         colormap and error_colors are all numpy arrays mapping classes to colors.
         """
-        super().__init__(model, show_progress)
+        super().__init__(model, tile_shape, show_progress)
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
@@ -276,7 +276,8 @@ class LabelPredictor(Predictor):
                 valid_labels = labels[valid]
                 valid_pred = pred_image[valid]
 
-            self._error_image.write(self._error_colors[incorrect], x, y)
+            if self._error_image:
+                self._error_image.write(self._error_colors[incorrect], x, y)
             cm = tf.math.confusion_matrix(np.ndarray.flatten(valid_labels),
                                           np.ndarray.flatten(valid_pred),
                                           self._num_classes)
@@ -292,7 +293,6 @@ class LabelPredictor(Predictor):
                 for i in range(prob_image.shape[2]):
                     result += (colormap[i, :] * prob_image[:, :, i, np.newaxis]).astype(colormap.dtype)
                 self._output_image.write(result, x, y)
-                #self._output_image.write(colormap[pred_image], x, y)
             else:
                 self._output_image.write(pred_image, x, y)
 
@@ -306,14 +306,14 @@ class ImagePredictor(Predictor):
     """
     Predicts an image from an image.
     """
-    def __init__(self, model, output_image=None, show_progress=False, transform=None):
+    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, transform=None):
         """
         Trains on model, outputs to output_image, which is a DeltaImageWriter.
 
         transform is a tuple (function, output numpy type, number of bands) applied
         to the output image.
         """
-        super().__init__(model, show_progress)
+        super().__init__(model, tile_shape, show_progress)
         self._output_image = output_image
         self._output = None
         self._transform = transform

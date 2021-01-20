@@ -25,14 +25,15 @@ import tensorflow as tf
 from tensorflow import keras
 
 import conftest
+import h5py
 
 from delta.config import config
 from delta.extensions.sources import npy
-from delta.ml import train, predict
+from delta.ml import train, predict, io
 from delta.extensions.layers.pretrained import pretrained
 from delta.ml.ml_config import TrainingSpec
 
-def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.5, max_wrong=200):
+def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.3, max_wrong=200):
     model, _ = train.train(model_fn, dataset,
                            TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['sparse_categorical_accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
@@ -126,3 +127,21 @@ def test_fcn(dataset):
     assert count == 2
     # don't actually test correctness, this is not enough data for this size network
     evaluate_model(model_fn, dataset, threshold=0.0, max_wrong=10000)
+
+def test_save(tmp_path):
+    tmp_path = tmp_path / 'temp.h5'
+    inputs = keras.layers.Input((None, None, 1))
+    out = keras.layers.Conv2D(filters=9, kernel_size=2)(inputs)
+    m = keras.Model(inputs, out)
+    io.save_model(m, tmp_path)
+    with h5py.File(tmp_path, 'r') as f:
+        assert f.attrs['delta'] == config.export()
+
+def test_print():
+    """
+    Just make sure the printing functions in io don't crash.
+    """
+    inputs = keras.layers.Input((None, None, 1))
+    out = keras.layers.Conv2D(filters=9, kernel_size=2)(inputs)
+    m = keras.Model(inputs, out)
+    io.print_network(m, tile_shape=(512, 512))

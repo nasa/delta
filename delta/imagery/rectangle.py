@@ -55,7 +55,7 @@ class Rectangle:
 #            for col in range(self.min_x, self.max_x):
 #                yield(TileIndex(row,col))
 
-    def get_bounds(self):
+    def bounds(self):
         '''Returns (min_x, max_x, min_y, max_y)'''
         return (self.min_x, self.max_x, self.min_y, self.max_y)
 

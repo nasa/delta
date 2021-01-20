@@ -22,15 +22,16 @@ Various helpful loss functions.
 import tensorflow as tf
 import tensorflow.keras.metrics
 
+from delta.config import config
 from delta.config.extensions import register_metric
 
-class SparseRecall(tensorflow.keras.metrics.Metric):
+class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
     # this is cross entropy, but first replaces the labels with
     # a probability distribution from a lookup table
-    def __init__(self, class_id, name, label_id=None):
+    def __init__(self, label, class_id=None, name=None):
         super().__init__(name=name)
-        self._class_id = class_id
-        self._label_id = label_id if label_id else class_id
+        self._label_id = config.dataset.classes.class_id(label)
+        self._class_id = class_id if class_id is not None else self._label_id
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 

@@ -202,6 +202,10 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            max_tile_offset=self._config_dict['max_tile_offset'])
         return self.__training
 
+    def _load_dict(self, d : dict, base_dir):
+        self.__training = None
+        super()._load_dict(d, base_dir)
+
 
 class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
     def __init__(self):

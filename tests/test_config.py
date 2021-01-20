@@ -121,6 +121,21 @@ def test_classes():
     for (i, c) in enumerate(config.dataset.classes):
         assert c.value == i
     assert config.dataset.classes.weights() is None
+
+    def assert_classes(classes):
+        assert classes
+        values = [1, 2, 5]
+        for (i, c) in enumerate(classes):
+            e = values[i]
+            assert c.value == e
+            assert c.name == str(e)
+            assert c.color == e
+        assert classes.weights() == [1.0, 5.0, 2.0]
+        arr = np.array(values)
+        ind = classes.classes_to_indices_func()(arr)
+        assert np.max(ind) == 2
+        assert (classes.indices_to_classes_func()(ind) == values).all()
+
     config_reset()
     test_str = '''
     dataset:
@@ -139,18 +154,27 @@ def test_classes():
             weight: 2.0
     '''
     config.load(yaml_str=test_str)
-    assert config.dataset.classes
-    values = [1, 2, 5]
-    for (i, c) in enumerate(config.dataset.classes):
-        e = values[i]
-        assert c.value == e
-        assert c.name == str(e)
-        assert c.color == e
-    assert config.dataset.classes.weights() == [1.0, 5.0, 2.0]
-    arr = np.array(values)
-    ind = config.dataset.classes.classes_to_indices_func()(arr)
-    assert np.max(ind) == 2
-    assert (config.dataset.classes.indices_to_classes_func()(ind) == values).all()
+    assert_classes(config.dataset.classes)
+
+    config_reset()
+    test_str = '''
+    dataset:
+      classes:
+        2:
+          name: 2
+          color: 2
+          weight: 5.0
+        1:
+          name: 1
+          color: 1
+          weight: 1.0
+        5:
+          name: 5
+          color: 5
+          weight: 2.0
+    '''
+    config.load(yaml_str=test_str)
+    assert_classes(config.dataset.classes)
 
 def test_model_from_dict():
     config_reset()
@@ -228,6 +252,33 @@ def test_pretrained_layer():
         assert isinstance(m1.layers[i], type(m2.layers[1].layers[i]))
         if m1.layers[i].name == 'encoding':
             break
+
+    # test using internal layer of pretrained as input
+    pretrained_model = '''
+    params:
+        v1 : 10
+    layers:
+    - Input:
+        shape: in_shape
+    - Pretrained:
+        filename: %s
+        encoding_layer: encoding
+        name: pretrained
+    - Dense:
+        units: 100
+        activation: relu
+        inputs: pretrained/encoding
+    - Dense:
+        units: out_shape
+        activation: softmax
+    ''' % tmp_filename
+    m2 = config_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
+    m2.compile(optimizer='adam', loss='mse')
+    assert len(m2.layers[1].layers) == (len(m1.layers) - 1) # also don't take the input layer
+    for i in range(1, len(m1.layers)):
+        assert isinstance(m1.layers[i], type(m2.layers[1].layers[i]))
+        if m1.layers[i].name == 'encoding':
+            break
     os.remove(tmp_filename)
 
 def test_callbacks():
@@ -274,7 +325,7 @@ def test_validate():
     config_reset()
     test_str = '''
     train:
-      stride: string
+      stride: 0.5
     '''
     with pytest.raises(TypeError):
         config.load(yaml_str=test_str)
@@ -388,3 +439,36 @@ def test_argparser():
     assert im.type() == 'tiff'
     assert len(im) == 1
     assert im[0].endswith('landsat.tiff') and os.path.exists(im[0])
+
+def test_argparser_config_file(tmp_path):
+    config_reset()
+
+    test_str = '''
+    tensorboard:
+      enabled: false
+      dir: nonsense
+    '''
+    p = tmp_path / "temp.yaml"
+    p.write_text(test_str)
+
+    parser = argparse.ArgumentParser()
+    config.setup_arg_parser(parser)
+    options = parser.parse_args(['--config', str(p)])
+    config.initialize(options, [])
+
+    assert not config.tensorboard.enabled()
+    assert config.tensorboard.dir() == 'nonsense'
+
+def test_missing_file():
+    config_reset()
+
+    parser = argparse.ArgumentParser()
+    config.setup_arg_parser(parser)
+    options = parser.parse_args(['--config', 'garbage.yaml'])
+    with pytest.raises(FileNotFoundError):
+        config.initialize(options, [])
+
+def test_dump():
+    config_reset()
+
+    assert config.to_dict() == yaml.load(config.export())
