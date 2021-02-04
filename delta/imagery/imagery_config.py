@@ -42,7 +42,7 @@ class ImageSet:
          * An iterable of image filenames `images`
          * The image type (i.e., tiff, worldview, landsat) `image_type`
          * An optional preprocessing function to apply to the image,
-           following the signature in `delta.imagery.sources.delta_image.DeltaImage.set_process`.
+           following the signature in `delta.imagery.delta_image.DeltaImage.set_preprocess`.
          * A `nodata_value` for pixels to disregard
         """
         self._images = images
