@@ -211,7 +211,9 @@ class ImagePreprocessConfig(DeltaConfigComponent):
     def function(self, image_type):
         prep = lambda data, _, dummy: data
         for (name, args) in self._functions:
-            p = preprocess_function(name)(image_type=image_type, **args)
+            t = preprocess_function(name)
+            assert t is not None, 'Preprocess function %s not found.' % (name)
+            p = t(image_type=image_type, **args)
             def helper(cur, prev):
                 return lambda data, roi, bands: cur(prev(data, roi, bands), roi, bands)
             prep = helper(p, prep)
