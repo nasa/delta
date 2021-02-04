@@ -27,6 +27,7 @@ import portalocker
 import tensorflow as tf
 
 from delta.config import config
+from delta.imagery.rectangle import Rectangle
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -195,11 +196,15 @@ class ImageryDataset:
                 union = None
                 for t in subtiles:
                     shift_tile(t)
-                    union = t if union is None else union.expand_to_contain_rect(t)
-                rect.min_x = union.min_x
-                rect.min_y = union.min_y
-                rect.max_x = union.max_x
-                rect.max_y = union.max_y
+                    if union is None:
+                        union = Rectangle(min_x=t.min_x, max_x=t.max_x, min_y=t.min_y, max_y=t.max_y)
+                    else:
+                        union.expand_to_contain_rect(t)
+                if union:
+                    rect.min_x = union.min_x
+                    rect.min_y = union.min_y
+                    rect.max_x = union.max_x
+                    rect.max_y = union.max_y
 
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
