@@ -165,7 +165,7 @@ class ImageryDataset:
                              overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
-                         overlap_shape=self._tile_overlap, by_block=True, offset=self._tile_offset)
+                         overlap_shape=self._tile_overlap, by_block=True)
 
     def _tile_generator(self, i, is_labels): # pragma: no cover
         """
@@ -182,6 +182,24 @@ class ImageryDataset:
         preprocess = image.get_preprocess()
         image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
         bands = range(image.num_bands())
+
+        # apply tile offset. do here so we always have same number of tiles (causes problems with tf)
+        if self._tile_offset:
+            def shift_tile(t):
+                t.shift(self._tile_offset[0], self._tile_offset[1])
+                if t.max_x >= image.width():
+                    t.shift(image.width() - t.max_x, 0)
+                if t.max_y >= image.height():
+                    t.shift(0, image.height() - t.max_y)
+            for (rect, subtiles) in tiles:
+                union = None
+                for t in subtiles:
+                    shift_tile(t)
+                    union = t if union is None else union.expand_to_contain_rect(t)
+                rect.min_x = union.min_x
+                rect.min_y = union.min_y
+                rect.max_x = union.max_x
+                rect.max_y = union.max_y
 
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
