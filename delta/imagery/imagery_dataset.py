@@ -188,23 +188,23 @@ class ImageryDataset:
         if self._tile_offset:
             def shift_tile(t):
                 t.shift(self._tile_offset[0], self._tile_offset[1])
-                if t.max_x >= image.width():
-                    t.shift(image.width() - t.max_x, 0)
-                if t.max_y >= image.height():
-                    t.shift(0, image.height() - t.max_y)
+                t.max_x = min(t.max_x, image.width())
+                t.max_y = min(t.max_y, image.height())
+                if t.width() < self._tile_shape[0]:
+                    t.min_x = t.max_x - self._tile_shape[0]
+                if t.height() < self._tile_shape[1]:
+                    t.min_y = t.max_y - self._tile_shape[1]
             for (rect, subtiles) in tiles:
                 union = None
+                shift_tile(rect)
                 for t in subtiles:
-                    shift_tile(t)
-                    if union is None:
-                        union = Rectangle(min_x=t.min_x, max_x=t.max_x, min_y=t.min_y, max_y=t.max_y)
-                    else:
-                        union.expand_to_contain_rect(t)
-                if union:
-                    rect.min_x = union.min_x
-                    rect.min_y = union.min_y
-                    rect.max_x = union.max_x
-                    rect.max_y = union.max_y
+                    # just use last tile that fits
+                    if t.max_x > rect.width():
+                        t.max_x = rect.width()
+                        t.min_x = rect.width() - self._tile_shape[0]
+                    if t.max_y > rect.height():
+                        t.max_y = rect.height()
+                        t.min_y = rect.height() - self._tile_shape[1]
 
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
