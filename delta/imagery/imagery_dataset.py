@@ -27,7 +27,6 @@ import portalocker
 import tensorflow as tf
 
 from delta.config import config
-from delta.imagery.rectangle import Rectangle
 
 class ImageryDataset:
     """Create dataset with all files as described in the provided config file.
@@ -195,7 +194,6 @@ class ImageryDataset:
                 if t.height() < self._tile_shape[1]:
                     t.min_y = t.max_y - self._tile_shape[1]
             for (rect, subtiles) in tiles:
-                union = None
                 shift_tile(rect)
                 for t in subtiles:
                     # just use last tile that fits
