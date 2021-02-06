@@ -247,7 +247,7 @@ def test_pretrained_layer():
     ''' % tmp_filename
     m2 = config_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
     m2.compile(optimizer='adam', loss='mse')
-    assert len(m2.layers[1].layers) == (len(m1.layers) - 1) # also don't take the input layer
+    assert len(m2.layers[1].layers) == 3
     for i in range(1, len(m1.layers)):
         assert isinstance(m1.layers[i], type(m2.layers[1].layers[i]))
         if m1.layers[i].name == 'encoding':

@@ -47,12 +47,18 @@ class _LayerWrapper:
         if lc is None:
             raise ValueError('Unknown layer type %s.' % (layer_type))
         self.layer = lc(**params)
+        self._sub_layers = None
         self._tensor = None
         all_layers[layer_name] = self
         self._all_layers = all_layers
 
     def is_input(self):
         return self._layer_type == 'Input'
+
+    def sub_layer(self, name):
+        assert self._sub_layers, 'Layer %s does not support sub-layers.' % (self.layer.name)
+        assert name in self._sub_layers, ('Layer %s not found in ' % (name)) + self._sub_layers
+        return self._sub_layers[name]
 
     # TODO: will crash if there is a cycle in the graph
     def output_tensor(self):
@@ -67,15 +73,8 @@ class _LayerWrapper:
                 inputs.append(k)
                 continue
             if isinstance(k, int) or '/' not in k:
-                self._all_layers[k].output_tensor()
-                l = self._all_layers[k].layer
-                if isinstance(l, tensorflow.Tensor):
-                    inputs.append(l)
-                else:
-                    if hasattr(l, 'get_output_at'): # tf < 2.4.0
-                        inputs.append(l.get_output_at(len(l.inbound_nodes) - 1))
-                    else: # tf > 2.4.0
-                        inputs.append(l)
+                l = self._all_layers[k].output_tensor()
+                inputs.append(l)
                 continue
             # getting nested layer
             parts = k.split('/')
@@ -83,21 +82,21 @@ class _LayerWrapper:
             if input_layer not in self._all_layers:
                 raise ValueError('Input layer ' + str(input_layer) + ' not found.')
             self._all_layers[input_layer].output_tensor() # compute it if it hasn't been
-            cur = self._all_layers[input_layer].layer
-            for p in parts[1:]:
-                cur = cur.get_layer(p)
+            cur = self._all_layers[input_layer].sub_layer(k[len(parts[0]) + 1:])
 
-            # submodels can create multiple nodes, we want to take the outermost one
-            # uses deprecated functionality but can't figure out another way to do it
-            if hasattr(cur, 'get_output_at'): # tf < 2.4.0
-                inputs.append(cur.get_output_at(len(cur.inbound_nodes) - 1))
-            else: # tf > 2.4.0
+            if isinstance(self._tensor, tensorflow.keras.layers.Layer):
+                inputs.append(cur.output)
+            else:
                 inputs.append(cur)
         if inputs:
             if len(inputs) == 1:
                 inputs = inputs[0]
             self._tensor = self.layer(inputs)
-            self._tensor = self.layer.get_output_at(len(self.layer.inbound_nodes) - 1)
+            if isinstance(self._tensor, tuple):
+                self._sub_layers = self._tensor[1]
+                self._tensor = self._tensor[0]
+            if isinstance(self._tensor, tensorflow.keras.layers.Layer):
+                self._tensor = self._tensor.output
         else:
             self._tensor = self.layer
         return self._tensor
