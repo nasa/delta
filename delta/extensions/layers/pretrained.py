@@ -18,21 +18,51 @@
 """
 DELTA specific network layers.
 """
-from packaging import version
 import tensorflow
 import tensorflow.keras.models
 
 from delta.config.extensions import register_layer
 
-def pretrained(filename, encoding_layer, **kwargs):
-    model = tensorflow.keras.models.load_model(filename, compile=False)
-    model(model.input) # call it once so you can get the output
-    output_layer = model.get_layer(index=encoding_layer) if isinstance(encoding_layer, int) else \
-                   model.get_layer(encoding_layer)
-    # thanks tensorflow api changes
-    out = output_layer.get_output_at(0) if version.parse(tensorflow.__version__) >= version.parse('2.4.0') else \
-          output_layer.get_output_at(1)
-    m = tensorflow.keras.Model(inputs=model.get_layer(index=0).output, outputs=out, **kwargs)
-    return m
+class InputSelectLayer(tensorflow.keras.layers.Layer):
+    def __init__(self, arg_number, **kwargs):
+        super().__init__(**kwargs)
+        self._arg = arg_number
+    def call(self, inputs, **kwargs):
+        return inputs[self._arg]
+    def get_config(self):
+        return {'arg_number' : self._arg}
 
+def pretrained(filename, encoding_layer, trainable=True, **kwargs):
+    """
+    Creates pre-trained layer from an existing model file.
+    Only works with sequential models.
+    """
+    model = tensorflow.keras.models.load_model(filename, compile=False)
+
+    if isinstance(encoding_layer, int):
+        break_point = lambda x, y: x == encoding_layer
+    elif isinstance(encoding_layer, str):
+        break_point = lambda x, y: y.name == encoding_layer
+
+    output_layers = []
+    for idx, l in enumerate(model.layers):
+        if not isinstance(l, tensorflow.keras.layers.BatchNormalization):
+            l.trainable = trainable
+        output_layers.append(l)
+        if break_point(idx, l):
+            break
+
+    new_model = tensorflow.keras.models.Model(model.inputs, [l.output for l in output_layers], **kwargs)
+
+    layers_dict = {}
+    for (i, l) in enumerate(output_layers):
+        layers_dict[l.name] = InputSelectLayer(i)
+
+    def call(*inputs):
+        result = new_model(inputs)
+        output = (InputSelectLayer(len(layers_dict)-1)(result), {k : v(result) for k, v in layers_dict.items()})
+        return output
+    return call
+
+register_layer('InputSelectLayer', InputSelectLayer)
 register_layer('Pretrained', pretrained)
