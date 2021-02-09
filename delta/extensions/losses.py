@@ -47,7 +47,7 @@ class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
             map_list = mapping
         else:
             # automatically set nodata to 0 (even if there is none it's fine)
-            entry = next(iter(mapping))
+            entry = mapping[next(iter(mapping))]
             if np.isscalar(entry):
                 map_list = np.zeros((len(config.dataset.classes) + 1,))
             else:
@@ -55,7 +55,11 @@ class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
             assert len(mapping) == len(config.dataset.classes), 'Must specify all classes in loss mapping.'
             for k in mapping:
                 i = config.dataset.classes.class_id(k)
-                map_list[i] = mapping[k]
+                if isinstance(mapping[k], (int, float)):
+                    map_list[i] = mapping[k]
+                else:
+                    assert len(mapping[k]) == map_list.shape[1], 'Mapping entry wrong length.'
+                    map_list[i, :] = np.asarray(mapping[k])
         self._lookup = tf.constant(map_list)
     def call(self, y_true, y_pred):
         y_true = tf.squeeze(y_true)

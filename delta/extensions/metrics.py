@@ -54,4 +54,35 @@ class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
 
+class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
+    # this is cross entropy, but first replaces the labels with
+    # a probability distribution from a lookup table
+    def __init__(self, label, class_id=None, name=None):
+        super().__init__(name=name)
+        self._label_id = config.dataset.classes.class_id(label)
+        self._class_id = class_id if class_id is not None else self._label_id
+        self._total_class = self.add_weight('total_class', initializer='zeros')
+        self._true_positives = self.add_weight('true_positives', initializer='zeros')
+
+    def reset_state(self):
+        for s in self.variables:
+            s.assign(tf.zeros(shape=s.shape))
+
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+        y_true = tf.squeeze(y_true)
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+
+        right_class = tf.math.equal(y_true, self._label_id)
+        right_class_pred = tf.math.equal(y_pred, self._class_id)
+        total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
+        self._total_class.assign_add(total_class)
+        true_positives = tf.math.logical_and(right_class, right_class_pred)
+        true_positives = tf.math.reduce_sum(tf.cast(true_positives, tf.float32))
+        self._true_positives.assign_add(true_positives)
+        return self._total_class, self._true_positives
+
+    def result(self):
+        return tf.math.divide_no_nan(self._true_positives, self._total_class)
+
 register_metric('SparseRecall', SparseRecall)
+register_metric('SparsePrecision', SparsePrecision)
