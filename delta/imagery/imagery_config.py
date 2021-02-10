@@ -132,7 +132,12 @@ def __find_images(conf, matching_images=None, matching_conf=None):
             for m in matching_images:
                 rel_path   = os.path.relpath(m, matching_conf['directory'])
                 label_path = os.path.join(conf['directory'], rel_path)
-                images.append(os.path.splitext(label_path)[0] + extension)
+                if matching_conf['directory'] is None:
+                    images.append(os.path.splitext(label_path)[0] + extension)
+                else:
+                    # if custom extension, remove it
+                    label_path = label_path[:-len(__extension(matching_conf))]
+                    images.append(label_path + extension)
 
     for img in images:
         if not os.path.exists(img):
@@ -236,10 +241,10 @@ class ImageSetConfig(DeltaConfigComponent):
         self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')
 
         if name:
-            self.register_arg('type', '--' + name + '-type')
-            self.register_arg('file_list', '--' + name + '-file-list')
-            self.register_arg('directory', '--' + name + '-dir')
-            self.register_arg('extension', '--' + name + '-extension')
+            self.register_arg('type', '--' + name + '-type', name + '_type')
+            self.register_arg('file_list', '--' + name + '-file-list', name + '_file_list')
+            self.register_arg('directory', '--' + name + '-dir', name + '_directory')
+            self.register_arg('extension', '--' + name + '-extension', name + '_extension')
         self.register_component(ImagePreprocessConfig(), 'preprocess')
         self._name = name
 

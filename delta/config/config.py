@@ -108,12 +108,15 @@ class DeltaConfigComponent:
             access.__doc__ = desc
             setattr(self.__class__, accessor, access)
 
-    def register_arg(self, field, argname, **kwargs):
+    def register_arg(self, field, argname, options_name=None, **kwargs):
         """
         Registers a command line argument in this component.
 
         field is the (registered) field this argument modifies.
         argname is the name of the flag on the command line (i.e., '--flag')
+        options_name is the name stored in the options object. It defaults to the
+        field if not specified. Only needed for duplicates, such as for multiple image
+        specifications.
         **kwargs are arguments to ArgumentParser.add_argument.
 
         If help and type are not specified, will use the ones for the field.
@@ -128,7 +131,7 @@ class DeltaConfigComponent:
             del kwargs['type']
         if 'default' not in kwargs:
             kwargs['default'] = _NotSpecified
-        self._cmd_args[argname] = (field, kwargs)
+        self._cmd_args[argname] = (field, field if options_name is None else options_name, kwargs)
 
     def to_dict(self) -> dict:
         """
@@ -178,8 +181,8 @@ class DeltaConfigComponent:
         if self._section_header is not None:
             parser = parser.add_argument_group(self._section_header)
         for (arg, value) in self._cmd_args.items():
-            (field, kwargs) = value
-            parser.add_argument(arg, dest=field, **kwargs)
+            (_, options_name, kwargs) = value
+            parser.add_argument(arg, dest=options_name, **kwargs)
 
         for (name, c) in self._components.items():
             if components is None or name in components:
@@ -192,12 +195,12 @@ class DeltaConfigComponent:
         configuration values.
         """
         d = {}
-        for (field, _) in self._cmd_args.values():
-            if not hasattr(options, field) or getattr(options, field) is None:
+        for (field, options_name, _) in self._cmd_args.values():
+            if not hasattr(options, options_name) or getattr(options, options_name) is None:
                 continue
-            if getattr(options, field) is _NotSpecified:
+            if getattr(options, options_name) is _NotSpecified:
                 continue
-            d[field] = getattr(options, field)
+            d[field] = getattr(options, options_name)
         self._load_dict(d, None)
 
         for c in self._components.values():

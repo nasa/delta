@@ -1,64 +1,66 @@
 **DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
-based on Tensorflow. Use DELTA to train and run neural networks to classify large satellite images. DELTA
+based on Tensorflow. DELTA classifies large satellite images with neural networks. DELTA
 provides pre-trained autoencoders for a variety of satellites to reduce required training data
 and time.
 
 DELTA is currently under active development by the
-[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/). Expect
-frequent changes. It is initially being used to map floods for disaster response, in collaboration with the
+[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/).
+Initially, it is mapping floods for disaster response, in collaboration with the
 [U.S. Geological Survey](http://www.usgs.gov), [National Geospatial Intelligence Agency](https://www.nga.mil/),
 [National Center for Supercomputing Applications](http://www.ncsa.illinois.edu/), and
-[University of Alabama](https://www.ua.edu/). DELTA is a component of the
-[Crisis Mapping Toolkit](https://github.com/nasa/CrisisMappingToolkit), in addition
-to our previous software for mapping floods with Google Earth Engine.
+[University of Alabama](https://www.ua.edu/).
 
 Installation
 ============
 
-1. Install [python3](https://www.python.org/downloads/), [GDAL](https://gdal.org/download.html), and the [GDAL python bindings](https://pypi.org/project/GDAL/).
-   For Ubuntu Linux, you can run `scripts/setup.sh` from the DELTA repository to install these dependencies.
+1. Install [python3](https://www.python.org/downloads/), [GDAL](https://gdal.org/download.html),
+   and the [GDAL python bindings](https://pypi.org/project/GDAL/). For Ubuntu Linux, you can run
+   `scripts/setup.sh` from the DELTA repository to install these dependencies.
 
-2. Install Tensorflow with pip following the [instructions](https://www.tensorflow.org/install). For
+2. Install Tensorflow following the [instructions](https://www.tensorflow.org/install). For
    GPU support in DELTA (highly recommended) follow the directions in the
    [GPU guide](https://www.tensorflow.org/install/gpu).
 
 3. Checkout the delta repository and install with pip:
 
-   ```
-   git clone http://github.com/nasa/delta
-   python3 -m pip install delta
-   ```
+    ```
+    git clone http://github.com/nasa/delta
+    python3 -m pip install delta
+    ```
 
-  This installs DELTA and all dependencies (except for GDAL which must be installed manually in step 1).
+    DELTA is now installed and ready to use!
 
 Usage
 =====
 
-As a simple example, consider training a neural network to map water in Worldview imagery.
-You would:
+As a simple example, consider training a neural network to map clouds with Landsat-8 images.
+The script `scripts/example/l8_cloud.sh` trains such a network using DELTA from the
+[USGS SPARCS dataset](https://www.usgs.gov/core-science-systems/nli/landsat/spatial-procedures-automated-removal-cloud-and-shadow-sparcs),
+and shows how DELTA can be used. The steps involved in this, and other, classification processes are:
 
-1. **Collect** training data. Find and save Worldview images with and without water. For a robust
-   classifier, the training data should be as representative as possible of the evaluation data.
+1. **Collect** training data. The SPARCS dataset contains Landsat-8 imagery with and without clouds.
 
-2. **Label** training data. Create images matching the training images pixel for pixel, where each pixel
-   in the label is 0 if it is not water and 1 if it is.
+2. **Label** training data. The SPARCS labels classify each pixel according to cloud, land, water and other classes.
 
-3. **Train** the neural network. Run
-   ```
-   delta train --config wv_water.yaml wv_water.h5
-   ```
-   where `wv_water.yaml` is a configuration file specifying the labeled training data and any
-   training parameters (learn more about configuration files below). The command will output a
-   neural network file `wv_water.h5` which can be
-   used for classification. The neural network operates on the level of *chunks*, inputting
-   and output smaller blocks of the image at a time.
+3. **Train** the neural network. The script `scripts/example/l8_cloud.sh` invokes the command
 
-4. **Classify** with the trained network. Run
-   ```
-   delta classify --image image.tiff wv_water.h5
-   ```
-   to classify `image.tiff` using the network `wv_water.h5` learned previously.
-   The file `image_predicted.tiff` will be written to the current directory showing the resulting labels.
+    ```
+    delta train --config l8_cloud.yaml l8_clouds.h5
+    ```
+
+    where `scripts/example/l8_cloud.yaml` is a configuration file specifying the labeled training data and
+    training parameters (learn more about configuration files below). A neural network file
+    `l8_clouds.h5` is output.
+
+4. **Classify** with the trained network. The script runs
+
+    ```
+    delta classify --config l8_cloud.yaml --image-dir ./validate --overlap 32 l8_clouds.h5
+    ```
+
+    to classify the images in the `validate` folder using the network `l8_clouds.h5` learned previously.
+    The overlap tiles to ignore border regions when possible to make a more aesthetically pleasing classified
+    image. The command outputs a predicted image and confusion matrix.
 
 Configuration Files
 -------------------
