@@ -34,7 +34,7 @@ def ms_ssim(y_true, y_pred):
 def ms_ssim_mse(y_true, y_pred):
     return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
 
-class MappedLoss(tf.keras.losses.Loss):
+class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
     def __init__(self, mapping):
         """
         Pass as argument either a list with probabilities for labels in order,

@@ -156,6 +156,7 @@ class _TileOffsetCallback(tf.keras.callbacks.Callback):
         super().__init__()
         self.ids = ids
         self.max_tile_offset = max_tile_offset
+        self.ids.set_tile_offset((0, 0))
 
     def on_epoch_end(self, epoch, _=None):
         (tox, toy) = self.ids.tile_offset()

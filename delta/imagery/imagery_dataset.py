@@ -54,7 +54,7 @@ class ImageryDataset:
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
-        self._tile_offset = (0, 0)
+        self._tile_offset = None
 
         if labels:
             assert len(images) == len(labels)
