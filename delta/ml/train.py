@@ -333,10 +333,12 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         if (training_spec.steps is None) or (training_spec.steps > 0):
             done = False
             epochs = training_spec.epochs
+            initial_epoch = 0
             while not done:
                 try:
                     history = model.fit(ds,
                                         epochs=epochs,
+                                        initial_epoch=initial_epoch,
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
@@ -345,7 +347,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                     done = True
                 except ContinueTrainingException as cte:
                     print('Recompiling model and resuming training.')
-                    epochs -= cte.completed_epochs
+                    initial_epoch += cte.completed_epochs
                     if cte.recompile_model:
                         model = compile_model(model, training_spec)
         else: # Skip training
