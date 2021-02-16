@@ -307,7 +307,7 @@ class ImageryDataset:
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
-        if self._labels.nodata_value() is not None:
+        if self._labels.nodata_value() is not None and self._tile_offset is None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if class_weights is not None:
             class_weights.append(0.0)

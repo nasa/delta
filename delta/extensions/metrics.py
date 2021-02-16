@@ -84,5 +84,43 @@ class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
 
+class SparseBinaryAccuracy(tensorflow.keras.metrics.Metric): # pragma: no cover
+    # Binary accuracy but where labels are transformed
+    def __init__(self, label, name=None):
+        super().__init__(name=name)
+        self._label_id = config.dataset.classes.class_id(label)
+        self._nodata_id = config.dataset.classes.class_id('nodata')
+        self._total = self.add_weight('total', initializer='zeros')
+        self._correct = self.add_weight('correct', initializer='zeros')
+
+    def reset_state(self):
+        for s in self.variables:
+            s.assign(tf.zeros(shape=s.shape))
+
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+        y_true = tf.squeeze(y_true)
+        y_pred = tf.squeeze(y_pred)
+
+        right_class = tf.math.equal(y_true, self._label_id)
+        right_class_pred = y_pred >= 0.5
+        true_positives = tf.math.logical_and(right_class, right_class_pred)
+        false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
+        if self._nodata_id:
+            valid = tf.math.not_equal(y_true, self._nodata_id)
+            false_negatives = tf.math.logical_and(false_negatives, valid)
+            total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
+        else:
+            total = tf.size(y_true)
+
+        true_positives = tf.math.reduce_sum(tf.cast(true_positives, tf.float32))
+        false_negatives = tf.math.reduce_sum(tf.cast(false_negatives, tf.float32))
+        self._correct.assign_add(true_positives + false_negatives)
+        self._total.assign_add(total)
+        return self._total, self._correct
+
+    def result(self):
+        return tf.math.divide(self._correct, self._total)
+
 register_metric('SparseRecall', SparseRecall)
 register_metric('SparsePrecision', SparsePrecision)
+register_metric('SparseBinaryAccuracy', SparseBinaryAccuracy)

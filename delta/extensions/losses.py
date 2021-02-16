@@ -34,9 +34,7 @@ def ms_ssim(y_true, y_pred):
 def ms_ssim_mse(y_true, y_pred):
     return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
 
-class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
-    # this is cross entropy, but first replaces the labels with
-    # a probability distribution from a lookup table
+class MappedLoss(tf.keras.losses.Loss):
     def __init__(self, mapping):
         """
         Pass as argument either a list with probabilities for labels in order,
@@ -61,11 +59,23 @@ class MappedCategoricalCrossentropy(tf.keras.losses.Loss):
                     assert len(mapping[k]) == map_list.shape[1], 'Mapping entry wrong length.'
                     map_list[i, :] = np.asarray(mapping[k])
         self._lookup = tf.constant(map_list)
+
+class MappedCategoricalCrossentropy(MappedLoss):
+    # this is cross entropy, but first replaces the labels with
+    # a probability distribution from a lookup table
     def call(self, y_true, y_pred):
         y_true = tf.squeeze(y_true)
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return tensorflow.keras.losses.categorical_crossentropy(true_convert, y_pred)
 
+class MappedBinaryCrossentropy(MappedLoss):
+    # this is cross entropy, but first replaces the labels with
+    # a probability distribution from a lookup table
+    def call(self, y_true, y_pred):
+        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
+        return tensorflow.keras.losses.binary_crossentropy(true_convert, y_pred)
+
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
+register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
