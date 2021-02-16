@@ -30,8 +30,8 @@ Installation
 
     DELTA is now installed and ready to use!
 
-Usage
-=====
+Example
+=======
 
 As a simple example, consider training a neural network to map clouds with Landsat-8 images.
 The script `scripts/example/l8_cloud.sh` trains such a network using DELTA from the
@@ -62,15 +62,21 @@ and shows how DELTA can be used. The steps involved in this, and other, classifi
     The overlap tiles to ignore border regions when possible to make a more aesthetically pleasing classified
     image. The command outputs a predicted image and confusion matrix.
 
-Configuration Files
--------------------
+The results could be improved--- with more training, more data, an improved network, or more--- but this
+example shows the basic usage of DETLA.
 
-DELTA is configured with YAML files. Some options can be overwritten with command line options (use
-`delta --help` to see which). [Learn more about DELTA configuration files](./delta/config/README.md).
+Configuration
+=============
 
-All available configuration options and their default values are shown [here](./delta/config/delta.yaml).
-We suggest that users create one reusable configuration file to describe the parameters specific
-to each dataset, and separate configuration files to train on or classify that dataset.
+DELTA provides many options for customizing data inputs and training. All options are configured via
+YAML files. Some options can be overwritten with command line options (use
+`delta --help` to see which). [Learn more about DELTA configuration](./delta/config/README.md).
+
+Extending DELTA
+===============
+
+DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
+and training callbacks. [Learn about DELTA extensions](./delta/extensions/README.md).
 
 Supported Image Formats
 -----------------------

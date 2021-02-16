@@ -18,9 +18,10 @@
 Manage extensions to DELTA.
 
 To extend delta, add the name for your extension to the `extensions` field
-in the DELTA config file. It will then be imported when DELTA loads.
-The named python module should then call the appropriate register_*
-functions and the extensions can be used like existing DELTA options.
+in a DELTA config file. It will then be imported when DELTA loads.
+The named python module should then call the appropriate registration
+function (e.g., `register_layer` to register a custom Keras layer) and
+the extensions can be used like existing DELTA options.
 """
 
 #pylint:disable=global-statement
