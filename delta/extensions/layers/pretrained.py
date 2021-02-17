@@ -32,7 +32,20 @@ class InputSelectLayer(tensorflow.keras.layers.Layer):
     def get_config(self):
         return {'arg_number' : self._arg}
 
-def pretrained(filename, encoding_layer, trainable=True, **kwargs):
+def _model_to_output_layers(model, break_point, trainable):
+    output_layers = []
+    for idx, l in enumerate(model.layers):
+        if not isinstance(l, tensorflow.keras.layers.BatchNormalization):
+            l.trainable = trainable
+        if isinstance(l, tensorflow.keras.models.Model): # assumes sequential
+            output_layers.extend(_model_to_output_layers(l, break_point, trainable))
+        else:
+            output_layers.append(l)
+        if break_point(idx, l):
+            break
+    return output_layers
+
+def pretrained(filename, encoding_layer, outputs=None, trainable=True, **kwargs):
     """
     Creates pre-trained layer from an existing model file.
     Only works with sequential models.
@@ -44,23 +57,35 @@ def pretrained(filename, encoding_layer, trainable=True, **kwargs):
     elif isinstance(encoding_layer, str):
         break_point = lambda x, y: y.name == encoding_layer
 
-    output_layers = []
-    for idx, l in enumerate(model.layers):
-        if not isinstance(l, tensorflow.keras.layers.BatchNormalization):
-            l.trainable = trainable
-        output_layers.append(l)
-        if break_point(idx, l):
-            break
+    output_layers = _model_to_output_layers(model, break_point, trainable)
 
-    new_model = tensorflow.keras.models.Model(model.inputs, [l.output for l in output_layers], **kwargs)
+    output_tensors = []
+    cur = model.inputs[0]
+    old_to_new = {}
+    old_to_new[cur.ref()] = cur
+    for l in output_layers:
+        if isinstance(l, tensorflow.keras.layers.InputLayer):
+            old_to_new[l.output.ref()] = cur
+            output_tensors.append(cur)
+            continue
+        if isinstance(l.input, list):
+            inputs = [old_to_new[t.ref()] for t in l.input]
+        else:
+            inputs = old_to_new[l.input.ref()]
+        cur = l(inputs)
+        old_to_new[l.output.ref()] = cur
+        output_tensors.append(cur)
+    new_model = tensorflow.keras.models.Model(model.inputs, output_tensors, **kwargs)
 
     layers_dict = {}
     for (i, l) in enumerate(output_layers):
+        if l.name not in outputs:
+            continue
         layers_dict[l.name] = InputSelectLayer(i)
 
     def call(*inputs):
         result = new_model(inputs)
-        output = (InputSelectLayer(len(layers_dict)-1)(result), {k : v(result) for k, v in layers_dict.items()})
+        output = (InputSelectLayer(len(output_layers)-1)(result), {k : v(result) for k, v in layers_dict.items()})
         return output
     return call
 
