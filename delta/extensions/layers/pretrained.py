@@ -78,10 +78,11 @@ def pretrained(filename, encoding_layer, outputs=None, trainable=True, **kwargs)
     new_model = tensorflow.keras.models.Model(model.inputs, output_tensors, **kwargs)
 
     layers_dict = {}
-    for (i, l) in enumerate(output_layers):
-        if l.name not in outputs:
-            continue
-        layers_dict[l.name] = InputSelectLayer(i)
+    if outputs:
+        for (i, l) in enumerate(output_layers):
+            if l.name not in outputs:
+                continue
+            layers_dict[l.name] = InputSelectLayer(i)
 
     def call(*inputs):
         result = new_model(inputs)

@@ -264,6 +264,7 @@ def test_pretrained_layer():
         filename: %s
         encoding_layer: encoding
         name: pretrained
+        outputs: [encoding]
     - Dense:
         units: 100
         activation: relu
