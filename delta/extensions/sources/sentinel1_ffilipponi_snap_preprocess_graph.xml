@@ -1,0 +1,179 @@
+<graph id="S1 GRD preprocessing">
+  <version>1.0</version>
+  <!-- 
+    <root xmlns:copyright="http://www.w3.org/1999/xhtml">
+      <metadata>
+        <author name="Federico Filipponi" />
+        <author contact="federico.filipponi@gmail.com" />
+        <copyright name="CC BY-SA" />
+        <license type="GPL" />
+        <license version="3" />
+      </metadata>
+    </root>
+  -->
+  <!-- usage example: 
+    /opt/snap/bin/gpt S1_GRD_preprocessing.xml -Presolution=10 -Porigin=5 -Pfilter='None' -Pdem='SRTM 3Sec' -Pcrs='GEOGCS["WGS84(DD)", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH]]' -Pinput=/media/workspace/S1A_IW_GRDH_1SDV_20160228T051920_20160228T051956_010142_00EF52_AB5E.SAFE -Poutput=/media/workspace/S1A_IW_GRDH_1SDV_20160228T051920_20160228T051956_010142_00EF52_AB5E.dim
+  -->
+  <node id="Read">
+    <operator>Read</operator>
+    <sources/>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <file>${input}</file>
+    </parameters>
+  </node>
+  <node id="Apply-Orbit-File">
+    <operator>Apply-Orbit-File</operator>
+    <sources>
+      <sourceProduct refid="Read"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <orbitType>Sentinel Precise (Auto Download)</orbitType>
+      <polyDegree>3</polyDegree>
+      <continueOnFail>true</continueOnFail>
+    </parameters>
+  </node>
+  <node id="ThermalNoiseRemoval">
+    <operator>ThermalNoiseRemoval</operator>
+    <sources>
+      <sourceProduct refid="Apply-Orbit-File"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <selectedPolarisations/>
+      <removeThermalNoise>true</removeThermalNoise>
+      <reIntroduceThermalNoise>false</reIntroduceThermalNoise>
+    </parameters>
+  </node>
+  <node id="Remove-GRD-Border-Noise">
+    <operator>Remove-GRD-Border-Noise</operator>
+    <sources>
+      <sourceProduct refid="ThermalNoiseRemoval"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <selectedPolarisations/>
+      <borderLimit>500</borderLimit>
+      <trimThreshold>50</trimThreshold>
+    </parameters>
+  </node>
+  <node id="Calibration-Sigma">
+    <operator>Calibration</operator>
+    <sources>
+      <sourceProduct refid="Remove-GRD-Border-Noise"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands/>
+      <auxFile>Product Auxiliary File</auxFile>
+      <externalAuxFile/>
+      <outputImageInComplex>false</outputImageInComplex>
+      <outputImageScaleInDb>false</outputImageScaleInDb>
+      <createGammaBand>false</createGammaBand>
+      <createBetaBand>false</createBetaBand>
+      <selectedPolarisations/>
+      <outputSigmaBand>true</outputSigmaBand>
+      <outputGammaBand>false</outputGammaBand>
+      <outputBetaBand>false</outputBetaBand>
+    </parameters>
+  </node>
+  <node id="Speckle-Filter">
+    <operator>Speckle-Filter</operator>
+    <sources>
+      <sourceProduct refid="Calibration-Sigma"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands/>
+      <filter>${filter}</filter>
+      <filterSizeX>3</filterSizeX>
+      <filterSizeY>3</filterSizeY>
+      <dampingFactor>2</dampingFactor>
+      <estimateENL>true</estimateENL>
+      <enl>1.0</enl>
+      <numLooksStr>1</numLooksStr>
+      <windowSize>7x7</windowSize>
+      <targetWindowSizeStr>3x3</targetWindowSizeStr>
+      <sigmaStr>0.9</sigmaStr>
+      <anSize>50</anSize>
+    </parameters>
+  </node>
+  <node id="Terrain-Correction">
+    <operator>Terrain-Correction</operator>
+    <sources>
+      <sourceProduct refid="Speckle-Filter"/>
+    </sources>    
+    <parameters>
+        <sourceBands/>
+        <demName>${dem}</demName>
+        <externalDEMNoDataValue>0.0</externalDEMNoDataValue>
+        <externalDEMApplyEGM>true</externalDEMApplyEGM>
+        <demResamplingMethod>BILINEAR_INTERPOLATION</demResamplingMethod>
+        <imgResamplingMethod>BILINEAR_INTERPOLATION</imgResamplingMethod>
+        <pixelSpacingInMeter>${resolution}</pixelSpacingInMeter>
+        <mapProjection>${crs}</mapProjection>
+        <alignToStandardGrid>true</alignToStandardGrid>
+        <standardGridOriginX>${origin}</standardGridOriginX>
+        <standardGridOriginY>${origin}</standardGridOriginY>
+        <nodataValueAtSea>false</nodataValueAtSea>
+        <saveDEM>false</saveDEM>
+        <saveLatLon>false</saveLatLon>
+        <saveIncidenceAngleFromEllipsoid>false</saveIncidenceAngleFromEllipsoid>
+        <saveLocalIncidenceAngle>false</saveLocalIncidenceAngle>
+        <saveProjectedLocalIncidenceAngle>false</saveProjectedLocalIncidenceAngle>
+        <saveSelectedSourceBand>true</saveSelectedSourceBand>
+        <outputComplex>false</outputComplex>
+        <applyRadiometricNormalization>false</applyRadiometricNormalization>
+        <saveSigmaNought>false</saveSigmaNought>
+        <saveGammaNought>false</saveGammaNought>
+        <saveBetaNought>false</saveBetaNought>
+        <incidenceAngleForSigma0>Use projected local incidence angle from DEM</incidenceAngleForSigma0>
+        <incidenceAngleForGamma0>Use projected local incidence angle from DEM</incidenceAngleForGamma0>
+        <auxFile>Latest Auxiliary File</auxFile>
+    </parameters>
+  </node>
+  <node id="LinearToFromdB">
+    <operator>LinearToFromdB</operator>
+    <sources>
+      <sourceProduct refid="Terrain-Correction"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <sourceBands/>
+    </parameters>
+  </node>
+  <node id="Write">
+    <operator>Write</operator>
+    <sources>
+      <sourceProduct refid="LinearToFromdB"/>
+    </sources>
+    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
+      <file>${output}</file>
+      <formatName>BEAM-DIMAP</formatName>
+    </parameters>
+  </node>
+  <applicationData id="Presentation">
+    <Description>Sentinel-1 GRD Sigma0 standard preprocessing graph</Description>
+    <node id="Read">
+      <displayPosition x="30.0" y="30.0"/>
+    </node>
+    <node id="Apply-Orbit-File">
+      <displayPosition x="30.0" y="60.0"/>
+    </node>
+    <node id="ThermalNoiseRemoval">
+      <displayPosition x="30.0" y="90.0"/>
+    </node>
+    <node id="Remove-GRD-Border-Noise">
+      <displayPosition x="30.0" y="120.0"/>
+    </node>
+    <node id="Calibration-Sigma">
+      <displayPosition x="30.0" y="150.0"/>
+    </node>
+    <node id="Speckle-Filter">
+      <displayPosition x="30.0" y="180.0"/>
+    </node>
+    <node id="Terrain-Correction">
+      <displayPosition x="30.0" y="210.0"/>
+    </node>
+    <node id="LinearToFromdB">
+      <displayPosition x="30.0" y="240.0"/>
+    </node>
+    <node id="Write">
+      <displayPosition x="30.0" y="270.0"/>
+    </node>
+  </applicationData>
+</graph>
