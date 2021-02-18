@@ -157,7 +157,7 @@ class _TileOffsetCallback(tf.keras.callbacks.Callback):
         self.ids = ids
         self.max_tile_offset = max_tile_offset
 
-    def on_epoch_end(self, epoch, _=None):
+    def on_epoch_end(self, epoch, _=None): #pylint: disable=W0613
         (tox, toy) = self.ids.tile_offset()
         tox += 1
         if tox == self.max_tile_offset:
@@ -275,21 +275,22 @@ class ContinueTrainingException(Exception):
         self.completed_epochs = completed_epochs
         self.recompile_model = recompile_model
 
-def compile_model(model_fn, training_spec):
+def compile_model(model_fn, training_spec, resume_path=None):
     """
     Compile and check that the model is valid.
     """
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        if isinstance(model_fn, tf.keras.Model):
-            model = model_fn
-            _compile_helper(model, training_spec)
-        else:
-            model = model_fn()
-            assert isinstance(model, tf.keras.models.Model), \
-                   "Model is not a Tensorflow Keras model"
-            _compile_helper(model, training_spec)
+        model = model_fn()
+        assert isinstance(model, tf.keras.models.Model), \
+                "Model is not a Tensorflow Keras model"
+
+        if resume_path is not None:
+            print('Loading existing model: ' + resume_path)
+            model.load_weights(resume_path)
+
+        _compile_helper(model, training_spec)
 
     input_shape = model.input_shape
     output_shape = model.output_shape
@@ -307,12 +308,12 @@ def compile_model(model_fn, training_spec):
 
     return model
 
-def train(model_fn, dataset : ImageryDataset, training_spec):
+def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
     """
     Trains the specified model on a dataset according to a training
     specification.
     """
-    model = compile_model(model_fn, training_spec)
+    model = compile_model(model_fn, training_spec, resume_path)
     assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
     # last element differs for the sparse metrics
     assert model.output_shape[1:-1] == dataset.output_shape()[:-1] or (model.output_shape[1] is None), \

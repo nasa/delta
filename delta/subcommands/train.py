@@ -52,13 +52,11 @@ def main(options):
         print('No images specified.', file=sys.stderr)
         return 1
 
+    img = images.load(0)
+    model = config_model(img.num_bands())
     if options.resume is not None:
-        model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
-        temp_model = model
+        temp_model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
     else:
-        img = images.load(0)
-        model = config_model(img.num_bands())
-
         # this one is not built with proper scope, just used to get input and output shapes
         temp_model = model()
 
@@ -96,7 +94,7 @@ def main(options):
     tf.keras.backend.clear_session()
 
     try:
-        model, _ = train(model, ids, config.train.spec())
+        model, _ = train(model, ids, config.train.spec(), options.resume)
 
         if options.model is not None:
             save_model(model, options.model)
