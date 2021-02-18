@@ -26,5 +26,16 @@ graphXmlPath="$1"
 sourceFile="$2"
 targetFile="$3"
 
-# Execute the graph
-${gptPath} ${graphXmlPath} -e -PtargetProduct=${targetFile} ${sourceFile}
+# Execute the simple graph
+
+#${gptPath} ${graphXmlPath} -e -PtargetProduct=${targetFile} ${sourceFile}
+
+
+# Use graph from here:
+
+# Filipponi, F. (2019). Sentinel-1 GRD Preprocessing Workflow. In 
+# Multidisciplinary Digital Publishing Institute Proceedings (Vol. 18, No. 1, p. 11).
+
+# https://github.com/ffilipponi/Sentinel-1_GRD_preprocessing
+
+${gptPath} ${graphXmlPath} -e -Poutput=${targetFile} -Pinput${sourceFile}

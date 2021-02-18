@@ -36,7 +36,7 @@ from . import tiff
 
 this_folder = os.path.dirname(os.path.abspath(__file__))
 SNAP_GRAPH_PATH = os.path.join(this_folder,
-                               'sentinel1_default_snap_preprocess_graph.xml')
+                               'sentinel1_ffilipponi_snap_preprocess_graph.xml')
 SNAP_SCRIPT_PATH = os.path.join(this_folder, 'snap_process_sentinel1.sh')
 
 
@@ -176,6 +176,9 @@ class Sentinel1Image(tiff.TiffImage):
 
             unpack_folder = os.path.dirname(paths)
             tif_path = get_merged_path(unpack_folder)
+
+        if ext == '.tif': # Manually unpacked
+            tif_path = paths
 
         assert tif_path is not None, f'Error: Unsupported extension {ext}'
 
