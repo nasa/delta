@@ -28,8 +28,9 @@ from delta.config.extensions import register_metric
 class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
     # this is cross entropy, but first replaces the labels with
     # a probability distribution from a lookup table
-    def __init__(self, label, class_id=None, name=None):
+    def __init__(self, label, class_id=None, name=None, binary=False):
         super().__init__(name=name)
+        self._binary = binary
         self._label_id = config.dataset.classes.class_id(label)
         self._class_id = class_id if class_id is not None else self._label_id
         self._total_class = self.add_weight('total_class', initializer='zeros')
@@ -41,12 +42,16 @@ class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
-        y_pred = tf.math.argmax(y_pred, axis=-1)
-
         right_class = tf.math.equal(y_true, self._label_id)
+        if self._binary:
+            y_pred = y_pred >= 0.5
+            right_class_pred = tf.squeeze(y_pred)
+        else:
+            y_pred = tf.math.argmax(y_pred, axis=-1)
+            right_class_pred = tf.math.equal(y_pred, self._class_id)
         total_class = tf.math.reduce_sum(tf.cast(right_class, tf.float32))
         self._total_class.assign_add(total_class)
-        true_positives = tf.math.logical_and(right_class, tf.math.equal(y_pred, self._class_id))
+        true_positives = tf.math.logical_and(right_class, right_class_pred)
         true_positives = tf.math.reduce_sum(tf.cast(true_positives, tf.float32))
         self._true_positives.assign_add(true_positives)
         return self._total_class, self._true_positives
@@ -57,8 +62,9 @@ class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
 class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
     # this is cross entropy, but first replaces the labels with
     # a probability distribution from a lookup table
-    def __init__(self, label, class_id=None, name=None):
+    def __init__(self, label, class_id=None, name=None, binary=False):
         super().__init__(name=name)
+        self._binary = binary
         self._label_id = config.dataset.classes.class_id(label)
         self._class_id = class_id if class_id is not None else self._label_id
         self._total_class = self.add_weight('total_class', initializer='zeros')
@@ -70,10 +76,14 @@ class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
-        y_pred = tf.math.argmax(y_pred, axis=-1)
-
         right_class = tf.math.equal(y_true, self._label_id)
-        right_class_pred = tf.math.equal(y_pred, self._class_id)
+        if self._binary:
+            y_pred = y_pred >= 0.5
+            right_class_pred = tf.squeeze(y_pred)
+        else:
+            y_pred = tf.math.argmax(y_pred, axis=-1)
+            right_class_pred = tf.math.equal(y_pred, self._class_id)
+
         total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
         self._total_class.assign_add(total_class)
         true_positives = tf.math.logical_and(right_class, right_class_pred)
