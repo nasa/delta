@@ -223,7 +223,8 @@ class LabelPredictor(Predictor):
         net_output_shape = self._model.output_shape[1:]
         self._num_classes = net_output_shape[-1]
         if self._prob_image:
-            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.float32), image.metadata())
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
+                                        image.metadata(), nodata_value=0)
 
         if self._colormap is not None and self._num_classes != self._colormap.shape[0]:
             print('Warning: Defined defined classes (%d) in config do not match network (%d).' %
@@ -266,7 +267,14 @@ class LabelPredictor(Predictor):
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._prob_image is not None:
-            self._prob_image.write(pred_image, x, y)
+            prob = 1.0 + (pred_image * 254.0)
+            prob = prob.astype(np.uint8)
+            prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
+            self._prob_image.write(prob, x, y)
+
+        if labels is None and self._output_image is None:
+            return
+
         prob_image = pred_image
         if len(pred_image.shape) == 2:
             pred_image = pred_image >= 0.5

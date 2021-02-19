@@ -80,6 +80,7 @@ def main(options):
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
+    net_name = os.path.splitext(os.path.basename(options.model))[0]
 
     if options.autoencoder:
         labels = None
@@ -87,10 +88,12 @@ def main(options):
         image = images.load(i)
         base_name = os.path.splitext(os.path.basename(path))[0]
         writer = image_writer('tiff')
-        output_image = writer('predicted_' + base_name + '.tiff')
         prob_image = None
+        output_image = None
         if options.prob:
-            prob_image = writer('prob_' + base_name + '.tiff')
+            prob_image = writer(net_name + '_' + base_name + '.tiff')
+        else:
+            output_image = writer(net_name + '_' + base_name + '.tiff')
         error_image = None
         if labels:
             error_image = writer('errors_' + base_name + '.tiff')
