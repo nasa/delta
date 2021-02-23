@@ -38,4 +38,4 @@ targetFile="$3"
 
 # https://github.com/ffilipponi/Sentinel-1_GRD_preprocessing
 
-${gptPath} ${graphXmlPath} -e -Poutput=${targetFile} -Pinput${sourceFile}
+${gptPath} ${graphXmlPath} -e -Poutput=${targetFile} -Pinput=${sourceFile} -Pfilter='None' -Presolution=10.0 -Porigin=5.0 -Pdem='SRTM 1Sec HGT' -Pfilter='Refined Lee' -Pcrs='GEOGCS["WGS84(DD)", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH]]'
