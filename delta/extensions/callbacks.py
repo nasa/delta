@@ -26,24 +26,23 @@ from delta.config.extensions import register_callback
 from delta.ml.train import ContinueTrainingException
 
 class SetTrainable(tensorflow.keras.callbacks.Callback):
-    def __init__(self, layer_name, epoch, trainable=True):
+    def __init__(self, layer_name, epoch, trainable=True, learning_rate=None):
         super().__init__()
         self._layer_name = layer_name
-        self._epoch = epoch
+        self._epoch = epoch - 1
         self._make_trainable = trainable
+        self._lr = learning_rate
+        self._triggered = False
 
     def on_epoch_begin(self, epoch, logs=None):
         if epoch == self._epoch:
+            if self._triggered:
+                return
+            self._triggered = True # don't repeat twice
             l = self.model.get_layer(self._layer_name)
-            if isinstance(l, tensorflow.keras.Model):
-                for a in l.layers:
-                    # don't change batchnormalization, special case
-                    if not isinstance(a, tensorflow.keras.layers.BatchNormalization):
-                        a.trainable = self._make_trainable
-            else:
-                l.trainable = self._make_trainable
+            l.trainable = True
             # have to abort, recompile changed model, and continue training
-            raise ContinueTrainingException(completed_epochs=epoch, recompile_model=True)
+            raise ContinueTrainingException(completed_epochs=epoch, recompile_model=True, learning_rate=self._lr)
 
 def ExponentialLRScheduler(start_epoch=10, multiplier=0.95):
     def schedule(epoch, lr):

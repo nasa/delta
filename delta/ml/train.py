@@ -271,10 +271,11 @@ class ContinueTrainingException(Exception):
     Callbacks can raise this exception to modify the model, recompile, and
     continue training.
     """
-    def __init__(self, msg=None, completed_epochs=0, recompile_model=False):
+    def __init__(self, msg=None, completed_epochs=0, recompile_model=False, learning_rate=None):
         super().__init__(msg)
         self.completed_epochs = completed_epochs
         self.recompile_model = recompile_model
+        self.learning_rate = learning_rate
 
 def compile_model(model_fn, training_spec):
     """
@@ -351,6 +352,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                     initial_epoch += cte.completed_epochs
                     if cte.recompile_model:
                         model = compile_model(model, training_spec)
+                    if cte.learning_rate:
+                        K.set_value(model.optimizer.lr, cte.learning_rate)
         else: # Skip training
             print('Skipping straight to validation')
             history = model.evaluate(validation, steps=training_spec.validation.steps,

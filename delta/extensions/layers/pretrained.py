@@ -45,10 +45,13 @@ def _model_to_output_layers(model, break_point, trainable):
             break
     return output_layers
 
-def pretrained(filename, encoding_layer, outputs=None, trainable=True, **kwargs):
+def pretrained(filename, encoding_layer, outputs=None, trainable=True, training=True, **kwargs):
     """
     Creates pre-trained layer from an existing model file.
     Only works with sequential models.
+
+    training is for batch norm layers. Since this model is not saved (it
+    only saves the contents)
     """
     model = tensorflow.keras.models.load_model(filename, compile=False)
 
@@ -85,7 +88,7 @@ def pretrained(filename, encoding_layer, outputs=None, trainable=True, **kwargs)
             layers_dict[l.name] = InputSelectLayer(i)
 
     def call(*inputs):
-        result = new_model(inputs)
+        result = new_model(inputs, training=training)
         output = (InputSelectLayer(len(output_layers)-1)(result), {k : v(result) for k, v in layers_dict.items()})
         return output
     return call

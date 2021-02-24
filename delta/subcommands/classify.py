@@ -82,6 +82,7 @@ def main(options):
     labels = config.dataset.labels()
     net_name = os.path.splitext(os.path.basename(options.model))[0]
 
+    full_cm = None
     if options.autoencoder:
         labels = None
     for (i, path) in enumerate(images):
@@ -126,6 +127,14 @@ def main(options):
 
         if labels:
             cm = predictor.confusion_matrix()
+            if full_cm is None:
+                full_cm = np.copy(cm)
+            else:
+                full_cm += cm
+            for j in range(cm.shape[0]):
+                print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[j].name,
+                                                                     100 * cm[j,j] / np.sum(cm[:, j]),
+                                                                     100 * cm[j,j] / np.sum(cm[j, :])))
             print('%.2f%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
@@ -133,5 +142,10 @@ def main(options):
             write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
                        metadata=image.metadata())
     stop_time = time.time()
+    if labels:
+        for i in range(full_cm.shape[0]):
+            print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[i].name,
+                                                                 100 * full_cm[i,i] / np.sum(full_cm[:, i]),
+                                                                 100 * full_cm[i,i] / np.sum(full_cm[i, :])))
     print('Elapsed time = ', stop_time - start_time)
     return 0
