@@ -65,14 +65,14 @@ def classes_string(classes, values, image_name):
     for (j, name) in classes.items():
         if name == 'nodata':
             continue
+        v = values[j] if j in values else 0
         if is_integer:
-            v = values[j] if j in values else 0
             s += '%12.2f%% ' % (v / total * 100, )
         else:
             if is_float:
-                s += '%12.2f ' % (values[j])
+                s += '%12.2f ' % (v)
             else:
-                s += '%12s  ' % (values[j], )
+                s += '%12s  ' % (v, )
     return s
 
 

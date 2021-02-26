@@ -54,7 +54,7 @@ class ImageryDataset:
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
-        self._tile_offset = (0, 0)
+        self._tile_offset = None
 
         if labels:
             assert len(images) == len(labels)
@@ -165,7 +165,7 @@ class ImageryDataset:
                              overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
-                         overlap_shape=self._tile_overlap, by_block=True, offset=self._tile_offset)
+                         overlap_shape=self._tile_overlap, by_block=True)
 
     def _tile_generator(self, i, is_labels): # pragma: no cover
         """
@@ -182,6 +182,27 @@ class ImageryDataset:
         preprocess = image.get_preprocess()
         image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
         bands = range(image.num_bands())
+
+        # apply tile offset. do here so we always have same number of tiles (causes problems with tf)
+        if self._tile_offset:
+            def shift_tile(t):
+                t.shift(self._tile_offset[0], self._tile_offset[1])
+                t.max_x = min(t.max_x, image.width())
+                t.max_y = min(t.max_y, image.height())
+                if t.width() < self._tile_shape[0]:
+                    t.min_x = t.max_x - self._tile_shape[0]
+                if t.height() < self._tile_shape[1]:
+                    t.min_y = t.max_y - self._tile_shape[1]
+            for (rect, subtiles) in tiles:
+                shift_tile(rect)
+                for t in subtiles:
+                    # just use last tile that fits
+                    if t.max_x > rect.width():
+                        t.max_x = rect.width()
+                        t.min_x = rect.width() - self._tile_shape[0]
+                    if t.max_y > rect.height():
+                        t.max_y = rect.height()
+                        t.min_y = rect.height() - self._tile_shape[1]
 
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
@@ -284,7 +305,7 @@ class ImageryDataset:
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
-        if self._labels.nodata_value() is not None:
+        if self._labels.nodata_value() is not None and self._tile_offset is None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if class_weights is not None:
             class_weights.append(0.0)

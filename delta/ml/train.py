@@ -156,8 +156,9 @@ class _TileOffsetCallback(tf.keras.callbacks.Callback):
         super().__init__()
         self.ids = ids
         self.max_tile_offset = max_tile_offset
+        self.ids.set_tile_offset((0, 0))
 
-    def on_epoch_end(self, epoch, _=None):
+    def on_epoch_end(self, epoch, _=None): #pylint: disable=W0613
         (tox, toy) = self.ids.tile_offset()
         tox += 1
         if tox == self.max_tile_offset:
@@ -270,26 +271,28 @@ class ContinueTrainingException(Exception):
     Callbacks can raise this exception to modify the model, recompile, and
     continue training.
     """
-    def __init__(self, msg=None, completed_epochs=0, recompile_model=False):
+    def __init__(self, msg=None, completed_epochs=0, recompile_model=False, learning_rate=None):
         super().__init__(msg)
         self.completed_epochs = completed_epochs
         self.recompile_model = recompile_model
+        self.learning_rate = learning_rate
 
-def compile_model(model_fn, training_spec):
+def compile_model(model_fn, training_spec, resume_path=None):
     """
     Compile and check that the model is valid.
     """
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        if isinstance(model_fn, tf.keras.Model):
-            model = model_fn
-            _compile_helper(model, training_spec)
-        else:
-            model = model_fn()
-            assert isinstance(model, tf.keras.models.Model), \
-                   "Model is not a Tensorflow Keras model"
-            _compile_helper(model, training_spec)
+        model = model_fn()
+        assert isinstance(model, tf.keras.models.Model), \
+                "Model is not a Tensorflow Keras model"
+
+        if resume_path is not None:
+            print('Loading existing model: ' + resume_path)
+            model.load_weights(resume_path)
+
+        _compile_helper(model, training_spec)
 
     input_shape = model.input_shape
     output_shape = model.output_shape
@@ -307,12 +310,12 @@ def compile_model(model_fn, training_spec):
 
     return model
 
-def train(model_fn, dataset : ImageryDataset, training_spec):
+def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
     """
     Trains the specified model on a dataset according to a training
     specification.
     """
-    model = compile_model(model_fn, training_spec)
+    model = compile_model(model_fn, training_spec, resume_path)
     assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'
     # last element differs for the sparse metrics
     assert model.output_shape[1:-1] == dataset.output_shape()[:-1] or (model.output_shape[1] is None), \
@@ -333,10 +336,12 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
         if (training_spec.steps is None) or (training_spec.steps > 0):
             done = False
             epochs = training_spec.epochs
+            initial_epoch = 0
             while not done:
                 try:
                     history = model.fit(ds,
                                         epochs=epochs,
+                                        initial_epoch=initial_epoch,
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
@@ -345,9 +350,11 @@ def train(model_fn, dataset : ImageryDataset, training_spec):
                     done = True
                 except ContinueTrainingException as cte:
                     print('Recompiling model and resuming training.')
-                    epochs -= cte.completed_epochs
+                    initial_epoch += cte.completed_epochs
                     if cte.recompile_model:
                         model = compile_model(model, training_spec)
+                    if cte.learning_rate:
+                        K.set_value(model.optimizer.lr, cte.learning_rate)
         else: # Skip training
             print('Skipping straight to validation')
             history = model.evaluate(validation, steps=training_spec.validation.steps,

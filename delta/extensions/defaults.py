@@ -32,6 +32,7 @@ def initialize():
     register_extension('delta.extensions.layers.pretrained')
     register_extension('delta.extensions.layers.gaussian_sample')
     register_extension('delta.extensions.layers.efficientnet')
+    register_extension('delta.extensions.layers.simple')
 
     register_extension('delta.extensions.losses')
     register_extension('delta.extensions.metrics')

@@ -57,7 +57,7 @@ class _LayerWrapper:
 
     def sub_layer(self, name):
         assert self._sub_layers, 'Layer %s does not support sub-layers.' % (self.layer.name)
-        assert name in self._sub_layers, ('Layer %s not found in ' % (name)) + self._sub_layers
+        assert name in self._sub_layers, ('Layer %s not found in ' % (name)) + str(self._sub_layers)
         return self._sub_layers[name]
 
     # TODO: will crash if there is a cycle in the graph
