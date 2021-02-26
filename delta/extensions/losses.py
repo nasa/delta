@@ -93,9 +93,26 @@ class MappedDiceLoss(MappedLoss):
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return dice_loss(true_convert, y_pred)
 
+class MappedMsssim(MappedLoss):
+    def call(self, y_true, y_pred):
+        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
+        return ms_ssim(true_convert, y_pred)
+
+class MappedDiceBceMsssim(MappedLoss):
+    def call(self, y_true, y_pred):
+        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
+        dice = dice_loss(true_convert, y_pred)
+        bce = tensorflow.keras.losses.binary_crossentropy(true_convert, y_pred)
+        bce = K.mean(bce)
+        msssim = K.mean(ms_ssim(true_convert, y_pred))
+        return dice + bce + msssim
+
+
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('dice', dice_loss)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
 register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)
+register_loss('MappedMsssim', MappedMsssim)
+register_loss('MappedDiceBceMsssim', MappedDiceBceMsssim)
