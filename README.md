@@ -1,7 +1,6 @@
 **DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
-based on Tensorflow. DELTA classifies large satellite images with neural networks. DELTA
-provides pre-trained autoencoders for a variety of satellites to reduce required training data
-and time.
+based on Tensorflow. DELTA classifies large satellite images with neural networks, automatically handling
+tiling large imagery.
 
 DELTA is currently under active development by the
 [NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/).
@@ -74,18 +73,15 @@ YAML files. Some options can be overwritten with command line options (use
 
 Extending DELTA
 ===============
+DELTA can be used either as a command line tool or as a python library.
+See the python documentation for the master branch [here](https://nasa.github.io/delta/),
+or generate the documentation with `scripts/docs.sh`.
 
 DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
-and training callbacks. [Learn about DELTA extensions](./delta/extensions/README.md).
-
-Supported Image Formats
------------------------
-DELTA supports tiff files and a few other formats.
-Users can extend DELTA with their own custom formats. We are looking to expand DELTA to support other
-useful file formats.
+and training callbacks. Learn about DELTA extensions in the `delta.config.extensions` documentation.
 
 MLFlow
-------
+=============
 
 DELTA integrates with [MLFlow](http://mlflow.org) to track training. MLFlow options can
 be specified in the corresponding area of the configuration file. By default, training and
@@ -100,18 +96,6 @@ View all the logged training information through mlflow by running::
 
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
-
-Using DELTA from Code
-=====================
-You can also call DELTA as a python library and customize it with your own extensions, for example,
-custom image types. The python API documentation can be generated as HTML. To do so:
-
-```
-  pip install pdoc3
-  ./scripts/docs.sh
-```
-
-Then open `html/delta/index.html` in a web browser.
 
 Contributors
 ============
