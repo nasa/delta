@@ -78,7 +78,12 @@ class Predictor(ABC):
             if image_nodata_value is not None:
                 x0 = (data.shape[0] - result.shape[0]) // 2
                 y0 = (data.shape[1] - result.shape[1]) // 2
-                result[data[x0:x0 + result.shape[0], y0:y0 + result.shape[1], 0] == image_nodata_value, :] = math.nan
+                invalid = (data if len(data.shape) == 2 else \
+                          data[:, :, 0])[x0:x0 + result.shape[0], y0:y0 + result.shape[1]] == image_nodata_value
+                if len(result.shape) == 2:
+                    result[invalid] = math.nan
+                else:
+                    result[invalid, :] = math.nan
             return result
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
@@ -166,7 +171,11 @@ class Predictor(ABC):
             br = (roi.max_x - roi.min_x, roi.max_y - roi.min_y)
             br = (br[0] - (overlap[0] // 2 if roi.max_x < input_bounds.max_x else 0),
                   br[1] - (overlap[1] // 2 if roi.max_x < input_bounds.max_x else 0))
-            self._process_block(pred_image[tl[0]:br[0], tl[1]:br[1], :], sx + tl[0], sy + tl[1],
+            if len(pred_image.shape) == 2:
+                input_block = pred_image[tl[0]:br[0], tl[1]:br[1]]
+            else:
+                input_block = pred_image[tl[0]:br[0], tl[1]:br[1], :]
+            self._process_block(input_block, sx + tl[0], sy + tl[1],
                                 None if labels is None else labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
 
         try:
@@ -214,8 +223,11 @@ class LabelPredictor(Predictor):
         net_output_shape = self._model.output_shape[1:]
         self._num_classes = net_output_shape[-1]
         if self._prob_image:
-            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.float32, image.metadata())
+            self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
+                                        image.metadata(), nodata_value=0)
 
+        if self._num_classes == 1: # special case
+            self._num_classes = 2
         if self._colormap is not None and self._num_classes != self._colormap.shape[0]:
             print('Warning: Defined defined classes (%d) in config do not match network (%d).' %
                   (self._colormap.shape[0], self._num_classes))
@@ -257,9 +269,21 @@ class LabelPredictor(Predictor):
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._prob_image is not None:
-            self._prob_image.write(pred_image, x, y)
+            prob = 1.0 + (pred_image * 254.0)
+            prob = prob.astype(np.uint8)
+            prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
+            self._prob_image.write(prob, x, y)
+
+        if labels is None and self._output_image is None:
+            return
+
         prob_image = pred_image
-        pred_image = np.argmax(pred_image, axis=2)
+        if len(pred_image.shape) == 2:
+            pred_image[~np.isnan(pred_image)] = pred_image[~np.isnan(pred_image)] >= 0.5
+            pred_image = pred_image.astype(int)
+            prob_image = np.expand_dims(prob_image, -1)
+        else:
+            pred_image = np.argmax(pred_image, axis=2)
 
         # nodata pixels were set to nan in the probability image
         pred_image[np.isnan(prob_image[:, :, 0])] = -1
@@ -321,7 +345,7 @@ class ImagePredictor(Predictor):
     def _initialize(self, shape, label, image):
         net_output_shape = self._model.output_shape[1:]
         if self._output_image is not None:
-            dtype = np.float32 if self._transform is None else self._transform[1]
+            dtype = np.float32 if self._transform is None else np.dtype(self._transform[1])
             bands = net_output_shape[-1] if self._transform is None else self._transform[2]
             self._output_image.initialize((shape[0], shape[1], bands), dtype, image.metadata())
 

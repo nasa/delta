@@ -80,23 +80,22 @@ def main(options):
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
+    net_name = os.path.splitext(os.path.basename(options.model))[0]
 
+    full_cm = None
     if options.autoencoder:
         labels = None
     for (i, path) in enumerate(images):
         image = images.load(i)
         base_name = os.path.splitext(os.path.basename(path))[0]
         writer = image_writer('tiff')
-        output_image = writer('predicted_' + base_name + '.tiff')
-        prob_image = None
-        if options.prob:
-            prob_image = writer('prob_' + base_name + '.tiff')
-        error_image = None
-        if labels:
-            error_image = writer('errors_' + base_name + '.tiff')
+        prob_image = writer(net_name + '_' + base_name + '.tiff') if options.prob else None
+        output_image = writer(net_name + '_' + base_name + '.tiff') if not options.prob else None
 
+        error_image = None
         label = None
         if labels:
+            error_image = writer('errors_' + base_name + '.tiff')
             label = labels.load(i)
             assert image.size() == label.size(), 'Image and label do not match.'
 
@@ -123,12 +122,25 @@ def main(options):
 
         if labels:
             cm = predictor.confusion_matrix()
-            print('%.2f%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
+            if full_cm is None:
+                full_cm = np.copy(cm)
+            else:
+                full_cm += cm
+            for j in range(cm.shape[0]):
+                print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[j].name,
+                                                                     100 * cm[j,j] / np.sum(cm[:, j]),
+                                                                     100 * cm[j,j] / np.sum(cm[j, :])))
+            print('%.2f%% Correct: %s' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
             write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
                        metadata=image.metadata())
     stop_time = time.time()
+    if labels:
+        for i in range(full_cm.shape[0]):
+            print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[i].name,
+                                                                 100 * full_cm[i,i] / np.sum(full_cm[:, i]),
+                                                                 100 * full_cm[i,i] / np.sum(full_cm[i, :])))
     print('Elapsed time = ', stop_time - start_time)
     return 0

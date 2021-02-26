@@ -101,7 +101,7 @@ def test_callbacks():
     out = tf.keras.layers.Conv2D(name='out', filters=16, kernel_size=3)(inputs)
     m = tf.keras.Model(inputs, out)
 
-    c = ext.callback('SetTrainable')('out', 1)
+    c = ext.callback('SetTrainable')('out', 2)
     c.model = m
     out = m.get_layer('out')
     out.trainable = False
