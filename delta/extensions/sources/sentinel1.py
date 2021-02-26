@@ -119,6 +119,10 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
                    + unpack_folder + ' ' + temp_out_path)
             print(cmd)
             os.system(cmd)
+            dimap_path = temp_out_path + '.dim'
+            cmd = 'pconvert -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
+            print(cmd)
+            os.system(cmd)
             MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger
             if not os.path.exists(temp_out_path):
                 raise Exception('Failed to run ESA SNAP preprocessing.\n'
