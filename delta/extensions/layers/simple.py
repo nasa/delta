@@ -30,10 +30,10 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
-    def call(self, x, **_):
-        ones = tf.fill(tf.shape(x)[:-1], 1.0)
+    def call(self, inputs, **_):
+        ones = tf.fill(tf.shape(inputs)[:-1], 1.0)
         ones = tf.expand_dims(ones, -1)
-        mean = K.mean(x, axis=[1, 2])
+        mean = K.mean(inputs, axis=[1, 2])
         mean = tf.expand_dims(mean, 1)
         mean = tf.expand_dims(mean, 1)
         return mean * ones
