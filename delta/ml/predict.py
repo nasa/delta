@@ -343,7 +343,7 @@ class ImagePredictor(Predictor):
     def _initialize(self, shape, label, image):
         net_output_shape = self._model.output_shape[1:]
         if self._output_image is not None:
-            dtype = np.float32 if self._transform is None else self._transform[1]
+            dtype = np.float32 if self._transform is None else np.dtype(self._transform[1])
             bands = net_output_shape[-1] if self._transform is None else self._transform[2]
             self._output_image.initialize((shape[0], shape[1], bands), dtype, image.metadata())
 
