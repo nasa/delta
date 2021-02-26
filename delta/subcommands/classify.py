@@ -130,7 +130,7 @@ def main(options):
                 print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[j].name,
                                                                      100 * cm[j,j] / np.sum(cm[:, j]),
                                                                      100 * cm[j,j] / np.sum(cm[j, :])))
-            print('%.2f%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
+            print('%.2f%% Correct: %s' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
