@@ -288,6 +288,9 @@ class ClassesConfig(DeltaConfigComponent):
     def __iter__(self):
         return self._classes.__iter__()
 
+    def __getitem__(self, key):
+        return self._classes[key]
+
     def __len__(self):
         return len(self._classes)
 

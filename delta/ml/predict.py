@@ -226,6 +226,8 @@ class LabelPredictor(Predictor):
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
                                         image.metadata(), nodata_value=0)
 
+        if self._num_classes == 1: # special case
+            self._num_classes = 2
         if self._colormap is not None and self._num_classes != self._colormap.shape[0]:
             print('Warning: Defined defined classes (%d) in config do not match network (%d).' %
                   (self._colormap.shape[0], self._num_classes))
@@ -277,8 +279,8 @@ class LabelPredictor(Predictor):
 
         prob_image = pred_image
         if len(pred_image.shape) == 2:
-            pred_image = pred_image >= 0.5
-            pred_image = np.expand_dims(pred_image, -1)
+            pred_image[~np.isnan(pred_image)] = pred_image[~np.isnan(pred_image)] >= 0.5
+            pred_image = pred_image.astype(int)
             prob_image = np.expand_dims(prob_image, -1)
         else:
             pred_image = np.argmax(pred_image, axis=2)
