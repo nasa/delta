@@ -34,10 +34,8 @@ from . import tiff
 # - (or) Use gdalbuildvrt to creat a merged.vrt file
 
 
-this_folder = os.path.dirname(os.path.abspath(__file__))
-SNAP_GRAPH_PATH = os.path.join(this_folder,
-                               'sentinel1_ffilipponi_snap_preprocess_graph.xml')
-SNAP_SCRIPT_PATH = os.path.join(this_folder, 'snap_process_sentinel1.sh')
+THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
+SNAP_SCRIPT_PATH = os.path.join(THIS_FOLDER, 'snap_process_sentinel1.sh')
 
 
 # Using the .vrt does not make much sense with SNAP but it is consistent
@@ -115,12 +113,11 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             # - The SNAP tool *must* write to a .tif extension, so we have to
             #   rename the file if we want something else.
             temp_out_path = merged_path.replace('.vrt', '.tif')
-            cmd = (SNAP_SCRIPT_PATH + ' ' + SNAP_GRAPH_PATH + ' '
-                   + unpack_folder + ' ' + temp_out_path)
+            cmd = (SNAP_SCRIPT_PATH + ' ' + unpack_folder + ' ' + temp_out_path)
             print(cmd)
             os.system(cmd)
             dimap_path = temp_out_path + '.dim'
-            cmd = 'pconvert -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
+            cmd = 'pconvert -s 0,0 -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
             print(cmd)
             os.system(cmd)
             MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger

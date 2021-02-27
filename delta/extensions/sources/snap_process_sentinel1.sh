@@ -22,13 +22,14 @@ export PATH=~/snap/bin:$PATH
 gptPath="gpt"
 
 # Get input parameters
-graphXmlPath="$1"
-sourceFile="$2"
-targetFile="$3"
+sourceFile="$1"
+targetFile="$2"
+
+thisFolder="$PWD/delta/extensions/sources"
 
 # Execute the simple graph
 
-#${gptPath} ${graphXmlPath} -e -PtargetProduct=${targetFile} ${sourceFile}
+#${gptPath} $thisFolder/sentinel1_default_snap_preprocess_graph.xml -e -PtargetProduct=${targetFile} ${sourceFile}
 
 
 # Use graph from here:
@@ -38,4 +39,4 @@ targetFile="$3"
 
 # https://github.com/ffilipponi/Sentinel-1_GRD_preprocessing
 
-${gptPath} ${graphXmlPath} -e -Poutput=${targetFile} -Pinput=${sourceFile} -Pfilter='None' -Presolution=10.0 -Porigin=5.0 -Pdem='SRTM 1Sec HGT' -Pfilter='None' -Pcrs='GEOGCS["WGS84(DD)", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH]]'
+${gptPath} $thisFolder/sentinel1_ffilipponi_snap_preprocess_graph.xml -e -Poutput=${targetFile} -Pinput=${sourceFile} -Pfilter='None' -Presolution=10.0 -Porigin=5.0 -Pdem='SRTM 1Sec HGT' -Pfilter='None' -Pcrs='GEOGCS["WGS84(DD)", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH]]'
