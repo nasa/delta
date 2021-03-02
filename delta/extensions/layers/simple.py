@@ -40,25 +40,17 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
 
 class ReflectionPadding2D(tensorflow.keras.layers.Layer):
     def __init__(self, padding=(1, 1), **kwargs):
+        super().__init__(**kwargs)
         self.padding = tuple(padding)
-        self.input_spec = [tensorflow.keras.layers.InputSpec(ndim=4)]
-        super(ReflectionPadding2D, self).__init__(**kwargs)
 
     def get_config(self):
         config = super().get_config()
         config.update({'padding': self.padding})
         return config
 
-#    def get_output_shape_for(self, s):
-#        """ If you are using "channels_last" configuration"""
-#        return (s[0], s[1] + 2 * self.padding[0], s[2] + 2 * self.padding[1], s[3])
-
-    def call(self, x, mask=None):
+    def call(self, inputs, **_):
         w_pad,h_pad = self.padding
-        #tf.print(tf.shape(x), h_pad, w_pad)
-        result = tf.pad(x, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
-        #tf.print(tf.shape(result))
-        return result
+        return tf.pad(inputs, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
 
 register_layer('RepeatedGlobalAveragePooling2D', RepeatedGlobalAveragePooling2D)
 register_layer('ReflectionPadding2D', ReflectionPadding2D)
