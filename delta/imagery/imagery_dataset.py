@@ -24,6 +24,7 @@ import functools
 import random
 import os
 import portalocker
+import numpy as np
 import tensorflow as tf
 
 from delta.config import config
@@ -45,6 +46,7 @@ class ImageryDataset:
         # Record some of the config values
         self.set_chunk_output_shapes(chunk_shape, output_shape)
         self._output_dims  = 1
+        # one for imagery, one for labels
         if stride is None:
             stride = (1, 1)
         self._stride = stride
@@ -60,6 +62,7 @@ class ImageryDataset:
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
+        self._access_counts = [None, None]
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
@@ -173,10 +176,14 @@ class ImageryDataset:
         """
         i = int(i)
         tiles = self._list_tiles(i)
+        # track epoch (must be same for label and non-label)
+        epoch = self._access_counts[1 if is_labels else 0][i]
+        self._access_counts[1 if is_labels else 0][i] += 1
         if not tiles:
             return
 
-        random.Random(0).shuffle(tiles) # Gives consistent random ordering so labels will match
+        # different order each epoch
+        random.Random(epoch * i * 11617).shuffle(tiles)
 
         image = (self._labels if is_labels else self._images).load(i)
         preprocess = image.get_preprocess()
@@ -232,6 +239,9 @@ class ImageryDataset:
         If label_list is specified, load labels instead. The corresponding image files are still required however.
         """
         r = tf.data.Dataset.range(len(self._images))
+        r = r.shuffle(1000, seed=0, reshuffle_each_iteration=True) # shuffle same way for labels and non-labels
+        self._access_counts[1 if is_labels else 0] = np.zeros(len(self._images), np.uint8) # count epochs for random
+        # different seed for each image, use ge
         gen_func = lambda x: tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
                                                                               is_labels=is_labels),
                                                             output_types=data_type,
