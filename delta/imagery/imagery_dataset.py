@@ -29,7 +29,7 @@ import tensorflow as tf
 
 from delta.config import config
 
-class ImageryDataset:
+class ImageryDataset: # pylint: disable=too-many-instance-attributes
     """Create dataset with all files as described in the provided config file.
     """
 
@@ -62,7 +62,7 @@ class ImageryDataset:
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
-        self._access_counts = [None, None]
+        self._access_counts = [np.zeros(0, np.uint8), np.zeros(0, np.uint8)]
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
