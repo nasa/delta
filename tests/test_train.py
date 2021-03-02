@@ -33,9 +33,10 @@ from delta.ml import train, predict, io
 from delta.extensions.layers.pretrained import pretrained
 from delta.ml.ml_config import TrainingSpec
 
-def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.3, max_wrong=200):
+def evaluate_model(model_fn, dataset, output_trim=0, threshold=0.3, max_wrong=200, batch_size=10):
     model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['sparse_categorical_accuracy']))
+                           TrainingSpec(batch_size, 5, 'sparse_categorical_crossentropy',
+                                        ['sparse_categorical_accuracy']))
     ret = model.evaluate(x=dataset.dataset().batch(1000))
     assert ret[1] > threshold # very loose test since not much training
 
@@ -126,7 +127,7 @@ def test_fcn(dataset):
         assert d[1].shape == (32, 32, 1)
     assert count == 2
     # don't actually test correctness, this is not enough data for this size network
-    evaluate_model(model_fn, dataset, threshold=0.0, max_wrong=10000)
+    evaluate_model(model_fn, dataset, threshold=0.0, max_wrong=10000, batch_size=1)
 
 def test_save(tmp_path):
     tmp_path = tmp_path / 'temp.h5'

@@ -38,4 +38,19 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
         mean = tf.expand_dims(mean, 1)
         return mean * ones
 
+class ReflectionPadding2D(tensorflow.keras.layers.Layer):
+    def __init__(self, padding=(1, 1), **kwargs):
+        super().__init__(**kwargs)
+        self.padding = tuple(padding)
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'padding': self.padding})
+        return config
+
+    def call(self, inputs, **_):
+        w_pad,h_pad = self.padding
+        return tf.pad(inputs, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
+
 register_layer('RepeatedGlobalAveragePooling2D', RepeatedGlobalAveragePooling2D)
+register_layer('ReflectionPadding2D', ReflectionPadding2D)
