@@ -123,13 +123,15 @@ def main(options):
         if labels:
             cm = predictor.confusion_matrix()
             if full_cm is None:
-                full_cm = np.copy(cm)
+                full_cm = np.copy(cm).astype(np.int64)
             else:
                 full_cm += cm
             for j in range(cm.shape[0]):
-                print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[j].name,
-                                                                     100 * cm[j,j] / np.sum(cm[:, j]),
-                                                                     100 * cm[j,j] / np.sum(cm[j, :])))
+                print('%s--- Precision: %.2f%%    Recall: %.2f%%      Pixels: %d / %d' % \
+                      (config.dataset.classes[j].name,
+                       100 * cm[j,j] / np.sum(cm[:, j]),
+                       100 * cm[j,j] / np.sum(cm[j, :]),
+                       int(np.sum(cm[j, :])), int(np.sum(cm))))
             print('%.2f%% Correct: %s' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
@@ -139,8 +141,10 @@ def main(options):
     stop_time = time.time()
     if labels:
         for i in range(full_cm.shape[0]):
-            print('%s--- Precision: %.2f%%    Recall: %.2f%%' % (config.dataset.classes[i].name,
-                                                                 100 * full_cm[i,i] / np.sum(full_cm[:, i]),
-                                                                 100 * full_cm[i,i] / np.sum(full_cm[i, :])))
+            print('%s--- Precision: %.2f%%    Recall: %.2f%%        Pixels: %d / %d' % \
+                    (config.dataset.classes[i].name,
+                     100 * full_cm[i,i] / np.sum(full_cm[:, i]),
+                     100 * full_cm[i,i] / np.sum(full_cm[i, :]),
+                     int(np.sum(cm[j, :])), int(np.sum(cm))))
     print('Elapsed time = ', stop_time - start_time)
     return 0
