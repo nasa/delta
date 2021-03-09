@@ -99,7 +99,7 @@ def check_image(images, measures, total_counts, i):
         name = ''
         if b == 0:
             name = os.path.basename(images[i])
-        print(classes_string(measures, bandstats, name))
+        print(classes_string(measures, dict(enumerate(bandstats)), name))
 
     return ''
 
@@ -114,7 +114,7 @@ def print_image_totals(images, measures, total_counts):
         name = ''
         if b == 0:
             name = 'Total'
-        print(classes_string(measures, values, name))
+        print(classes_string(measures, dict(enumerate(values)), name))
 
 def check_label(images, labels, classes, total_counts, i):
     '''Accumulate total_counts and print out image statistics'''
