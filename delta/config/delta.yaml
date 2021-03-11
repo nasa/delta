@@ -12,16 +12,12 @@ io:
   tile_size:         [256, 1024]
   # number of different images to interleave at a time when loading
   interleave_images: 5
-  # When resuming training with a log_folder, skip input image where we have
-  # already loaded this many tiles.
-  resume_cutoff:     5000
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
 
 dataset:
-  log_folder:         ~ # Storage location for any record keeping files about the input dataset
   images:
     type:             tiff
     # preprocess the images when loading (i.e., scaling)
@@ -105,6 +101,10 @@ train:
       extension:   default
       file_list:   ~
       files:       ~
+  log_folder:         ~ # Storage location for any record keeping files about the input dataset
+  # When resuming training with a log_folder, skip input image where we have
+  # already loaded this many tiles.
+  resume_cutoff:     10
  
 mlflow:
   # default to ~/.local/share/delta/mlflow

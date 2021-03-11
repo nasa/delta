@@ -172,6 +172,10 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
+        self.register_field('log_folder', str, 'log_folder', config.validate_path,
+                            'Directory where dataset progress is recorded.')
+        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
+                            'When resuming a dataset, skip images where we have read this many tiles.')
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None

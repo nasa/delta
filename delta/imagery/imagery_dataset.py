@@ -138,7 +138,7 @@ class ImageryDataset:
                 if config.general.verbose():
                     print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
                 (need_to_check, count) = self.resume_log_read(i)
-                if need_to_check and (count > config.io.resume_cutoff()):
+                if need_to_check and (count > config.train.resume_cutoff()):
                     if config.general.verbose():
                         print('Skipping index ' + str(i) + ' tile gen with count '
                               + str(count) + ' -> ' + file_path)
