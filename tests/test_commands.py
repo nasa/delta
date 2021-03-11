@@ -109,7 +109,6 @@ def test_train_validate(identity_config, binary_identity_tiff_filenames, tmp_pat
         train:
           steps: 5
           epochs: 3
-          max_tile_offset: 2
           network:
             layers:
               - Input:

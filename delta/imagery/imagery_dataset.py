@@ -54,7 +54,6 @@ class ImageryDataset:
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
-        self._tile_offset = None
 
         if labels:
             assert len(images) == len(labels)
@@ -183,27 +182,6 @@ class ImageryDataset:
         image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
         bands = range(image.num_bands())
 
-        # apply tile offset. do here so we always have same number of tiles (causes problems with tf)
-        if self._tile_offset:
-            def shift_tile(t):
-                t.shift(self._tile_offset[0], self._tile_offset[1])
-                t.max_x = min(t.max_x, image.width())
-                t.max_y = min(t.max_y, image.height())
-                if t.width() < self._tile_shape[0]:
-                    t.min_x = t.max_x - self._tile_shape[0]
-                if t.height() < self._tile_shape[1]:
-                    t.min_y = t.max_y - self._tile_shape[1]
-            for (rect, subtiles) in tiles:
-                shift_tile(rect)
-                for t in subtiles:
-                    # just use last tile that fits
-                    if t.max_x > rect.width():
-                        t.max_x = rect.width()
-                        t.min_x = rect.width() - self._tile_shape[0]
-                    if t.max_y > rect.height():
-                        t.max_y = rect.height()
-                        t.min_y = rect.height() - self._tile_shape[1]
-
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
         for (c, (rect, sub_tiles)) in enumerate(tiles):
@@ -305,7 +283,7 @@ class ImageryDataset:
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
-        if self._labels.nodata_value() is not None and self._tile_offset is None:
+        if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if class_weights is not None:
             class_weights.append(0.0)
@@ -366,14 +344,6 @@ class ImageryDataset:
     def tile_overlap(self):
         """Returns the amount tiles overlap, for FCNS."""
         return self._tile_overlap
-
-    def tile_offset(self):
-        """Offset for start of tiles when tiling (for FCNs)."""
-        return self._tile_offset
-
-    def set_tile_offset(self, offset):
-        """Set offset for start of tiles when tiling (for FCNs)."""
-        self._tile_offset = offset
 
     def stride(self):
         return self._stride
