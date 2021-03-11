@@ -284,4 +284,4 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequent
     params_exposed = {'num_classes' : len(config.dataset.classes),
                       'num_bands' : num_bands}
 
-    return model_from_dict(config.train.network.model.to_dict(), params_exposed)
+    return model_from_dict(config.train.network.to_dict(), params_exposed)

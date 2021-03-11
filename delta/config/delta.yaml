@@ -63,10 +63,9 @@ dataset:
 
 train:
   network:
-    model:
-      yaml_file:     networks/convpool.yaml
-      params:        ~
-      layers:        ~
+    yaml_file:     networks/convpool.yaml
+    params:        ~
+    layers:        ~
   stride:    ~
   max_tile_offset:   ~ # if set to integer, offset tiles by +1 each epoch modulus max_tile_offset
   batch_size:      500

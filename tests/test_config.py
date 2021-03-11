@@ -307,8 +307,7 @@ def test_network_file():
       classes: 3
     train:
       network:
-        model:
-          yaml_file: networks/convpool.yaml
+        yaml_file: networks/convpool.yaml
     '''
     config.load(yaml_str=test_str)
     model = config_parser.config_model(2)()
@@ -338,19 +337,18 @@ def test_network_inline():
       classes: 3
     train:
       network:
-        model:
-          params:
-            v1 : 10
-          layers:
-          - Input:
-              shape: [5, 5, num_bands]
-          - Flatten:
-          - Dense:
-              units: v1
-              activation : relu
-          - Dense:
-              units: 3
-              activation : softmax
+        params:
+          v1 : 10
+        layers:
+        - Input:
+            shape: [5, 5, num_bands]
+        - Flatten:
+        - Dense:
+            units: v1
+            activation : relu
+        - Dense:
+            units: 3
+            activation : softmax
     '''
     config.load(yaml_str=test_str)
     assert len(config.dataset.classes) == 3

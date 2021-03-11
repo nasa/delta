@@ -63,7 +63,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.optimizer = optimizer
         self.max_tile_offset = max_tile_offset
 
-class NetworkModelConfig(config.DeltaConfigComponent):
+class NetworkConfig(config.DeltaConfigComponent):
     def __init__(self):
         super().__init__()
         self.register_field('yaml_file', str, 'yaml_file', config.validate_path,
@@ -96,15 +96,6 @@ def validate_size(size, _):
     assert isinstance(size[0], int) and isinstance(size[1], int), 'Size must be integer.'
     assert size[0] > 0 and size[1] > 0, 'Size must be positive.'
     return size
-
-class NetworkConfig(config.DeltaConfigComponent):
-    def __init__(self):
-        super().__init__()
-        self.register_component(NetworkModelConfig(), 'model')
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Network')
-        super().setup_arg_parser(group, components)
 
 class ValidationConfig(config.DeltaConfigComponent):
     def __init__(self):
