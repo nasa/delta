@@ -77,7 +77,6 @@ class SparseRecall(SparseMetric): # pragma: no cover
         true_positives = tf.math.logical_and(right_class, right_class_pred)
         true_positives = tf.math.reduce_sum(tf.cast(true_positives, tf.float32))
         self._true_positives.assign_add(true_positives)
-        return self._total_class, self._true_positives
 
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
@@ -106,7 +105,6 @@ class SparsePrecision(SparseMetric): # pragma: no cover
         true_positives = tf.math.logical_and(right_class, right_class_pred)
         true_positives = tf.math.reduce_sum(tf.cast(true_positives, tf.float32))
         self._true_positives.assign_add(true_positives)
-        return self._total_class, self._true_positives
 
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
@@ -140,7 +138,6 @@ class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
         false_negatives = tf.math.reduce_sum(tf.cast(false_negatives, tf.float32))
         self._correct.assign_add(true_positives + false_negatives)
         self._total.assign_add(total)
-        return self._total, self._correct
 
     def result(self):
         return tf.math.divide(self._correct, self._total)
