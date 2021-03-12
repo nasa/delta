@@ -22,7 +22,7 @@ in yaml files. Includes constructing custom neural networks and more.
 from collections.abc import Mapping
 import copy
 import functools
-from typing import Callable, List
+from typing import Callable, List, Union
 
 import tensorflow
 import tensorflow.keras.layers
@@ -192,9 +192,21 @@ def _apply_params(model_dict, exposed_params):
 
     return model_dict_copy
 
-def model_from_dict(model_dict, exposed_params) -> Callable[[], tensorflow.keras.models.Sequential]:
+def model_from_dict(model_dict: dict, exposed_params: dict) -> Callable[[], tensorflow.keras.models.Model]:
     """
-    Creates a function that returns a sequential model from a dictionary.
+    Construct a model.
+
+    Parameters
+    ----------
+    model_dict: dict
+        Config dictionary describing the model
+    exposed_params: dict
+        Dictionary of parameter names and values to substitute.
+
+    Returns
+    -------
+    Callable[[], tensorflow.keras.models.Model]:
+        Model constructor function.
     """
     model_dict = _apply_params(model_dict, exposed_params)
     return functools.partial(_make_model, model_dict['layers'])
@@ -208,14 +220,22 @@ def _parse_str_or_dict(spec, type_name):
         return (name, spec[name])
     raise ValueError('Unexpected entry for %s.' % (type_name))
 
-def loss_from_dict(loss_spec):
-    '''
-    Creates a loss function object from a dictionary.
+def loss_from_dict(loss_spec: Union[dict, str]) -> tensorflow.keras.losses.Loss:
+    """
+    Construct a loss function.
 
-    :param: loss_spec Specification of the loss function.  Either a string that is compatible
-    with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
-    of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
-    '''
+    Parameters
+    ----------
+    loss_spec: Union[dict, str]
+        Specification of the loss function.  Either a string that is compatible
+        with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
+        of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
+
+    Returns
+    -------
+    tensorflow.keras.losses.Loss
+        The loss object.
+    """
     (name, params) = _parse_str_or_dict(loss_spec, 'loss function')
     lc = extensions.loss(name)
     if lc is None:
@@ -226,9 +246,19 @@ def loss_from_dict(loss_spec):
         lc = lc(**params)
     return lc
 
-def metric_from_dict(metric_spec):
+def metric_from_dict(metric_spec: Union[dict, str]) -> tensorflow.keras.metrics.Metric:
     """
-    Creates a metric object from a dictionary or string.
+    Construct a metric.
+
+    Parameters
+    ----------
+    metric_spec: Union[dict, str]
+        Config dictionary or string defining the metric
+
+    Returns
+    -------
+    tensorflow.keras.metrics.Metric
+        The metric object.
     """
     (name, params) = _parse_str_or_dict(metric_spec, 'metric')
     mc = extensions.metric(name)
@@ -243,9 +273,19 @@ def metric_from_dict(metric_spec):
         mc = mc(**params)
     return mc
 
-def optimizer_from_dict(spec):
+def optimizer_from_dict(spec: Union[dict, str]) -> tensorflow.keras.optimizers.Optimizer:
     """
-    Creates an optimizer from a dictionary or string.
+    Construct an optimizer from a dictionary or string.
+
+    Parameters
+    ----------
+    spec: Union[dict, str]
+        Config dictionary  or string defining an optimizer
+
+    Returns
+    -------
+    tensorflow.keras.optimizers.Optimizer
+        The optimizer object.
     """
     (name, params) = _parse_str_or_dict(spec, 'optimizer')
     mc = getattr(tensorflow.keras.optimizers, name, None)
@@ -253,10 +293,20 @@ def optimizer_from_dict(spec):
         raise ValueError('Unknown optimizer %s.' % (name))
     return mc(**params)
 
-def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
-    '''
-    Constructs a callback object from a dictionary.
-    '''
+def callback_from_dict(callback_dict: Union[dict, str]) -> tensorflow.keras.callbacks.Callback:
+    """
+    Construct a callback from a dictionary.
+
+    Parameters
+    ----------
+    callback_dict: Union[dict, str]
+        Config dictionary defining a callback.
+
+    Returns
+    -------
+    tensorflow.keras.callbacks.Callback
+        The callback object.
+    """
     assert len(callback_dict.keys()) == 1, f'Error: Callback has more than one type {callback_dict.keys()}'
 
     cb_type = next(iter(callback_dict.keys()))
@@ -270,16 +320,22 @@ def callback_from_dict(callback_dict) -> tensorflow.keras.callbacks.Callback:
     return callback_class(**callback_dict[cb_type])
 
 def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
-    '''
-    Iterates over the list of callbacks specified in the config file, which is part of the training specification.
-    '''
+    """
+    Returns
+    -------
+    List[tensorflow.keras.callbacks.Callback]
+        List of callbacks specified in the config file.
+    """
     if not config.train.callbacks() is None:
         return [callback_from_dict(callback) for callback in config.train.callbacks()]
     return []
 
-def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Sequential]:
+def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Model]:
     """
-    Creates the model specified in the configuration.
+    Returns
+    -------
+    Callable[[], tensorflow.keras.models.Model]
+        A function to construct the model given in the config file.
     """
     params_exposed = {'num_classes' : len(config.dataset.classes),
                       'num_bands' : num_bands}

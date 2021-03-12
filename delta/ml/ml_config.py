@@ -22,6 +22,8 @@ Configuration options specific to machine learning.
 # when tensorflow isn't needed
 import os.path
 
+from typing import Optional
+
 import appdirs
 import pkg_resources
 import yaml
@@ -33,14 +35,20 @@ class ValidationSet:#pylint:disable=too-few-public-methods
     """
     Specifies the images and labels in a validation set.
     """
-    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+    def __init__(self, images: Optional[ImageSet]=None, labels: Optional[ImageSet]=None,
+                 from_training: bool=False, steps: int=1000):
         """
-        Uses the specified `delta.imagery.imagery_config.ImageSet`s images and labels.
-
-        If `from_training` is `True`, instead takes samples from the training set
-        before they are used for training.
-
-        The number of samples to use for validation is set by `steps`.
+        Parameters
+        ----------
+        images: ImageSet
+            Validation images.
+        labels: ImageSet
+            Optional, validation labels.
+        from_training: bool
+            If true, ignore images and labels arguments and take data from the training imagery.
+            The validation data will not be used for training.
+        steps: int
+            If from_training is true, take this many batches for validation.
         """
         self.images = images
         self.labels = labels
@@ -63,6 +71,9 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.optimizer = optimizer
 
 class NetworkConfig(config.DeltaConfigComponent):
+    """
+    Configuration for a neural network.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('yaml_file', str, 'yaml_file', config.validate_path,
@@ -89,6 +100,9 @@ class NetworkConfig(config.DeltaConfigComponent):
                 self._config_dict.update(yaml.safe_load(f))
 
 def validate_size(size, _):
+    """
+    Validate an image region size.
+    """
     if size is None:
         return size
     assert len(size) == 2, 'Size must be tuple.'
@@ -97,6 +111,9 @@ def validate_size(size, _):
     return size
 
 class ValidationConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training validation.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('steps', int, 'steps', config.validate_positive,
@@ -144,6 +161,9 @@ def _validate_stride(stride, _):
     return stride
 
 class TrainingConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training.
+    """
     def __init__(self):
         super().__init__(section_header='Training')
         self.register_field('stride', (list, int, None), None, _validate_stride,
@@ -195,6 +215,9 @@ class TrainingConfig(config.DeltaConfigComponent):
 
 
 class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow checkpoints.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('frequency', int, 'frequency', None,
@@ -203,6 +226,9 @@ class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable MLFlow.')
@@ -225,6 +251,9 @@ class MLFlowConfig(config.DeltaConfigComponent):
         return uri
 
 class TensorboardConfig(config.DeltaConfigComponent):
+    """
+    Tensorboard configuration.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable Tensorboard.')

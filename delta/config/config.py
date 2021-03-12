@@ -106,8 +106,6 @@ class DeltaConfigComponent:
     """
     def __init__(self, section_header: Optional[str] = None):
         """
-        Constructs the component.
-
         Parameters
         ----------
         section_header: Optional[str]
