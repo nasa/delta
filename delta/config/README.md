@@ -5,9 +5,33 @@ all options, showing all parameters DELTA and their default values, see [delta.y
 
 `delta` accepts multiple config files on the command line. For example, run
 
-    delta train --config dataset.yaml --config train.yaml
+```bash
+delta train --config dataset.yaml --config train.yaml
+```
 
-to train on a dataset specified by `dataset.yaml` with training parameters given in `train.yaml`.
+to train on a dataset specified by `dataset.yaml`:
+
+```yaml
+dataset:
+  images:
+    type: tiff
+    directory: train/
+  labels:
+    type: tiff
+    directory: labels/
+  classes: 2
+```
+
+with training parameters given in `train.yaml`:
+
+```yaml
+train:
+  network:
+    model:
+      yaml_file: networks/convpool.yaml
+  epochs: 10
+```
+
 Parameters can be overriden globally for all runs of `delta` as well, by placing options in
 `$HOME/.config/delta/delta.yaml` on Linux. This is only recommended for global parameters
 such as the cache directory.
@@ -17,8 +41,7 @@ only setting the necessary options.
 Note that some configuration options can be overwritten on the command line: run
 `delta --help` to see which.
 
-The remainder of this document details the available configuration parameters. Note that
-DELTA is still under active development and parts are likely to change in the future.
+The remainder of this document details the available configuration parameters.
 
 Dataset
 -----------------
@@ -26,70 +49,129 @@ Images and labels are specified with the `images` and `labels` fields respective
 within `dataset`. Both share the
 same underlying options.
 
- * `type`: Indicates which loader to use, e.g., `tiff` for geotiff.
+ * `type`: Indicates which `delta.imagery.delta_image.DeltaImage` image reader to use, e.g., `tiff` for geotiff.
+   The reader should previously be registered with `delta.config.extensions.register_image_reader`.
  * Files to load must be specified in one of three ways:
-   * `directory` and `extension`: Use all images in the directory ending with the given extension.
-   * `file_list`: Provide a text file with one image file name per line.
-   * `files`: Provide a list of file names in yaml.
- * `preprocess`: Supports limited image preprocessing. We recommend
+    * `directory` and `extension`: Use all images in the directory ending with the given extension.
+    * `file_list`: Provide a text file with one image file name per line.
+    * `files`: Provide a list of file names in yaml.
+ * `preprocess`: Specify a preprocessing chain. We recommend
    scaling input imagery in the range 0.0 to 1.0 for best results with most of our networks.
    DELTA also supports custom preprocessing commands. Default actions include:
-   * `scale` with `factor` argument: Divide all values by amount.
-   * `offset` with `factor` argument: Add `factor` to pixel values.
-   * `clip` with `bounds` argument: clip all pixels to bounds.
+    * `scale` with `factor` argument: Divide all values by amount.
+    * `offset` with `factor` argument: Add `factor` to pixel values.
+    * `clip` with `bounds` argument: clip all pixels to bounds.
+   Preprocessing commands are registered with `delta.config.extensions.register_preprocess`.
+   A full list of defaults (and examples of how to create new ones) can be found in `delta.extensions.preprocess`.
  * `nodata_value`: A pixel value to ignore in the images.
+ * `classes`: Either an integer number of classes or a list of individual classes. If individual classes are specified,
+   each list item should be the pixel value of the class in the label images, and a dictionary with the
+   following potential attributes (see example below):
+    * `name`: Name of the class.
+    * `color`: Integer to use as the RGB representation for some classification options.
+    * `weight`: How much to weight the class during training (useful for underrepresented classes).
 
 As an example:
 
-  ```
-  dataset:
-    images:
-      type: worldview
-      directory: images/
-    labels:
-      type: tiff
-      directory: labels/
-      extension: _label.tiff
-  ```
+```yaml
+dataset:
+  images:
+    type: tiff
+    directory: images/
+    preprocess:
+      - scale:
+          factor: 256.0
+    nodata_value: 0
+  labels:
+    type: tiff
+    directory: labels/
+    extension: _label.tiff
+    nodata_value: 0
+  classes:
+    - 1:
+        name: Cloud
+        color: 0x0000FF
+        weight: 2.0
+    - 2:
+        name: Not Cloud
+        color: 0xFFFFFF
+        weight: 1.0
+```
 
-This configuration will load worldview files ending in `.zip` from the `images/` directory.
+This configuration will load tiff files ending in `.tiff` from the `images/` directory.
 It will then find matching tiff files ending in `_label.tiff` from the `labels` directory
-to use as labels.
+to use as labels. The image values will be divied by a factor of 256 before they are used.
+(It is often helpful to scale images to a range of 0-1 before training.) The labels represent two classes:
+clouds and non-clouds. Since there are fewer clouds, these are weighted more havily. The label
+images should contain 0 for nodata, 1 for cloud pixels, and 2 for non-cloud pixels.
 
 Train
 -----
 These options are used in the `delta train` command.
 
- * `network`: The nueral network to train. See the next section for details.
+ * `network`: The nueral network to train. One of `yaml_file` or `layers` must be specified.
+    * `yaml_file`: A path to a yaml file with only the params and layers fields. See `delta/config/networks`
+      for examples.
+    * `params`: A dictionary of parameters to substitute in the `layers` field.
+    * `layers`: A list of layers which compose the network. See the following section for details.
  * `stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
-   default of 1 to use all available training data.
- * `batch_size`: The number of chunks to train on in a group. May affect convergence speed. Larger
-   batches allow higher training data throughput, but may encounter memory limitations.
+   default of ~ or 1 to use all available training data. Not used for fully convolutional networks.
+ * `batch_size`: The number of patches to train on at a time. If running out of memory, reducing
+   batch size may be helpful.
  * `steps`: If specified, stop training for each epoch after the given number of batches.
  * `epochs`: the number of times to iterate through all training data during training.
  * `loss`: [Keras loss function](https://keras.io/losses/). For integer classes, use
-   `sparse_categorical_cross_entropy`.
- * `metrics`: A list of [Keras metrics](https://keras.io/metrics/) to evaluate.
- * `optimizer`: The [Keras optimizer](https://keras.io/optimizers/) to use.
+   `sparse_categorical_cross_entropy`. May be specified either as a string, or as a dictionary
+   with arguments to pass to the loss function constructor. Custom losses registered with
+   `delta.config.extensions.register_loss` may be used.
+ * `metrics`: A list of [Keras metrics](https://keras.io/metrics/) to evaluate. Either the string
+   name or a dictionary with the constructor arguments may be used. Custom metrics registered with
+   `delta.config.extensions.register_metric` or loss functions may also be used.
+ * `optimizer`: The [Keras optimizer](https://keras.io/optimizers/) to use. May be specified as a string or
+   as a dictionary with constructor parameters.
+ * `callbacks`: A list of [Keras callbacks)(https://keras.io/api/callbacks/) to use during training, specified as
+   either a string or as a dictionary with constructor parameters. Custom callbacks registered with
+   `delta.config.extensions.register_metric` may also be used.
  * `validation`: Specify validation data. The validation data is tested after each epoch to evaluate the
    classifier performance. Always use separate training and validation data!
    * `from_training` and `steps`: If `from_training` is true, take the `steps` training batches
      and do not use it for training but for validation instead.
    * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
      if `from_training` is false.
+ * `log_folder` and `resume_cutoff`: If log_folder is specified, store read records of how much of each image
+   has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
+   training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
+   on very large training sets (thousands of large images).
 
 ### Network
 
-These options configure the neural network to train with the `delta train` command.
+For the `layers` attribute, any [Keras Layer](https://keras.io/api/layers/) can
+be used, including custom layers registered with `delta.config.extensions.register_layer`.  
 
- * `classes`: The number of classes in the input data. The classes must currently have values
-   0 - n in the label images.
- * `model`: The network structure specification.
-   folder. You can either point to another `yaml_file`, such as the ones in the delta/config/networks
-   directory, or specify one under the `model` field in the same format as these files. The network
-   layers are specified using the [Keras functional layers API](https://keras.io/layers/core/)
-   converted to YAML files.
+Sub-fields of the layer are argument names and values which are passed to the layer's constructor.  
 
+A special sub-field, `inputs`, is a list of the names of layers to pass as inputs to this layer.
+If `inputs` is not specified, the previous layer is used by default. Layer names can be specified `name`.
+
+```yaml
+layers:
+  Input:
+    shape: [~, ~, num_bands]
+    name: input
+  Add:
+    inputs: [input, input]
+```
+
+This simple example takes an input and adds it to itself.
+
+Since this network takes inputs of variable size ((~, ~, `num_bands`) is the input shape) it is a **fully
+convolutional network**. This means that during training and classification, it will be evaluated on entire
+tiles rather than smaller chunks.
+
+A few special parameters are available by default:
+
+ * `num_bands`: The number of bands / channels in an image.
+ * `num_classes`: The number of classes provided in dataset.classes.
 
 MLFlow
 ------
@@ -119,10 +201,18 @@ General
 -------
 
  * `gpus`: The number of GPUs to use, or `-1` for all.
+ * `verbose`: Trigger verbose printing.
+ * `extensions`: List of extensions to load. Add custom modules here and they will be loaded when
+   delta starts.
+
+I/O
+-------
  * `threads`: The number of threads to use for loading images into tensorflow.
- * `tile_size`: The size of a tile to load from an image at a time. For convolutional networks (input size is [~, ~, X],
-   an entire tile is one training sample. For fixed size networks the tile is split into chunks. This parameter affects
-   performance: larger tiles will be faster but take more memory (quadratic with chunk size for fixed size networks).
- * `cache`: Configure cacheing options. The subfield `dir` specifies a directory on disk to store cached files,
-   and `limit` is the number of files to retain in the cache. Used mainly for image types
-   which much be extracted from archive files.
+ * `tile_size`: The size of a tile to load into memory at a time. For fully convolutional networks, the
+   entire tile will be processed at a time, for others it will be chunked.
+ * `interleave_images`: The number of images to interleave between. If this value is three, three images will
+   be opened at a time. Chunks / tiles will be interleaved from the first three tiles until one is completed, then
+   a new image will be opened. Larger interleaves can aid training (but comes at a cost in memory).
+ * `cache`: Options for a cache, which is used by a few image types (currently worldview and landsat).
+    * `dir`: Directory to store the cache. `default` gives a reasonable OS-specific default.
+    * `limit`: Maximum number of items to store in the cache before deleting old entries.

@@ -29,6 +29,12 @@ Installation
 
     DELTA is now installed and ready to use!
 
+Documentation
+=============
+DELTA can be used either as a command line tool or as a python library.
+See the python documentation for the master branch [here](https://nasa.github.io/delta/),
+or generate the documentation with `scripts/docs.sh`.
+
 Example
 =======
 
@@ -64,23 +70,18 @@ and shows how DELTA can be used. The steps involved in this, and other, classifi
 The results could be improved--- with more training, more data, an improved network, or more--- but this
 example shows the basic usage of DETLA.
 
-Configuration
-=============
+Configuration and Extensions
+============================
 
 DELTA provides many options for customizing data inputs and training. All options are configured via
 YAML files. Some options can be overwritten with command line options (use
-`delta --help` to see which). [Learn more about DELTA configuration](./delta/config/README.md).
-
-Extending DELTA
-===============
-DELTA can be used either as a command line tool or as a python library.
-See the python documentation for the master branch [here](https://nasa.github.io/delta/),
-or generate the documentation with `scripts/docs.sh`.
+`delta --help` to see which). See the `delta.config` README to learn about available configuration
+options.
 
 DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
 and training callbacks. Learn about DELTA extensions in the `delta.config.extensions` documentation.
 
-MLFlow
+Data Management
 =============
 
 DELTA integrates with [MLFlow](http://mlflow.org) to track training. MLFlow options can

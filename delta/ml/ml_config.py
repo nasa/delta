@@ -145,7 +145,7 @@ def _validate_stride(stride, _):
 
 class TrainingConfig(config.DeltaConfigComponent):
     def __init__(self):
-        super().__init__()
+        super().__init__(section_header='Training')
         self.register_field('stride', (list, int, None), None, _validate_stride,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
         self.register_field('epochs', int, None, config.validate_positive,
@@ -167,10 +167,6 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Training')
-        super().setup_arg_parser(group, components)
 
     def spec(self) -> TrainingSpec:
         """
