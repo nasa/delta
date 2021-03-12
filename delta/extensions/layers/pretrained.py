@@ -16,15 +16,25 @@
 # limitations under the License.
 
 """
-DELTA specific network layers.
+Use a pretrained model inside another network.
 """
+from typing import List, Optional
 import tensorflow
 import tensorflow.keras.models
 
 from delta.config.extensions import register_layer
 
 class InputSelectLayer(tensorflow.keras.layers.Layer):
+    """
+    A layer that takes any number of inputs, and returns a given one.
+    """
     def __init__(self, arg_number, **kwargs):
+        """
+        Parameters
+        ----------
+        arg_number: int
+            The index of the input to select.
+        """
         super().__init__(**kwargs)
         self._arg = arg_number
     def call(self, inputs, **kwargs):
@@ -45,13 +55,26 @@ def _model_to_output_layers(model, break_point, trainable):
             break
     return output_layers
 
-def pretrained(filename, encoding_layer, outputs=None, trainable=True, training=True, **kwargs):
+def pretrained(filename, encoding_layer, outputs: Optional[List[str]]=None, trainable: bool=True,
+               training: bool=True, **kwargs):
     """
     Creates pre-trained layer from an existing model file.
-    Only works with sequential models.
+    Only works with sequential models. This was quite tricky to get right with tensorflow.
 
-    training is for batch norm layers. Since this model is not saved (it
-    only saves the contents)
+    Parameters
+    ----------
+    filename: str
+        Model file to load.
+    encoding_layer: str
+        Name of the layer to stop at.
+    outputs: Optional[List[str]]
+        List of names of output layers that may be used later in the model.
+        Only layers listed here will be accessible as inputs to other layers, in the form
+        this_layer_name/internal_name. (internal_name must be included in outputs to do so)
+    trainable: bool
+        Whether to update weights during training for this layer.
+    training: bool
+        Standard tensorflow option, used for batch norm layers.
     """
     model = tensorflow.keras.models.load_model(filename, compile=False)
 

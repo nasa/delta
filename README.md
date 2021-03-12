@@ -22,12 +22,12 @@ Installation
 
 3. Checkout the delta repository and install with pip:
 
-    ```
-    git clone http://github.com/nasa/delta
-    python3 -m pip install delta
-    ```
+```bash
+git clone http://github.com/nasa/delta
+python3 -m pip install delta
+```
 
-    DELTA is now installed and ready to use!
+DELTA is now installed and ready to use!
 
 Documentation
 =============

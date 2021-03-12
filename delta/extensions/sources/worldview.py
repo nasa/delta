@@ -83,7 +83,7 @@ def unpack_wv_to_folder(zip_path, unpack_folder):
 
 
 class WorldviewImage(tiff.TiffImage):
-    """Compressed WorldView image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    """Compressed WorldView image. Loads an image from a zip file with a tiff and a .imd file."""
     def __init__(self, paths, nodata_value=None):
         self._meta_path = None
         self._meta   = None

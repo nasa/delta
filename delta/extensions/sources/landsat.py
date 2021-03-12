@@ -146,7 +146,7 @@ def _find_mtl_file(folder):
 
 
 class LandsatImage(tiff.TiffImage):
-    """Compressed Landsat image tensorflow dataset wrapper (see imagery_dataset.py)"""
+    """Compressed Landsat image. Loads a compressed zip or tar file with a .mtl file."""
 
     def __init__(self, paths, nodata_value=None, bands=None):
         self._bands = bands

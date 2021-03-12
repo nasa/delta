@@ -17,4 +17,9 @@
 
 """
 Imagery types for DELTA.
+
+These are specified in the "type" field in the configuration yaml file.
+
+Note that while DELTA supports compressed images for some satellites, we
+recommend extracting these images to tiffs beforehand as it will speed up training.
 """

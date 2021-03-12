@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Module to install extensions that come with DELTA.
+Module to install all extensions that come with DELTA by default.
 """
 
 from delta.config.extensions import register_extension, register_image_reader, register_image_writer
@@ -27,6 +27,9 @@ from .sources import worldview
 from .sources import sentinel1
 
 def initialize():
+    """
+    Register all default extensions.
+    """
     register_extension('delta.extensions.callbacks')
 
     register_extension('delta.extensions.layers.pretrained')

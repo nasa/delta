@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# pylint: disable=too-many-ancestors
 """
 Various helpful loss functions.
 """
@@ -25,20 +25,43 @@ import tensorflow.keras.metrics
 from delta.config import config
 from delta.config.extensions import register_metric
 
-class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
-    # this is cross entropy, but first replaces the labels with
-    # a probability distribution from a lookup table
-    def __init__(self, label, class_id=None, name=None, binary=False):
+class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-method # pragma: no cover
+    """
+    An abstract class for metrics applied to integer class labels,
+    with networks that output one-hot encoding.
+    """
+    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+        """
+        Parameters
+        ----------
+        label
+            A class identifier accepted by `delta.imagery.imagery_config.ClassesConfig.class_id`.
+            Compared to valuse in the label image.
+        class_id: Optional[int]
+            For multi-class one-hot outputs, used if the output class ID is different than the
+            one in the label image.
+        name: str
+            Metric name.
+        binary: bool
+            Use binary threshold (0.5) or argmax on one-hot encoding.
+        """
         super().__init__(name=name)
         self._binary = binary
         self._label_id = config.dataset.classes.class_id(label)
         self._class_id = class_id if class_id is not None else self._label_id
-        self._total_class = self.add_weight('total_class', initializer='zeros')
-        self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
     def reset_state(self):
         for s in self.variables:
             s.assign(tf.zeros(shape=s.shape))
+
+class SparseRecall(SparseMetric): # pragma: no cover
+    """
+    Recall.
+    """
+    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+        super().__init__(label, class_id, name, binary)
+        self._total_class = self.add_weight('total_class', initializer='zeros')
+        self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
@@ -59,20 +82,14 @@ class SparseRecall(tensorflow.keras.metrics.Metric): # pragma: no cover
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
 
-class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
-    # this is cross entropy, but first replaces the labels with
-    # a probability distribution from a lookup table
-    def __init__(self, label, class_id=None, name=None, binary=False):
-        super().__init__(name=name)
-        self._binary = binary
-        self._label_id = config.dataset.classes.class_id(label)
-        self._class_id = class_id if class_id is not None else self._label_id
+class SparsePrecision(SparseMetric): # pragma: no cover
+    """
+    Precision.
+    """
+    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+        super().__init__(label, class_id, name, binary)
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
-
-    def reset_state(self):
-        for s in self.variables:
-            s.assign(tf.zeros(shape=s.shape))
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
@@ -94,18 +111,15 @@ class SparsePrecision(tensorflow.keras.metrics.Metric): # pragma: no cover
     def result(self):
         return tf.math.divide_no_nan(self._true_positives, self._total_class)
 
-class SparseBinaryAccuracy(tensorflow.keras.metrics.Metric): # pragma: no cover
-    # Binary accuracy but where labels are transformed
-    def __init__(self, label, name=None):
-        super().__init__(name=name)
-        self._label_id = config.dataset.classes.class_id(label)
+class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
+    """
+    Accuracy.
+    """
+    def __init__(self, label, name: str=None):
+        super().__init__(label, label, name, False)
         self._nodata_id = config.dataset.classes.class_id('nodata')
         self._total = self.add_weight('total', initializer='zeros')
         self._correct = self.add_weight('correct', initializer='zeros')
-
-    def reset_state(self):
-        for s in self.variables:
-            s.assign(tf.zeros(shape=s.shape))
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)

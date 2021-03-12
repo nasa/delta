@@ -16,5 +16,5 @@
 # limitations under the License.
 
 """
-Extra layers provided by DELTA.
+Custom layers provided by DELTA.
 """

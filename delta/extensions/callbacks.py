@@ -26,7 +26,24 @@ from delta.config.extensions import register_callback
 from delta.ml.train import ContinueTrainingException
 
 class SetTrainable(tensorflow.keras.callbacks.Callback):
-    def __init__(self, layer_name, epoch, trainable=True, learning_rate=None):
+    """
+    Changes whether a given layer is trainable during training.
+
+    This is useful for transfer learning, to do an initial training and then allow fine-tuning.
+    """
+    def __init__(self, layer_name: str, epoch: int, trainable: bool=True, learning_rate: float=None):
+        """
+        Parameters
+        ----------
+        layer_name: str
+            The layer to modify.
+        epoch: int
+            The change will take place at the start of this epoch (the first epoch is 1).
+        trainable: bool
+            Whether the layer will be made trainable or not trainable.
+        learning_rate: float
+            Optionally change the learning rate as well.
+        """
         super().__init__()
         self._layer_name = layer_name
         self._epoch = epoch - 1
@@ -44,7 +61,17 @@ class SetTrainable(tensorflow.keras.callbacks.Callback):
             # have to abort, recompile changed model, and continue training
             raise ContinueTrainingException(completed_epochs=epoch, recompile_model=True, learning_rate=self._lr)
 
-def ExponentialLRScheduler(start_epoch=10, multiplier=0.95):
+def ExponentialLRScheduler(start_epoch: int=10, multiplier: float=0.95):
+    """
+    Schedule the learning rate exponentially.
+
+    Parameters
+    ----------
+    start_epoch: int
+        The epoch to begin.
+    multiplier: float
+        After `start_epoch`, multiply the learning rate by this amount each epoch.
+    """
     def schedule(epoch, lr):
         if epoch < start_epoch:
             return lr
