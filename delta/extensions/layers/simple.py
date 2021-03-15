@@ -44,6 +44,9 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
         return mean * ones
 
 class ReflectionPadding2D(tensorflow.keras.layers.Layer):
+    """
+    Add reflected padding of the given size surrounding the input.
+    """
     def __init__(self, padding=(1, 1), **kwargs):
         super().__init__(**kwargs)
         self.padding = tuple(padding)
