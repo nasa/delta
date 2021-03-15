@@ -44,7 +44,13 @@ class DeltaLayer(Layer):
     """
     def callback(self): # pylint:disable=no-self-use
         """
-        Returns a Keras callback to be added, or None.
+        Override this method to make a layer automatically register
+        a training callback.
+
+        Returns
+        -------
+        tensorflow.keras.callbacks.Callback:
+            The callback to register (or None).
         """
         return None
 
@@ -249,7 +255,20 @@ class ContinueTrainingException(Exception):
     Callbacks can raise this exception to modify the model, recompile, and
     continue training.
     """
-    def __init__(self, msg=None, completed_epochs=0, recompile_model=False, learning_rate=None):
+    def __init__(self, msg: str=None, completed_epochs: int=0,
+                 recompile_model: bool=False, learning_rate: float=None):
+        """
+        Parameters
+        ----------
+        msg: str
+            Optional error message.
+        completed_epochs: int
+            The number of epochs that have been finished. (resumes from the next epoch)
+        recompile_model: bool
+            If True, recompile the model. This is necessary if the model has been changed.
+        learning_rate: float
+            Optionally set the learning rate to the given value.
+        """
         super().__init__(msg)
         self.completed_epochs = completed_epochs
         self.recompile_model = recompile_model
@@ -258,6 +277,20 @@ class ContinueTrainingException(Exception):
 def compile_model(model_fn, training_spec, resume_path=None):
     """
     Compile and check that the model is valid.
+
+    Parameters
+    ----------
+    model_fn: Callable[[], tensorflow.keras.model.Model]
+        Function to construct a keras Model.
+    training_spec: delta.ml.ml_config.TrainingSpec
+        Trainnig parameters.
+    resume_path: str
+        File name to load initial model weights from.
+
+    Returns
+    -------
+    tensorflow.keras.models.Model:
+        The compiled model, ready for training.
     """
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
@@ -292,6 +325,22 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
     """
     Trains the specified model on a dataset according to a training
     specification.
+
+    Parameters
+    ----------
+    model_fn: Callable[[], tensorflow.keras.model.Model]
+        Function that constructs a model.
+    dataset: delta.imagery.imagery_dataset.ImageryDataset
+        Dataset to train on.
+    training_spec: delta.ml.ml_config.TrainingSpec
+        Training parameters.
+    resume_path: str
+        Optional file to load initial model weights from.
+
+    Returns
+    -------
+    (tensorflow.keras.models.Model, History):
+        The trained model and the training history.
     """
     model = compile_model(model_fn, training_spec, resume_path)
     assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'

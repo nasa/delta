@@ -44,7 +44,7 @@ def print_layer(l):
     """
     Print a layer to stdout.
 
-    l: tensorflow.keras.layers.Layer:
+    l: tensorflow.keras.layers.Layer
         The layer to print.
     """
     s = "{:<25}".format(l.name) + ' ' + '{:<20}'.format(str(l.input_shape)) + \
@@ -60,7 +60,7 @@ def print_network(a, tile_shape=None):
     """
     Print a model to stdout.
 
-    a: tensorflow.keras.models.Model:
+    a: tensorflow.keras.models.Model
         The model to print.
     tile_shape: Optional[Tuple[int, int]]
         If specified, print layer output sizes (necessary for FCN only).
