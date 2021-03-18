@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.9.2" />
-<title>delta.subcommands.mlflow_ui API documentation</title>
-<meta name="description" content="Run the MLFlow UI to visualize the history of training runs." />
+<title>delta.config.modules API documentation</title>
+<meta name="description" content="Registers all config modules." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,10 +19,10 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>delta.subcommands.mlflow_ui</code></h1>
+<h1 class="title">Module <code>delta.config.modules</code></h1>
 </header>
 <section id="section-intro">
-<p>Run the MLFlow UI to visualize the history of training runs.</p>
+<p>Registers all config modules.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -45,15 +45,53 @@
 # limitations under the License.
 
 &#34;&#34;&#34;
-Run the MLFlow UI to visualize the history of training runs.
+Registers all config modules.
 &#34;&#34;&#34;
-import os
 
-from delta.config import config
+import delta.imagery.imagery_config
+import delta.ml.ml_config
+from .config import config, DeltaConfigComponent
+from .extensions import register_extension
 
-def main(_):
-    os.system(&#39;mlflow ui --backend-store-uri %s&#39; % (config.mlflow.uri()))
-    return 0</code></pre>
+class ExtensionsConfig(DeltaConfigComponent):
+    &#34;&#34;&#34;
+    Configuration component for extensions.
+    &#34;&#34;&#34;
+    def __init__(self):
+        super().__init__()
+
+    # register immediately, don&#39;t override
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        if isinstance(d, list):
+            for ext in d:
+                register_extension(ext)
+        elif isinstance(d, str):
+            register_extension(d)
+        else:
+            raise ValueError(&#39;extensions should be a list or string.&#39;)
+
+_config_initialized = False
+def register_all():
+    &#34;&#34;&#34;
+    Register all default config modules.
+    &#34;&#34;&#34;
+    global _config_initialized #pylint: disable=global-statement
+    # needed to call twice when testing subcommands and when not
+    if _config_initialized:
+        return
+    config.register_component(DeltaConfigComponent(&#39;General&#39;), &#39;general&#39;)
+    config.general.register_component(ExtensionsConfig(), &#39;extensions&#39;)
+    config.general.register_field(&#39;extensions&#39;, list, &#39;extensions&#39;, None,
+                                  &#39;Python modules to import as extensions.&#39;)
+    config.general.register_field(&#39;verbose&#39;, bool, &#39;verbose&#39;, None,
+                                  &#39;Print debugging information.&#39;)
+    config.general.register_arg(&#39;verbose&#39;, &#39;--verbose&#39;, action=&#39;store_const&#39;,
+                                const=True, type=None)
+    delta.imagery.imagery_config.register()
+    delta.ml.ml_config.register()
+    _config_initialized = True</code></pre>
 </details>
 </section>
 <section>
@@ -63,23 +101,95 @@ def main(_):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="delta.subcommands.mlflow_ui.main"><code class="name flex">
-<span>def <span class="ident">main</span></span>(<span>_)</span>
+<dt id="delta.config.modules.register_all"><code class="name flex">
+<span>def <span class="ident">register_all</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Register all default config modules.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def main(_):
-    os.system(&#39;mlflow ui --backend-store-uri %s&#39; % (config.mlflow.uri()))
-    return 0</code></pre>
+<pre><code class="python">def register_all():
+    &#34;&#34;&#34;
+    Register all default config modules.
+    &#34;&#34;&#34;
+    global _config_initialized #pylint: disable=global-statement
+    # needed to call twice when testing subcommands and when not
+    if _config_initialized:
+        return
+    config.register_component(DeltaConfigComponent(&#39;General&#39;), &#39;general&#39;)
+    config.general.register_component(ExtensionsConfig(), &#39;extensions&#39;)
+    config.general.register_field(&#39;extensions&#39;, list, &#39;extensions&#39;, None,
+                                  &#39;Python modules to import as extensions.&#39;)
+    config.general.register_field(&#39;verbose&#39;, bool, &#39;verbose&#39;, None,
+                                  &#39;Print debugging information.&#39;)
+    config.general.register_arg(&#39;verbose&#39;, &#39;--verbose&#39;, action=&#39;store_const&#39;,
+                                const=True, type=None)
+    delta.imagery.imagery_config.register()
+    delta.ml.ml_config.register()
+    _config_initialized = True</code></pre>
 </details>
 </dd>
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.config.modules.ExtensionsConfig"><code class="flex name class">
+<span>class <span class="ident">ExtensionsConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Configuration component for extensions.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>section_header</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The title of the section for command line arguments in the help.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ExtensionsConfig(DeltaConfigComponent):
+    &#34;&#34;&#34;
+    Configuration component for extensions.
+    &#34;&#34;&#34;
+    def __init__(self):
+        super().__init__()
+
+    # register immediately, don&#39;t override
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        if isinstance(d, list):
+            for ext in d:
+                register_extension(ext)
+        elif isinstance(d, str):
+            register_extension(d)
+        else:
+            raise ValueError(&#39;extensions should be a list or string.&#39;)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -90,12 +200,19 @@ def main(_):
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="delta.subcommands" href="index.html">delta.subcommands</a></code></li>
+<li><code><a title="delta.config" href="index.html">delta.config</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="delta.subcommands.mlflow_ui.main" href="#delta.subcommands.mlflow_ui.main">main</a></code></li>
+<li><code><a title="delta.config.modules.register_all" href="#delta.config.modules.register_all">register_all</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.config.modules.ExtensionsConfig" href="#delta.config.modules.ExtensionsConfig">ExtensionsConfig</a></code></h4>
+</li>
 </ul>
 </li>
 </ul>

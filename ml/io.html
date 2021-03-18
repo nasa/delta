@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.9.2" />
-<title>delta.ml API documentation</title>
-<meta name="description" content="Module for machine learning given imagery data." />
+<title>delta.ml.io API documentation</title>
+<meta name="description" content="Functions for IO specific to ML." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,10 +19,10 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>delta.ml</code></h1>
+<h1 class="title">Module <code>delta.ml.io</code></h1>
 </header>
 <section id="section-intro">
-<p>Module for machine learning given imagery data.</p>
+<p>Functions for IO specific to ML.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -45,40 +45,173 @@
 # limitations under the License.
 
 &#34;&#34;&#34;
-Module for machine learning given imagery data.
-&#34;&#34;&#34;</code></pre>
+Functions for IO specific to ML.
+&#34;&#34;&#34;
+
+import h5py
+import numpy as np
+import tensorflow.keras.backend as K
+
+from delta.config import config
+
+def save_model(model, filename):
+    &#34;&#34;&#34;
+    Save a model. Includes DELTA configuration.
+
+    Parameters
+    ----------
+    model: tensorflow.keras.models.Model
+        The model to save.
+    filename: str
+        Output filename.
+    &#34;&#34;&#34;
+    model.save(filename, save_format=&#39;h5&#39;)
+    with h5py.File(filename, &#39;r+&#39;) as f:
+        f.attrs[&#39;delta&#39;] = config.export()
+
+def print_layer(l):
+    &#34;&#34;&#34;
+    Print a layer to stdout.
+
+    l: tensorflow.keras.layers.Layer
+        The layer to print.
+    &#34;&#34;&#34;
+    s = &#34;{:&lt;25}&#34;.format(l.name) + &#39; &#39; + &#39;{:&lt;20}&#39;.format(str(l.input_shape)) + \
+        &#39; -&gt; &#39; + &#39;{:&lt;20}&#39;.format(str(l.output_shape))
+    c = l.get_config()
+    if &#39;strides&#39; in c:
+        s += &#39; s: &#39; + &#39;{:&lt;10}&#39;.format(str(c[&#39;strides&#39;]))
+    if &#39;kernel_size&#39; in c:
+        s += &#39; ks: &#39; + str(c[&#39;kernel_size&#39;])
+    print(s)
+
+def print_network(a, tile_shape=None):
+    &#34;&#34;&#34;
+    Print a model to stdout.
+
+    a: tensorflow.keras.models.Model
+        The model to print.
+    tile_shape: Optional[Tuple[int, int]]
+        If specified, print layer output sizes (necessary for FCN only).
+    &#34;&#34;&#34;
+    for l in a.layers:
+        print_layer(l)
+    in_shape = a.layers[0].input_shape[0]
+    if tile_shape is not None:
+        in_shape = (in_shape[0], tile_shape[0], tile_shape[1], in_shape[3])
+    out_shape = a.compute_output_shape(in_shape)
+    print(&#39;Size: &#39; + str(in_shape[1:]) + &#39; --&gt; &#39; + str(out_shape[1:]))
+    if out_shape[1] is not None and out_shape[2] is not None:
+        print(&#39;Compression Rate - &#39;, out_shape[1] * out_shape[2] * out_shape[3] /
+                                     (in_shape[1] * in_shape[2] * in_shape[3]))
+    print(&#39;Layers - &#39;, len(a.layers))
+    print(&#39;Trainable Parameters - &#39;, np.sum([K.count_params(w) for w in a.trainable_weights]))</code></pre>
 </details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt><code class="name"><a title="delta.ml.config_parser" href="config_parser.html">delta.ml.config_parser</a></code></dt>
+<dt id="delta.ml.io.print_layer"><code class="name flex">
+<span>def <span class="ident">print_layer</span></span>(<span>l)</span>
+</code></dt>
 <dd>
-<div class="desc"><p>Functions to support loading custom ML-related objects from dictionaries specified
-in yaml files. Includes constructing custom neural networks and more.</p></div>
+<div class="desc"><p>Print a layer to stdout.</p>
+<p>l: tensorflow.keras.layers.Layer
+The layer to print.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_layer(l):
+    &#34;&#34;&#34;
+    Print a layer to stdout.
+
+    l: tensorflow.keras.layers.Layer
+        The layer to print.
+    &#34;&#34;&#34;
+    s = &#34;{:&lt;25}&#34;.format(l.name) + &#39; &#39; + &#39;{:&lt;20}&#39;.format(str(l.input_shape)) + \
+        &#39; -&gt; &#39; + &#39;{:&lt;20}&#39;.format(str(l.output_shape))
+    c = l.get_config()
+    if &#39;strides&#39; in c:
+        s += &#39; s: &#39; + &#39;{:&lt;10}&#39;.format(str(c[&#39;strides&#39;]))
+    if &#39;kernel_size&#39; in c:
+        s += &#39; ks: &#39; + str(c[&#39;kernel_size&#39;])
+    print(s)</code></pre>
+</details>
 </dd>
-<dt><code class="name"><a title="delta.ml.io" href="io.html">delta.ml.io</a></code></dt>
+<dt id="delta.ml.io.print_network"><code class="name flex">
+<span>def <span class="ident">print_network</span></span>(<span>a, tile_shape=None)</span>
+</code></dt>
 <dd>
-<div class="desc"><p>Functions for IO specific to ML.</p></div>
+<div class="desc"><p>Print a model to stdout.</p>
+<p>a: tensorflow.keras.models.Model
+The model to print.
+tile_shape: Optional[Tuple[int, int]]
+If specified, print layer output sizes (necessary for FCN only).</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_network(a, tile_shape=None):
+    &#34;&#34;&#34;
+    Print a model to stdout.
+
+    a: tensorflow.keras.models.Model
+        The model to print.
+    tile_shape: Optional[Tuple[int, int]]
+        If specified, print layer output sizes (necessary for FCN only).
+    &#34;&#34;&#34;
+    for l in a.layers:
+        print_layer(l)
+    in_shape = a.layers[0].input_shape[0]
+    if tile_shape is not None:
+        in_shape = (in_shape[0], tile_shape[0], tile_shape[1], in_shape[3])
+    out_shape = a.compute_output_shape(in_shape)
+    print(&#39;Size: &#39; + str(in_shape[1:]) + &#39; --&gt; &#39; + str(out_shape[1:]))
+    if out_shape[1] is not None and out_shape[2] is not None:
+        print(&#39;Compression Rate - &#39;, out_shape[1] * out_shape[2] * out_shape[3] /
+                                     (in_shape[1] * in_shape[2] * in_shape[3]))
+    print(&#39;Layers - &#39;, len(a.layers))
+    print(&#39;Trainable Parameters - &#39;, np.sum([K.count_params(w) for w in a.trainable_weights]))</code></pre>
+</details>
 </dd>
-<dt><code class="name"><a title="delta.ml.ml_config" href="ml_config.html">delta.ml.ml_config</a></code></dt>
+<dt id="delta.ml.io.save_model"><code class="name flex">
+<span>def <span class="ident">save_model</span></span>(<span>model, filename)</span>
+</code></dt>
 <dd>
-<div class="desc"><p>Configuration options specific to machine learning.</p></div>
-</dd>
-<dt><code class="name"><a title="delta.ml.predict" href="predict.html">delta.ml.predict</a></code></dt>
-<dd>
-<div class="desc"><p>Module to run prediction according to learned neural networks
-on images.</p></div>
-</dd>
-<dt><code class="name"><a title="delta.ml.train" href="train.html">delta.ml.train</a></code></dt>
-<dd>
-<div class="desc"><p>Train neural networks.</p></div>
+<div class="desc"><p>Save a model. Includes DELTA configuration.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>model</code></strong> :&ensp;<code>tensorflow.keras.models.Model</code></dt>
+<dd>The model to save.</dd>
+<dt><strong><code>filename</code></strong> :&ensp;<code>str</code></dt>
+<dd>Output filename.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save_model(model, filename):
+    &#34;&#34;&#34;
+    Save a model. Includes DELTA configuration.
+
+    Parameters
+    ----------
+    model: tensorflow.keras.models.Model
+        The model to save.
+    filename: str
+        Output filename.
+    &#34;&#34;&#34;
+    model.save(filename, save_format=&#39;h5&#39;)
+    with h5py.File(filename, &#39;r+&#39;) as f:
+        f.attrs[&#39;delta&#39;] = config.export()</code></pre>
+</details>
 </dd>
 </dl>
-</section>
-<section>
-</section>
-<section>
 </section>
 <section>
 </section>
@@ -91,16 +224,14 @@ on images.</p></div>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="delta" href="../index.html">delta</a></code></li>
+<li><code><a title="delta.ml" href="index.html">delta.ml</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
-<ul>
-<li><code><a title="delta.ml.config_parser" href="config_parser.html">delta.ml.config_parser</a></code></li>
-<li><code><a title="delta.ml.io" href="io.html">delta.ml.io</a></code></li>
-<li><code><a title="delta.ml.ml_config" href="ml_config.html">delta.ml.ml_config</a></code></li>
-<li><code><a title="delta.ml.predict" href="predict.html">delta.ml.predict</a></code></li>
-<li><code><a title="delta.ml.train" href="train.html">delta.ml.train</a></code></li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.ml.io.print_layer" href="#delta.ml.io.print_layer">print_layer</a></code></li>
+<li><code><a title="delta.ml.io.print_network" href="#delta.ml.io.print_network">print_network</a></code></li>
+<li><code><a title="delta.ml.io.save_model" href="#delta.ml.io.save_model">save_model</a></code></li>
 </ul>
 </li>
 </ul>

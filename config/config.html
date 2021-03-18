@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.8.4" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>delta.config.config API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="Loading configuration from command line arguments and yaml files …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
-<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
 <style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
 <style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
 <style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
 <script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
 </head>
 <body>
@@ -22,6 +22,9 @@
 <h1 class="title">Module <code>delta.config.config</code></h1>
 </header>
 <section id="section-intro">
+<p>Loading configuration from command line arguments and yaml files.</p>
+<p>Most users will want to use the global object <code><a title="delta.config.config.config" href="#delta.config.config.config">config</a></code>
+to access configuration parameters.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -42,14 +45,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+&#34;&#34;&#34;
+Loading configuration from command line arguments and yaml files.
+
+Most users will want to use the global object `delta.config.config.config`
+to access configuration parameters.
+&#34;&#34;&#34;
 
 import os.path
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 import yaml
 import pkg_resources
 import appdirs
 
-def validate_path(path, base_dir):
+def validate_path(path: str, base_dir: str) -&gt; str:
+    &#34;&#34;&#34;
+    Normalizes a path.
+
+    Parameters
+    ----------
+    path: str
+        Input path
+    base_dir: str
+        The base directory for relative paths.
+
+    Returns
+    -------
+    str
+        The normalized path.
+    &#34;&#34;&#34;
     if path == &#39;default&#39;:
         return path
     path = os.path.expanduser(path)
@@ -58,10 +83,48 @@ def validate_path(path, base_dir):
         path = os.path.normpath(os.path.join(base_dir, path))
     return path
 
-def validate_positive(num, _):
+def validate_positive(num: Union[int, float], _: str) -&gt; Union[int, float]:
+    &#34;&#34;&#34;
+    Checks that a number is positive.
+
+    Parameters
+    ----------
+    num: Union[int, float]
+        Input number
+    _: str
+        Unused base path.
+
+    Raises
+    ------
+    ValueError
+        If number is not positive.
+    &#34;&#34;&#34;
     if num &lt;= 0:
         raise ValueError(&#39;%d is not positive&#39; % (num))
     return num
+
+def validate_non_negative(num: Union[int, float], _: str) -&gt; Union[int, float]:
+    &#34;&#34;&#34;
+    Checks that a number is not negative.
+
+    Parameters
+    ----------
+    num: Union[int, float]
+        Input number
+    _: str
+        Unused base path.
+
+    Raises
+    ------
+    ValueError
+        If number is negative.
+    &#34;&#34;&#34;
+    if num &lt; 0:
+        raise ValueError(&#39;%d is negative&#39; % (num))
+    return num
+
+class _NotSpecified: #pylint:disable=too-few-public-methods
+    pass
 
 class DeltaConfigComponent:
     &#34;&#34;&#34;
@@ -69,15 +132,15 @@ class DeltaConfigComponent:
 
     Handles one subsection of a config file. Generally subclasses
     will want to register fields and components in the constructor,
-    and possibly override setup_arg_parser and parse_args to handle
+    and possibly override `setup_arg_parser` and `parse_args` to handle
     command line options.
-
-    section_header is the title of the section for command line
-    arguments in the help.
     &#34;&#34;&#34;
-    def __init__(self, section_header = None):
+    def __init__(self, section_header: Optional[str] = None):
         &#34;&#34;&#34;
-        Constructs the component.
+        Parameters
+        ----------
+        section_header: Optional[str]
+            The title of the section for command line arguments in the help.
         &#34;&#34;&#34;
         self._config_dict = {}
         self._components = {}
@@ -96,9 +159,18 @@ class DeltaConfigComponent:
         for c in self._components.values():
             c.reset()
 
-    def register_component(self, component, name : str, attr_name = None):
+    def register_component(self, component: &#39;DeltaConfigComponent&#39;, name : str, attr_name: Optional[str] = None):
         &#34;&#34;&#34;
-        Register a subcomponent with a name and attribute name (access as self.attr_name)
+        Register a subcomponent.
+
+        Parameters
+        ----------
+        component: DeltaConfigComponent
+            The subcomponent to add.
+        name: str
+            Name of the subcomponent. Must be unique.
+        attr_name: Optional[str]
+            If specified, can access the component as self.attr_name.
         &#34;&#34;&#34;
         assert name not in self._components
         self._components[name] = component
@@ -106,21 +178,29 @@ class DeltaConfigComponent:
             attr_name = name
         setattr(self, attr_name, component)
 
-    def register_field(self, name : str, types, accessor = None, cmd_arg = None, validate_fn = None, desc = None):
+    def register_field(self, name: str, types: Union[type, Tuple[type, ...]], accessor: Optional[str] = None,
+                       validate_fn: Optional[Callable[[Any, str], Any]] = None, desc = None):
         &#34;&#34;&#34;
         Register a field in this component of the configuration.
 
-        types is a single type or a tuple of valid types
-
-        validate_fn (optional) should take two strings as input, the field&#39;s value and
-        the base directory, and return what to save to the config dictionary.
-        It should raise an exception if the field is invalid.
-        accessor is an optional name to create an accessor function with
+        Parameters
+        ----------
+        name: str
+            Name of the field (must be unique).
+        types: type or tuple of types
+            Valid type or types for the field.
+        accessor: Optional[str]
+            If set, defines a function self.accessor() which retrieves the field.
+        validate_fn: Optional[Callable[[Any, str], Any]]
+            If specified, sets input = validate_fn(input, base_path) before using it, where
+            base_path is the current directory. The validate function should raise an error
+            if the input is invalid.
+        desc: Optional[str]
+            A description to use in help messages.
         &#34;&#34;&#34;
         self._fields.append(name)
         self._validate[name] = validate_fn
         self._types[name] = types
-        self._cmd_args[name] = cmd_arg
         self._descs[name] = desc
         if accessor:
             def access(self) -&gt; types:
@@ -129,14 +209,53 @@ class DeltaConfigComponent:
             access.__doc__ = desc
             setattr(self.__class__, accessor, access)
 
+    def register_arg(self, field: str, argname: str, options_name: Optional[str] =None, **kwargs):
+        &#34;&#34;&#34;
+        Registers a command line argument in this component. Command line arguments override the
+        values in the config files when specified.
+
+        Parameters
+        ----------
+        field: str
+            The previously registered field this argument modifies.
+        argname: str
+            The name of the flag on the command line (i.e., &#39;--flag&#39;)
+        options_name: Optional[str]
+            Name stored in the options object. It defaults to the
+            field if not specified. Only needed for duplicates, such as for multiple image
+            specifications.
+        **kwargs:
+            Further arguments are passed to ArgumentParser.add_argument.
+            If `help` and `type` are not specified, will use the values from field registration.
+            If `default` is not specified, will use the value from the config files.
+        &#34;&#34;&#34;
+        assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+        if &#39;help&#39; not in kwargs:
+            kwargs[&#39;help&#39;] = self._descs[field]
+        if &#39;type&#39; not in kwargs:
+            kwargs[&#39;type&#39;] = self._types[field]
+        elif kwargs[&#39;type&#39;] is None:
+            del kwargs[&#39;type&#39;]
+        if &#39;default&#39; not in kwargs:
+            kwargs[&#39;default&#39;] = _NotSpecified
+        self._cmd_args[argname] = (field, field if options_name is None else options_name, kwargs)
+
+    def to_dict(self) -&gt; dict:
+        &#34;&#34;&#34;
+        Returns a dictionary representing the config object.
+        &#34;&#34;&#34;
+        if isinstance(self._config_dict, dict):
+            exp = self._config_dict.copy()
+            for (name, c) in self._components.items():
+                exp[name] = c.to_dict()
+            return exp
+        return self._config_dict
+
     def export(self) -&gt; str:
         &#34;&#34;&#34;
-        Returns a YAML string of all configuration options.
+        Returns a YAML string of all configuration options, from to_dict.
         &#34;&#34;&#34;
-        exp = self._config_dict.copy()
-        for (name, c) in self._components.items():
-            exp[name] = c.export()
-        return yaml.dump(exp)
+        return yaml.dump(self.to_dict())
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
@@ -146,53 +265,62 @@ class DeltaConfigComponent:
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
-            except:
-                print(&#39;Value %s for %s is invalid.&#39; % (value, name))
-                raise
+            except Exception as e:
+                raise AssertionError(&#39;Value %s for %s is invalid.&#39; % (value, name)) from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
         &#34;&#34;&#34;
         Loads the dictionary d, assuming it came from the given base_dir (for relative paths).
         &#34;&#34;&#34;
+        if not d:
+            return
         for (k, v) in d.items():
             if k in self._components:
                 self._components[k]._load_dict(v, base_dir) #pylint:disable=protected-access
             else:
                 self._set_field(k, v, base_dir)
 
-    def setup_arg_parser(self, parser, components = None) -&gt; None:
+    def setup_arg_parser(self, parser : &#39;argparse.ArgumentParser&#39;, components: Optional[List[str]] = None) -&gt; None:
         &#34;&#34;&#34;
-        Adds arguments to the parser. Must overridden by child classes.
+        Adds arguments to the parser. May be overridden by child classes.
+
+        Parameters
+        ----------
+        parser: argparse.ArgumentParser
+            The praser to set up arguments with and later pass the command line flags to.
+        components: Optional[List[str]]
+            If specified, only parse arguments from the given components, specified by name.
         &#34;&#34;&#34;
         if self._section_header is not None:
             parser = parser.add_argument_group(self._section_header)
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
-                continue
-            parser.add_argument(c, dest=c.replace(&#39;-&#39;, &#39;_&#39;), required=False,
-                                type=self._types[name], help=self._descs[name])
+        for (arg, value) in self._cmd_args.items():
+            (_, options_name, kwargs) = value
+            parser.add_argument(arg, dest=options_name, **kwargs)
 
         for (name, c) in self._components.items():
             if components is None or name in components:
                 c.setup_arg_parser(parser)
 
-    def parse_args(self, options):
+    def parse_args(self, options: &#39;argparse.Namespace&#39;):
         &#34;&#34;&#34;
-        Parse options extracted from an ArgParser configured with
+        Parse options extracted from an `argparse.ArgumentParser` configured with
         `setup_arg_parser` and override the appropriate
         configuration values.
+
+        Parameters
+        ----------
+        options: argparse.Namespace
+            Options returned from a call to parse_args on a parser initialized with
+            setup_arg_parser.
         &#34;&#34;&#34;
         d = {}
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
+        for (field, options_name, _) in self._cmd_args.values():
+            if not hasattr(options, options_name) or getattr(options, options_name) is None:
                 continue
-            n = c.replace(&#39;-&#39;, &#39;_&#39;)
-            if not hasattr(options, n) or getattr(options, n) is None:
+            if getattr(options, options_name) is _NotSpecified:
                 continue
-            d[name] = getattr(options, n)
+            d[field] = getattr(options, options_name)
         self._load_dict(d, None)
 
         for c in self._components.values():
@@ -200,19 +328,25 @@ class DeltaConfigComponent:
 
 class DeltaConfig(DeltaConfigComponent):
     &#34;&#34;&#34;
-    DELTA configuration manager.
-
-    Access and control all configuration parameters.
+    DELTA configuration manager. Access and control all configuration parameters.
     &#34;&#34;&#34;
-    def load(self, yaml_file: str = None, yaml_str: str = None):
+    def load(self, yaml_file: Optional[str] = None, yaml_str: Optional[str] = None):
         &#34;&#34;&#34;
         Loads a config file, then updates the default configuration
         with the loaded values.
+
+        Parameters
+        ----------
+        yaml_file: Optional[str]
+            Filename of a yaml file to load.
+        yaml_str: Optional[str]
+            Load yaml directly from a str. Exactly one of `yaml_file` and `yaml_str`
+            must be specified.
         &#34;&#34;&#34;
         base_path = None
         if yaml_file:
             if not os.path.exists(yaml_file):
-                raise Exception(&#39;Config file does not exist: &#39; + yaml_file)
+                raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
             with open(yaml_file, &#39;r&#39;) as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -234,10 +368,16 @@ class DeltaConfig(DeltaConfigComponent):
         super().reset()
         self.load(pkg_resources.resource_filename(&#39;delta&#39;, &#39;config/delta.yaml&#39;))
 
-    def initialize(self, options, config_files = None):
+    def initialize(self, options: &#39;argparse.Namespace&#39;, config_files: Optional[List[str]] = None):
         &#34;&#34;&#34;
-        Loads the default files unless config_files is specified, in which case it
-        loads them. Then loads options (from argparse).
+        Loads all config files, then parses all command line arguments.
+        Parameters
+        ----------
+        options: argparse.Namespace
+            Command line options from `setup_arg_parser` to parse.
+        config_files: Optional[List[str]]
+            If specified, loads only the listed files. Otherwise, loads the default config
+            files.
         &#34;&#34;&#34;
         self.reset()
 
@@ -253,26 +393,103 @@ class DeltaConfig(DeltaConfigComponent):
         if options is not None:
             config.parse_args(options)
 
-config = DeltaConfig()</code></pre>
+config = DeltaConfig()
+&#34;&#34;&#34;Global config object. Use this to access all configuration.&#34;&#34;&#34;</code></pre>
 </details>
 </section>
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-variables">Global variables</h2>
+<dl>
+<dt id="delta.config.config.config"><code class="name">var <span class="ident">config</span></code></dt>
+<dd>
+<div class="desc"><p>Global config object. Use this to access all configuration.</p></div>
+</dd>
+</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="delta.config.config.validate_path"><code class="name flex">
-<span>def <span class="ident">validate_path</span></span>(<span>path, base_dir)</span>
+<dt id="delta.config.config.validate_non_negative"><code class="name flex">
+<span>def <span class="ident">validate_non_negative</span></span>(<span>num: Union[int, float], _: str) ‑> Union[int, float]</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Checks that a number is not negative.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>num</code></strong> :&ensp;<code>Union[int, float]</code></dt>
+<dd>Input number</dd>
+<dt><strong><code>_</code></strong> :&ensp;<code>str</code></dt>
+<dd>Unused base path.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If number is negative.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def validate_path(path, base_dir):
+<pre><code class="python">def validate_non_negative(num: Union[int, float], _: str) -&gt; Union[int, float]:
+    &#34;&#34;&#34;
+    Checks that a number is not negative.
+
+    Parameters
+    ----------
+    num: Union[int, float]
+        Input number
+    _: str
+        Unused base path.
+
+    Raises
+    ------
+    ValueError
+        If number is negative.
+    &#34;&#34;&#34;
+    if num &lt; 0:
+        raise ValueError(&#39;%d is negative&#39; % (num))
+    return num</code></pre>
+</details>
+</dd>
+<dt id="delta.config.config.validate_path"><code class="name flex">
+<span>def <span class="ident">validate_path</span></span>(<span>path: str, base_dir: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Normalizes a path.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Input path</dd>
+<dt><strong><code>base_dir</code></strong> :&ensp;<code>str</code></dt>
+<dd>The base directory for relative paths.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>str</code></dt>
+<dd>The normalized path.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def validate_path(path: str, base_dir: str) -&gt; str:
+    &#34;&#34;&#34;
+    Normalizes a path.
+
+    Parameters
+    ----------
+    path: str
+        Input path
+    base_dir: str
+        The base directory for relative paths.
+
+    Returns
+    -------
+    str
+        The normalized path.
+    &#34;&#34;&#34;
     if path == &#39;default&#39;:
         return path
     path = os.path.expanduser(path)
@@ -283,15 +500,42 @@ config = DeltaConfig()</code></pre>
 </details>
 </dd>
 <dt id="delta.config.config.validate_positive"><code class="name flex">
-<span>def <span class="ident">validate_positive</span></span>(<span>num, _)</span>
+<span>def <span class="ident">validate_positive</span></span>(<span>num: Union[int, float], _: str) ‑> Union[int, float]</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Checks that a number is positive.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>num</code></strong> :&ensp;<code>Union[int, float]</code></dt>
+<dd>Input number</dd>
+<dt><strong><code>_</code></strong> :&ensp;<code>str</code></dt>
+<dd>Unused base path.</dd>
+</dl>
+<h2 id="raises">Raises</h2>
+<dl>
+<dt><code>ValueError</code></dt>
+<dd>If number is not positive.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def validate_positive(num, _):
+<pre><code class="python">def validate_positive(num: Union[int, float], _: str) -&gt; Union[int, float]:
+    &#34;&#34;&#34;
+    Checks that a number is positive.
+
+    Parameters
+    ----------
+    num: Union[int, float]
+        Input number
+    _: str
+        Unused base path.
+
+    Raises
+    ------
+    ValueError
+        If number is not positive.
+    &#34;&#34;&#34;
     if num &lt;= 0:
         raise ValueError(&#39;%d is not positive&#39; % (num))
     return num</code></pre>
@@ -304,31 +548,40 @@ config = DeltaConfig()</code></pre>
 <dl>
 <dt id="delta.config.config.DeltaConfig"><code class="flex name class">
 <span>class <span class="ident">DeltaConfig</span></span>
-<span>(</span><span>section_header=None)</span>
+<span>(</span><span>section_header: Union[str, NoneType] = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>DELTA configuration manager.</p>
-<p>Access and control all configuration parameters.</p>
-<p>Constructs the component.</p></div>
+<div class="desc"><p>DELTA configuration manager. Access and control all configuration parameters.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>section_header</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The title of the section for command line arguments in the help.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">class DeltaConfig(DeltaConfigComponent):
     &#34;&#34;&#34;
-    DELTA configuration manager.
-
-    Access and control all configuration parameters.
+    DELTA configuration manager. Access and control all configuration parameters.
     &#34;&#34;&#34;
-    def load(self, yaml_file: str = None, yaml_str: str = None):
+    def load(self, yaml_file: Optional[str] = None, yaml_str: Optional[str] = None):
         &#34;&#34;&#34;
         Loads a config file, then updates the default configuration
         with the loaded values.
+
+        Parameters
+        ----------
+        yaml_file: Optional[str]
+            Filename of a yaml file to load.
+        yaml_str: Optional[str]
+            Load yaml directly from a str. Exactly one of `yaml_file` and `yaml_str`
+            must be specified.
         &#34;&#34;&#34;
         base_path = None
         if yaml_file:
             if not os.path.exists(yaml_file):
-                raise Exception(&#39;Config file does not exist: &#39; + yaml_file)
+                raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
             with open(yaml_file, &#39;r&#39;) as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -350,10 +603,16 @@ config = DeltaConfig()</code></pre>
         super().reset()
         self.load(pkg_resources.resource_filename(&#39;delta&#39;, &#39;config/delta.yaml&#39;))
 
-    def initialize(self, options, config_files = None):
+    def initialize(self, options: &#39;argparse.Namespace&#39;, config_files: Optional[List[str]] = None):
         &#34;&#34;&#34;
-        Loads the default files unless config_files is specified, in which case it
-        loads them. Then loads options (from argparse).
+        Loads all config files, then parses all command line arguments.
+        Parameters
+        ----------
+        options: argparse.Namespace
+            Command line options from `setup_arg_parser` to parse.
+        config_files: Optional[List[str]]
+            If specified, loads only the listed files. Otherwise, loads the default config
+            files.
         &#34;&#34;&#34;
         self.reset()
 
@@ -376,19 +635,33 @@ config = DeltaConfig()</code></pre>
 <h3>Methods</h3>
 <dl>
 <dt id="delta.config.config.DeltaConfig.initialize"><code class="name flex">
-<span>def <span class="ident">initialize</span></span>(<span>self, options, config_files=None)</span>
+<span>def <span class="ident">initialize</span></span>(<span>self, options: argparse.Namespace, config_files: Union[List[str], NoneType] = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Loads the default files unless config_files is specified, in which case it
-loads them. Then loads options (from argparse).</p></div>
+<div class="desc"><p>Loads all config files, then parses all command line arguments.
+Parameters</p>
+<hr>
+<dl>
+<dt><strong><code>options</code></strong> :&ensp;<code>argparse.Namespace</code></dt>
+<dd>Command line options from <code>setup_arg_parser</code> to parse.</dd>
+<dt><strong><code>config_files</code></strong> :&ensp;<code>Optional[List[str]]</code></dt>
+<dd>If specified, loads only the listed files. Otherwise, loads the default config
+files.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def initialize(self, options, config_files = None):
+<pre><code class="python">def initialize(self, options: &#39;argparse.Namespace&#39;, config_files: Optional[List[str]] = None):
     &#34;&#34;&#34;
-    Loads the default files unless config_files is specified, in which case it
-    loads them. Then loads options (from argparse).
+    Loads all config files, then parses all command line arguments.
+    Parameters
+    ----------
+    options: argparse.Namespace
+        Command line options from `setup_arg_parser` to parse.
+    config_files: Optional[List[str]]
+        If specified, loads only the listed files. Otherwise, loads the default config
+        files.
     &#34;&#34;&#34;
     self.reset()
 
@@ -406,24 +679,40 @@ loads them. Then loads options (from argparse).</p></div>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfig.load"><code class="name flex">
-<span>def <span class="ident">load</span></span>(<span>self, yaml_file: str = None, yaml_str: str = None)</span>
+<span>def <span class="ident">load</span></span>(<span>self, yaml_file: Union[str, NoneType] = None, yaml_str: Union[str, NoneType] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Loads a config file, then updates the default configuration
-with the loaded values.</p></div>
+with the loaded values.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>yaml_file</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Filename of a yaml file to load.</dd>
+<dt><strong><code>yaml_str</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Load yaml directly from a str. Exactly one of <code>yaml_file</code> and <code>yaml_str</code>
+must be specified.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def load(self, yaml_file: str = None, yaml_str: str = None):
+<pre><code class="python">def load(self, yaml_file: Optional[str] = None, yaml_str: Optional[str] = None):
     &#34;&#34;&#34;
     Loads a config file, then updates the default configuration
     with the loaded values.
+
+    Parameters
+    ----------
+    yaml_file: Optional[str]
+        Filename of a yaml file to load.
+    yaml_str: Optional[str]
+        Load yaml directly from a str. Exactly one of `yaml_file` and `yaml_str`
+        must be specified.
     &#34;&#34;&#34;
     base_path = None
     if yaml_file:
         if not os.path.exists(yaml_file):
-            raise Exception(&#39;Config file does not exist: &#39; + yaml_file)
+            raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
         with open(yaml_file, &#39;r&#39;) as f:
             config_data = yaml.safe_load(f)
         base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -439,27 +728,31 @@ with the loaded values.</p></div>
 <ul class="hlist">
 <li><code><a title="delta.config.config.DeltaConfigComponent.export" href="#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
 </ul>
 </li>
 </ul>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent"><code class="flex name class">
 <span>class <span class="ident">DeltaConfigComponent</span></span>
-<span>(</span><span>section_header=None)</span>
+<span>(</span><span>section_header: Union[str, NoneType] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>DELTA configuration component.</p>
 <p>Handles one subsection of a config file. Generally subclasses
 will want to register fields and components in the constructor,
-and possibly override setup_arg_parser and parse_args to handle
+and possibly override <code>setup_arg_parser</code> and <code>parse_args</code> to handle
 command line options.</p>
-<p>section_header is the title of the section for command line
-arguments in the help.</p>
-<p>Constructs the component.</p></div>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>section_header</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The title of the section for command line arguments in the help.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -470,15 +763,15 @@ arguments in the help.</p>
 
     Handles one subsection of a config file. Generally subclasses
     will want to register fields and components in the constructor,
-    and possibly override setup_arg_parser and parse_args to handle
+    and possibly override `setup_arg_parser` and `parse_args` to handle
     command line options.
-
-    section_header is the title of the section for command line
-    arguments in the help.
     &#34;&#34;&#34;
-    def __init__(self, section_header = None):
+    def __init__(self, section_header: Optional[str] = None):
         &#34;&#34;&#34;
-        Constructs the component.
+        Parameters
+        ----------
+        section_header: Optional[str]
+            The title of the section for command line arguments in the help.
         &#34;&#34;&#34;
         self._config_dict = {}
         self._components = {}
@@ -497,9 +790,18 @@ arguments in the help.</p>
         for c in self._components.values():
             c.reset()
 
-    def register_component(self, component, name : str, attr_name = None):
+    def register_component(self, component: &#39;DeltaConfigComponent&#39;, name : str, attr_name: Optional[str] = None):
         &#34;&#34;&#34;
-        Register a subcomponent with a name and attribute name (access as self.attr_name)
+        Register a subcomponent.
+
+        Parameters
+        ----------
+        component: DeltaConfigComponent
+            The subcomponent to add.
+        name: str
+            Name of the subcomponent. Must be unique.
+        attr_name: Optional[str]
+            If specified, can access the component as self.attr_name.
         &#34;&#34;&#34;
         assert name not in self._components
         self._components[name] = component
@@ -507,21 +809,29 @@ arguments in the help.</p>
             attr_name = name
         setattr(self, attr_name, component)
 
-    def register_field(self, name : str, types, accessor = None, cmd_arg = None, validate_fn = None, desc = None):
+    def register_field(self, name: str, types: Union[type, Tuple[type, ...]], accessor: Optional[str] = None,
+                       validate_fn: Optional[Callable[[Any, str], Any]] = None, desc = None):
         &#34;&#34;&#34;
         Register a field in this component of the configuration.
 
-        types is a single type or a tuple of valid types
-
-        validate_fn (optional) should take two strings as input, the field&#39;s value and
-        the base directory, and return what to save to the config dictionary.
-        It should raise an exception if the field is invalid.
-        accessor is an optional name to create an accessor function with
+        Parameters
+        ----------
+        name: str
+            Name of the field (must be unique).
+        types: type or tuple of types
+            Valid type or types for the field.
+        accessor: Optional[str]
+            If set, defines a function self.accessor() which retrieves the field.
+        validate_fn: Optional[Callable[[Any, str], Any]]
+            If specified, sets input = validate_fn(input, base_path) before using it, where
+            base_path is the current directory. The validate function should raise an error
+            if the input is invalid.
+        desc: Optional[str]
+            A description to use in help messages.
         &#34;&#34;&#34;
         self._fields.append(name)
         self._validate[name] = validate_fn
         self._types[name] = types
-        self._cmd_args[name] = cmd_arg
         self._descs[name] = desc
         if accessor:
             def access(self) -&gt; types:
@@ -530,14 +840,53 @@ arguments in the help.</p>
             access.__doc__ = desc
             setattr(self.__class__, accessor, access)
 
+    def register_arg(self, field: str, argname: str, options_name: Optional[str] =None, **kwargs):
+        &#34;&#34;&#34;
+        Registers a command line argument in this component. Command line arguments override the
+        values in the config files when specified.
+
+        Parameters
+        ----------
+        field: str
+            The previously registered field this argument modifies.
+        argname: str
+            The name of the flag on the command line (i.e., &#39;--flag&#39;)
+        options_name: Optional[str]
+            Name stored in the options object. It defaults to the
+            field if not specified. Only needed for duplicates, such as for multiple image
+            specifications.
+        **kwargs:
+            Further arguments are passed to ArgumentParser.add_argument.
+            If `help` and `type` are not specified, will use the values from field registration.
+            If `default` is not specified, will use the value from the config files.
+        &#34;&#34;&#34;
+        assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+        if &#39;help&#39; not in kwargs:
+            kwargs[&#39;help&#39;] = self._descs[field]
+        if &#39;type&#39; not in kwargs:
+            kwargs[&#39;type&#39;] = self._types[field]
+        elif kwargs[&#39;type&#39;] is None:
+            del kwargs[&#39;type&#39;]
+        if &#39;default&#39; not in kwargs:
+            kwargs[&#39;default&#39;] = _NotSpecified
+        self._cmd_args[argname] = (field, field if options_name is None else options_name, kwargs)
+
+    def to_dict(self) -&gt; dict:
+        &#34;&#34;&#34;
+        Returns a dictionary representing the config object.
+        &#34;&#34;&#34;
+        if isinstance(self._config_dict, dict):
+            exp = self._config_dict.copy()
+            for (name, c) in self._components.items():
+                exp[name] = c.to_dict()
+            return exp
+        return self._config_dict
+
     def export(self) -&gt; str:
         &#34;&#34;&#34;
-        Returns a YAML string of all configuration options.
+        Returns a YAML string of all configuration options, from to_dict.
         &#34;&#34;&#34;
-        exp = self._config_dict.copy()
-        for (name, c) in self._components.items():
-            exp[name] = c.export()
-        return yaml.dump(exp)
+        return yaml.dump(self.to_dict())
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
@@ -547,53 +896,62 @@ arguments in the help.</p>
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
-            except:
-                print(&#39;Value %s for %s is invalid.&#39; % (value, name))
-                raise
+            except Exception as e:
+                raise AssertionError(&#39;Value %s for %s is invalid.&#39; % (value, name)) from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
         &#34;&#34;&#34;
         Loads the dictionary d, assuming it came from the given base_dir (for relative paths).
         &#34;&#34;&#34;
+        if not d:
+            return
         for (k, v) in d.items():
             if k in self._components:
                 self._components[k]._load_dict(v, base_dir) #pylint:disable=protected-access
             else:
                 self._set_field(k, v, base_dir)
 
-    def setup_arg_parser(self, parser, components = None) -&gt; None:
+    def setup_arg_parser(self, parser : &#39;argparse.ArgumentParser&#39;, components: Optional[List[str]] = None) -&gt; None:
         &#34;&#34;&#34;
-        Adds arguments to the parser. Must overridden by child classes.
+        Adds arguments to the parser. May be overridden by child classes.
+
+        Parameters
+        ----------
+        parser: argparse.ArgumentParser
+            The praser to set up arguments with and later pass the command line flags to.
+        components: Optional[List[str]]
+            If specified, only parse arguments from the given components, specified by name.
         &#34;&#34;&#34;
         if self._section_header is not None:
             parser = parser.add_argument_group(self._section_header)
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
-                continue
-            parser.add_argument(c, dest=c.replace(&#39;-&#39;, &#39;_&#39;), required=False,
-                                type=self._types[name], help=self._descs[name])
+        for (arg, value) in self._cmd_args.items():
+            (_, options_name, kwargs) = value
+            parser.add_argument(arg, dest=options_name, **kwargs)
 
         for (name, c) in self._components.items():
             if components is None or name in components:
                 c.setup_arg_parser(parser)
 
-    def parse_args(self, options):
+    def parse_args(self, options: &#39;argparse.Namespace&#39;):
         &#34;&#34;&#34;
-        Parse options extracted from an ArgParser configured with
+        Parse options extracted from an `argparse.ArgumentParser` configured with
         `setup_arg_parser` and override the appropriate
         configuration values.
+
+        Parameters
+        ----------
+        options: argparse.Namespace
+            Options returned from a call to parse_args on a parser initialized with
+            setup_arg_parser.
         &#34;&#34;&#34;
         d = {}
-        for name in self._fields:
-            c = self._cmd_args[name]
-            if c is None:
+        for (field, options_name, _) in self._cmd_args.values():
+            if not hasattr(options, options_name) or getattr(options, options_name) is None:
                 continue
-            n = c.replace(&#39;-&#39;, &#39;_&#39;)
-            if not hasattr(options, n) or getattr(options, n) is None:
+            if getattr(options, options_name) is _NotSpecified:
                 continue
-            d[name] = getattr(options, n)
+            d[field] = getattr(options, options_name)
         self._load_dict(d, None)
 
         for c in self._components.values():
@@ -602,7 +960,9 @@ arguments in the help.</p>
 <h3>Subclasses</h3>
 <ul class="hlist">
 <li><a title="delta.config.config.DeltaConfig" href="#delta.config.config.DeltaConfig">DeltaConfig</a></li>
+<li><a title="delta.config.modules.ExtensionsConfig" href="modules.html#delta.config.modules.ExtensionsConfig">ExtensionsConfig</a></li>
 <li><a title="delta.imagery.imagery_config.CacheConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.CacheConfig">CacheConfig</a></li>
+<li><a title="delta.imagery.imagery_config.ClassesConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig">ClassesConfig</a></li>
 <li><a title="delta.imagery.imagery_config.DatasetConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.DatasetConfig">DatasetConfig</a></li>
 <li><a title="delta.imagery.imagery_config.IOConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.IOConfig">IOConfig</a></li>
 <li><a title="delta.imagery.imagery_config.ImagePreprocessConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImagePreprocessConfig">ImagePreprocessConfig</a></li>
@@ -610,7 +970,6 @@ arguments in the help.</p>
 <li><a title="delta.ml.ml_config.MLFlowCheckpointsConfig" href="../ml/ml_config.html#delta.ml.ml_config.MLFlowCheckpointsConfig">MLFlowCheckpointsConfig</a></li>
 <li><a title="delta.ml.ml_config.MLFlowConfig" href="../ml/ml_config.html#delta.ml.ml_config.MLFlowConfig">MLFlowConfig</a></li>
 <li><a title="delta.ml.ml_config.NetworkConfig" href="../ml/ml_config.html#delta.ml.ml_config.NetworkConfig">NetworkConfig</a></li>
-<li><a title="delta.ml.ml_config.NetworkModelConfig" href="../ml/ml_config.html#delta.ml.ml_config.NetworkModelConfig">NetworkModelConfig</a></li>
 <li><a title="delta.ml.ml_config.TensorboardConfig" href="../ml/ml_config.html#delta.ml.ml_config.TensorboardConfig">TensorboardConfig</a></li>
 <li><a title="delta.ml.ml_config.TrainingConfig" href="../ml/ml_config.html#delta.ml.ml_config.TrainingConfig">TrainingConfig</a></li>
 <li><a title="delta.ml.ml_config.ValidationConfig" href="../ml/ml_config.html#delta.ml.ml_config.ValidationConfig">ValidationConfig</a></li>
@@ -621,65 +980,147 @@ arguments in the help.</p>
 <span>def <span class="ident">export</span></span>(<span>self) ‑> str</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Returns a YAML string of all configuration options.</p></div>
+<div class="desc"><p>Returns a YAML string of all configuration options, from to_dict.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def export(self) -&gt; str:
     &#34;&#34;&#34;
-    Returns a YAML string of all configuration options.
+    Returns a YAML string of all configuration options, from to_dict.
     &#34;&#34;&#34;
-    exp = self._config_dict.copy()
-    for (name, c) in self._components.items():
-        exp[name] = c.export()
-    return yaml.dump(exp)</code></pre>
+    return yaml.dump(self.to_dict())</code></pre>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.parse_args"><code class="name flex">
-<span>def <span class="ident">parse_args</span></span>(<span>self, options)</span>
+<span>def <span class="ident">parse_args</span></span>(<span>self, options: argparse.Namespace)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Parse options extracted from an ArgParser configured with
+<div class="desc"><p>Parse options extracted from an <code>argparse.ArgumentParser</code> configured with
 <code>setup_arg_parser</code> and override the appropriate
-configuration values.</p></div>
+configuration values.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>options</code></strong> :&ensp;<code>argparse.Namespace</code></dt>
+<dd>Options returned from a call to parse_args on a parser initialized with
+setup_arg_parser.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def parse_args(self, options):
+<pre><code class="python">def parse_args(self, options: &#39;argparse.Namespace&#39;):
     &#34;&#34;&#34;
-    Parse options extracted from an ArgParser configured with
+    Parse options extracted from an `argparse.ArgumentParser` configured with
     `setup_arg_parser` and override the appropriate
     configuration values.
+
+    Parameters
+    ----------
+    options: argparse.Namespace
+        Options returned from a call to parse_args on a parser initialized with
+        setup_arg_parser.
     &#34;&#34;&#34;
     d = {}
-    for name in self._fields:
-        c = self._cmd_args[name]
-        if c is None:
+    for (field, options_name, _) in self._cmd_args.values():
+        if not hasattr(options, options_name) or getattr(options, options_name) is None:
             continue
-        n = c.replace(&#39;-&#39;, &#39;_&#39;)
-        if not hasattr(options, n) or getattr(options, n) is None:
+        if getattr(options, options_name) is _NotSpecified:
             continue
-        d[name] = getattr(options, n)
+        d[field] = getattr(options, options_name)
     self._load_dict(d, None)
 
     for c in self._components.values():
         c.parse_args(options)</code></pre>
 </details>
 </dd>
-<dt id="delta.config.config.DeltaConfigComponent.register_component"><code class="name flex">
-<span>def <span class="ident">register_component</span></span>(<span>self, component, name: str, attr_name=None)</span>
+<dt id="delta.config.config.DeltaConfigComponent.register_arg"><code class="name flex">
+<span>def <span class="ident">register_arg</span></span>(<span>self, field: str, argname: str, options_name: Union[str, NoneType] = None, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Register a subcomponent with a name and attribute name (access as self.attr_name)</p></div>
+<div class="desc"><p>Registers a command line argument in this component. Command line arguments override the
+values in the config files when specified.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>field</code></strong> :&ensp;<code>str</code></dt>
+<dd>The previously registered field this argument modifies.</dd>
+<dt><strong><code>argname</code></strong> :&ensp;<code>str</code></dt>
+<dd>The name of the flag on the command line (i.e., '&ndash;flag')</dd>
+<dt><strong><code>options_name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Name stored in the options object. It defaults to the
+field if not specified. Only needed for duplicates, such as for multiple image
+specifications.</dd>
+</dl>
+<p>**kwargs:
+Further arguments are passed to ArgumentParser.add_argument.
+If <code>help</code> and <code>type</code> are not specified, will use the values from field registration.
+If <code>default</code> is not specified, will use the value from the config files.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def register_component(self, component, name : str, attr_name = None):
+<pre><code class="python">def register_arg(self, field: str, argname: str, options_name: Optional[str] =None, **kwargs):
     &#34;&#34;&#34;
-    Register a subcomponent with a name and attribute name (access as self.attr_name)
+    Registers a command line argument in this component. Command line arguments override the
+    values in the config files when specified.
+
+    Parameters
+    ----------
+    field: str
+        The previously registered field this argument modifies.
+    argname: str
+        The name of the flag on the command line (i.e., &#39;--flag&#39;)
+    options_name: Optional[str]
+        Name stored in the options object. It defaults to the
+        field if not specified. Only needed for duplicates, such as for multiple image
+        specifications.
+    **kwargs:
+        Further arguments are passed to ArgumentParser.add_argument.
+        If `help` and `type` are not specified, will use the values from field registration.
+        If `default` is not specified, will use the value from the config files.
+    &#34;&#34;&#34;
+    assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+    if &#39;help&#39; not in kwargs:
+        kwargs[&#39;help&#39;] = self._descs[field]
+    if &#39;type&#39; not in kwargs:
+        kwargs[&#39;type&#39;] = self._types[field]
+    elif kwargs[&#39;type&#39;] is None:
+        del kwargs[&#39;type&#39;]
+    if &#39;default&#39; not in kwargs:
+        kwargs[&#39;default&#39;] = _NotSpecified
+    self._cmd_args[argname] = (field, field if options_name is None else options_name, kwargs)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.config.DeltaConfigComponent.register_component"><code class="name flex">
+<span>def <span class="ident">register_component</span></span>(<span>self, component: <a title="delta.config.config.DeltaConfigComponent" href="#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a>, name: str, attr_name: Union[str, NoneType] = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a subcomponent.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>component</code></strong> :&ensp;<code><a title="delta.config.config.DeltaConfigComponent" href="#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></code></dt>
+<dd>The subcomponent to add.</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the subcomponent. Must be unique.</dd>
+<dt><strong><code>attr_name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>If specified, can access the component as self.attr_name.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_component(self, component: &#39;DeltaConfigComponent&#39;, name : str, attr_name: Optional[str] = None):
+    &#34;&#34;&#34;
+    Register a subcomponent.
+
+    Parameters
+    ----------
+    component: DeltaConfigComponent
+        The subcomponent to add.
+    name: str
+        Name of the subcomponent. Must be unique.
+    attr_name: Optional[str]
+        If specified, can access the component as self.attr_name.
     &#34;&#34;&#34;
     assert name not in self._components
     self._components[name] = component
@@ -689,34 +1130,52 @@ configuration values.</p></div>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.register_field"><code class="name flex">
-<span>def <span class="ident">register_field</span></span>(<span>self, name: str, types, accessor=None, cmd_arg=None, validate_fn=None, desc=None)</span>
+<span>def <span class="ident">register_field</span></span>(<span>self, name: str, types: Union[type, Tuple[type, ...]], accessor: Union[str, NoneType] = None, validate_fn: Union[Callable[[Any, str], Any], NoneType] = None, desc=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Register a field in this component of the configuration.</p>
-<p>types is a single type or a tuple of valid types</p>
-<p>validate_fn (optional) should take two strings as input, the field's value and
-the base directory, and return what to save to the config dictionary.
-It should raise an exception if the field is invalid.
-accessor is an optional name to create an accessor function with</p></div>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the field (must be unique).</dd>
+<dt><strong><code>types</code></strong> :&ensp;<code>type</code> or <code>tuple</code> of <code>types</code></dt>
+<dd>Valid type or types for the field.</dd>
+<dt><strong><code>accessor</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>If set, defines a function self.accessor() which retrieves the field.</dd>
+<dt><strong><code>validate_fn</code></strong> :&ensp;<code>Optional[Callable[[Any, str], Any]]</code></dt>
+<dd>If specified, sets input = validate_fn(input, base_path) before using it, where
+base_path is the current directory. The validate function should raise an error
+if the input is invalid.</dd>
+<dt><strong><code>desc</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>A description to use in help messages.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def register_field(self, name : str, types, accessor = None, cmd_arg = None, validate_fn = None, desc = None):
+<pre><code class="python">def register_field(self, name: str, types: Union[type, Tuple[type, ...]], accessor: Optional[str] = None,
+                   validate_fn: Optional[Callable[[Any, str], Any]] = None, desc = None):
     &#34;&#34;&#34;
     Register a field in this component of the configuration.
 
-    types is a single type or a tuple of valid types
-
-    validate_fn (optional) should take two strings as input, the field&#39;s value and
-    the base directory, and return what to save to the config dictionary.
-    It should raise an exception if the field is invalid.
-    accessor is an optional name to create an accessor function with
+    Parameters
+    ----------
+    name: str
+        Name of the field (must be unique).
+    types: type or tuple of types
+        Valid type or types for the field.
+    accessor: Optional[str]
+        If set, defines a function self.accessor() which retrieves the field.
+    validate_fn: Optional[Callable[[Any, str], Any]]
+        If specified, sets input = validate_fn(input, base_path) before using it, where
+        base_path is the current directory. The validate function should raise an error
+        if the input is invalid.
+    desc: Optional[str]
+        A description to use in help messages.
     &#34;&#34;&#34;
     self._fields.append(name)
     self._validate[name] = validate_fn
     self._types[name] = types
-    self._cmd_args[name] = cmd_arg
     self._descs[name] = desc
     if accessor:
         def access(self) -&gt; types:
@@ -745,30 +1204,62 @@ accessor is an optional name to create an accessor function with</p></div>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.setup_arg_parser"><code class="name flex">
-<span>def <span class="ident">setup_arg_parser</span></span>(<span>self, parser, components=None) ‑> NoneType</span>
+<span>def <span class="ident">setup_arg_parser</span></span>(<span>self, parser: argparse.ArgumentParser, components: Union[List[str], NoneType] = None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Adds arguments to the parser. Must overridden by child classes.</p></div>
+<div class="desc"><p>Adds arguments to the parser. May be overridden by child classes.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>parser</code></strong> :&ensp;<code>argparse.ArgumentParser</code></dt>
+<dd>The praser to set up arguments with and later pass the command line flags to.</dd>
+<dt><strong><code>components</code></strong> :&ensp;<code>Optional[List[str]]</code></dt>
+<dd>If specified, only parse arguments from the given components, specified by name.</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def setup_arg_parser(self, parser, components = None) -&gt; None:
+<pre><code class="python">def setup_arg_parser(self, parser : &#39;argparse.ArgumentParser&#39;, components: Optional[List[str]] = None) -&gt; None:
     &#34;&#34;&#34;
-    Adds arguments to the parser. Must overridden by child classes.
+    Adds arguments to the parser. May be overridden by child classes.
+
+    Parameters
+    ----------
+    parser: argparse.ArgumentParser
+        The praser to set up arguments with and later pass the command line flags to.
+    components: Optional[List[str]]
+        If specified, only parse arguments from the given components, specified by name.
     &#34;&#34;&#34;
     if self._section_header is not None:
         parser = parser.add_argument_group(self._section_header)
-    for name in self._fields:
-        c = self._cmd_args[name]
-        if c is None:
-            continue
-        parser.add_argument(c, dest=c.replace(&#39;-&#39;, &#39;_&#39;), required=False,
-                            type=self._types[name], help=self._descs[name])
+    for (arg, value) in self._cmd_args.items():
+        (_, options_name, kwargs) = value
+        parser.add_argument(arg, dest=options_name, **kwargs)
 
     for (name, c) in self._components.items():
         if components is None or name in components:
             c.setup_arg_parser(parser)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.config.DeltaConfigComponent.to_dict"><code class="name flex">
+<span>def <span class="ident">to_dict</span></span>(<span>self) ‑> dict</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a dictionary representing the config object.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def to_dict(self) -&gt; dict:
+    &#34;&#34;&#34;
+    Returns a dictionary representing the config object.
+    &#34;&#34;&#34;
+    if isinstance(self._config_dict, dict):
+        exp = self._config_dict.copy()
+        for (name, c) in self._components.items():
+            exp[name] = c.to_dict()
+        return exp
+    return self._config_dict</code></pre>
 </details>
 </dd>
 </dl>
@@ -787,8 +1278,14 @@ accessor is an optional name to create an accessor function with</p></div>
 <li><code><a title="delta.config" href="index.html">delta.config</a></code></li>
 </ul>
 </li>
+<li><h3><a href="#header-variables">Global variables</a></h3>
+<ul class="">
+<li><code><a title="delta.config.config.config" href="#delta.config.config.config">config</a></code></li>
+</ul>
+</li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="delta.config.config.validate_non_negative" href="#delta.config.config.validate_non_negative">validate_non_negative</a></code></li>
 <li><code><a title="delta.config.config.validate_path" href="#delta.config.config.validate_path">validate_path</a></code></li>
 <li><code><a title="delta.config.config.validate_positive" href="#delta.config.config.validate_positive">validate_positive</a></code></li>
 </ul>
@@ -807,10 +1304,12 @@ accessor is an optional name to create an accessor function with</p></div>
 <ul class="two-column">
 <li><code><a title="delta.config.config.DeltaConfigComponent.export" href="#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
 <li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
 </ul>
 </li>
 </ul>
@@ -819,7 +1318,7 @@ accessor is an optional name to create an accessor function with</p></div>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>

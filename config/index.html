@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.8.4" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>delta.config API documentation</title>
 <meta name="description" content="Configuration via YAML files and command line options …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
-<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/github.min.css" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
 <style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
 <style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
 <style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js" integrity="sha256-eOgo0OtLL4cdq7RdwRUiGKLX9XsIJ7nGhWEKbohmVAQ=" crossorigin></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
 <script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
 </head>
 <body>
@@ -23,9 +23,210 @@
 </header>
 <section id="section-intro">
 <p>Configuration via YAML files and command line options.</p>
-<p>Access the singleton <code><a title="delta.config.config" href="config.html">delta.config.config</a></code> to get configuration
+<h1 id="delta-configuration-files">DELTA Configuration Files</h1>
+<p>DELTA is configured with <a href="https://yaml.org/spec/1.2/spec.html">YAML files</a>. For an example with
+all options, showing all parameters DELTA and their default values, see <a href="./delta.yaml">delta.yaml</a>.</p>
+<p><code><a title="delta" href="../index.html">delta</a></code> accepts multiple config files on the command line. For example, run</p>
+<pre><code class="language-bash">delta train --config dataset.yaml --config train.yaml
+</code></pre>
+<p>to train on a dataset specified by <code>dataset.yaml</code>:</p>
+<pre><code class="language-yaml">dataset:
+  images:
+    type: tiff
+    directory: train/
+  labels:
+    type: tiff
+    directory: labels/
+  classes: 2
+</code></pre>
+<p>with training parameters given in <code>train.yaml</code>:</p>
+<pre><code class="language-yaml">train:
+  network:
+    model:
+      yaml_file: networks/convpool.yaml
+  epochs: 10
+</code></pre>
+<p>Parameters can be overriden globally for all runs of <code><a title="delta" href="../index.html">delta</a></code> as well, by placing options in
+<code>$HOME/.config/delta/delta.yaml</code> on Linux. This is only recommended for global parameters
+such as the cache directory.</p>
+<p>Most options, aside from the input images and labels, have reasonable defaults. We recommend
+only setting the necessary options.
+Note that some configuration options can be overwritten on the command line: run
+<code>delta --help</code> to see which.</p>
+<p>The remainder of this document details the available configuration parameters.</p>
+<h2 id="dataset">Dataset</h2>
+<p>Images and labels are specified with the <code>images</code> and <code>labels</code> fields respectively,
+within <code>dataset</code>. Both share the
+same underlying options.</p>
+<ul>
+<li><code>type</code>: Indicates which <code><a title="delta.imagery.delta_image.DeltaImage" href="../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage">DeltaImage</a></code> image reader to use, e.g., <code>tiff</code> for geotiff.
+The reader should previously be registered with <code><a title="delta.config.extensions.register_image_reader" href="extensions.html#delta.config.extensions.register_image_reader">register_image_reader()</a></code>.</li>
+<li>Files to load must be specified in one of three ways:<ul>
+<li><code>directory</code> and <code>extension</code>: Use all images in the directory ending with the given extension.</li>
+<li><code>file_list</code>: Provide a text file with one image file name per line.</li>
+<li><code>files</code>: Provide a list of file names in yaml.</li>
+</ul>
+</li>
+<li><code>preprocess</code>: Specify a preprocessing chain. We recommend
+scaling input imagery in the range 0.0 to 1.0 for best results with most of our networks.
+DELTA also supports custom preprocessing commands. Default actions include:<ul>
+<li><code>scale</code> with <code>factor</code> argument: Divide all values by amount.</li>
+<li><code>offset</code> with <code>factor</code> argument: Add <code>factor</code> to pixel values.</li>
+<li><code>clip</code> with <code>bounds</code> argument: clip all pixels to bounds.
+Preprocessing commands are registered with <code><a title="delta.config.extensions.register_preprocess" href="extensions.html#delta.config.extensions.register_preprocess">register_preprocess()</a></code>.
+A full list of defaults (and examples of how to create new ones) can be found in <code><a title="delta.extensions.preprocess" href="../extensions/preprocess.html">delta.extensions.preprocess</a></code>.</li>
+</ul>
+</li>
+<li><code>nodata_value</code>: A pixel value to ignore in the images.</li>
+<li><code>classes</code>: Either an integer number of classes or a list of individual classes. If individual classes are specified,
+each list item should be the pixel value of the class in the label images, and a dictionary with the
+following potential attributes (see example below):<ul>
+<li><code>name</code>: Name of the class.</li>
+<li><code>color</code>: Integer to use as the RGB representation for some classification options.</li>
+<li><code>weight</code>: How much to weight the class during training (useful for underrepresented classes).</li>
+</ul>
+</li>
+</ul>
+<p>As an example:</p>
+<pre><code class="language-yaml">dataset:
+  images:
+    type: tiff
+    directory: images/
+    preprocess:
+      - scale:
+          factor: 256.0
+    nodata_value: 0
+  labels:
+    type: tiff
+    directory: labels/
+    extension: _label.tiff
+    nodata_value: 0
+  classes:
+    - 1:
+        name: Cloud
+        color: 0x0000FF
+        weight: 2.0
+    - 2:
+        name: Not Cloud
+        color: 0xFFFFFF
+        weight: 1.0
+</code></pre>
+<p>This configuration will load tiff files ending in <code>.tiff</code> from the <code>images/</code> directory.
+It will then find matching tiff files ending in <code>_label.tiff</code> from the <code>labels</code> directory
+to use as labels. The image values will be divied by a factor of 256 before they are used.
+(It is often helpful to scale images to a range of 0-1 before training.) The labels represent two classes:
+clouds and non-clouds. Since there are fewer clouds, these are weighted more havily. The label
+images should contain 0 for nodata, 1 for cloud pixels, and 2 for non-cloud pixels.</p>
+<h2 id="train">Train</h2>
+<p>These options are used in the <code><a title="delta" href="../index.html">delta</a> train</code> command.</p>
+<ul>
+<li><code>network</code>: The nueral network to train. One of <code>yaml_file</code> or <code>layers</code> must be specified.<ul>
+<li><code>yaml_file</code>: A path to a yaml file with only the params and layers fields. See <code>delta/config/networks</code>
+for examples.</li>
+<li><code>params</code>: A dictionary of parameters to substitute in the <code>layers</code> field.</li>
+<li><code>layers</code>: A list of layers which compose the network. See the following section for details.</li>
+</ul>
+</li>
+<li><code>stride</code>: When collecting training samples, skip every <code>n</code> pixels between adjacent blocks. Keep the
+default of ~ or 1 to use all available training data. Not used for fully convolutional networks.</li>
+<li><code>batch_size</code>: The number of patches to train on at a time. If running out of memory, reducing
+batch size may be helpful.</li>
+<li><code>steps</code>: If specified, stop training for each epoch after the given number of batches.</li>
+<li><code>epochs</code>: the number of times to iterate through all training data during training.</li>
+<li><code>loss</code>: <a href="https://keras.io/losses/">Keras loss function</a>. For integer classes, use
+<code>sparse_categorical_cross_entropy</code>. May be specified either as a string, or as a dictionary
+with arguments to pass to the loss function constructor. Custom losses registered with
+<code><a title="delta.config.extensions.register_loss" href="extensions.html#delta.config.extensions.register_loss">register_loss()</a></code> may be used.</li>
+<li><code>metrics</code>: A list of <a href="https://keras.io/metrics/">Keras metrics</a> to evaluate. Either the string
+name or a dictionary with the constructor arguments may be used. Custom metrics registered with
+<code><a title="delta.config.extensions.register_metric" href="extensions.html#delta.config.extensions.register_metric">register_metric()</a></code> or loss functions may also be used.</li>
+<li><code>optimizer</code>: The <a href="https://keras.io/optimizers/">Keras optimizer</a> to use. May be specified as a string or
+as a dictionary with constructor parameters.</li>
+<li><code>callbacks</code>: A list of [Keras callbacks)(<a href="https://keras.io/api/callbacks/">https://keras.io/api/callbacks/</a>) to use during training, specified as
+either a string or as a dictionary with constructor parameters. Custom callbacks registered with
+<code>delta.config.extensions.register_metric</code> may also be used.</li>
+<li><code>validation</code>: Specify validation data. The validation data is tested after each epoch to evaluate the
+classifier performance. Always use separate training and validation data!</li>
+<li><code>from_training</code> and <code>steps</code>: If <code>from_training</code> is true, take the <code>steps</code> training batches
+and do not use it for training but for validation instead.</li>
+<li><code>images</code> and <code>labels</code>: Specified using the same format as the input data. Use this imagery as testing data
+if <code>from_training</code> is false.</li>
+<li><code>log_folder</code> and <code>resume_cutoff</code>: If log_folder is specified, store read records of how much of each image
+has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
+training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
+on very large training sets (thousands of large images).</li>
+</ul>
+<h3 id="network">Network</h3>
+<p>For the <code>layers</code> attribute, any <a href="https://keras.io/api/layers/">Keras Layer</a> can
+be used, including custom layers registered with <code><a title="delta.config.extensions.register_layer" href="extensions.html#delta.config.extensions.register_layer">register_layer()</a></code>.
+</p>
+<p>Sub-fields of the layer are argument names and values which are passed to the layer's constructor.
+</p>
+<p>A special sub-field, <code>inputs</code>, is a list of the names of layers to pass as inputs to this layer.
+If <code>inputs</code> is not specified, the previous layer is used by default. Layer names can be specified <code>name</code>.</p>
+<pre><code class="language-yaml">layers:
+  Input:
+    shape: [~, ~, num_bands]
+    name: input
+  Add:
+    inputs: [input, input]
+</code></pre>
+<p>This simple example takes an input and adds it to itself.</p>
+<p>Since this network takes inputs of variable size ((~, ~, <code>num_bands</code>) is the input shape) it is a <strong>fully
+convolutional network</strong>. This means that during training and classification, it will be evaluated on entire
+tiles rather than smaller chunks.</p>
+<p>A few special parameters are available by default:</p>
+<ul>
+<li><code>num_bands</code>: The number of bands / channels in an image.</li>
+<li><code>num_classes</code>: The number of classes provided in dataset.classes.</li>
+</ul>
+<h2 id="mlflow">Mlflow</h2>
+<p>Used in the <code><a title="delta" href="../index.html">delta</a> train</code> and <code><a title="delta" href="../index.html">delta</a> mlflow_ui</code> commands to keep track of training runs using MLFlow.</p>
+<ul>
+<li><code>enabled</code>: Turn MLFlow use off or on.</li>
+<li><code>uri</code>: The URI for where MLFlow should store tracking runs. Options such as file directories, databases,
+and HTTP servers are supported. See the
+<a href="https://www.mlflow.org/docs/latest/tracking.html"><code>mlflow.set_tracking_uri()</code></a>
+documentation for details.</li>
+<li><code>experiment_name</code>: A name for the experiment to track in MLFlow.</li>
+<li><code>frequency</code>: Record metrics after this many batches. Want to pick a number that won't slow down training or
+use too much disk space.</li>
+<li><code>checkpoints</code>: Configure saving of checkpoint networks to mlflow, in case something goes wrong or to compare
+networks from different stages of training.</li>
+<li><code>frequency</code>: Frequency in batches to save a checkpoint. Networks can require a fair amount of disk space,
+so don't save too often.</li>
+<li><code>only_save_latest</code>: If true, only keep the network file from the most recent checkpoint.</li>
+</ul>
+<h2 id="tensorboard">Tensorboard</h2>
+<p><a href="https://www.tensorflow.org/tensorboard">Tensorboard</a> is TensorFlow's visualization toolkit.</p>
+<ul>
+<li><code>enabled</code>: Set to true to save data to tensorboard. Disabled by default.</li>
+<li><code>dir</code>: Specify a directory to save tensorboard data.</li>
+</ul>
+<h2 id="general">General</h2>
+<ul>
+<li><code>gpus</code>: The number of GPUs to use, or <code>-1</code> for all.</li>
+<li><code>verbose</code>: Trigger verbose printing.</li>
+<li><code><a title="delta.config.extensions" href="extensions.html">delta.config.extensions</a></code>: List of extensions to load. Add custom modules here and they will be loaded when
+delta starts.</li>
+</ul>
+<h2 id="io">I/O</h2>
+<ul>
+<li><code>threads</code>: The number of threads to use for loading images into tensorflow.</li>
+<li><code>tile_size</code>: The size of a tile to load into memory at a time. For fully convolutional networks, the
+entire tile will be processed at a time, for others it will be chunked.</li>
+<li><code>interleave_images</code>: The number of images to interleave between. If this value is three, three images will
+be opened at a time. Chunks / tiles will be interleaved from the first three tiles until one is completed, then
+a new image will be opened. Larger interleaves can aid training (but comes at a cost in memory).</li>
+<li><code>cache</code>: Options for a cache, which is used by a few image types (currently worldview and landsat).<ul>
+<li><code>dir</code>: Directory to store the cache. <code>default</code> gives a reasonable OS-specific default.</li>
+<li><code>limit</code>: Maximum number of items to store in the cache before deleting old entries.
+Access the singleton <code><a title="delta.config.config" href="config.html">delta.config.config</a></code> to get configuration
 values, specified either in YAML files or on the command line,
-and to load additional YAML files.</p>
+and to load additional YAML files.</li>
+</ul>
+</li>
+</ul>
 <p>For a list of all options and their defaults, see
 <code>delta/config/delta.yaml</code>.</p>
 <details class="source">
@@ -52,6 +253,8 @@ and to load additional YAML files.</p>
 &#34;&#34;&#34;
 Configuration via YAML files and command line options.
 
+.. include:: README.md
+
 Access the singleton `delta.config.config` to get configuration
 values, specified either in YAML files or on the command line,
 and to load additional YAML files.
@@ -60,7 +263,7 @@ For a list of all options and their defaults, see
 `delta/config/delta.yaml`.
 &#34;&#34;&#34;
 
-from .config import config, DeltaConfigComponent, validate_path, validate_positive</code></pre>
+from .config import config, DeltaConfigComponent, validate_path, validate_positive, validate_non_negative</code></pre>
 </details>
 </section>
 <section>
@@ -68,7 +271,15 @@ from .config import config, DeltaConfigComponent, validate_path, validate_positi
 <dl>
 <dt><code class="name"><a title="delta.config.config" href="config.html">delta.config.config</a></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Loading configuration from command line arguments and yaml files …</p></div>
+</dd>
+<dt><code class="name"><a title="delta.config.extensions" href="extensions.html">delta.config.extensions</a></code></dt>
+<dd>
+<div class="desc"><p>Manage extensions to DELTA …</p></div>
+</dd>
+<dt><code class="name"><a title="delta.config.modules" href="modules.html">delta.config.modules</a></code></dt>
+<dd>
+<div class="desc"><p>Registers all config modules.</p></div>
 </dd>
 </dl>
 </section>
@@ -82,7 +293,20 @@ from .config import config, DeltaConfigComponent, validate_path, validate_positi
 <nav id="sidebar">
 <h1>Index</h1>
 <div class="toc">
-<ul></ul>
+<ul>
+<li><a href="#delta-configuration-files">DELTA Configuration Files</a><ul>
+<li><a href="#dataset">Dataset</a></li>
+<li><a href="#train">Train</a><ul>
+<li><a href="#network">Network</a></li>
+</ul>
+</li>
+<li><a href="#mlflow">MLFlow</a></li>
+<li><a href="#tensorboard">TensorBoard</a></li>
+<li><a href="#general">General</a></li>
+<li><a href="#io">I/O</a></li>
+</ul>
+</li>
+</ul>
 </div>
 <ul id="index">
 <li><h3>Super-module</h3>
@@ -93,13 +317,15 @@ from .config import config, DeltaConfigComponent, validate_path, validate_positi
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
 <li><code><a title="delta.config.config" href="config.html">delta.config.config</a></code></li>
+<li><code><a title="delta.config.extensions" href="extensions.html">delta.config.extensions</a></code></li>
+<li><code><a title="delta.config.modules" href="modules.html">delta.config.modules</a></code></li>
 </ul>
 </li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.8.4</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>

@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>delta.extensions.sources.tiff API documentation</title>
+<meta name="description" content="Block-aligned reading from multiple Geotiff files." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.extensions.sources.tiff</code></h1>
+</header>
+<section id="section-intro">
+<p>Block-aligned reading from multiple Geotiff files.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Block-aligned reading from multiple Geotiff files.
+&#34;&#34;&#34;
+import os
+import math
+
+import numpy as np
+from osgeo import gdal
+
+from delta.imagery import delta_image, rectangle
+
+
+# Suppress GDAL warnings, errors become exceptions so we get them
+gdal.SetConfigOption(&#39;CPL_LOG&#39;, &#39;/dev/null&#39;)
+gdal.UseExceptions()
+
+_GDAL_TO_NUMPY_TYPES = {
+    gdal.GDT_Byte:    np.dtype(np.uint8),
+    gdal.GDT_UInt16:  np.dtype(np.uint16),
+    gdal.GDT_UInt32:  np.dtype(np.uint32),
+    gdal.GDT_Float32: np.dtype(np.float32),
+    gdal.GDT_Float64: np.dtype(np.float64)
+}
+_NUMPY_TO_GDAL_TYPES = {v: k for k, v in _GDAL_TO_NUMPY_TYPES.items()}
+
+class TiffImage(delta_image.DeltaImage):
+    &#34;&#34;&#34;Images supported by GDAL.&#34;&#34;&#34;
+
+    def __init__(self, path, nodata_value=None):
+        &#34;&#34;&#34;
+        Opens a geotiff for reading.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Either a single filename or a list.
+            For a list, the images are opened in order as a multi-band image, assumed to overlap.
+        nodata_value: dtype of image
+            Value representing no data.
+        &#34;&#34;&#34;
+        super().__init__(nodata_value)
+        paths = self._prep(path)
+
+        self._path = path
+        self._paths = paths
+        self._handles = []
+        for p in paths:
+            if not os.path.exists(p):
+                raise Exception(&#39;Image file does not exist: &#39; + p)
+            result = gdal.Open(p)
+            if result is None:
+                raise Exception(&#39;Failed to open tiff file %s.&#39; % (p))
+            self._handles.append(result)
+        self._band_map = []
+        for i, h in enumerate(self._handles):
+            if h.RasterXSize != self._handles[0].RasterXSize or h.RasterYSize != self._handles[0].RasterYSize:
+                raise Exception(&#39;Images %s and %s have different sizes!&#39; % (self._paths[0], self._paths[i]))
+            for j in range(h.RasterCount):
+                self._band_map.append((i, j + 1)) # gdal uses 1-based band indexing
+
+    def __del__(self):
+        self.close()
+
+    def _prep(self, paths): #pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Prepare the file to be opened by other tools (unpack, etc).
+
+        This can be overwritten by subclasses to, for example,
+        unpack a zip file to a cache directory.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Paths passed to constructor
+
+        Returns
+        -------
+        Returns a list of underlying files to load instead of the original paths.
+        &#34;&#34;&#34;
+        if isinstance(paths, str):
+            return [paths]
+        return paths
+
+    def __asert_open(self):
+        if self._handles is None:
+            raise IOError(&#39;Operating on an image that has been closed.&#39;)
+
+    def close(self):
+        &#34;&#34;&#34;
+        Close the image.
+        &#34;&#34;&#34;
+        self._handles = None # gdal doesn&#39;t have a close function for some reason
+        self._band_map = None
+        self._paths = None
+
+    def path(self):
+        &#34;&#34;&#34;
+        Returns the paths returned by `_prep`.
+        &#34;&#34;&#34;
+        return self._path
+
+    def num_bands(self):
+        self.__asert_open()
+        return len(self._band_map)
+
+    def size(self):
+        self.__asert_open()
+        return (self._handles[0].RasterYSize, self._handles[0].RasterXSize)
+
+    def _read(self, roi, bands, buf=None):
+        self.__asert_open()
+        num_bands = len(bands) if bands else self.num_bands()
+
+        if buf is None:
+            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.dtype())
+        for i, b in enumerate(bands):
+            band_handle = self._gdal_band(b)
+            s = buf[i, :, :].shape
+            if s != (roi.width(), roi.height()):
+                raise IOError(&#39;Buffer shape should be (%d, %d) but is (%d, %d)!&#39; %
+                              (roi.width(), roi.height(), s[0], s[1]))
+            band_handle.ReadAsArray(roi.min_y, roi.min_x, roi.height(), roi.width(), buf_obj=buf[i, :, :])
+        return np.transpose(buf, [1, 2, 0])
+
+    def _gdal_band(self, band):
+        (h, b) = self._band_map[band]
+        ret = self._handles[h].GetRasterBand(b)
+        assert ret
+        return ret
+
+    def _gdal_type(self, band=0):
+        &#34;&#34;&#34;
+        Returns the GDAL data type of the image.
+        &#34;&#34;&#34;
+        self.__asert_open()
+        return self._gdal_band(band).DataType
+
+    def dtype(self):
+        self.__asert_open()
+        dtype = self._gdal_type(0)
+        if dtype in _GDAL_TO_NUMPY_TYPES:
+            return _GDAL_TO_NUMPY_TYPES[dtype]
+        raise Exception(&#39;Unrecognized gdal data type: &#39; + str(dtype))
+
+    def bytes_per_pixel(self, band=0):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            the number of bytes per pixel
+        &#34;&#34;&#34;
+        self.__asert_open()
+        return gdal.GetDataTypeSize(self._gdal_type(band)) // 8
+
+    def block_size(self):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        (int, int):
+            block height, block width
+        &#34;&#34;&#34;
+        self.__asert_open()
+        band_handle = self._gdal_band(0)
+        block_size = band_handle.GetBlockSize()
+        return (block_size[1], block_size[0])
+
+    def metadata(self):
+        self.__asert_open()
+        data = dict()
+        h = self._handles[0]
+        data[&#39;projection&#39;] = h.GetProjection()
+        data[&#39;geotransform&#39;] = h.GetGeoTransform()
+        data[&#39;gcps&#39;] = h.GetGCPs()
+        data[&#39;gcpproj&#39;] = h.GetGCPProjection()
+        data[&#39;metadata&#39;] = h.GetMetadata()
+        return data
+
+    def block_aligned_roi(self, desired_roi):
+        self.__asert_open()
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        if not bounds.contains_rect(desired_roi):
+            raise Exception(&#39;desired_roi &#39; + str(desired_roi)
+                            + &#39; is outside the bounds of image with size&#39; + str(self.size()))
+
+        block_size = self.block_size()
+        start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
+        start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
+        # Rect max is exclusive
+        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[0]))
+        # The stops are inclusive
+        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
+
+        start_x = start_block_x * block_size[0]
+        start_y = start_block_y * block_size[1]
+        w = (stop_block_x - start_block_x + 1) * block_size[0]
+        h = (stop_block_y - start_block_y + 1) * block_size[1]
+
+        # Restrict the output region to the bounding box of the image.
+        # - Needed to handle images with partial tiles at the boundaries.
+        ans = rectangle.Rectangle(start_x, start_y, width=w, height=h)
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        return ans.get_intersection(bounds)
+
+    def save(self, path, tile_size=None, nodata_value=None, show_progress=False):
+        &#34;&#34;&#34;
+        Save to file, with preprocessing applied.
+
+        Parameters
+        ----------
+        path: str
+            Filename to save to.
+        tile_size: (int, int)
+            If specified, overwrite block size
+        nodata_value: image dtype
+            If specified, overwrite nodata value
+        show_progress: bool
+            Write progress bar to stdout
+        &#34;&#34;&#34;
+
+        if nodata_value is None:
+            nodata_value = self.nodata_value()
+        # Use the input tile size for the block size unless the user specified one.
+        block_size_y, block_size_x = self.block_size()
+        if tile_size is not None:
+            block_size_x = tile_size[0]
+            block_size_y = tile_size[1]
+
+        # Set up the output image
+        with _TiffWriter(path, self.width(), self.height(), self.num_bands(),
+                         self._gdal_type(), block_size_x, block_size_y,
+                         nodata_value, self.metadata()) as writer:
+            input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+            output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
+
+            def callback_function(output_roi, data):
+                &#34;&#34;&#34;Callback function to write the first channel to the output file.&#34;&#34;&#34;
+
+                # Figure out some ROI positioning values
+                block_x = output_roi.min_x / block_size_x
+                block_y = output_roi.min_y / block_size_y
+
+                # Loop on bands
+                for band in range(data.shape[2]):
+                    writer.write_block(data[:, :, band], block_x, block_y, band)
+
+            self.process_rois(output_rois, callback_function, show_progress=show_progress)
+
+def _numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
+    if dtype in _NUMPY_TO_GDAL_TYPES:
+        return _NUMPY_TO_GDAL_TYPES[dtype]
+    raise Exception(&#39;Unrecognized numpy data type: &#39; + str(dtype))
+
+def write_tiff(output_path: str, data: np.ndarray, metadata: dict=None):
+    &#34;&#34;&#34;
+    Write a numpy array to a file as a tiff.
+
+    Parameters
+    ----------
+    output_path: str
+        Filename to save tiff file to
+    data: numpy.ndarray
+        Image data to save.
+    metadata: dict
+        Optional metadata to include.
+    &#34;&#34;&#34;
+
+    if len(data.shape) &lt; 3:
+        num_bands = 1
+    else:
+        num_bands = data.shape[2]
+    data_type = _numpy_dtype_to_gdal_type(data.dtype)
+
+    TILE_SIZE=256
+
+    with _TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
+                     data_type=data_type, metadata=metadata, tile_width=min(TILE_SIZE, data.shape[0]),
+                     tile_height=min(TILE_SIZE, data.shape[1])) as writer:
+        for x in range(0, data.shape[0], TILE_SIZE):
+            for y in range(0, data.shape[1], TILE_SIZE):
+                block = (x // TILE_SIZE, y // TILE_SIZE)
+                if len(data.shape) &lt; 3:
+                    writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE], block[0], block[1], 0)
+                else:
+                    for b in range(num_bands):
+                        writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE, b], block[0], block[1], b)
+
+class _TiffWriter:
+    &#34;&#34;&#34;
+    Class to manage block writes to a Geotiff file. Internal helper class.
+    &#34;&#34;&#34;
+    def __init__(self, path, width, height, num_bands=1, data_type=gdal.GDT_Byte, #pylint:disable=too-many-arguments
+                 tile_width=256, tile_height=256, nodata_value=None, metadata=None):
+        self._width  = width
+        self._height = height
+        self._tile_height = tile_height
+        self._tile_width  = tile_width
+        self._handle = None
+
+        # Constants
+        options = [&#39;COMPRESS=LZW&#39;, &#39;BigTIFF=IF_SAFER&#39;, &#39;INTERLEAVE=BAND&#39;]
+        options += [&#39;BLOCKXSIZE=&#39;+str(self._tile_width),
+                    &#39;BLOCKYSIZE=&#39;+str(self._tile_height)]
+        MIN_SIZE_FOR_TILES=100
+        if width &gt; MIN_SIZE_FOR_TILES or height &gt; MIN_SIZE_FOR_TILES:
+            options += [&#39;TILED=YES&#39;]
+
+        driver = gdal.GetDriverByName(&#39;GTiff&#39;)
+        self._handle = driver.Create(path, height, width, num_bands, data_type, options)
+        if not self._handle:
+            raise Exception(&#39;Failed to create output file: &#39; + path)
+
+        if nodata_value is not None:
+            for i in range(1,num_bands+1):
+                self._handle.GetRasterBand(i).SetNoDataValue(nodata_value)
+
+        if metadata:
+            self._handle.SetProjection  (metadata[&#39;projection&#39;  ])
+            self._handle.SetGeoTransform(metadata[&#39;geotransform&#39;])
+            self._handle.SetMetadata    (metadata[&#39;metadata&#39;    ])
+            self._handle.SetGCPs        (metadata[&#39;gcps&#39;], metadata[&#39;gcpproj&#39;])
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        self.close()
+        return False
+
+    def close(self):
+        if self._handle is not None:
+            self._handle.FlushCache()
+            self._handle = None
+
+    def get_num_tiles(self):
+        num_x = int(math.ceil(self._width  / self._tile_width))
+        num_y = int(math.ceil(self._height / self._tile_height))
+        return (num_x, num_y)
+
+    def write_block(self, data, block_x, block_y, band=0):
+        &#39;&#39;&#39;Add a tile write command to the queue.
+           Partial tiles are allowed at the right at bottom edges.
+        &#39;&#39;&#39;
+
+        # Check that the tile position is valid
+        num_tiles = self.get_num_tiles()
+        if (block_x &gt;= num_tiles[0]) or (block_y &gt;= num_tiles[1]):
+            raise Exception(&#39;Block position &#39; + str((block_x, block_y))
+                            + &#39; is outside the tile count: &#39; + str(num_tiles))
+        is_edge_block = ((block_x == num_tiles[0]-1) or
+                         (block_y == num_tiles[1]-1))
+
+        if is_edge_block: # Data must fit inside the image size
+            max_x = block_x * self._tile_width  + data.shape[0]
+            max_y = block_y * self._tile_height + data.shape[1]
+            if max_x &gt; self._width or max_y &gt; self._height:
+                raise Exception(&#39;Error: Data block max position &#39;
+                                + str((max_x, max_y))
+                                + &#39; falls outside the image bounds: &#39;
+                                + str((self._width, self._height)))
+        else: # Shape must be exactly one tile
+            if ( (data.shape[0] != self._tile_width) or
+                 (data.shape[1] != self._tile_height)  ):
+                raise Exception(&#39;Error: Data block size is &#39; + str(data.shape)
+                                + &#39;, output file block size is &#39;
+                                + str((self._tile_width, self._tile_height)))
+
+        gdal_band = self._handle.GetRasterBand(band+1)
+        assert gdal_band
+
+        gdal_band.WriteArray(data, block_y * self._tile_height, block_x * self._tile_width)
+
+    def write_region(self, data, x, y):
+        assert 0 &lt;= y &lt; self._height
+        assert 0 &lt;= x &lt; self._width
+
+        if len(data.shape) &lt; 3:
+            gdal_band = self._handle.GetRasterBand(1)
+            assert gdal_band
+            gdal_band.WriteArray(data, y, x)
+            return
+
+        for band in range(data.shape[2]):
+            gdal_band = self._handle.GetRasterBand(band+1)
+            assert gdal_band
+            gdal_band.WriteArray(data[:, :, band], y, x)
+
+class TiffWriter(delta_image.DeltaImageWriter):
+    &#34;&#34;&#34;
+    Write a geotiff to a file.
+    &#34;&#34;&#34;
+    def __init__(self, filename):
+        self._filename = filename
+        self._tiff_w = None
+
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
+        assert (len(size) == 3), (&#39;Error: len(size) of &#39;+str(size)+&#39; != 3&#39;)
+        TILE_SIZE = 256
+        self._tiff_w = _TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
+                                   data_type=_numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
+                                   nodata_value=nodata_value,
+                                   tile_width=min(TILE_SIZE, size[0]), tile_height=min(TILE_SIZE, size[1]))
+
+    def write(self, data, x, y):
+        self._tiff_w.write_region(data, x, y)
+
+    def close(self):
+        if self._tiff_w is not None:
+            self._tiff_w.close()
+
+    def abort(self):
+        self.close()
+        try:
+            os.remove(self._filename)
+        except OSError:
+            pass</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.extensions.sources.tiff.write_tiff"><code class="name flex">
+<span>def <span class="ident">write_tiff</span></span>(<span>output_path: str, data: numpy.ndarray, metadata: dict = None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write a numpy array to a file as a tiff.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>output_path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Filename to save tiff file to</dd>
+<dt><strong><code>data</code></strong> :&ensp;<code>numpy.ndarray</code></dt>
+<dd>Image data to save.</dd>
+<dt><strong><code>metadata</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Optional metadata to include.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def write_tiff(output_path: str, data: np.ndarray, metadata: dict=None):
+    &#34;&#34;&#34;
+    Write a numpy array to a file as a tiff.
+
+    Parameters
+    ----------
+    output_path: str
+        Filename to save tiff file to
+    data: numpy.ndarray
+        Image data to save.
+    metadata: dict
+        Optional metadata to include.
+    &#34;&#34;&#34;
+
+    if len(data.shape) &lt; 3:
+        num_bands = 1
+    else:
+        num_bands = data.shape[2]
+    data_type = _numpy_dtype_to_gdal_type(data.dtype)
+
+    TILE_SIZE=256
+
+    with _TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
+                     data_type=data_type, metadata=metadata, tile_width=min(TILE_SIZE, data.shape[0]),
+                     tile_height=min(TILE_SIZE, data.shape[1])) as writer:
+        for x in range(0, data.shape[0], TILE_SIZE):
+            for y in range(0, data.shape[1], TILE_SIZE):
+                block = (x // TILE_SIZE, y // TILE_SIZE)
+                if len(data.shape) &lt; 3:
+                    writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE], block[0], block[1], 0)
+                else:
+                    for b in range(num_bands):
+                        writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE, b], block[0], block[1], b)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.extensions.sources.tiff.TiffImage"><code class="flex name class">
+<span>class <span class="ident">TiffImage</span></span>
+<span>(</span><span>path, nodata_value=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Images supported by GDAL.</p>
+<p>Opens a geotiff for reading.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>paths</code></strong> :&ensp;<code>str</code> or <code>List[str]</code></dt>
+<dd>Either a single filename or a list.
+For a list, the images are opened in order as a multi-band image, assumed to overlap.</dd>
+<dt><strong><code>nodata_value</code></strong> :&ensp;<code>dtype</code> of <code>image</code></dt>
+<dd>Value representing no data.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TiffImage(delta_image.DeltaImage):
+    &#34;&#34;&#34;Images supported by GDAL.&#34;&#34;&#34;
+
+    def __init__(self, path, nodata_value=None):
+        &#34;&#34;&#34;
+        Opens a geotiff for reading.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Either a single filename or a list.
+            For a list, the images are opened in order as a multi-band image, assumed to overlap.
+        nodata_value: dtype of image
+            Value representing no data.
+        &#34;&#34;&#34;
+        super().__init__(nodata_value)
+        paths = self._prep(path)
+
+        self._path = path
+        self._paths = paths
+        self._handles = []
+        for p in paths:
+            if not os.path.exists(p):
+                raise Exception(&#39;Image file does not exist: &#39; + p)
+            result = gdal.Open(p)
+            if result is None:
+                raise Exception(&#39;Failed to open tiff file %s.&#39; % (p))
+            self._handles.append(result)
+        self._band_map = []
+        for i, h in enumerate(self._handles):
+            if h.RasterXSize != self._handles[0].RasterXSize or h.RasterYSize != self._handles[0].RasterYSize:
+                raise Exception(&#39;Images %s and %s have different sizes!&#39; % (self._paths[0], self._paths[i]))
+            for j in range(h.RasterCount):
+                self._band_map.append((i, j + 1)) # gdal uses 1-based band indexing
+
+    def __del__(self):
+        self.close()
+
+    def _prep(self, paths): #pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Prepare the file to be opened by other tools (unpack, etc).
+
+        This can be overwritten by subclasses to, for example,
+        unpack a zip file to a cache directory.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Paths passed to constructor
+
+        Returns
+        -------
+        Returns a list of underlying files to load instead of the original paths.
+        &#34;&#34;&#34;
+        if isinstance(paths, str):
+            return [paths]
+        return paths
+
+    def __asert_open(self):
+        if self._handles is None:
+            raise IOError(&#39;Operating on an image that has been closed.&#39;)
+
+    def close(self):
+        &#34;&#34;&#34;
+        Close the image.
+        &#34;&#34;&#34;
+        self._handles = None # gdal doesn&#39;t have a close function for some reason
+        self._band_map = None
+        self._paths = None
+
+    def path(self):
+        &#34;&#34;&#34;
+        Returns the paths returned by `_prep`.
+        &#34;&#34;&#34;
+        return self._path
+
+    def num_bands(self):
+        self.__asert_open()
+        return len(self._band_map)
+
+    def size(self):
+        self.__asert_open()
+        return (self._handles[0].RasterYSize, self._handles[0].RasterXSize)
+
+    def _read(self, roi, bands, buf=None):
+        self.__asert_open()
+        num_bands = len(bands) if bands else self.num_bands()
+
+        if buf is None:
+            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.dtype())
+        for i, b in enumerate(bands):
+            band_handle = self._gdal_band(b)
+            s = buf[i, :, :].shape
+            if s != (roi.width(), roi.height()):
+                raise IOError(&#39;Buffer shape should be (%d, %d) but is (%d, %d)!&#39; %
+                              (roi.width(), roi.height(), s[0], s[1]))
+            band_handle.ReadAsArray(roi.min_y, roi.min_x, roi.height(), roi.width(), buf_obj=buf[i, :, :])
+        return np.transpose(buf, [1, 2, 0])
+
+    def _gdal_band(self, band):
+        (h, b) = self._band_map[band]
+        ret = self._handles[h].GetRasterBand(b)
+        assert ret
+        return ret
+
+    def _gdal_type(self, band=0):
+        &#34;&#34;&#34;
+        Returns the GDAL data type of the image.
+        &#34;&#34;&#34;
+        self.__asert_open()
+        return self._gdal_band(band).DataType
+
+    def dtype(self):
+        self.__asert_open()
+        dtype = self._gdal_type(0)
+        if dtype in _GDAL_TO_NUMPY_TYPES:
+            return _GDAL_TO_NUMPY_TYPES[dtype]
+        raise Exception(&#39;Unrecognized gdal data type: &#39; + str(dtype))
+
+    def bytes_per_pixel(self, band=0):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            the number of bytes per pixel
+        &#34;&#34;&#34;
+        self.__asert_open()
+        return gdal.GetDataTypeSize(self._gdal_type(band)) // 8
+
+    def block_size(self):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        (int, int):
+            block height, block width
+        &#34;&#34;&#34;
+        self.__asert_open()
+        band_handle = self._gdal_band(0)
+        block_size = band_handle.GetBlockSize()
+        return (block_size[1], block_size[0])
+
+    def metadata(self):
+        self.__asert_open()
+        data = dict()
+        h = self._handles[0]
+        data[&#39;projection&#39;] = h.GetProjection()
+        data[&#39;geotransform&#39;] = h.GetGeoTransform()
+        data[&#39;gcps&#39;] = h.GetGCPs()
+        data[&#39;gcpproj&#39;] = h.GetGCPProjection()
+        data[&#39;metadata&#39;] = h.GetMetadata()
+        return data
+
+    def block_aligned_roi(self, desired_roi):
+        self.__asert_open()
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        if not bounds.contains_rect(desired_roi):
+            raise Exception(&#39;desired_roi &#39; + str(desired_roi)
+                            + &#39; is outside the bounds of image with size&#39; + str(self.size()))
+
+        block_size = self.block_size()
+        start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
+        start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
+        # Rect max is exclusive
+        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[0]))
+        # The stops are inclusive
+        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
+
+        start_x = start_block_x * block_size[0]
+        start_y = start_block_y * block_size[1]
+        w = (stop_block_x - start_block_x + 1) * block_size[0]
+        h = (stop_block_y - start_block_y + 1) * block_size[1]
+
+        # Restrict the output region to the bounding box of the image.
+        # - Needed to handle images with partial tiles at the boundaries.
+        ans = rectangle.Rectangle(start_x, start_y, width=w, height=h)
+        bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        return ans.get_intersection(bounds)
+
+    def save(self, path, tile_size=None, nodata_value=None, show_progress=False):
+        &#34;&#34;&#34;
+        Save to file, with preprocessing applied.
+
+        Parameters
+        ----------
+        path: str
+            Filename to save to.
+        tile_size: (int, int)
+            If specified, overwrite block size
+        nodata_value: image dtype
+            If specified, overwrite nodata value
+        show_progress: bool
+            Write progress bar to stdout
+        &#34;&#34;&#34;
+
+        if nodata_value is None:
+            nodata_value = self.nodata_value()
+        # Use the input tile size for the block size unless the user specified one.
+        block_size_y, block_size_x = self.block_size()
+        if tile_size is not None:
+            block_size_x = tile_size[0]
+            block_size_y = tile_size[1]
+
+        # Set up the output image
+        with _TiffWriter(path, self.width(), self.height(), self.num_bands(),
+                         self._gdal_type(), block_size_x, block_size_y,
+                         nodata_value, self.metadata()) as writer:
+            input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+            output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
+
+            def callback_function(output_roi, data):
+                &#34;&#34;&#34;Callback function to write the first channel to the output file.&#34;&#34;&#34;
+
+                # Figure out some ROI positioning values
+                block_x = output_roi.min_x / block_size_x
+                block_y = output_roi.min_y / block_size_y
+
+                # Loop on bands
+                for band in range(data.shape[2]):
+                    writer.write_block(data[:, :, band], block_x, block_y, band)
+
+            self.process_rois(output_rois, callback_function, show_progress=show_progress)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.imagery.delta_image.DeltaImage" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage">DeltaImage</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.sources.landsat.LandsatImage" href="landsat.html#delta.extensions.sources.landsat.LandsatImage">LandsatImage</a></li>
+<li><a title="delta.extensions.sources.sentinel1.Sentinel1Image" href="sentinel1.html#delta.extensions.sources.sentinel1.Sentinel1Image">Sentinel1Image</a></li>
+<li><a title="delta.extensions.sources.worldview.WorldviewImage" href="worldview.html#delta.extensions.sources.worldview.WorldviewImage">WorldviewImage</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.sources.tiff.TiffImage.block_size"><code class="name flex">
+<span>def <span class="ident">block_size</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<p>(int, int):
+block height, block width</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def block_size(self):
+    &#34;&#34;&#34;
+    Returns
+    -------
+    (int, int):
+        block height, block width
+    &#34;&#34;&#34;
+    self.__asert_open()
+    band_handle = self._gdal_band(0)
+    block_size = band_handle.GetBlockSize()
+    return (block_size[1], block_size[0])</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.sources.tiff.TiffImage.bytes_per_pixel"><code class="name flex">
+<span>def <span class="ident">bytes_per_pixel</span></span>(<span>self, band=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int:</code></dt>
+<dd>the number of bytes per pixel</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def bytes_per_pixel(self, band=0):
+    &#34;&#34;&#34;
+    Returns
+    -------
+    int:
+        the number of bytes per pixel
+    &#34;&#34;&#34;
+    self.__asert_open()
+    return gdal.GetDataTypeSize(self._gdal_type(band)) // 8</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.sources.tiff.TiffImage.close"><code class="name flex">
+<span>def <span class="ident">close</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Close the image.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def close(self):
+    &#34;&#34;&#34;
+    Close the image.
+    &#34;&#34;&#34;
+    self._handles = None # gdal doesn&#39;t have a close function for some reason
+    self._band_map = None
+    self._paths = None</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.sources.tiff.TiffImage.path"><code class="name flex">
+<span>def <span class="ident">path</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the paths returned by <code>_prep</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def path(self):
+    &#34;&#34;&#34;
+    Returns the paths returned by `_prep`.
+    &#34;&#34;&#34;
+    return self._path</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.sources.tiff.TiffImage.save"><code class="name flex">
+<span>def <span class="ident">save</span></span>(<span>self, path, tile_size=None, nodata_value=None, show_progress=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Save to file, with preprocessing applied.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>path</code></strong> :&ensp;<code>str</code></dt>
+<dd>Filename to save to.</dd>
+<dt><strong><code>tile_size</code></strong> :&ensp;<code>(int, int)</code></dt>
+<dd>If specified, overwrite block size</dd>
+<dt><strong><code>nodata_value</code></strong> :&ensp;<code>image dtype</code></dt>
+<dd>If specified, overwrite nodata value</dd>
+<dt><strong><code>show_progress</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Write progress bar to stdout</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def save(self, path, tile_size=None, nodata_value=None, show_progress=False):
+    &#34;&#34;&#34;
+    Save to file, with preprocessing applied.
+
+    Parameters
+    ----------
+    path: str
+        Filename to save to.
+    tile_size: (int, int)
+        If specified, overwrite block size
+    nodata_value: image dtype
+        If specified, overwrite nodata value
+    show_progress: bool
+        Write progress bar to stdout
+    &#34;&#34;&#34;
+
+    if nodata_value is None:
+        nodata_value = self.nodata_value()
+    # Use the input tile size for the block size unless the user specified one.
+    block_size_y, block_size_x = self.block_size()
+    if tile_size is not None:
+        block_size_x = tile_size[0]
+        block_size_y = tile_size[1]
+
+    # Set up the output image
+    with _TiffWriter(path, self.width(), self.height(), self.num_bands(),
+                     self._gdal_type(), block_size_x, block_size_y,
+                     nodata_value, self.metadata()) as writer:
+        input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
+
+        def callback_function(output_roi, data):
+            &#34;&#34;&#34;Callback function to write the first channel to the output file.&#34;&#34;&#34;
+
+            # Figure out some ROI positioning values
+            block_x = output_roi.min_x / block_size_x
+            block_y = output_roi.min_y / block_size_y
+
+            # Loop on bands
+            for band in range(data.shape[2]):
+                writer.write_block(data[:, :, band], block_x, block_y, band)
+
+        self.process_rois(output_rois, callback_function, show_progress=show_progress)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.imagery.delta_image.DeltaImage" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage">DeltaImage</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.imagery.delta_image.DeltaImage.block_aligned_roi" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.block_aligned_roi">block_aligned_roi</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.dtype" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.dtype">dtype</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.get_preprocess" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.get_preprocess">get_preprocess</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.height" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.height">height</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.metadata" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.metadata">metadata</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.nodata_value" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.nodata_value">nodata_value</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.num_bands" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.num_bands">num_bands</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.process_rois" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.process_rois">process_rois</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.read" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.read">read</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.roi_generator" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.roi_generator">roi_generator</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.set_preprocess" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.set_preprocess">set_preprocess</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.size" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.size">size</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.tiles" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.tiles">tiles</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.width" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage.width">width</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.sources.tiff.TiffWriter"><code class="flex name class">
+<span>class <span class="ident">TiffWriter</span></span>
+<span>(</span><span>filename)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write a geotiff to a file.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class TiffWriter(delta_image.DeltaImageWriter):
+    &#34;&#34;&#34;
+    Write a geotiff to a file.
+    &#34;&#34;&#34;
+    def __init__(self, filename):
+        self._filename = filename
+        self._tiff_w = None
+
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
+        assert (len(size) == 3), (&#39;Error: len(size) of &#39;+str(size)+&#39; != 3&#39;)
+        TILE_SIZE = 256
+        self._tiff_w = _TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
+                                   data_type=_numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
+                                   nodata_value=nodata_value,
+                                   tile_width=min(TILE_SIZE, size[0]), tile_height=min(TILE_SIZE, size[1]))
+
+    def write(self, data, x, y):
+        self._tiff_w.write_region(data, x, y)
+
+    def close(self):
+        if self._tiff_w is not None:
+            self._tiff_w.close()
+
+    def abort(self):
+        self.close()
+        try:
+            os.remove(self._filename)
+        except OSError:
+            pass</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.imagery.delta_image.DeltaImageWriter" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter">DeltaImageWriter</a></li>
+<li>abc.ABC</li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.imagery.delta_image.DeltaImageWriter" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter">DeltaImageWriter</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.abort" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter.abort">abort</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.close" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter.close">close</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.initialize" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter.initialize">initialize</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.write" href="../../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter.write">write</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.extensions.sources" href="index.html">delta.extensions.sources</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.extensions.sources.tiff.write_tiff" href="#delta.extensions.sources.tiff.write_tiff">write_tiff</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.extensions.sources.tiff.TiffImage" href="#delta.extensions.sources.tiff.TiffImage">TiffImage</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.sources.tiff.TiffImage.block_size" href="#delta.extensions.sources.tiff.TiffImage.block_size">block_size</a></code></li>
+<li><code><a title="delta.extensions.sources.tiff.TiffImage.bytes_per_pixel" href="#delta.extensions.sources.tiff.TiffImage.bytes_per_pixel">bytes_per_pixel</a></code></li>
+<li><code><a title="delta.extensions.sources.tiff.TiffImage.close" href="#delta.extensions.sources.tiff.TiffImage.close">close</a></code></li>
+<li><code><a title="delta.extensions.sources.tiff.TiffImage.path" href="#delta.extensions.sources.tiff.TiffImage.path">path</a></code></li>
+<li><code><a title="delta.extensions.sources.tiff.TiffImage.save" href="#delta.extensions.sources.tiff.TiffImage.save">save</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.sources.tiff.TiffWriter" href="#delta.extensions.sources.tiff.TiffWriter">TiffWriter</a></code></h4>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>

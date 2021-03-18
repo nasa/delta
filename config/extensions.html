@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>delta.config.extensions API documentation</title>
+<meta name="description" content="Manage extensions to DELTA …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.config.extensions</code></h1>
+</header>
+<section id="section-intro">
+<p>Manage extensions to DELTA.</p>
+<p>To extend delta, add the name for your extension to the <code>extensions</code> field
+in a DELTA config file. It will then be imported when DELTA loads.
+The named python module should then call the appropriate registration
+function (e.g., <code><a title="delta.config.extensions.register_layer" href="#delta.config.extensions.register_layer">register_layer()</a></code> to register a custom Keras layer) and
+the extensions can be used like existing DELTA options.</p>
+<p>All extensions can take keyword arguments that can be specified in the config file.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+&#34;&#34;&#34;
+Manage extensions to DELTA.
+
+To extend delta, add the name for your extension to the `extensions` field
+in a DELTA config file. It will then be imported when DELTA loads.
+The named python module should then call the appropriate registration
+function (e.g., `register_layer` to register a custom Keras layer) and
+the extensions can be used like existing DELTA options.
+
+All extensions can take keyword arguments that can be specified in the config file.
+&#34;&#34;&#34;
+
+#pylint:disable=global-statement
+
+import importlib
+
+__extensions_to_load = set()
+__layers = {}
+__readers = {}
+__writers = {}
+__losses = {}
+__metrics = {}
+__callbacks = {}
+__prep_funcs = {}
+
+def __initialize():
+    &#34;&#34;&#34;
+    This function is called before each use of extensions to import
+    the needed modules. This is only done at first use to not delay loading.
+    &#34;&#34;&#34;
+    global __extensions_to_load
+    while __extensions_to_load:
+        ext = __extensions_to_load.pop()
+        importlib.import_module(ext)
+
+def register_extension(name : str):
+    &#34;&#34;&#34;
+    Register an extension python module.
+    For internal use --- users should use the config files.
+
+    Parameters
+    ----------
+    name: str
+        Name of the extension to load.
+    &#34;&#34;&#34;
+    global __extensions_to_load
+    __extensions_to_load.add(name)
+
+def register_layer(layer_type : str, layer_constructor):
+    &#34;&#34;&#34;
+    Register a custom layer for use by DELTA.
+
+    Parameters
+    ----------
+    layer_type: str
+        Name of the layer.
+    layer_constructor
+        Either a class extending
+        [tensorflow.keras.layers.Layer](https://www.tensorflow.org/api_docs/python/tf/keras/layers/LayerFunction),
+        or a function that returns a function that inputs and outputs tensors.
+
+    See Also
+    --------
+    delta.ml.train.DeltaLayer : Layer wrapper with Delta extensions
+    &#34;&#34;&#34;
+    global __layers
+    __layers[layer_type] = layer_constructor
+
+def register_image_reader(image_type : str, image_class):
+    &#34;&#34;&#34;
+    Register a custom image type for reading by DELTA.
+
+    Parameters
+    ----------
+    image_type: str
+        Name of the image type.
+    image_class: Type[`delta.imagery.delta_image.DeltaImage`]
+        A class that extends `delta.imagery.delta_image.DeltaImage`.
+    &#34;&#34;&#34;
+    global __readers
+    __readers[image_type] = image_class
+
+def register_image_writer(image_type : str, writer_class):
+    &#34;&#34;&#34;
+    Register a custom image type for writing by DELTA.
+
+    Parameters
+    ----------
+    image_type: str
+        Name of the image type.
+    writer_class: Type[`delta.imagery.delta_image.DeltaImageWriter`]
+        A class that extends `delta.imagery.delta_image.DeltaImageWriter`.
+    &#34;&#34;&#34;
+    global __writers
+    __writers[image_type] = writer_class
+
+def register_loss(loss_type : str, custom_loss):
+    &#34;&#34;&#34;
+    Register a custom loss function for use by DELTA.
+
+    Note that loss functions can also be used as metrics.
+
+    Parameters
+    ----------
+    loss_type: str
+        Name of the loss function.
+    custom_loss:
+        Either a loss extending [Loss](https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss) or a
+        function of the form loss(y_true, y_pred) which returns a tensor of the loss.
+    &#34;&#34;&#34;
+    global __losses
+    __losses[loss_type] = custom_loss
+
+def register_metric(metric_type : str, custom_metric):
+    &#34;&#34;&#34;
+    Register a custom metric for use by DELTA.
+
+    Parameters
+    ----------
+    metric_type: str
+        Name of the metric.
+    custom_metric: Type[`tensorflow.keras.metrics.Metric`]
+        A class extending [Metric](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric).
+    &#34;&#34;&#34;
+    global __metrics
+    __metrics[metric_type] = custom_metric
+
+def register_callback(cb_type : str, cb):
+    &#34;&#34;&#34;
+    Register a custom training callback for use by DELTA.
+
+    Parameters
+    ----------
+    cb_type: str
+        Name of the callback.
+    cb: Type[`tensorflow.keras.callbacks.Callback`]
+        A class extending [Callback](https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback)
+        or a function that returns one.
+    &#34;&#34;&#34;
+    global __callbacks
+    __callbacks[cb_type] = cb
+
+def register_preprocess(function_name : str, prep_function):
+    &#34;&#34;&#34;
+    Register a preprocessing function for use in delta.
+
+    Parameters
+    ----------
+    function_name: str
+        Name of the preprocessing function.
+    prep_function:
+        A function of the form prep_function(data, rectangle, bands_list), where data is an input
+        numpy array, rectangle a `delta.imagery.rectangle.Rectangle` specifying the region covered by data,
+        and bands_list is an integer list of bands loaded. The function must return a numpy array.
+    &#34;&#34;&#34;
+    global __prep_funcs
+    __prep_funcs[function_name] = prep_function
+
+def layer(layer_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom layer by name.
+
+    Parameters
+    ----------
+    layer_type: str
+        Name of the layer.
+
+    Returns
+    -------
+    Layer
+        The previously registered layer.
+    &#34;&#34;&#34;
+    __initialize()
+    return __layers.get(layer_type)
+
+def loss(loss_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom loss by name.
+
+    Parameters
+    ----------
+    loss_type: str
+        Name of the loss function.
+
+    Returns
+    -------
+    Loss
+        The previously registered loss function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __losses.get(loss_type)
+
+def metric(metric_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom metric by name.
+
+    Parameters
+    ----------
+    metric_type: str
+        Name of the metric.
+
+    Returns
+    -------
+    Metric
+        The previously registered metric.
+    &#34;&#34;&#34;
+    __initialize()
+    return __metrics.get(metric_type)
+
+def callback(cb_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom callback by name.
+
+    Parameters
+    ----------
+    cb_type: str
+        Name of the callback function.
+
+    Returns
+    -------
+    Callback
+        The previously registered callback.
+    &#34;&#34;&#34;
+    __initialize()
+    return __callbacks.get(cb_type)
+
+def preprocess_function(prep_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom preprocessing function by name.
+
+    Parameters
+    ----------
+    prep_type: str
+        Name of the preprocessing function.
+
+    Returns
+    -------
+    Preprocessing Function
+        The previously registered preprocessing function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __prep_funcs.get(prep_type)
+
+def image_reader(reader_type : str):
+    &#34;&#34;&#34;
+    Get the reader of the given type.
+
+    Parameters
+    ----------
+    reader_type: str
+        Name of the image reader.
+
+    Returns
+    -------
+    Type[`delta.imagery.delta_image.DeltaImage`]
+        The previously registered image reader.
+    &#34;&#34;&#34;
+    __initialize()
+    return __readers.get(reader_type)
+
+def image_writer(writer_type : str):
+    &#34;&#34;&#34;
+    Get the writer of the given type.
+
+    Parameters
+    ----------
+    writer_type: str
+        Name of the image writer.
+
+    Returns
+    -------
+    Type[`delta.imagery.delta_image.DeltaImageWriter`]
+        The previously registered image writer.
+    &#34;&#34;&#34;
+    __initialize()
+    return __writers.get(writer_type)
+
+def custom_objects():
+    &#34;&#34;&#34;
+    Returns a dictionary of all supported custom objects for use
+    by tensorflow. Passed as an argument to load_model.
+
+    Returns
+    -------
+    dict
+        A dictionary of registered custom tensorflow objects.
+    &#34;&#34;&#34;
+    __initialize()
+    d = __layers.copy()
+    d.update(__losses.copy())
+    return d</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.config.extensions.callback"><code class="name flex">
+<span>def <span class="ident">callback</span></span>(<span>cb_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom callback by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>cb_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the callback function.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Callback</code></dt>
+<dd>The previously registered callback.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def callback(cb_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom callback by name.
+
+    Parameters
+    ----------
+    cb_type: str
+        Name of the callback function.
+
+    Returns
+    -------
+    Callback
+        The previously registered callback.
+    &#34;&#34;&#34;
+    __initialize()
+    return __callbacks.get(cb_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.custom_objects"><code class="name flex">
+<span>def <span class="ident">custom_objects</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a dictionary of all supported custom objects for use
+by tensorflow. Passed as an argument to load_model.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>dict</code></dt>
+<dd>A dictionary of registered custom tensorflow objects.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def custom_objects():
+    &#34;&#34;&#34;
+    Returns a dictionary of all supported custom objects for use
+    by tensorflow. Passed as an argument to load_model.
+
+    Returns
+    -------
+    dict
+        A dictionary of registered custom tensorflow objects.
+    &#34;&#34;&#34;
+    __initialize()
+    d = __layers.copy()
+    d.update(__losses.copy())
+    return d</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.image_reader"><code class="name flex">
+<span>def <span class="ident">image_reader</span></span>(<span>reader_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the reader of the given type.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>reader_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the image reader.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Type[<code>delta.imagery.delta_image.DeltaImage</code>]
+The previously registered image reader.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def image_reader(reader_type : str):
+    &#34;&#34;&#34;
+    Get the reader of the given type.
+
+    Parameters
+    ----------
+    reader_type: str
+        Name of the image reader.
+
+    Returns
+    -------
+    Type[`delta.imagery.delta_image.DeltaImage`]
+        The previously registered image reader.
+    &#34;&#34;&#34;
+    __initialize()
+    return __readers.get(reader_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.image_writer"><code class="name flex">
+<span>def <span class="ident">image_writer</span></span>(<span>writer_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Get the writer of the given type.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>writer_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the image writer.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Type[<code>delta.imagery.delta_image.DeltaImageWriter</code>]
+The previously registered image writer.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def image_writer(writer_type : str):
+    &#34;&#34;&#34;
+    Get the writer of the given type.
+
+    Parameters
+    ----------
+    writer_type: str
+        Name of the image writer.
+
+    Returns
+    -------
+    Type[`delta.imagery.delta_image.DeltaImageWriter`]
+        The previously registered image writer.
+    &#34;&#34;&#34;
+    __initialize()
+    return __writers.get(writer_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.layer"><code class="name flex">
+<span>def <span class="ident">layer</span></span>(<span>layer_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom layer by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>layer_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the layer.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Layer</code></dt>
+<dd>The previously registered layer.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def layer(layer_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom layer by name.
+
+    Parameters
+    ----------
+    layer_type: str
+        Name of the layer.
+
+    Returns
+    -------
+    Layer
+        The previously registered layer.
+    &#34;&#34;&#34;
+    __initialize()
+    return __layers.get(layer_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.loss"><code class="name flex">
+<span>def <span class="ident">loss</span></span>(<span>loss_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom loss by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>loss_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the loss function.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Loss</code></dt>
+<dd>The previously registered loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def loss(loss_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom loss by name.
+
+    Parameters
+    ----------
+    loss_type: str
+        Name of the loss function.
+
+    Returns
+    -------
+    Loss
+        The previously registered loss function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __losses.get(loss_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.metric"><code class="name flex">
+<span>def <span class="ident">metric</span></span>(<span>metric_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom metric by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>metric_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the metric.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Metric</code></dt>
+<dd>The previously registered metric.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def metric(metric_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom metric by name.
+
+    Parameters
+    ----------
+    metric_type: str
+        Name of the metric.
+
+    Returns
+    -------
+    Metric
+        The previously registered metric.
+    &#34;&#34;&#34;
+    __initialize()
+    return __metrics.get(metric_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.preprocess_function"><code class="name flex">
+<span>def <span class="ident">preprocess_function</span></span>(<span>prep_type: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom preprocessing function by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>prep_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the preprocessing function.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Preprocessing Function</code></dt>
+<dd>The previously registered preprocessing function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preprocess_function(prep_type : str):
+    &#34;&#34;&#34;
+    Retrieve a custom preprocessing function by name.
+
+    Parameters
+    ----------
+    prep_type: str
+        Name of the preprocessing function.
+
+    Returns
+    -------
+    Preprocessing Function
+        The previously registered preprocessing function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __prep_funcs.get(prep_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_callback"><code class="name flex">
+<span>def <span class="ident">register_callback</span></span>(<span>cb_type: str, cb)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom training callback for use by DELTA.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>cb_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the callback.</dd>
+<dt><strong><code>cb</code></strong> :&ensp;<code>Type[</code>tensorflow.keras.callbacks.Callback<code>]</code></dt>
+<dd>A class extending <a href="https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback">Callback</a>
+or a function that returns one.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_callback(cb_type : str, cb):
+    &#34;&#34;&#34;
+    Register a custom training callback for use by DELTA.
+
+    Parameters
+    ----------
+    cb_type: str
+        Name of the callback.
+    cb: Type[`tensorflow.keras.callbacks.Callback`]
+        A class extending [Callback](https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback)
+        or a function that returns one.
+    &#34;&#34;&#34;
+    global __callbacks
+    __callbacks[cb_type] = cb</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_extension"><code class="name flex">
+<span>def <span class="ident">register_extension</span></span>(<span>name: str)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register an extension python module.
+For internal use &mdash; users should use the config files.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the extension to load.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_extension(name : str):
+    &#34;&#34;&#34;
+    Register an extension python module.
+    For internal use --- users should use the config files.
+
+    Parameters
+    ----------
+    name: str
+        Name of the extension to load.
+    &#34;&#34;&#34;
+    global __extensions_to_load
+    __extensions_to_load.add(name)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_image_reader"><code class="name flex">
+<span>def <span class="ident">register_image_reader</span></span>(<span>image_type: str, image_class)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom image type for reading by DELTA.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the image type.</dd>
+<dt><strong><code>image_class</code></strong> :&ensp;<code>Type[</code>delta.imagery.delta_image.DeltaImage<code>]</code></dt>
+<dd>A class that extends <code><a title="delta.imagery.delta_image.DeltaImage" href="../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage">DeltaImage</a></code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_image_reader(image_type : str, image_class):
+    &#34;&#34;&#34;
+    Register a custom image type for reading by DELTA.
+
+    Parameters
+    ----------
+    image_type: str
+        Name of the image type.
+    image_class: Type[`delta.imagery.delta_image.DeltaImage`]
+        A class that extends `delta.imagery.delta_image.DeltaImage`.
+    &#34;&#34;&#34;
+    global __readers
+    __readers[image_type] = image_class</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_image_writer"><code class="name flex">
+<span>def <span class="ident">register_image_writer</span></span>(<span>image_type: str, writer_class)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom image type for writing by DELTA.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>image_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the image type.</dd>
+<dt><strong><code>writer_class</code></strong> :&ensp;<code>Type[</code>delta.imagery.delta_image.DeltaImageWriter<code>]</code></dt>
+<dd>A class that extends <code><a title="delta.imagery.delta_image.DeltaImageWriter" href="../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter">DeltaImageWriter</a></code>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_image_writer(image_type : str, writer_class):
+    &#34;&#34;&#34;
+    Register a custom image type for writing by DELTA.
+
+    Parameters
+    ----------
+    image_type: str
+        Name of the image type.
+    writer_class: Type[`delta.imagery.delta_image.DeltaImageWriter`]
+        A class that extends `delta.imagery.delta_image.DeltaImageWriter`.
+    &#34;&#34;&#34;
+    global __writers
+    __writers[image_type] = writer_class</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_layer"><code class="name flex">
+<span>def <span class="ident">register_layer</span></span>(<span>layer_type: str, layer_constructor)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom layer for use by DELTA.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>layer_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the layer.</dd>
+<dt><strong><code>layer_constructor</code></strong></dt>
+<dd>Either a class extending
+<a href="https://www.tensorflow.org/api_docs/python/tf/keras/layers/LayerFunction">tensorflow.keras.layers.Layer</a>,
+or a function that returns a function that inputs and outputs tensors.</dd>
+</dl>
+<h2 id="see-also">See Also</h2>
+<dl>
+<dt><code><a title="delta.ml.train.DeltaLayer" href="../ml/train.html#delta.ml.train.DeltaLayer">DeltaLayer</a></code></dt>
+<dd>Layer wrapper with Delta extensions</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_layer(layer_type : str, layer_constructor):
+    &#34;&#34;&#34;
+    Register a custom layer for use by DELTA.
+
+    Parameters
+    ----------
+    layer_type: str
+        Name of the layer.
+    layer_constructor
+        Either a class extending
+        [tensorflow.keras.layers.Layer](https://www.tensorflow.org/api_docs/python/tf/keras/layers/LayerFunction),
+        or a function that returns a function that inputs and outputs tensors.
+
+    See Also
+    --------
+    delta.ml.train.DeltaLayer : Layer wrapper with Delta extensions
+    &#34;&#34;&#34;
+    global __layers
+    __layers[layer_type] = layer_constructor</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_loss"><code class="name flex">
+<span>def <span class="ident">register_loss</span></span>(<span>loss_type: str, custom_loss)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom loss function for use by DELTA.</p>
+<p>Note that loss functions can also be used as metrics.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>loss_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the loss function.</dd>
+</dl>
+<p>custom_loss:
+Either a loss extending <a href="https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss">Loss</a> or a
+function of the form loss(y_true, y_pred) which returns a tensor of the loss.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_loss(loss_type : str, custom_loss):
+    &#34;&#34;&#34;
+    Register a custom loss function for use by DELTA.
+
+    Note that loss functions can also be used as metrics.
+
+    Parameters
+    ----------
+    loss_type: str
+        Name of the loss function.
+    custom_loss:
+        Either a loss extending [Loss](https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss) or a
+        function of the form loss(y_true, y_pred) which returns a tensor of the loss.
+    &#34;&#34;&#34;
+    global __losses
+    __losses[loss_type] = custom_loss</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_metric"><code class="name flex">
+<span>def <span class="ident">register_metric</span></span>(<span>metric_type: str, custom_metric)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a custom metric for use by DELTA.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>metric_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the metric.</dd>
+<dt><strong><code>custom_metric</code></strong> :&ensp;<code>Type[</code>tensorflow.keras.metrics.Metric<code>]</code></dt>
+<dd>A class extending <a href="https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric">Metric</a>.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_metric(metric_type : str, custom_metric):
+    &#34;&#34;&#34;
+    Register a custom metric for use by DELTA.
+
+    Parameters
+    ----------
+    metric_type: str
+        Name of the metric.
+    custom_metric: Type[`tensorflow.keras.metrics.Metric`]
+        A class extending [Metric](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric).
+    &#34;&#34;&#34;
+    global __metrics
+    __metrics[metric_type] = custom_metric</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_preprocess"><code class="name flex">
+<span>def <span class="ident">register_preprocess</span></span>(<span>function_name: str, prep_function)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register a preprocessing function for use in delta.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>function_name</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the preprocessing function.</dd>
+</dl>
+<p>prep_function:
+A function of the form prep_function(data, rectangle, bands_list), where data is an input
+numpy array, rectangle a <code><a title="delta.imagery.rectangle.Rectangle" href="../imagery/rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a></code> specifying the region covered by data,
+and bands_list is an integer list of bands loaded. The function must return a numpy array.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_preprocess(function_name : str, prep_function):
+    &#34;&#34;&#34;
+    Register a preprocessing function for use in delta.
+
+    Parameters
+    ----------
+    function_name: str
+        Name of the preprocessing function.
+    prep_function:
+        A function of the form prep_function(data, rectangle, bands_list), where data is an input
+        numpy array, rectangle a `delta.imagery.rectangle.Rectangle` specifying the region covered by data,
+        and bands_list is an integer list of bands loaded. The function must return a numpy array.
+    &#34;&#34;&#34;
+    global __prep_funcs
+    __prep_funcs[function_name] = prep_function</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.config" href="index.html">delta.config</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.config.extensions.callback" href="#delta.config.extensions.callback">callback</a></code></li>
+<li><code><a title="delta.config.extensions.custom_objects" href="#delta.config.extensions.custom_objects">custom_objects</a></code></li>
+<li><code><a title="delta.config.extensions.image_reader" href="#delta.config.extensions.image_reader">image_reader</a></code></li>
+<li><code><a title="delta.config.extensions.image_writer" href="#delta.config.extensions.image_writer">image_writer</a></code></li>
+<li><code><a title="delta.config.extensions.layer" href="#delta.config.extensions.layer">layer</a></code></li>
+<li><code><a title="delta.config.extensions.loss" href="#delta.config.extensions.loss">loss</a></code></li>
+<li><code><a title="delta.config.extensions.metric" href="#delta.config.extensions.metric">metric</a></code></li>
+<li><code><a title="delta.config.extensions.preprocess_function" href="#delta.config.extensions.preprocess_function">preprocess_function</a></code></li>
+<li><code><a title="delta.config.extensions.register_callback" href="#delta.config.extensions.register_callback">register_callback</a></code></li>
+<li><code><a title="delta.config.extensions.register_extension" href="#delta.config.extensions.register_extension">register_extension</a></code></li>
+<li><code><a title="delta.config.extensions.register_image_reader" href="#delta.config.extensions.register_image_reader">register_image_reader</a></code></li>
+<li><code><a title="delta.config.extensions.register_image_writer" href="#delta.config.extensions.register_image_writer">register_image_writer</a></code></li>
+<li><code><a title="delta.config.extensions.register_layer" href="#delta.config.extensions.register_layer">register_layer</a></code></li>
+<li><code><a title="delta.config.extensions.register_loss" href="#delta.config.extensions.register_loss">register_loss</a></code></li>
+<li><code><a title="delta.config.extensions.register_metric" href="#delta.config.extensions.register_metric">register_metric</a></code></li>
+<li><code><a title="delta.config.extensions.register_preprocess" href="#delta.config.extensions.register_preprocess">register_preprocess</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>

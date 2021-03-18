@@ -1,0 +1,1531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>delta.imagery.delta_image API documentation</title>
+<meta name="description" content="Base classes for reading and writing images." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.imagery.delta_image</code></h1>
+</header>
+<section id="section-intro">
+<p>Base classes for reading and writing images.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Base classes for reading and writing images.
+&#34;&#34;&#34;
+
+from abc import ABC, abstractmethod
+import concurrent.futures
+import copy
+import functools
+from typing import Callable, Iterator, List, Tuple
+
+import numpy as np
+
+from delta.imagery import rectangle, utilities
+
+class DeltaImage(ABC):
+    &#34;&#34;&#34;
+    Base class used for wrapping input images in DELTA. Can be extended
+    to support new data types. A variety of image types are implemented in
+    `delta.extensions.sources`.
+    &#34;&#34;&#34;
+    def __init__(self, nodata_value=None):
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        nodata_value: Optional[Any]
+            Nodata value for the image, if any.
+        &#34;&#34;&#34;
+        self.__preprocess_function = None
+        self.__nodata_value = nodata_value
+
+    def read(self, roi: rectangle.Rectangle=None, bands: List[int]=None, buf: np.ndarray=None) -&gt; np.ndarray:
+        &#34;&#34;&#34;
+        Reads the image in [row, col, band] indexing.
+
+        Subclasses should generally not overwrite this method--- they will likely want to implement
+        `_read`.
+
+        Parameters
+        ----------
+        roi: `rectangle.Rectangle`
+            The bounding box to read from the image. If None, read the entire image.
+        bands: List[int]
+            Bands to load (zero-indexed). If None, read all bands.
+        buf: np.ndarray
+            If specified, reads the image into this buffer. Must be sufficiently large.
+
+        Returns
+        -------
+        np.ndarray:
+            A buffer containing the requested part of the image.
+        &#34;&#34;&#34;
+        if roi is None:
+            roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        else:
+            if roi.min_x &lt; 0 or roi.min_y &lt; 0 or roi.max_x &gt; self.width() or roi.max_y &gt; self.height():
+                raise IndexError(&#39;Rectangle (%d, %d, %d, %d) outside of bounds (%d, %d).&#39; %
+                                 (roi.min_x, roi.min_y, roi.max_x, roi.max_y, self.width(), self.height()))
+        if bands is None:
+            bands = range(self.num_bands())
+        if isinstance(bands, int):
+            result = self._read(roi, [bands], buf)
+            result = result[:, :, 0] # reduce dimensions
+        else:
+            result = self._read(roi, bands, buf)
+        if self.__preprocess_function:
+            return self.__preprocess_function(result, roi, bands)
+        return result
+
+    def set_preprocess(self, callback: Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]):
+        &#34;&#34;&#34;
+        Set a preproprocessing function callback to be applied to the results of
+        all reads on the image.
+
+        Parameters
+        ----------
+        callback: Callable[[np.ndarray, rectangle.Rectangle, List[in]], np.ndarray]
+            A function to be called on loading image data, callback(image, roi, bands),
+            where `image` is the numpy array containing the read data, `roi` is the region of interest read,
+            and `bands` is a list of the bands read. Must return a numpy array.
+        &#34;&#34;&#34;
+        self.__preprocess_function = callback
+
+    def get_preprocess(self) -&gt; Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]
+            The preprocess function currently set.
+        &#34;&#34;&#34;
+        return self.__preprocess_function
+
+    def nodata_value(self):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        The value of pixels to treat as nodata.
+        &#34;&#34;&#34;
+        return self.__nodata_value
+
+    @abstractmethod
+    def _read(self, roi: rectangle.Rectangle, bands: List[int], buf: np.ndarray=None) -&gt; np.ndarray:
+        &#34;&#34;&#34;
+        Read the image.
+
+        Abstract function to be implemented by subclasses. Users should call `read` instead.
+
+        Parameters
+        ----------
+        roi: rectangle.Rectangle
+            Segment of the image to read.
+        bands: List[int]
+            List of bands to read (zero-indexed).
+        buf: np.ndarray
+            Buffer to read into. If not specified, a new buffer should be allocated.
+
+        Returns
+        -------
+        np.ndarray:
+            The relevant part of the image as a numpy array.
+        &#34;&#34;&#34;
+
+    def metadata(self): #pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Returns
+        -------
+        A dictionary of metadata, if any is given for the image type.
+        &#34;&#34;&#34;
+        return {}
+
+    @abstractmethod
+    def size(self) -&gt; Tuple[int, int]:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        Tuple[int, int]:
+            The size of this image in pixels, as (width, height).
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def num_bands(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of bands in this image.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def dtype(self) -&gt; np.dtype:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        numpy.dtype:
+            The underlying data type of the image.
+        &#34;&#34;&#34;
+
+    def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -&gt; rectangle.Rectangle:#pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        desired_roi: rectangle.Rectangle
+            Original region of interest.
+
+        Returns
+        -------
+        rectangle.Rectangle:
+            The block-aligned roi containing the specified roi.
+        &#34;&#34;&#34;
+        return desired_roi
+
+    def block_size(self): #pylint: disable=no-self-use
+        &#34;&#34;&#34;
+        Returns
+        -------
+        (int, int):
+            The suggested block size for efficient reading.
+        &#34;&#34;&#34;
+        return (256, 256)
+
+    def width(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of image columns
+        &#34;&#34;&#34;
+        return self.size()[0]
+
+    def height(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of image rows
+        &#34;&#34;&#34;
+        return self.size()[1]
+
+    def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
+              partials_overlap: bool=False, by_block=False):
+        &#34;&#34;&#34;
+        Splits the image into tiles with the given properties.
+
+        Parameters
+        ----------
+        shape: (int, int)
+            Shape of each tile
+        overlap_shape: (int, int)
+            Amount to overlap tiles in x and y direction
+        partials: bool
+            If true, include partial tiles at the edge of the image.
+        min_shape: (int, int)
+            If true and `partials` is true, keep partial tiles of this minimum size.
+        partials_overlap: bool
+            If `partials` is false, and this is true, expand partial tiles
+            to the desired size. Tiles may overlap in some areas.
+        by_block: bool
+            If true, changes the returned generator to group tiles by block.
+            This is intended to optimize disk reads by reading the entire block at once.
+
+        Returns
+        -------
+        List[Rectangle] or List[(Rectangle, List[Rectangle])]
+            List of ROIs. If `by_block` is true, returns a list of (Rectangle, List[Rectangle])
+            instead, where the first rectangle is a larger block containing multiple tiles in a list.
+        &#34;&#34;&#34;
+        input_bounds = rectangle.Rectangle(0, 0, max_x=self.width(), max_y=self.height())
+        return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
+                                           min_shape=min_shape, partials_overlap=partials_overlap,
+                                           by_block=by_block)
+
+    def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -&gt; \
+                  Iterator[Tuple[rectangle.Rectangle, np.ndarray, int, int]]:
+        &#34;&#34;&#34;
+        Generator that yields image blocks of the requested rois.
+
+        Parameters
+        ----------
+        requested_rois: Iterator[Rectangle]
+            Regions of interest to read.
+
+        Returns
+        -------
+        Iterator[Tuple[Rectangle, numpy.ndarray, int, int]]
+            A generator with read image regions. In each tuple, the first item
+            is the region of interest, the second is a numpy array of the image contents,
+            the third is the index of the current region of interest, and the fourth is the total
+            number of rois.
+        &#34;&#34;&#34;
+        block_rois = copy.copy(requested_rois)
+
+        whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        for roi in requested_rois:
+            if not whole_bounds.contains_rect(roi):
+                raise Exception(&#39;Roi outside image bounds: &#39; + str(roi) + str(whole_bounds))
+
+        # gdal doesn&#39;t work reading multithreading. But this let&#39;s a thread
+        # take care of IO input while we do computation.
+        jobs = []
+
+        total_rois = len(block_rois)
+        while block_rois:
+            # For the next (output) block, figure out the (input block) aligned
+            # data read that we need to perform to get it.
+            read_roi = self.block_aligned_roi(block_rois[0])
+
+            applicable_rois = []
+
+            # Loop through the remaining ROIs and apply the callback function to each
+            # ROI that is contained in the section we read in.
+            index = 0
+            while index &lt; len(block_rois):
+
+                if not read_roi.contains_rect(block_rois[index]):
+                    index += 1
+                    continue
+                applicable_rois.append(block_rois.pop(index))
+
+            jobs.append((read_roi, applicable_rois))
+
+        # only do a few reads ahead since otherwise we will exhaust our memory
+        pending = []
+        exe = concurrent.futures.ThreadPoolExecutor(1)
+        NUM_AHEAD = 2
+        for i in range(min(NUM_AHEAD, len(jobs))):
+            pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
+        num_remaining = total_rois
+        for (i, (read_roi, rois)) in enumerate(jobs):
+            buf = pending.pop(0).result()
+            for roi in rois:
+                x0 = roi.min_x - read_roi.min_x
+                y0 = roi.min_y - read_roi.min_y
+                num_remaining -= 1
+                yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
+                       (total_rois - num_remaining, total_rois))
+            if i + NUM_AHEAD &lt; len(jobs):
+                pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))
+
+    def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
+                     callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
+                     show_progress: bool=False) -&gt; None:
+        &#34;&#34;&#34;
+        Apply a callback function to a list of ROIs.
+
+        Parameters
+        ----------
+        requested_rois: Iterator[Rectangle]
+            Regions of interest to evaluate
+        callback_function: Callable[[rectangle.Rectangle, np.ndarray], None]
+            A function to apply to each requested region. Pass the bounding box
+            of the current region and a numpy array of pixel values as inputs.
+        show_progress: bool
+            Print a progress bar on the command line if true.
+        &#34;&#34;&#34;
+        for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
+            callback_function(roi, buf)
+            if show_progress:
+                utilities.progress_bar(&#39;%d / %d&#39; % (i, total), i / total, prefix=&#39;Blocks Processed:&#39;)
+        if show_progress:
+            print()
+
+class DeltaImageWriter(ABC):
+    &#34;&#34;&#34;
+    Base class for writing images in DELTA.
+    &#34;&#34;&#34;
+    @abstractmethod
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
+        &#34;&#34;&#34;
+        Prepare for writing.
+
+        Parameters
+        ----------
+        size: tuple of ints
+            Dimensions of the image to write.
+        numpy_dtype: numpy.dtype
+            Type of the underling data.
+        metadata: dict
+            Dictionary of metadata to save with the image.
+        nodata_value: numpy_dtype
+            Value representing nodata in the image.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def write(self, data: np.ndarray, x: int, y: int):
+        &#34;&#34;&#34;
+        Write a portion of the image.
+
+        Parameters
+        ----------
+        data: np.ndarray
+            A block of image data to write.
+        x: int
+        y: int
+            Top-left coordinates of the block of data to write.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def close(self):
+        &#34;&#34;&#34;
+        Finish writing, perform cleanup.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def abort(self):
+        &#34;&#34;&#34;
+        Cancel writing before finished, perform cleanup.
+        &#34;&#34;&#34;
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        self.close()
+        return False</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.imagery.delta_image.DeltaImage"><code class="flex name class">
+<span>class <span class="ident">DeltaImage</span></span>
+<span>(</span><span>nodata_value=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base class used for wrapping input images in DELTA. Can be extended
+to support new data types. A variety of image types are implemented in
+<code><a title="delta.extensions.sources" href="../extensions/sources/index.html">delta.extensions.sources</a></code>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>nodata_value</code></strong> :&ensp;<code>Optional[Any]</code></dt>
+<dd>Nodata value for the image, if any.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DeltaImage(ABC):
+    &#34;&#34;&#34;
+    Base class used for wrapping input images in DELTA. Can be extended
+    to support new data types. A variety of image types are implemented in
+    `delta.extensions.sources`.
+    &#34;&#34;&#34;
+    def __init__(self, nodata_value=None):
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        nodata_value: Optional[Any]
+            Nodata value for the image, if any.
+        &#34;&#34;&#34;
+        self.__preprocess_function = None
+        self.__nodata_value = nodata_value
+
+    def read(self, roi: rectangle.Rectangle=None, bands: List[int]=None, buf: np.ndarray=None) -&gt; np.ndarray:
+        &#34;&#34;&#34;
+        Reads the image in [row, col, band] indexing.
+
+        Subclasses should generally not overwrite this method--- they will likely want to implement
+        `_read`.
+
+        Parameters
+        ----------
+        roi: `rectangle.Rectangle`
+            The bounding box to read from the image. If None, read the entire image.
+        bands: List[int]
+            Bands to load (zero-indexed). If None, read all bands.
+        buf: np.ndarray
+            If specified, reads the image into this buffer. Must be sufficiently large.
+
+        Returns
+        -------
+        np.ndarray:
+            A buffer containing the requested part of the image.
+        &#34;&#34;&#34;
+        if roi is None:
+            roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        else:
+            if roi.min_x &lt; 0 or roi.min_y &lt; 0 or roi.max_x &gt; self.width() or roi.max_y &gt; self.height():
+                raise IndexError(&#39;Rectangle (%d, %d, %d, %d) outside of bounds (%d, %d).&#39; %
+                                 (roi.min_x, roi.min_y, roi.max_x, roi.max_y, self.width(), self.height()))
+        if bands is None:
+            bands = range(self.num_bands())
+        if isinstance(bands, int):
+            result = self._read(roi, [bands], buf)
+            result = result[:, :, 0] # reduce dimensions
+        else:
+            result = self._read(roi, bands, buf)
+        if self.__preprocess_function:
+            return self.__preprocess_function(result, roi, bands)
+        return result
+
+    def set_preprocess(self, callback: Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]):
+        &#34;&#34;&#34;
+        Set a preproprocessing function callback to be applied to the results of
+        all reads on the image.
+
+        Parameters
+        ----------
+        callback: Callable[[np.ndarray, rectangle.Rectangle, List[in]], np.ndarray]
+            A function to be called on loading image data, callback(image, roi, bands),
+            where `image` is the numpy array containing the read data, `roi` is the region of interest read,
+            and `bands` is a list of the bands read. Must return a numpy array.
+        &#34;&#34;&#34;
+        self.__preprocess_function = callback
+
+    def get_preprocess(self) -&gt; Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]
+            The preprocess function currently set.
+        &#34;&#34;&#34;
+        return self.__preprocess_function
+
+    def nodata_value(self):
+        &#34;&#34;&#34;
+        Returns
+        -------
+        The value of pixels to treat as nodata.
+        &#34;&#34;&#34;
+        return self.__nodata_value
+
+    @abstractmethod
+    def _read(self, roi: rectangle.Rectangle, bands: List[int], buf: np.ndarray=None) -&gt; np.ndarray:
+        &#34;&#34;&#34;
+        Read the image.
+
+        Abstract function to be implemented by subclasses. Users should call `read` instead.
+
+        Parameters
+        ----------
+        roi: rectangle.Rectangle
+            Segment of the image to read.
+        bands: List[int]
+            List of bands to read (zero-indexed).
+        buf: np.ndarray
+            Buffer to read into. If not specified, a new buffer should be allocated.
+
+        Returns
+        -------
+        np.ndarray:
+            The relevant part of the image as a numpy array.
+        &#34;&#34;&#34;
+
+    def metadata(self): #pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Returns
+        -------
+        A dictionary of metadata, if any is given for the image type.
+        &#34;&#34;&#34;
+        return {}
+
+    @abstractmethod
+    def size(self) -&gt; Tuple[int, int]:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        Tuple[int, int]:
+            The size of this image in pixels, as (width, height).
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def num_bands(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of bands in this image.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def dtype(self) -&gt; np.dtype:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        numpy.dtype:
+            The underlying data type of the image.
+        &#34;&#34;&#34;
+
+    def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -&gt; rectangle.Rectangle:#pylint:disable=no-self-use
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        desired_roi: rectangle.Rectangle
+            Original region of interest.
+
+        Returns
+        -------
+        rectangle.Rectangle:
+            The block-aligned roi containing the specified roi.
+        &#34;&#34;&#34;
+        return desired_roi
+
+    def block_size(self): #pylint: disable=no-self-use
+        &#34;&#34;&#34;
+        Returns
+        -------
+        (int, int):
+            The suggested block size for efficient reading.
+        &#34;&#34;&#34;
+        return (256, 256)
+
+    def width(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of image columns
+        &#34;&#34;&#34;
+        return self.size()[0]
+
+    def height(self) -&gt; int:
+        &#34;&#34;&#34;
+        Returns
+        -------
+        int:
+            The number of image rows
+        &#34;&#34;&#34;
+        return self.size()[1]
+
+    def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
+              partials_overlap: bool=False, by_block=False):
+        &#34;&#34;&#34;
+        Splits the image into tiles with the given properties.
+
+        Parameters
+        ----------
+        shape: (int, int)
+            Shape of each tile
+        overlap_shape: (int, int)
+            Amount to overlap tiles in x and y direction
+        partials: bool
+            If true, include partial tiles at the edge of the image.
+        min_shape: (int, int)
+            If true and `partials` is true, keep partial tiles of this minimum size.
+        partials_overlap: bool
+            If `partials` is false, and this is true, expand partial tiles
+            to the desired size. Tiles may overlap in some areas.
+        by_block: bool
+            If true, changes the returned generator to group tiles by block.
+            This is intended to optimize disk reads by reading the entire block at once.
+
+        Returns
+        -------
+        List[Rectangle] or List[(Rectangle, List[Rectangle])]
+            List of ROIs. If `by_block` is true, returns a list of (Rectangle, List[Rectangle])
+            instead, where the first rectangle is a larger block containing multiple tiles in a list.
+        &#34;&#34;&#34;
+        input_bounds = rectangle.Rectangle(0, 0, max_x=self.width(), max_y=self.height())
+        return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
+                                           min_shape=min_shape, partials_overlap=partials_overlap,
+                                           by_block=by_block)
+
+    def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -&gt; \
+                  Iterator[Tuple[rectangle.Rectangle, np.ndarray, int, int]]:
+        &#34;&#34;&#34;
+        Generator that yields image blocks of the requested rois.
+
+        Parameters
+        ----------
+        requested_rois: Iterator[Rectangle]
+            Regions of interest to read.
+
+        Returns
+        -------
+        Iterator[Tuple[Rectangle, numpy.ndarray, int, int]]
+            A generator with read image regions. In each tuple, the first item
+            is the region of interest, the second is a numpy array of the image contents,
+            the third is the index of the current region of interest, and the fourth is the total
+            number of rois.
+        &#34;&#34;&#34;
+        block_rois = copy.copy(requested_rois)
+
+        whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+        for roi in requested_rois:
+            if not whole_bounds.contains_rect(roi):
+                raise Exception(&#39;Roi outside image bounds: &#39; + str(roi) + str(whole_bounds))
+
+        # gdal doesn&#39;t work reading multithreading. But this let&#39;s a thread
+        # take care of IO input while we do computation.
+        jobs = []
+
+        total_rois = len(block_rois)
+        while block_rois:
+            # For the next (output) block, figure out the (input block) aligned
+            # data read that we need to perform to get it.
+            read_roi = self.block_aligned_roi(block_rois[0])
+
+            applicable_rois = []
+
+            # Loop through the remaining ROIs and apply the callback function to each
+            # ROI that is contained in the section we read in.
+            index = 0
+            while index &lt; len(block_rois):
+
+                if not read_roi.contains_rect(block_rois[index]):
+                    index += 1
+                    continue
+                applicable_rois.append(block_rois.pop(index))
+
+            jobs.append((read_roi, applicable_rois))
+
+        # only do a few reads ahead since otherwise we will exhaust our memory
+        pending = []
+        exe = concurrent.futures.ThreadPoolExecutor(1)
+        NUM_AHEAD = 2
+        for i in range(min(NUM_AHEAD, len(jobs))):
+            pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
+        num_remaining = total_rois
+        for (i, (read_roi, rois)) in enumerate(jobs):
+            buf = pending.pop(0).result()
+            for roi in rois:
+                x0 = roi.min_x - read_roi.min_x
+                y0 = roi.min_y - read_roi.min_y
+                num_remaining -= 1
+                yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
+                       (total_rois - num_remaining, total_rois))
+            if i + NUM_AHEAD &lt; len(jobs):
+                pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))
+
+    def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
+                     callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
+                     show_progress: bool=False) -&gt; None:
+        &#34;&#34;&#34;
+        Apply a callback function to a list of ROIs.
+
+        Parameters
+        ----------
+        requested_rois: Iterator[Rectangle]
+            Regions of interest to evaluate
+        callback_function: Callable[[rectangle.Rectangle, np.ndarray], None]
+            A function to apply to each requested region. Pass the bounding box
+            of the current region and a numpy array of pixel values as inputs.
+        show_progress: bool
+            Print a progress bar on the command line if true.
+        &#34;&#34;&#34;
+        for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
+            callback_function(roi, buf)
+            if show_progress:
+                utilities.progress_bar(&#39;%d / %d&#39; % (i, total), i / total, prefix=&#39;Blocks Processed:&#39;)
+        if show_progress:
+            print()</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.sources.npy.NumpyImage" href="../extensions/sources/npy.html#delta.extensions.sources.npy.NumpyImage">NumpyImage</a></li>
+<li><a title="delta.extensions.sources.tiff.TiffImage" href="../extensions/sources/tiff.html#delta.extensions.sources.tiff.TiffImage">TiffImage</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.delta_image.DeltaImage.block_aligned_roi"><code class="name flex">
+<span>def <span class="ident">block_aligned_roi</span></span>(<span>self, desired_roi: <a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>) ‑> <a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a></span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>desired_roi</code></strong> :&ensp;<code>rectangle.Rectangle</code></dt>
+<dd>Original region of interest.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>rectangle.Rectangle:</code></dt>
+<dd>The block-aligned roi containing the specified roi.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -&gt; rectangle.Rectangle:#pylint:disable=no-self-use
+    &#34;&#34;&#34;
+    Parameters
+    ----------
+    desired_roi: rectangle.Rectangle
+        Original region of interest.
+
+    Returns
+    -------
+    rectangle.Rectangle:
+        The block-aligned roi containing the specified roi.
+    &#34;&#34;&#34;
+    return desired_roi</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.block_size"><code class="name flex">
+<span>def <span class="ident">block_size</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<p>(int, int):
+The suggested block size for efficient reading.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def block_size(self): #pylint: disable=no-self-use
+    &#34;&#34;&#34;
+    Returns
+    -------
+    (int, int):
+        The suggested block size for efficient reading.
+    &#34;&#34;&#34;
+    return (256, 256)</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.dtype"><code class="name flex">
+<span>def <span class="ident">dtype</span></span>(<span>self) ‑> numpy.dtype</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>numpy.dtype:</code></dt>
+<dd>The underlying data type of the image.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def dtype(self) -&gt; np.dtype:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    numpy.dtype:
+        The underlying data type of the image.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.get_preprocess"><code class="name flex">
+<span>def <span class="ident">get_preprocess</span></span>(<span>self) ‑> Callable[[numpy.ndarray, <a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>, List[int]], numpy.ndarray]</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]</code></dt>
+<dd>The preprocess function currently set.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_preprocess(self) -&gt; Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]
+        The preprocess function currently set.
+    &#34;&#34;&#34;
+    return self.__preprocess_function</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.height"><code class="name flex">
+<span>def <span class="ident">height</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int:</code></dt>
+<dd>The number of image rows</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def height(self) -&gt; int:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    int:
+        The number of image rows
+    &#34;&#34;&#34;
+    return self.size()[1]</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.metadata"><code class="name flex">
+<span>def <span class="ident">metadata</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<p>A dictionary of metadata, if any is given for the image type.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def metadata(self): #pylint:disable=no-self-use
+    &#34;&#34;&#34;
+    Returns
+    -------
+    A dictionary of metadata, if any is given for the image type.
+    &#34;&#34;&#34;
+    return {}</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.nodata_value"><code class="name flex">
+<span>def <span class="ident">nodata_value</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<p>The value of pixels to treat as nodata.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def nodata_value(self):
+    &#34;&#34;&#34;
+    Returns
+    -------
+    The value of pixels to treat as nodata.
+    &#34;&#34;&#34;
+    return self.__nodata_value</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.num_bands"><code class="name flex">
+<span>def <span class="ident">num_bands</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int:</code></dt>
+<dd>The number of bands in this image.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def num_bands(self) -&gt; int:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    int:
+        The number of bands in this image.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.process_rois"><code class="name flex">
+<span>def <span class="ident">process_rois</span></span>(<span>self, requested_rois: Iterator[<a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>], callback_function: Callable[[<a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>, numpy.ndarray], NoneType], show_progress: bool = False) ‑> NoneType</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Apply a callback function to a list of ROIs.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>requested_rois</code></strong> :&ensp;<code>Iterator[Rectangle]</code></dt>
+<dd>Regions of interest to evaluate</dd>
+<dt><strong><code>callback_function</code></strong> :&ensp;<code>Callable[[rectangle.Rectangle, np.ndarray], None]</code></dt>
+<dd>A function to apply to each requested region. Pass the bounding box
+of the current region and a numpy array of pixel values as inputs.</dd>
+<dt><strong><code>show_progress</code></strong> :&ensp;<code>bool</code></dt>
+<dd>Print a progress bar on the command line if true.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
+                 callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
+                 show_progress: bool=False) -&gt; None:
+    &#34;&#34;&#34;
+    Apply a callback function to a list of ROIs.
+
+    Parameters
+    ----------
+    requested_rois: Iterator[Rectangle]
+        Regions of interest to evaluate
+    callback_function: Callable[[rectangle.Rectangle, np.ndarray], None]
+        A function to apply to each requested region. Pass the bounding box
+        of the current region and a numpy array of pixel values as inputs.
+    show_progress: bool
+        Print a progress bar on the command line if true.
+    &#34;&#34;&#34;
+    for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
+        callback_function(roi, buf)
+        if show_progress:
+            utilities.progress_bar(&#39;%d / %d&#39; % (i, total), i / total, prefix=&#39;Blocks Processed:&#39;)
+    if show_progress:
+        print()</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.read"><code class="name flex">
+<span>def <span class="ident">read</span></span>(<span>self, roi: <a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a> = None, bands: List[int] = None, buf: numpy.ndarray = None) ‑> numpy.ndarray</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Reads the image in [row, col, band] indexing.</p>
+<p>Subclasses should generally not overwrite this method&mdash; they will likely want to implement
+<code>_read</code>.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>roi</code></strong> :&ensp;<code>rectangle.Rectangle</code></dt>
+<dd>The bounding box to read from the image. If None, read the entire image.</dd>
+<dt><strong><code>bands</code></strong> :&ensp;<code>List[int]</code></dt>
+<dd>Bands to load (zero-indexed). If None, read all bands.</dd>
+<dt><strong><code>buf</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>If specified, reads the image into this buffer. Must be sufficiently large.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>np.ndarray:</code></dt>
+<dd>A buffer containing the requested part of the image.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def read(self, roi: rectangle.Rectangle=None, bands: List[int]=None, buf: np.ndarray=None) -&gt; np.ndarray:
+    &#34;&#34;&#34;
+    Reads the image in [row, col, band] indexing.
+
+    Subclasses should generally not overwrite this method--- they will likely want to implement
+    `_read`.
+
+    Parameters
+    ----------
+    roi: `rectangle.Rectangle`
+        The bounding box to read from the image. If None, read the entire image.
+    bands: List[int]
+        Bands to load (zero-indexed). If None, read all bands.
+    buf: np.ndarray
+        If specified, reads the image into this buffer. Must be sufficiently large.
+
+    Returns
+    -------
+    np.ndarray:
+        A buffer containing the requested part of the image.
+    &#34;&#34;&#34;
+    if roi is None:
+        roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+    else:
+        if roi.min_x &lt; 0 or roi.min_y &lt; 0 or roi.max_x &gt; self.width() or roi.max_y &gt; self.height():
+            raise IndexError(&#39;Rectangle (%d, %d, %d, %d) outside of bounds (%d, %d).&#39; %
+                             (roi.min_x, roi.min_y, roi.max_x, roi.max_y, self.width(), self.height()))
+    if bands is None:
+        bands = range(self.num_bands())
+    if isinstance(bands, int):
+        result = self._read(roi, [bands], buf)
+        result = result[:, :, 0] # reduce dimensions
+    else:
+        result = self._read(roi, bands, buf)
+    if self.__preprocess_function:
+        return self.__preprocess_function(result, roi, bands)
+    return result</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.roi_generator"><code class="name flex">
+<span>def <span class="ident">roi_generator</span></span>(<span>self, requested_rois: Iterator[<a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>]) ‑> Iterator[Tuple[<a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>, numpy.ndarray, int, int]]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generator that yields image blocks of the requested rois.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>requested_rois</code></strong> :&ensp;<code>Iterator[Rectangle]</code></dt>
+<dd>Regions of interest to read.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Iterator[Tuple[Rectangle, numpy.ndarray, int, int]]</code></dt>
+<dd>A generator with read image regions. In each tuple, the first item
+is the region of interest, the second is a numpy array of the image contents,
+the third is the index of the current region of interest, and the fourth is the total
+number of rois.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -&gt; \
+              Iterator[Tuple[rectangle.Rectangle, np.ndarray, int, int]]:
+    &#34;&#34;&#34;
+    Generator that yields image blocks of the requested rois.
+
+    Parameters
+    ----------
+    requested_rois: Iterator[Rectangle]
+        Regions of interest to read.
+
+    Returns
+    -------
+    Iterator[Tuple[Rectangle, numpy.ndarray, int, int]]
+        A generator with read image regions. In each tuple, the first item
+        is the region of interest, the second is a numpy array of the image contents,
+        the third is the index of the current region of interest, and the fourth is the total
+        number of rois.
+    &#34;&#34;&#34;
+    block_rois = copy.copy(requested_rois)
+
+    whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
+    for roi in requested_rois:
+        if not whole_bounds.contains_rect(roi):
+            raise Exception(&#39;Roi outside image bounds: &#39; + str(roi) + str(whole_bounds))
+
+    # gdal doesn&#39;t work reading multithreading. But this let&#39;s a thread
+    # take care of IO input while we do computation.
+    jobs = []
+
+    total_rois = len(block_rois)
+    while block_rois:
+        # For the next (output) block, figure out the (input block) aligned
+        # data read that we need to perform to get it.
+        read_roi = self.block_aligned_roi(block_rois[0])
+
+        applicable_rois = []
+
+        # Loop through the remaining ROIs and apply the callback function to each
+        # ROI that is contained in the section we read in.
+        index = 0
+        while index &lt; len(block_rois):
+
+            if not read_roi.contains_rect(block_rois[index]):
+                index += 1
+                continue
+            applicable_rois.append(block_rois.pop(index))
+
+        jobs.append((read_roi, applicable_rois))
+
+    # only do a few reads ahead since otherwise we will exhaust our memory
+    pending = []
+    exe = concurrent.futures.ThreadPoolExecutor(1)
+    NUM_AHEAD = 2
+    for i in range(min(NUM_AHEAD, len(jobs))):
+        pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
+    num_remaining = total_rois
+    for (i, (read_roi, rois)) in enumerate(jobs):
+        buf = pending.pop(0).result()
+        for roi in rois:
+            x0 = roi.min_x - read_roi.min_x
+            y0 = roi.min_y - read_roi.min_y
+            num_remaining -= 1
+            yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
+                   (total_rois - num_remaining, total_rois))
+        if i + NUM_AHEAD &lt; len(jobs):
+            pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.set_preprocess"><code class="name flex">
+<span>def <span class="ident">set_preprocess</span></span>(<span>self, callback: Callable[[numpy.ndarray, <a title="delta.imagery.rectangle.Rectangle" href="rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a>, List[int]], numpy.ndarray])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Set a preproprocessing function callback to be applied to the results of
+all reads on the image.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>callback</code></strong> :&ensp;<code>Callable[[np.ndarray, rectangle.Rectangle, List[in]], np.ndarray]</code></dt>
+<dd>A function to be called on loading image data, callback(image, roi, bands),
+where <code>image</code> is the numpy array containing the read data, <code>roi</code> is the region of interest read,
+and <code>bands</code> is a list of the bands read. Must return a numpy array.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def set_preprocess(self, callback: Callable[[np.ndarray, rectangle.Rectangle, List[int]], np.ndarray]):
+    &#34;&#34;&#34;
+    Set a preproprocessing function callback to be applied to the results of
+    all reads on the image.
+
+    Parameters
+    ----------
+    callback: Callable[[np.ndarray, rectangle.Rectangle, List[in]], np.ndarray]
+        A function to be called on loading image data, callback(image, roi, bands),
+        where `image` is the numpy array containing the read data, `roi` is the region of interest read,
+        and `bands` is a list of the bands read. Must return a numpy array.
+    &#34;&#34;&#34;
+    self.__preprocess_function = callback</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.size"><code class="name flex">
+<span>def <span class="ident">size</span></span>(<span>self) ‑> Tuple[int, int]</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Tuple[int, int]:</code></dt>
+<dd>The size of this image in pixels, as (width, height).</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def size(self) -&gt; Tuple[int, int]:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    Tuple[int, int]:
+        The size of this image in pixels, as (width, height).
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.tiles"><code class="name flex">
+<span>def <span class="ident">tiles</span></span>(<span>self, shape, overlap_shape=(0, 0), partials: bool = True, min_shape=(0, 0), partials_overlap: bool = False, by_block=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Splits the image into tiles with the given properties.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>shape</code></strong> :&ensp;<code>(int, int)</code></dt>
+<dd>Shape of each tile</dd>
+<dt><strong><code>overlap_shape</code></strong> :&ensp;<code>(int, int)</code></dt>
+<dd>Amount to overlap tiles in x and y direction</dd>
+<dt><strong><code>partials</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If true, include partial tiles at the edge of the image.</dd>
+<dt><strong><code>min_shape</code></strong> :&ensp;<code>(int, int)</code></dt>
+<dd>If true and <code>partials</code> is true, keep partial tiles of this minimum size.</dd>
+<dt><strong><code>partials_overlap</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If <code>partials</code> is false, and this is true, expand partial tiles
+to the desired size. Tiles may overlap in some areas.</dd>
+<dt><strong><code>by_block</code></strong> :&ensp;<code>bool</code></dt>
+<dd>If true, changes the returned generator to group tiles by block.
+This is intended to optimize disk reads by reading the entire block at once.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>List[Rectangle]</code> or <code>List[(Rectangle, List[Rectangle])]</code></dt>
+<dd>List of ROIs. If <code>by_block</code> is true, returns a list of (Rectangle, List[Rectangle])
+instead, where the first rectangle is a larger block containing multiple tiles in a list.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
+          partials_overlap: bool=False, by_block=False):
+    &#34;&#34;&#34;
+    Splits the image into tiles with the given properties.
+
+    Parameters
+    ----------
+    shape: (int, int)
+        Shape of each tile
+    overlap_shape: (int, int)
+        Amount to overlap tiles in x and y direction
+    partials: bool
+        If true, include partial tiles at the edge of the image.
+    min_shape: (int, int)
+        If true and `partials` is true, keep partial tiles of this minimum size.
+    partials_overlap: bool
+        If `partials` is false, and this is true, expand partial tiles
+        to the desired size. Tiles may overlap in some areas.
+    by_block: bool
+        If true, changes the returned generator to group tiles by block.
+        This is intended to optimize disk reads by reading the entire block at once.
+
+    Returns
+    -------
+    List[Rectangle] or List[(Rectangle, List[Rectangle])]
+        List of ROIs. If `by_block` is true, returns a list of (Rectangle, List[Rectangle])
+        instead, where the first rectangle is a larger block containing multiple tiles in a list.
+    &#34;&#34;&#34;
+    input_bounds = rectangle.Rectangle(0, 0, max_x=self.width(), max_y=self.height())
+    return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
+                                       min_shape=min_shape, partials_overlap=partials_overlap,
+                                       by_block=by_block)</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImage.width"><code class="name flex">
+<span>def <span class="ident">width</span></span>(<span>self) ‑> int</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>int:</code></dt>
+<dd>The number of image columns</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def width(self) -&gt; int:
+    &#34;&#34;&#34;
+    Returns
+    -------
+    int:
+        The number of image columns
+    &#34;&#34;&#34;
+    return self.size()[0]</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImageWriter"><code class="flex name class">
+<span>class <span class="ident">DeltaImageWriter</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Base class for writing images in DELTA.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DeltaImageWriter(ABC):
+    &#34;&#34;&#34;
+    Base class for writing images in DELTA.
+    &#34;&#34;&#34;
+    @abstractmethod
+    def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
+        &#34;&#34;&#34;
+        Prepare for writing.
+
+        Parameters
+        ----------
+        size: tuple of ints
+            Dimensions of the image to write.
+        numpy_dtype: numpy.dtype
+            Type of the underling data.
+        metadata: dict
+            Dictionary of metadata to save with the image.
+        nodata_value: numpy_dtype
+            Value representing nodata in the image.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def write(self, data: np.ndarray, x: int, y: int):
+        &#34;&#34;&#34;
+        Write a portion of the image.
+
+        Parameters
+        ----------
+        data: np.ndarray
+            A block of image data to write.
+        x: int
+        y: int
+            Top-left coordinates of the block of data to write.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def close(self):
+        &#34;&#34;&#34;
+        Finish writing, perform cleanup.
+        &#34;&#34;&#34;
+
+    @abstractmethod
+    def abort(self):
+        &#34;&#34;&#34;
+        Cancel writing before finished, perform cleanup.
+        &#34;&#34;&#34;
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *unused):
+        self.close()
+        return False</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.sources.npy.NumpyWriter" href="../extensions/sources/npy.html#delta.extensions.sources.npy.NumpyWriter">NumpyWriter</a></li>
+<li><a title="delta.extensions.sources.tiff.TiffWriter" href="../extensions/sources/tiff.html#delta.extensions.sources.tiff.TiffWriter">TiffWriter</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.imagery.delta_image.DeltaImageWriter.abort"><code class="name flex">
+<span>def <span class="ident">abort</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Cancel writing before finished, perform cleanup.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def abort(self):
+    &#34;&#34;&#34;
+    Cancel writing before finished, perform cleanup.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImageWriter.close"><code class="name flex">
+<span>def <span class="ident">close</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Finish writing, perform cleanup.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def close(self):
+    &#34;&#34;&#34;
+    Finish writing, perform cleanup.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImageWriter.initialize"><code class="name flex">
+<span>def <span class="ident">initialize</span></span>(<span>self, size, numpy_dtype, metadata=None, nodata_value=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Prepare for writing.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>size</code></strong> :&ensp;<code>tuple</code> of <code>ints</code></dt>
+<dd>Dimensions of the image to write.</dd>
+<dt><strong><code>numpy_dtype</code></strong> :&ensp;<code>numpy.dtype</code></dt>
+<dd>Type of the underling data.</dd>
+<dt><strong><code>metadata</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Dictionary of metadata to save with the image.</dd>
+<dt><strong><code>nodata_value</code></strong> :&ensp;<code>numpy_dtype</code></dt>
+<dd>Value representing nodata in the image.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
+    &#34;&#34;&#34;
+    Prepare for writing.
+
+    Parameters
+    ----------
+    size: tuple of ints
+        Dimensions of the image to write.
+    numpy_dtype: numpy.dtype
+        Type of the underling data.
+    metadata: dict
+        Dictionary of metadata to save with the image.
+    nodata_value: numpy_dtype
+        Value representing nodata in the image.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+<dt id="delta.imagery.delta_image.DeltaImageWriter.write"><code class="name flex">
+<span>def <span class="ident">write</span></span>(<span>self, data: numpy.ndarray, x: int, y: int)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Write a portion of the image.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>A block of image data to write.</dd>
+<dt><strong><code>x</code></strong> :&ensp;<code>int</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>y</code></strong> :&ensp;<code>int</code></dt>
+<dd>Top-left coordinates of the block of data to write.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@abstractmethod
+def write(self, data: np.ndarray, x: int, y: int):
+    &#34;&#34;&#34;
+    Write a portion of the image.
+
+    Parameters
+    ----------
+    data: np.ndarray
+        A block of image data to write.
+    x: int
+    y: int
+        Top-left coordinates of the block of data to write.
+    &#34;&#34;&#34;</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.imagery" href="index.html">delta.imagery</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.imagery.delta_image.DeltaImage" href="#delta.imagery.delta_image.DeltaImage">DeltaImage</a></code></h4>
+<ul class="two-column">
+<li><code><a title="delta.imagery.delta_image.DeltaImage.block_aligned_roi" href="#delta.imagery.delta_image.DeltaImage.block_aligned_roi">block_aligned_roi</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.block_size" href="#delta.imagery.delta_image.DeltaImage.block_size">block_size</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.dtype" href="#delta.imagery.delta_image.DeltaImage.dtype">dtype</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.get_preprocess" href="#delta.imagery.delta_image.DeltaImage.get_preprocess">get_preprocess</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.height" href="#delta.imagery.delta_image.DeltaImage.height">height</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.metadata" href="#delta.imagery.delta_image.DeltaImage.metadata">metadata</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.nodata_value" href="#delta.imagery.delta_image.DeltaImage.nodata_value">nodata_value</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.num_bands" href="#delta.imagery.delta_image.DeltaImage.num_bands">num_bands</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.process_rois" href="#delta.imagery.delta_image.DeltaImage.process_rois">process_rois</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.read" href="#delta.imagery.delta_image.DeltaImage.read">read</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.roi_generator" href="#delta.imagery.delta_image.DeltaImage.roi_generator">roi_generator</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.set_preprocess" href="#delta.imagery.delta_image.DeltaImage.set_preprocess">set_preprocess</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.size" href="#delta.imagery.delta_image.DeltaImage.size">size</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.tiles" href="#delta.imagery.delta_image.DeltaImage.tiles">tiles</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImage.width" href="#delta.imagery.delta_image.DeltaImage.width">width</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.imagery.delta_image.DeltaImageWriter" href="#delta.imagery.delta_image.DeltaImageWriter">DeltaImageWriter</a></code></h4>
+<ul class="">
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.abort" href="#delta.imagery.delta_image.DeltaImageWriter.abort">abort</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.close" href="#delta.imagery.delta_image.DeltaImageWriter.close">close</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.initialize" href="#delta.imagery.delta_image.DeltaImageWriter.initialize">initialize</a></code></li>
+<li><code><a title="delta.imagery.delta_image.DeltaImageWriter.write" href="#delta.imagery.delta_image.DeltaImageWriter.write">write</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>
