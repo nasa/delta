@@ -1,32 +1,28 @@
 general:
   # negative is all
   gpus:              -1
-  stop_on_input_error: true # If false skip past bad input files without halting training
+  # print more debug information
+  verbose: false
+  extensions:
+    - delta.extensions
 
 io:
   threads:           1
-  # size to load in memory at a time (width x height x bands x bit-width x chunk-size^2)
-  block_size_mb:     1
+  # size of tile to load into memory at a time as [rows, columns]
+  tile_size:         [256, 1024]
   # number of different images to interleave at a time when loading
   interleave_images: 5
-  # ratio of tile width and height when loading images
-  tile_ratio:        5.0
-  # When resuming training with a log_folder, skip input image where we have
-  # already loaded this many tiles.
-  resume_cutoff:     5000
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
     limit:            8
 
 dataset:
-  log_folder:         ~ # Storage location for any record keeping files about the input dataset
   images:
     type:             tiff
     # preprocess the images when loading (i.e., scaling)
     preprocess:
-      enabled:        true
-      scale_factor:   default
+      - scale
     nodata_value:     ~
     directory:        ~
     extension:        default
@@ -35,9 +31,7 @@ dataset:
   
   labels:
     type:             tiff
-    preprocess:
-      enabled:        false
-      scale_factor:   default
+    preprocess:       ~
     nodata_value:     ~
     directory:        ~
     extension:        default
@@ -69,20 +63,20 @@ dataset:
 
 train:
   network:
-    chunk_size:      16
-    output_size:     8
-    model:
-      yaml_file:     networks/convpool.yaml
-      params:        ~
-      layers:        ~
-  chunk_stride:    1
+    yaml_file:     networks/convpool.yaml
+    params:        ~
+    layers:        ~
+  stride:    ~
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5
-  loss_function:   sparse_categorical_crossentropy
+  loss:   sparse_categorical_crossentropy
   metrics:
     - sparse_categorical_accuracy
-  optimizer:       adam
+  optimizer:
+    Adam:
+      learning_rate: 0.001
+  callbacks:       ~
   validation:
     steps:         1000
     # if true, skips the first steps from the training set to use for validation instead
@@ -91,8 +85,7 @@ train:
     images:
       type:        tiff
       preprocess:
-        enabled:        true
-        scale_factor:   default
+        - scale
       nodata_value: ~
       directory:   ~
       extension:   default
@@ -100,14 +93,16 @@ train:
       files:       ~
     labels:
       type:        tiff
-      preprocess:
-        enabled:        false
-        scale_factor:   default
+      preprocess:  ~
       nodata_value: ~
       directory:   ~
       extension:   default
       file_list:   ~
       files:       ~
+  log_folder:         ~ # Storage location for any record keeping files about the input dataset
+  # When resuming training with a log_folder, skip input image where we have
+  # already loaded this many tiles.
+  resume_cutoff:     10
  
 mlflow:
   # default to ~/.local/share/delta/mlflow

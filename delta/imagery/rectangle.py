@@ -21,12 +21,24 @@ Simple rectangle class, useful for dealing with ROIs and tiles.
 import math
 
 class Rectangle:
-    """Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
-       When using it, stay consistent with float or integer values.
+    """
+    Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
+    When using it, stay consistent with float or integer values.
     """
     def __init__(self, min_x, min_y, max_x=0, max_y=0,
                  width=0, height=0):
-        """Specify width/height by name to use those instead of max_x/max_y."""
+        """
+        Parameters
+        ----------
+        min_x: int
+        min_y: int
+        max_x: int
+        max_y: int
+            Rectangle bounds.
+        width: int
+        height: int
+            Specify width / height to use these instead of max_x/max_y.
+        """
         self.min_x = min_x
         self.min_y = min_y
         if width > 0:
@@ -55,8 +67,13 @@ class Rectangle:
 #            for col in range(self.min_x, self.max_x):
 #                yield(TileIndex(row,col))
 
-    def get_bounds(self):
-        '''Returns (min_x, max_x, min_y, max_y)'''
+    def bounds(self):
+        """
+        Returns
+        -------
+        (int, int, int, int):
+            (min_x, max_x, min_y, max_y)
+        """
         return (self.min_x, self.max_x, self.min_y, self.max_y)
 
     def width(self):
@@ -65,14 +82,18 @@ class Rectangle:
         return self.max_y - self.min_y
 
     def has_area(self):
-        '''Returns true if the rectangle contains any area.'''
+        """
+        Returns
+        -------
+        bool:
+            true if the rectangle contains any area.
+        """
         return (self.width() > 0) and (self.height() > 0)
 
     def perimeter(self):
         return 2*self.width() + 2*self.height()
 
     def area(self):
-        '''Returns the valid area'''
         if not self.has_area():
             return 0
         return self.height() * self.width()
@@ -157,18 +178,45 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_width, tile_height, min_width=0, min_height=0,
-                       include_partials=True, overlap_amount=0):
-        '''Return a list of tiles encompassing the entire area of this Rectangle'''
+    def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0),
+                       partials_overlap=False, by_block=False):
+        """
+        Return a list of tiles encompassing the entire area of this Rectangle.
 
-        tile_spacing_x = tile_width  - overlap_amount
-        tile_spacing_y = tile_height - overlap_amount
+        Parameters
+        ----------
+        tile_shape: (int, int)
+            Shape of each tile
+        overlap_shape: (int, int)
+            Amount to overlap tiles in x and y direction
+        include_partials: bool
+            If true, include partial tiles at the edge of the image.
+        min_shape: (int, int)
+            If true and `partials` is true, keep partial tiles of this minimum size.
+        partials_overlap: bool
+            If `partials` is false, and this is true, expand partial tiles
+            to the desired size. Tiles may overlap in some areas.
+        by_block: bool
+            If true, changes the returned generator to group tiles by block.
+            This is intended to optimize disk reads by reading the entire block at once.
+
+        Returns
+        -------
+        List[Rectangle]:
+            Generator yielding ROIs. If `by_block` is true, returns a generator of (Rectangle, List[Rectangle])
+            instead, where the first rectangle is a larger block containing multiple tiles in a list.
+        """
+        tile_width, tile_height = tile_shape
+        min_width, min_height = min_shape
+
+        tile_spacing_x = tile_width  - overlap_shape[0]
+        tile_spacing_y = tile_height - overlap_shape[1]
         num_tiles = (int(math.ceil(self.width()  / tile_spacing_x )),
                      int(math.ceil(self.height() / tile_spacing_y)))
         output_tiles = []
         for c in range(0, num_tiles[0]):
+            row_tiles = []
             for r in range(0, num_tiles[1]):
-
                 tile = Rectangle(self.min_x + c*tile_spacing_x,
                                  self.min_y + r*tile_spacing_y,
                                  width=tile_width, height=tile_height)
@@ -177,8 +225,24 @@ class Rectangle:
                     tile = tile.get_intersection(self)
                     if tile.width() < min_width or tile.height() < min_height:
                         continue
-                    output_tiles.append(tile)
                 else: # Only use it if the uncropped tile fits entirely in this Rectangle
-                    if self.contains_rect(tile):
-                        output_tiles.append(tile)
+                    if not self.contains_rect(tile):
+                        if not partials_overlap:
+                            continue
+                        tile = Rectangle(min(self.max_x, tile.max_x) - tile_width,
+                                         min(self.max_y, tile.max_y) - tile_height,
+                                         width=tile_width, height=tile_height)
+                        if not self.contains_rect(tile):
+                            continue
+                if by_block:
+                    row_tiles.append(tile)
+                else:
+                    output_tiles.append(tile)
+
+            if by_block and row_tiles:
+                row_rect = Rectangle(row_tiles[0].min_x, row_tiles[0].min_y, row_tiles[-1].max_x, row_tiles[-1].max_y)
+                for r in row_tiles:
+                    r.shift(-row_rect.min_x, -row_rect.min_y)
+                output_tiles.append((row_rect, row_tiles))
+
         return output_tiles

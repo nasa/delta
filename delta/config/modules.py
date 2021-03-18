@@ -21,13 +21,45 @@ Registers all config modules.
 
 import delta.imagery.imagery_config
 import delta.ml.ml_config
+from .config import config, DeltaConfigComponent
+from .extensions import register_extension
+
+class ExtensionsConfig(DeltaConfigComponent):
+    """
+    Configuration component for extensions.
+    """
+    def __init__(self):
+        super().__init__()
+
+    # register immediately, don't override
+    def _load_dict(self, d : dict, base_dir):
+        if not d:
+            return
+        if isinstance(d, list):
+            for ext in d:
+                register_extension(ext)
+        elif isinstance(d, str):
+            register_extension(d)
+        else:
+            raise ValueError('extensions should be a list or string.')
 
 _config_initialized = False
 def register_all():
+    """
+    Register all default config modules.
+    """
     global _config_initialized #pylint: disable=global-statement
     # needed to call twice when testing subcommands and when not
     if _config_initialized:
         return
+    config.register_component(DeltaConfigComponent('General'), 'general')
+    config.general.register_component(ExtensionsConfig(), 'extensions')
+    config.general.register_field('extensions', list, 'extensions', None,
+                                  'Python modules to import as extensions.')
+    config.general.register_field('verbose', bool, 'verbose', None,
+                                  'Print debugging information.')
+    config.general.register_arg('verbose', '--verbose', action='store_const',
+                                const=True, type=None)
     delta.imagery.imagery_config.register()
     delta.ml.ml_config.register()
     _config_initialized = True

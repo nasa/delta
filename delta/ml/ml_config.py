@@ -22,6 +22,8 @@ Configuration options specific to machine learning.
 # when tensorflow isn't needed
 import os.path
 
+from typing import Optional
+
 import appdirs
 import pkg_resources
 import yaml
@@ -29,47 +31,24 @@ import yaml
 from delta.imagery.imagery_config import ImageSet, ImageSetConfig, load_images_labels
 import delta.config as config
 
-def loss_function_factory(loss_spec):
-    '''
-    loss_function_factory - Creates a loss function object, if an object is specified in the
-    config file, or a string if that is all that is specified.
-
-    :param: loss_spec Specification of the loss function.  Either a string that is compatible
-    with the keras interface (e.g. 'categorical_crossentropy') or an object defined by a dict
-    of the form {'LossFunctionName': {'arg1':arg1_val, ...,'argN',argN_val}}
-    '''
-    import tensorflow.keras.losses # pylint: disable=import-outside-toplevel
-
-    if isinstance(loss_spec, str):
-        return loss_spec
-
-    if isinstance(loss_spec, list):
-        assert len(loss_spec) == 1, 'Too many loss functions specified'
-        assert isinstance(loss_spec[0], dict), '''Loss functions objects and parameters must
-                                                  be specified as a yaml dictionary object
-                                                  '''
-        assert len(loss_spec[0].keys()) == 1, f'Too many loss functions specified: {dict.keys()}'
-        loss_type = list(loss_spec[0].keys())[0]
-        loss_fn_args = loss_spec[0][loss_type]
-
-        loss_class = getattr(tensorflow.keras.losses, loss_type, None)
-        return loss_class(**loss_fn_args)
-
-    raise RuntimeError(f'Did not recognize the loss function specification: {loss_spec}')
-
-
 class ValidationSet:#pylint:disable=too-few-public-methods
     """
     Specifies the images and labels in a validation set.
     """
-    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+    def __init__(self, images: Optional[ImageSet]=None, labels: Optional[ImageSet]=None,
+                 from_training: bool=False, steps: int=1000):
         """
-        Uses the specified `delta.imagery.sources.ImageSet`s images and labels.
-
-        If `from_training` is `True`, instead takes samples from the training set
-        before they are used for training.
-
-        The number of samples to use for validation is set by `steps`.
+        Parameters
+        ----------
+        images: ImageSet
+            Validation images.
+        labels: ImageSet
+            Optional, validation labels.
+        from_training: bool
+            If true, ignore images and labels arguments and take data from the training imagery.
+            The validation data will not be used for training.
+        steps: int
+            If from_training is true, take this many batches for validation.
         """
         self.images = images
         self.labels = labels
@@ -80,18 +59,21 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     """
     Options used in training by `delta.ml.train.train`.
     """
-    def __init__(self, batch_size, epochs, loss_function, metrics, validation=None, steps=None,
-                 chunk_stride=1, optimizer='adam'):
+    def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
+                 stride=None, optimizer='Adam'):
         self.batch_size = batch_size
         self.epochs = epochs
-        self.loss_function = loss_function
+        self.loss = loss
         self.validation = validation
         self.steps = steps
         self.metrics = metrics
-        self.chunk_stride = chunk_stride
+        self.stride = stride
         self.optimizer = optimizer
 
-class NetworkModelConfig(config.DeltaConfigComponent):
+class NetworkConfig(config.DeltaConfigComponent):
+    """
+    Configuration for a neural network.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('yaml_file', str, 'yaml_file', config.validate_path,
@@ -102,13 +84,12 @@ class NetworkModelConfig(config.DeltaConfigComponent):
     # overwrite model entirely if updated (don't want combined layers from multiple files)
     def _load_dict(self, d : dict, base_dir):
         super()._load_dict(d, base_dir)
-        if 'yaml_file' in d:
-            self._config_dict['layers'] = None
-        elif 'layers' in d:
+        if 'layers' in d and d['layers'] is not None:
             self._config_dict['yaml_file'] = None
-        if 'yaml_file' in d and 'layers' in d and d['yaml_file'] is not None and d['layers'] is not None:
-            raise ValueError('Specified both yaml file and layers in model.')
-        if 'yaml_file' in d and d['yaml_file'] is not None:
+        elif 'yaml_file' in d and d['yaml_file'] is not None:
+            self._config_dict['layers'] = None
+            if 'layers' in d and d['layers'] is not None:
+                raise ValueError('Specified both yaml file and layers in model.')
             yaml_file = d['yaml_file']
             resource = os.path.join('config', yaml_file)
             if not os.path.exists(yaml_file) and pkg_resources.resource_exists('delta', resource):
@@ -118,23 +99,21 @@ class NetworkModelConfig(config.DeltaConfigComponent):
             with open(yaml_file, 'r') as f:
                 self._config_dict.update(yaml.safe_load(f))
 
-class NetworkConfig(config.DeltaConfigComponent):
-    def __init__(self):
-        super().__init__()
-        self.register_field('chunk_size', int, 'chunk_size', config.validate_positive,
-                            'Width of an image chunk to input to the neural network.')
-        self.register_field('output_size', int, 'output_size', config.validate_positive,
-                            'Width of an image chunk to output from the neural network.')
-
-        self.register_arg('chunk_size', '--chunk-size')
-        self.register_arg('output_size', '--output-size')
-        self.register_component(NetworkModelConfig(), 'model')
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Network')
-        super().setup_arg_parser(group, components)
+def validate_size(size, _):
+    """
+    Validate an image region size.
+    """
+    if size is None:
+        return size
+    assert len(size) == 2, 'Size must be tuple.'
+    assert isinstance(size[0], int) and isinstance(size[1], int), 'Size must be integer.'
+    assert size[0] > 0 and size[1] > 0, 'Size must be positive.'
+    return size
 
 class ValidationConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training validation.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('steps', int, 'steps', config.validate_positive,
@@ -171,31 +150,43 @@ class ValidationConfig(config.DeltaConfigComponent):
                                                                 config.config.dataset.classes)
         return self.__labels
 
+def _validate_stride(stride, _):
+    if stride is None:
+        return None
+    if isinstance(stride, int):
+        stride = (stride, stride)
+    assert len(stride) == 2, 'Stride must have two components.'
+    assert isinstance(stride[0], int) and isinstance(stride[1], int), 'Stride must be integer.'
+    assert stride[0] > 0 and stride[1] > 0, 'Stride must be positive.'
+    return stride
+
 class TrainingConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training.
+    """
     def __init__(self):
-        super().__init__()
-        self.register_field('chunk_stride', int, None, config.validate_positive,
+        super().__init__(section_header='Training')
+        self.register_field('stride', (list, int, None), None, _validate_stride,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
         self.register_field('epochs', int, None, config.validate_positive,
                             'Number of times to repeat training on the dataset.')
         self.register_field('batch_size', int, None, config.validate_positive,
                             'Features to group into each training batch.')
-        self.register_field('loss_function', (str, list), None, None, 'Keras loss function.')
+        self.register_field('loss', (str, dict), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
-        self.register_field('steps', int, None, config.validate_positive, 'Batches to train per epoch.')
-        self.register_field('optimizer', str, None, None, 'Keras optimizer to use.')
-
-        self.register_arg('chunk_stride', '--chunk-stride')
+        self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
+        self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
+        self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
+        self.register_field('log_folder', str, 'log_folder', config.validate_path,
+                            'Directory where dataset progress is recorded.')
+        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
+                            'When resuming a dataset, skip images where we have read this many tiles.')
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Training')
-        super().setup_arg_parser(group, components)
 
     def spec(self) -> TrainingSpec:
         """
@@ -208,19 +199,25 @@ class TrainingConfig(config.DeltaConfigComponent):
             if not from_training:
                 (vimg, vlabels) = (self._components['validation'].images(), self._components['validation'].labels())
             validation = ValidationSet(vimg, vlabels, from_training, vsteps)
-            loss_fn = loss_function_factory(self._config_dict['loss_function'])
             self.__training = TrainingSpec(batch_size=self._config_dict['batch_size'],
                                            epochs=self._config_dict['epochs'],
-                                           loss_function=loss_fn,
+                                           loss=self._config_dict['loss'],
                                            metrics=self._config_dict['metrics'],
                                            validation=validation,
                                            steps=self._config_dict['steps'],
-                                           chunk_stride=self._config_dict['chunk_stride'],
+                                           stride=self._config_dict['stride'],
                                            optimizer=self._config_dict['optimizer'])
         return self.__training
 
+    def _load_dict(self, d : dict, base_dir):
+        self.__training = None
+        super()._load_dict(d, base_dir)
+
 
 class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow checkpoints.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('frequency', int, 'frequency', None,
@@ -229,6 +226,9 @@ class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable MLFlow.')
@@ -251,6 +251,9 @@ class MLFlowConfig(config.DeltaConfigComponent):
         return uri
 
 class TensorboardConfig(config.DeltaConfigComponent):
+    """
+    Tensorboard configuration.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable Tensorboard.')
@@ -267,21 +270,12 @@ class TensorboardConfig(config.DeltaConfigComponent):
 
 def register():
     """
-    Registers imagery config options with the global config manager.
+    Registers machine learning config options with the global config manager.
 
     The arguments enable command line arguments for different components.
     """
-    if not hasattr(config.config, 'general'):
-        config.config.register_component(config.DeltaConfigComponent('General'), 'general')
-
     config.config.general.register_field('gpus', int, 'gpus', None, 'Number of gpus to use.')
     config.config.general.register_arg('gpus', '--gpus')
-    config.config.general.register_field('stop_on_input_error', bool, 'stop_on_input_error', None,
-                                         'If false, skip past bad input images.')
-    config.config.general.register_arg('stop_on_input_error', '--bypass-input-errors',
-                                       action='store_const', const=False, type=None)
-    config.config.general.register_arg('stop_on_input_error', '--stop-on-input-error',
-                                       action='store_const', const=True, type=None)
 
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')

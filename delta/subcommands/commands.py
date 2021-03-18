@@ -35,6 +35,10 @@ def main_mlflow_ui(options):
     from .import mlflow_ui
     mlflow_ui.main(options)
 
+def main_validate(options):
+    from .import validate
+    validate.main(options)
+
 def setup_classify(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
     config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
@@ -43,6 +47,8 @@ def setup_classify(subparsers):
     sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')
     sub.add_argument('--no-colormap', dest='noColormap', action='store_true',
                      help='Save raw classification values instead of colormapped values.')
+    sub.add_argument('--overlap', dest='overlap', type=int, default=0, help='Classify with the autoencoder.')
+    sub.add_argument('--validation', dest='validation', help='Classify validation images instead.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main_classify)
@@ -62,5 +68,10 @@ def setup_mlflow_ui(subparsers):
 
     sub.set_defaults(function=main_mlflow_ui)
 
+def setup_validate(subparsers):
+    sub = subparsers.add_parser('validate', help='Validate input dataset.')
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset', 'train'])
 
-SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui]
+    sub.set_defaults(function=main_validate)
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]

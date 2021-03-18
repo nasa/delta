@@ -1,83 +1,88 @@
 **DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
-based on Tensorflow. Use DELTA to train and run neural networks to classify large satellite images. DELTA
-provides pre-trained autoencoders for a variety of satellites to reduce required training data
-and time.
+based on Tensorflow. DELTA classifies large satellite images with neural networks, automatically handling
+tiling large imagery.
 
 DELTA is currently under active development by the
-[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/). Expect
-frequent changes. It is initially being used to map floods for disaster response, in collaboration with the
+[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/).
+Initially, it is mapping floods for disaster response, in collaboration with the
 [U.S. Geological Survey](http://www.usgs.gov), [National Geospatial Intelligence Agency](https://www.nga.mil/),
 [National Center for Supercomputing Applications](http://www.ncsa.illinois.edu/), and
-[University of Alabama](https://www.ua.edu/). DELTA is a component of the
-[Crisis Mapping Toolkit](https://github.com/nasa/CrisisMappingToolkit), in addition
-to our previous software for mapping floods with Google Earth Engine.
+[University of Alabama](https://www.ua.edu/).
 
 Installation
 ============
 
-1. Install [python3](https://www.python.org/downloads/), [GDAL](https://gdal.org/download.html), and the [GDAL python bindings](https://pypi.org/project/GDAL/).
-   For Ubuntu Linux, you can run `scripts/setup.sh` from the DELTA repository to install these dependencies.
+1. Install [python3](https://www.python.org/downloads/), [GDAL](https://gdal.org/download.html),
+   and the [GDAL python bindings](https://pypi.org/project/GDAL/). For Ubuntu Linux, you can run
+   `scripts/setup.sh` from the DELTA repository to install these dependencies.
 
-2. Install Tensorflow with pip following the [instructions](https://www.tensorflow.org/install). For
+2. Install Tensorflow following the [instructions](https://www.tensorflow.org/install). For
    GPU support in DELTA (highly recommended) follow the directions in the
    [GPU guide](https://www.tensorflow.org/install/gpu).
 
 3. Checkout the delta repository and install with pip:
 
-   ```
-   git clone http://github.com/nasa/delta
-   python3 -m pip install delta
-   ```
+```bash
+git clone http://github.com/nasa/delta
+python3 -m pip install delta
+```
 
-  This installs DELTA and all dependencies (except for GDAL which must be installed manually in step 1).
+DELTA is now installed and ready to use!
 
-Usage
-=====
+Documentation
+=============
+DELTA can be used either as a command line tool or as a python library.
+See the python documentation for the master branch [here](https://nasa.github.io/delta/),
+or generate the documentation with `scripts/docs.sh`.
 
-As a simple example, consider training a neural network to map water in Worldview imagery.
-You would:
+Example
+=======
 
-1. **Collect** training data. Find and save Worldview images with and without water. For a robust
-   classifier, the training data should be as representative as possible of the evaluation data.
+As a simple example, consider training a neural network to map clouds with Landsat-8 images.
+The script `scripts/example/l8_cloud.sh` trains such a network using DELTA from the
+[USGS SPARCS dataset](https://www.usgs.gov/core-science-systems/nli/landsat/spatial-procedures-automated-removal-cloud-and-shadow-sparcs),
+and shows how DELTA can be used. The steps involved in this, and other, classification processes are:
 
-2. **Label** training data. Create images matching the training images pixel for pixel, where each pixel
-   in the label is 0 if it is not water and 1 if it is.
+1. **Collect** training data. The SPARCS dataset contains Landsat-8 imagery with and without clouds.
 
-3. **Train** the neural network. Run
-   ```
-   delta train --config wv_water.yaml wv_water.h5
-   ```
-   where `wv_water.yaml` is a configuration file specifying the labeled training data and any
-   training parameters (learn more about configuration files below). The command will output a
-   neural network file `wv_water.h5` which can be
-   used for classification. The neural network operates on the level of *chunks*, inputting
-   and output smaller blocks of the image at a time.
+2. **Label** training data. The SPARCS labels classify each pixel according to cloud, land, water and other classes.
 
-4. **Classify** with the trained network. Run
-   ```
-   delta classify --image image.tiff wv_water.h5
-   ```
-   to classify `image.tiff` using the network `wv_water.h5` learned previously.
-   The file `image_predicted.tiff` will be written to the current directory showing the resulting labels.
+3. **Train** the neural network. The script `scripts/example/l8_cloud.sh` invokes the command
 
-Configuration Files
--------------------
+    ```
+    delta train --config l8_cloud.yaml l8_clouds.h5
+    ```
 
-DELTA is configured with YAML files. Some options can be overwritten with command line options (use
-`delta --help` to see which). [Learn more about DELTA configuration files](./delta/config/README.md).
+    where `scripts/example/l8_cloud.yaml` is a configuration file specifying the labeled training data and
+    training parameters (learn more about configuration files below). A neural network file
+    `l8_clouds.h5` is output.
 
-All available configuration options and their default values are shown [here](./delta/config/delta.yaml).
-We suggest that users create one reusable configuration file to describe the parameters specific
-to each dataset, and separate configuration files to train on or classify that dataset.
+4. **Classify** with the trained network. The script runs
 
-Supported Image Formats
------------------------
-DELTA supports tiff files and a few other formats, listed [here](./delta/imagery/sources/README.md).
-Users can extend DELTA with their own custom formats. We are looking to expand DELTA to support other
-useful file formats.
+    ```
+    delta classify --config l8_cloud.yaml --image-dir ./validate --overlap 32 l8_clouds.h5
+    ```
 
-MLFlow
-------
+    to classify the images in the `validate` folder using the network `l8_clouds.h5` learned previously.
+    The overlap tiles to ignore border regions when possible to make a more aesthetically pleasing classified
+    image. The command outputs a predicted image and confusion matrix.
+
+The results could be improved--- with more training, more data, an improved network, or more--- but this
+example shows the basic usage of DETLA.
+
+Configuration and Extensions
+============================
+
+DELTA provides many options for customizing data inputs and training. All options are configured via
+YAML files. Some options can be overwritten with command line options (use
+`delta --help` to see which). See the `delta.config` README to learn about available configuration
+options.
+
+DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
+and training callbacks. Learn about DELTA extensions in the `delta.config.extensions` documentation.
+
+Data Management
+=============
 
 DELTA integrates with [MLFlow](http://mlflow.org) to track training. MLFlow options can
 be specified in the corresponding area of the configuration file. By default, training and
@@ -92,18 +97,6 @@ View all the logged training information through mlflow by running::
 
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
-
-Using DELTA from Code
-=====================
-You can also call DELTA as a python library and customize it with your own extensions, for example,
-custom image types. The python API documentation can be generated as HTML. To do so:
-
-```
-  pip install pdoc3
-  ./scripts/docs.sh
-```
-
-Then open `html/delta/index.html` in a web browser.
 
 Contributors
 ============

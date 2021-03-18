@@ -27,6 +27,13 @@ import tarfile
 def unpack_to_folder(compressed_path, unpack_folder):
     """
     Unpack a file into the given folder.
+
+    Parameters
+    ----------
+    compressed_path: str
+        Zip or tar file path
+    unpack_folder: str
+        Folder to unpack to
     """
 
     tmpdir = os.path.normpath(unpack_folder) + '_working'
@@ -42,13 +49,24 @@ def unpack_to_folder(compressed_path, unpack_folder):
     except Exception as e:
         shutil.rmtree(tmpdir) # Clear any partially unpacked results
         raise RuntimeError('Caught exception unpacking compressed file: ' + compressed_path
-                           + '\n' + str(e))
+                           + '\n' + str(e)) from e
     os.rename(tmpdir, unpack_folder) # Clean up
 
 def progress_bar(text, fill_amount, prefix = '', length = 80): #pylint: disable=W0613
     """
     Prints a progress bar. Call multiple times with increasing progress to
     overwrite the printed line.
+
+    Parameters
+    ----------
+    text: str
+        Text to print after progress bar
+    fill_amount: float
+        Percent to fill bar, from 0.0 - 1.0
+    prefix: str
+        Text to print before progress bar
+    length: int
+        Number of characters to fill as bar
     """
     filled_length = int(length * fill_amount)
     fill_char = '█' if sys.stdout.encoding.lower() == 'utf-8' else 'X'

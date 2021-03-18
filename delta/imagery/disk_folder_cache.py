@@ -26,10 +26,14 @@ class DiskCache:
     It is safe to mix different datasets in the cache folder, though all items in
     the folder will count towards the limit.
     """
-    def __init__(self, top_folder, limit):
+    def __init__(self, top_folder: str, limit: int):
         """
-        The top level folder to store cached items in and the number to store
-        are specified.
+        Parameters
+        ----------
+        top_folder: str
+            Top level cache directory.
+        limit: int
+            Maximum number of items to keep in cache.
         """
         if limit < 1:
             raise Exception('Illegal limit passed to Disk Cache: ' + str(limit))
@@ -37,8 +41,8 @@ class DiskCache:
         if not os.path.exists(top_folder):
             try:
                 os.mkdir(top_folder)
-            except:
-                raise Exception('Could not create disk cache folder: ' + top_folder)
+            except Exception as e:
+                raise Exception('Could not create disk cache folder: ' + top_folder) from e
 
         self._limit  = limit
         self._folder = top_folder
@@ -48,25 +52,44 @@ class DiskCache:
 
     def limit(self):
         """
-        The number of items to store in the cache.
+        Returns
+        -------
+        int:
+            The maximum number of items to cache.
         """
         return self._limit
 
     def folder(self):
         """
-        The directory to store cached items in.
+        Returns
+        -------
+        str:
+            The cache directory.
         """
         return self._folder
 
     def num_cached(self):
         """
-        The number of items currently cached.
+        Returns
+        -------
+        int:
+            The number of items currently cached.
         """
         return len(self._item_list)
 
     def register_item(self, name):
         """
-        Register a new item with the cache manager and return the full path to it.
+        Register a new item with the cache manager.
+
+        Parameters
+        ----------
+        name: str
+            Filename of the item to add to the cache.
+
+        Returns
+        -------
+        str:
+            Full path to store the item in the cache.
         """
 
         # If we already have the name just move it to the back of the list

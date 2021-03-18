@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Copyright © 2020, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.
@@ -15,6 +17,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Module for reading imagery.
-"""
+# This is the default SNAP install location
+export PATH=~/snap/bin:$PATH
+gptPath="gpt"
+
+# Get input parameters
+graphXmlPath="$1"
+sourceFile="$2"
+targetFile="$3"
+
+# Execute the graph
+${gptPath} ${graphXmlPath} -e -PtargetProduct=${targetFile} ${sourceFile}

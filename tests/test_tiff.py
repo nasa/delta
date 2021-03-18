@@ -23,7 +23,7 @@ import pytest
 import numpy as np
 
 from delta.imagery import rectangle
-from delta.imagery.sources.tiff import TiffImage, write_tiff
+from delta.extensions.sources.tiff import TiffImage, TiffWriter, write_tiff
 
 def check_landsat_tiff(filename):
     '''
@@ -32,13 +32,8 @@ def check_landsat_tiff(filename):
     input_reader = TiffImage(filename)
     assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
-    for i in range(0, input_reader.num_bands()):
-        (bsize, (blocks_x, blocks_y)) = input_reader.block_info(i)
-        assert bsize == (6, 37)
-        assert blocks_x == 7
-        assert blocks_y == 1
-        assert input_reader.numpy_type(i) == np.float32
-        assert input_reader.nodata_value(i) is None
+    assert input_reader.dtype() == np.float32
+    assert input_reader.block_size() == (6, 37)
 
     meta = input_reader.metadata()
     geo = meta['geotransform']
@@ -66,11 +61,10 @@ def check_same(filename1, filename2, data_only=False):
     in2 = TiffImage(filename2)
     assert in1.size() == in2.size()
     assert in1.num_bands() == in2.num_bands()
-    for i in range(in1.num_bands()):
-        if not data_only:
-            assert in1.block_info(i) == in2.block_info(i)
-        assert in1.data_type(i) == in2.data_type(i)
-        assert in1.nodata_value(i) == in2.nodata_value(i)
+    assert in1.dtype() == in2.dtype()
+    if not data_only:
+        assert in1.block_size() == in2.block_size()
+    assert in1.nodata_value() == in2.nodata_value()
 
     if not data_only:
         m_1 = in1.metadata()
@@ -123,6 +117,17 @@ def test_geotiff_write(tmpdir):
     filename = str(tmpdir / 'test.tiff')
 
     write_tiff(filename, numpy_image)
+
+    img = TiffImage(filename)
+    data = np.squeeze(img.read())
+
+    assert numpy_image.shape == data.shape
+    assert np.allclose(numpy_image, data)
+
+    writer = TiffWriter(filename)
+    writer.initialize((3, 5, 1), numpy_image.dtype)
+    writer.write(numpy_image, 0, 0)
+    writer.close()
 
     img = TiffImage(filename)
     data = np.squeeze(img.read())

@@ -14,6 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Main delta command, calls subcommands.
+"""
 
 import sys
 import argparse
@@ -23,6 +26,9 @@ import delta.config.modules
 from delta.subcommands import commands
 
 def main(args):
+    """
+    DELTA main function.
+    """
     delta.config.modules.register_all()
     parser = argparse.ArgumentParser(description='DELTA Machine Learning Toolkit')
     subparsers = parser.add_subparsers()

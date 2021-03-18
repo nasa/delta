@@ -31,7 +31,7 @@ from osgeo import osr
 from usgs import api
 
 from delta.imagery import utilities
-from delta.imagery.sources import landsat
+from delta.extensions.sources import landsat
 
 #------------------------------------------------------------------------------
 

@@ -1,14 +1,23 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import tensorflow as tf
 from argparse import ArgumentParser
 import h5py
 import pathlib
+from delta.config.extensions import custom_objects
+import delta.extensions
+from delta.ml.io import print_network
 
 parser = ArgumentParser(description='Converts a neural network in a *.h5 file to the DELTA configuration langauge')
 parser.add_argument('model_name', type=pathlib.Path, help='The model to convert')
+parser.add_argument('-s', '--size', type=str, help='Tile width.')
 
 args = parser.parse_args()
+
+if args.size is not None:
+    t = args.size.split('x')
+    assert len(t) == 2
+    args.size = (int(t[0]), int(t[1]))
 
 print('Configuration File')
 with h5py.File(args.model_name, 'r') as f:
@@ -17,16 +26,6 @@ with h5py.File(args.model_name, 'r') as f:
     else:
         print('\n' + f.attrs['delta'] + '\n')
 
-a = tf.keras.models.load_model(args.model_name)
-print('Network Structure')
-for l in a.layers:
-    print('\t- ', type(l).__name__)
-    configs = l.get_config()
-    if isinstance(l.input, list):
-        print('\t\t- input: ['+ ', '.join([x.name.replace('/Identity:0','') for x in l.input])+ ']')
-    else:
-        print('\t\t- input:', l.input.name.replace('/Identity:0',''))
-    for k in configs.keys():
-        if isinstance(configs[k], dict) or configs[k] is None:
-            continue
-        print(f'\t\t- {k}: {configs[k]}')
+print('Network')
+a = tf.keras.models.load_model(args.model_name, custom_objects=custom_objects(), compile=False)
+print_network(a, args.size)

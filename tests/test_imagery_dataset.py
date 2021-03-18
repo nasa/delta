@@ -20,63 +20,27 @@ import os
 
 import pytest
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-
-from delta.config import config
-from delta.imagery import imagery_dataset
-from delta.imagery.sources import npy
-from delta.ml import train, predict
-from delta.ml.ml_config import TrainingSpec
 
 import conftest
 
-def load_dataset(source, output_size):
-    config.reset() # don't load any user files
-    (image_path, label_path) = source[0]
-    config.load(yaml_str=
-                '''
-                io:
-                  cache:
-                    dir: %s
-                dataset:
-                  images:
-                    type: %s
-                    directory: %s
-                    extension: %s
-                    preprocess:
-                      enabled: false
-                  labels:
-                    type: %s
-                    directory: %s
-                    extension: %s
-                    preprocess:
-                      enabled: false
-                train:
-                  network:
-                    chunk_size: 3
-                mlflow:
-                  enabled: false''' %
-                (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
-                 source[4], os.path.dirname(label_path), source[3]))
+from delta.config import config
+from delta.imagery import imagery_dataset, rectangle
 
-    dataset = imagery_dataset.ImageryDataset(config.dataset.images(), config.dataset.labels(),
-                                             config.train.network.chunk_size(), output_size,
-                                             config.train.spec().chunk_stride)
-    return dataset
-
-@pytest.fixture(scope="function", params=range(conftest.NUM_SOURCES))
-def dataset(all_sources, request):
-    source = all_sources[request.param]
-    return load_dataset(source, 1)
-
-@pytest.fixture(scope="function")
-def dataset_block_label(all_sources):
-    return load_dataset(all_sources[0], 3)
-
-def test_block_label(dataset_block_label): #pylint: disable=redefined-outer-name
+def test_basics(dataset_block_label):
     """
-    Same as previous test but with dataset that gives labels as 3x3 blocks.
+    Tests basic methods of a dataset.
+    """
+    d = dataset_block_label
+    assert d.chunk_shape() == (3, 3)
+    assert d.input_shape() == (3, 3, 1)
+    assert d.output_shape() == (3, 3, 1)
+    assert len(d.image_set()) == len(d.label_set())
+    assert d.tile_shape() == [256, 1024]
+    assert d.tile_overlap() == (0, 0)
+
+def test_block_label(dataset_block_label):
+    """
+    Tests basic functionality of a dataset on 3x3 blocks.
     """
     num_data = 0
     for image in dataset_block_label.data():
@@ -116,31 +80,98 @@ def test_block_label(dataset_block_label): #pylint: disable=redefined-outer-name
         if v6 or v7 or v8:
             assert label[1, 1] == 0
 
-def test_train(dataset): #pylint: disable=redefined-outer-name
-    def model_fn():
-        kerasinput = keras.layers.Input((3, 3, 1))
-        flat = keras.layers.Flatten()(kerasinput)
-        dense2 = keras.layers.Dense(3 * 3, activation=tf.nn.relu)(flat)
-        dense1 = keras.layers.Dense(2, activation=tf.nn.softmax)(dense2)
-        reshape = keras.layers.Reshape((1, 1, 2))(dense1)
-        return keras.Model(inputs=kerasinput, outputs=reshape)
-    model, _ = train.train(model_fn, dataset,
-                           TrainingSpec(100, 5, 'sparse_categorical_crossentropy', ['accuracy']))
-    ret = model.evaluate(x=dataset.dataset().batch(1000))
-    assert ret[1] > 0.70
+def test_nodata(dataset_block_label):
+    """
+    Tests that this filters out blocks where labels are all 0.
+    """
+    dataset_block_label.label_set().set_nodata_value(0)
+    try:
+        ds = dataset_block_label.dataset()
+        for (_, label) in ds.take(100):
+            assert np.sum(label) > 0
+    finally:
+        dataset_block_label.label_set().set_nodata_value(None)
 
-    (test_image, test_label) = conftest.generate_tile()
-    test_label = test_label[1:-1, 1:-1]
-    output_image = npy.NumpyImageWriter()
-    predictor = predict.LabelPredictor(model, output_image=output_image)
-    predictor.predict(npy.NumpyImage(test_image))
-    # very easy test since we don't train much
-    assert sum(sum(np.logical_xor(output_image.buffer()[:,:,0], test_label))) < 200
+def test_class_weights(dataset_block_label):
+    """
+    Tests that this filters out blocks where labels are all 0.
+    """
+    lookup = np.asarray([1.0, 2.0])
+    ds = dataset_block_label.dataset(class_weights=[1.0, 2.0])
+    for (_, label, weights) in ds.take(100):
+        assert np.all(lookup[label.numpy()] == weights)
+
+def test_rectangle():
+    """
+    Tests the Rectangle class basics.
+    """
+    r = rectangle.Rectangle(5, 10, 15, 30)
+    assert r.min_x == 5
+    assert r.min_y == 10
+    assert r.max_x == 15
+    assert r.max_y == 30
+    assert r.bounds() == (5, 15, 10, 30)
+    assert r.has_area()
+    assert r.get_min_coord() == (5, 10)
+    assert r.perimeter() == 60
+    assert r.area() == 200
+    r.shift(-5, -10)
+    assert r.bounds() == (0, 10, 0, 20)
+    r.scale_by_constant(2, 1)
+    assert r.bounds() == (0, 20, 0, 20)
+    r.expand(0, 0, -10, -5)
+    assert r.bounds() == (0, 10, 0, 15)
+    r.expand_to_contain_pt(14, 14)
+    assert r.bounds() == (0, 15, 0, 15)
+
+    r2 = rectangle.Rectangle(-5, -5, 5, 10)
+    assert r.get_intersection(r2).bounds() == (0, 5, 0, 10)
+    assert not r.contains_rect(r2)
+    assert r.overlaps(r2)
+    assert not r.contains_pt(-1, -1)
+    assert r2.contains_pt(-1, -1)
+    r.expand_to_contain_rect(r2)
+    assert r.bounds() == (-5, 15, -5, 15)
+
+def test_rectangle_rois():
+    """
+    Tests make_tile_rois.
+    """
+    r = rectangle.Rectangle(0, 0, 10, 10)
+    tiles = r.make_tile_rois((5, 5), include_partials=False)
+    assert len(tiles) == 4
+    for t in tiles:
+        assert t.width() == 5 and t.height() == 5
+    tiles = r.make_tile_rois((5, 10), include_partials=False)
+    assert len(tiles) == 2
+    tiles = r.make_tile_rois((11, 11), include_partials=False)
+    assert len(tiles) == 0
+    tiles = r.make_tile_rois((11, 11), include_partials=True)
+    assert len(tiles) == 1
+    assert tiles[0].bounds() == (0, 10, 0, 10)
+    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(11, 11))
+    assert len(tiles) == 0
+    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(10, 10))
+    assert len(tiles) == 1
+
+    tiles = r.make_tile_rois((6, 6), include_partials=False)
+    assert len(tiles) == 1
+    tiles = r.make_tile_rois((6, 6), include_partials=False, overlap_shape=(2, 2))
+    assert len(tiles) == 4
+    tiles = r.make_tile_rois((6, 6), include_partials=False, partials_overlap=True)
+    assert len(tiles) == 4
+    for t in tiles:
+        assert t.width() == 6 and t.height() == 6
+
+    tiles = r.make_tile_rois((5, 5), include_partials=False, by_block=True)
+    assert len(tiles) == 2
+    for row in tiles:
+        assert len(row) == 2
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
     source = all_sources[0]
-    config.reset() # don't load any user files
+    conftest.config_reset()
     (image_path, _) = source[0]
     config.load(yaml_str=
                 '''
@@ -152,23 +183,36 @@ def autoencoder(all_sources):
                     type: %s
                     directory: %s
                     extension: %s
-                    preprocess:
-                      enabled: false
-                train:
-                  network:
-                    chunk_size: 3
-                mlflow:
-                  enabled: false''' %
+                    preprocess: ~''' %
                 (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1]))
 
     dataset = imagery_dataset.AutoencoderDataset(config.dataset.images(),
-                                                 config.train.network.chunk_size(), config.train.spec().chunk_stride)
+                                                 (3, 3), stride=config.train.spec().stride)
     return dataset
 
-def test_autoencoder(autoencoder): #pylint: disable=redefined-outer-name
+def test_autoencoder(autoencoder):
     """
     Test that the inputs and outputs of the dataset are the same.
     """
     ds = autoencoder.dataset()
     for (image, label) in ds.take(1000):
         assert (image.numpy() == label.numpy()).all()
+
+def test_resume_mode(autoencoder, tmpdir):
+    """
+    Test imagery dataset's resume functionality.
+    """
+    try:
+        autoencoder.set_resume_mode(True, str(tmpdir))
+        autoencoder.reset_access_counts()
+        for i in range(len(autoencoder.image_set())):
+            autoencoder.resume_log_update(i, count=10000, need_check=True)
+            assert autoencoder.resume_log_read(i) == (True, 10000)
+
+        ds = autoencoder.dataset()
+        count = 0
+        for (_, unused_) in ds.take(100):
+            count += 1
+        assert count == 0
+    finally:
+        autoencoder.set_resume_mode(False, None)

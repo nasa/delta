@@ -22,16 +22,16 @@ import os.path
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib
 import tensorflow as tf
 
 from delta.config import config
-from delta.imagery.sources import tiff
-from delta.imagery.sources import loader
+from delta.config.extensions import custom_objects, image_writer
 from delta.ml import predict
-import delta.ml.layers
-import delta.imagery.imagery_config
-import delta.ml.ml_config
+from delta.extensions.sources.tiff import write_tiff
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
 
 def save_confusion(cm, class_labels, filename):
     f = plt.figure()
@@ -57,7 +57,8 @@ def save_confusion(cm, class_labels, filename):
     f.savefig(filename)
 
 def ae_convert(data):
-    return (data[:, :, [4, 2, 1]] * 256.0).astype(np.uint8)
+    r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
+    return r
 
 def main(options):
 
@@ -66,9 +67,9 @@ def main(options):
 
     if cpuOnly:
         with tf.device('/cpu:0'):
-            model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
     else:
-        model = tf.keras.models.load_model(options.model, custom_objects=delta.ml.layers.ALL_LAYERS)
+        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
 
     colors = list(map(lambda x: x.color, config.dataset.classes))
     error_colors = np.array([[0x0, 0x0, 0x0],
@@ -79,50 +80,71 @@ def main(options):
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
+    net_name = os.path.splitext(os.path.basename(options.model))[0]
 
+    full_cm = None
     if options.autoencoder:
         labels = None
     for (i, path) in enumerate(images):
-        image = loader.load_image(images, i)
+        image = images.load(i)
         base_name = os.path.splitext(os.path.basename(path))[0]
-        output_image = tiff.DeltaTiffWriter('predicted_' + base_name + '.tiff')
-        prob_image = None
-        if options.prob:
-            prob_image = tiff.DeltaTiffWriter('prob_' + base_name + '.tiff')
-        error_image = None
-        if labels:
-            error_image = tiff.DeltaTiffWriter('errors_' + base_name + '.tiff')
+        writer = image_writer('tiff')
+        prob_image = writer(net_name + '_' + base_name + '.tiff') if options.prob else None
+        output_image = writer(net_name + '_' + base_name + '.tiff') if not options.prob else None
 
+        error_image = None
         label = None
         if labels:
-            label = loader.load_image(config.dataset.labels(), i)
+            error_image = writer('errors_' + base_name + '.tiff')
+            label = labels.load(i)
+            assert image.size() == label.size(), 'Image and label do not match.'
 
+        ts = config.io.tile_size()
         if options.autoencoder:
             label = image
-            predictor = predict.ImagePredictor(model, output_image, True, (ae_convert, np.uint8, 3))
+            predictor = predict.ImagePredictor(model, ts, output_image, True,
+                                               None if options.noColormap else (ae_convert, np.uint8, 3))
         else:
-            predictor = predict.LabelPredictor(model, output_image, True, labels.nodata_value(), colormap=colors,
+            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
                                                prob_image=prob_image, error_image=error_image,
                                                error_colors=error_colors)
 
+        overlap = (options.overlap, options.overlap)
         try:
             if cpuOnly:
                 with tf.device('/cpu:0'):
-                    predictor.predict(image, label)
+                    predictor.predict(image, label, overlap=overlap)
             else:
-                predictor.predict(image, label)
+                predictor.predict(image, label, overlap=overlap)
         except KeyboardInterrupt:
             print('\nAborted.')
             return 0
 
         if labels:
             cm = predictor.confusion_matrix()
-            print('%.2g%% Correct: %s' % (np.sum(np.diag(cm)) / np.sum(cm) * 100, path))
+            if full_cm is None:
+                full_cm = np.copy(cm).astype(np.int64)
+            else:
+                full_cm += cm
+            for j in range(cm.shape[0]):
+                print('%s--- Precision: %.2f%%    Recall: %.2f%%      Pixels: %d / %d' % \
+                      (config.dataset.classes[j].name,
+                       100 * cm[j,j] / np.sum(cm[:, j]),
+                       100 * cm[j,j] / np.sum(cm[j, :]),
+                       int(np.sum(cm[j, :])), int(np.sum(cm))))
+            print('%.2f%% Correct: %s' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
             save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
 
         if options.autoencoder:
-            tiff.write_tiff('orig_' + base_name + '.tiff', ae_convert(image.read()),
-                            metadata=image.metadata())
+            write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
+                       metadata=image.metadata())
     stop_time = time.time()
+    if labels:
+        for i in range(full_cm.shape[0]):
+            print('%s--- Precision: %.2f%%    Recall: %.2f%%        Pixels: %d / %d' % \
+                    (config.dataset.classes[i].name,
+                     100 * full_cm[i,i] / np.sum(full_cm[:, i]),
+                     100 * full_cm[i,i] / np.sum(full_cm[i, :]),
+                     int(np.sum(cm[j, :])), int(np.sum(cm))))
     print('Elapsed time = ', stop_time - start_time)
     return 0

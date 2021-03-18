@@ -30,7 +30,7 @@ for n in os.listdir('bin'):
 
 setuptools.setup(
     name="delta",
-    version="0.1.2",
+    version="0.2.0",
     author="NASA Ames",
     author_email="todo@todo",
     description="Deep learning for satellite imagery",
@@ -46,16 +46,16 @@ setuptools.setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        'usgs',
-        'numpy',
+        'tensorflow>=2.1',
+        'usgs<0.3',
         'scipy',
         'matplotlib',
-        'tensorflow>=2.1',
         'mlflow',
         'portalocker',
         'appdirs',
-        'gdal',
-        'h5py'
+        'gdal'
+        #'numpy', # these are included by tensorflow with restrictions
+        #'h5py'
     ],
     scripts=scripts,
     include_package_data = True,
