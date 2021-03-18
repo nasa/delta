@@ -66,6 +66,9 @@ class NumpyImage(delta_image.DeltaImage):
     def num_bands(self):
         return self._data.shape[2]
 
+    def dtype(self):
+        return self._data.dtype
+
 class NumpyWriter(delta_image.DeltaImageWriter):
     def __init__(self):
         self._buffer = None

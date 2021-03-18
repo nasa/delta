@@ -32,12 +32,8 @@ def check_landsat_tiff(filename):
     input_reader = TiffImage(filename)
     assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
-    for i in range(0, input_reader.num_bands()):
-        (bsize, (blocks_x, blocks_y)) = input_reader.block_info(i)
-        assert bsize == (6, 37)
-        assert blocks_x == 1
-        assert blocks_y == 7
-        assert input_reader.numpy_type(i) == np.float32
+    assert input_reader.dtype() == np.float32
+    assert input_reader.block_size() == (6, 37)
 
     meta = input_reader.metadata()
     geo = meta['geotransform']
@@ -65,11 +61,10 @@ def check_same(filename1, filename2, data_only=False):
     in2 = TiffImage(filename2)
     assert in1.size() == in2.size()
     assert in1.num_bands() == in2.num_bands()
-    for i in range(in1.num_bands()):
-        if not data_only:
-            assert in1.block_info(i) == in2.block_info(i)
-        assert in1.data_type(i) == in2.data_type(i)
-        assert in1.nodata_value() == in2.nodata_value()
+    assert in1.dtype() == in2.dtype()
+    if not data_only:
+        assert in1.block_size() == in2.block_size()
+    assert in1.nodata_value() == in2.nodata_value()
 
     if not data_only:
         m_1 = in1.metadata()

@@ -42,7 +42,6 @@ def initialize():
     register_extension('delta.extensions.preprocess')
 
     register_image_reader('tiff', tiff.TiffImage)
-    register_image_reader('rgba', tiff.RGBAImage)
     register_image_reader('npy', npy.NumpyImage)
     register_image_reader('landsat', landsat.LandsatImage)
     register_image_reader('worldview', worldview.WorldviewImage)
