@@ -21,12 +21,24 @@ Simple rectangle class, useful for dealing with ROIs and tiles.
 import math
 
 class Rectangle:
-    """Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
-       When using it, stay consistent with float or integer values.
+    """
+    Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
+    When using it, stay consistent with float or integer values.
     """
     def __init__(self, min_x, min_y, max_x=0, max_y=0,
                  width=0, height=0):
-        """Specify width/height by name to use those instead of max_x/max_y."""
+        """
+        Parameters
+        ----------
+        min_x: int
+        min_y: int
+        max_x: int
+        max_y: int
+            Rectangle bounds.
+        width: int
+        height: int
+            Specify width / height to use these instead of max_x/max_y.
+        """
         self.min_x = min_x
         self.min_y = min_y
         if width > 0:
@@ -56,7 +68,12 @@ class Rectangle:
 #                yield(TileIndex(row,col))
 
     def bounds(self):
-        '''Returns (min_x, max_x, min_y, max_y)'''
+        """
+        Returns
+        -------
+        (int, int, int, int):
+            (min_x, max_x, min_y, max_y)
+        """
         return (self.min_x, self.max_x, self.min_y, self.max_y)
 
     def width(self):
@@ -65,14 +82,18 @@ class Rectangle:
         return self.max_y - self.min_y
 
     def has_area(self):
-        '''Returns true if the rectangle contains any area.'''
+        """
+        Returns
+        -------
+        bool:
+            true if the rectangle contains any area.
+        """
         return (self.width() > 0) and (self.height() > 0)
 
     def perimeter(self):
         return 2*self.width() + 2*self.height()
 
     def area(self):
-        '''Returns the valid area'''
         if not self.has_area():
             return 0
         return self.height() * self.width()
@@ -159,17 +180,32 @@ class Rectangle:
 
     def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0),
                        partials_overlap=False, by_block=False):
-        '''
+        """
         Return a list of tiles encompassing the entire area of this Rectangle.
-        tile_shape: (width, height) of tiles
-        overlap_shape: (x, y) overlap tiles by this many pixels in respective dimension
-        include_partials: include tiles that don't tile evenly
-        min_shape: minimum size of partial tiles to include with include_partials
-        partials_overlap: if not include_partials, if there are border regions not part of a tile,
-                          make a full size tile including them, and nearby area may be in two tiles
-        by_block: Returns a list of (block_rect, [r1, r2, ..., rn]) tuples instead, where block_rect
-                  is the bounding box of a row and rn are the subrectangles in that row
-        '''
+
+        Parameters
+        ----------
+        tile_shape: (int, int)
+            Shape of each tile
+        overlap_shape: (int, int)
+            Amount to overlap tiles in x and y direction
+        include_partials: bool
+            If true, include partial tiles at the edge of the image.
+        min_shape: (int, int)
+            If true and `partials` is true, keep partial tiles of this minimum size.
+        partials_overlap: bool
+            If `partials` is false, and this is true, expand partial tiles
+            to the desired size. Tiles may overlap in some areas.
+        by_block: bool
+            If true, changes the returned generator to group tiles by block.
+            This is intended to optimize disk reads by reading the entire block at once.
+
+        Returns
+        -------
+        List[Rectangle]:
+            Generator yielding ROIs. If `by_block` is true, returns a generator of (Rectangle, List[Rectangle])
+            instead, where the first rectangle is a larger block containing multiple tiles in a list.
+        """
         tile_width, tile_height = tile_shape
         min_width, min_height = min_shape
 

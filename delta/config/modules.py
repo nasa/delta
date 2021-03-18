@@ -25,6 +25,9 @@ from .config import config, DeltaConfigComponent
 from .extensions import register_extension
 
 class ExtensionsConfig(DeltaConfigComponent):
+    """
+    Configuration component for extensions.
+    """
     def __init__(self):
         super().__init__()
 
@@ -42,6 +45,9 @@ class ExtensionsConfig(DeltaConfigComponent):
 
 _config_initialized = False
 def register_all():
+    """
+    Register all default config modules.
+    """
     global _config_initialized #pylint: disable=global-statement
     # needed to call twice when testing subcommands and when not
     if _config_initialized:

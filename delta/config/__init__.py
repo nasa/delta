@@ -18,6 +18,8 @@
 """
 Configuration via YAML files and command line options.
 
+.. include:: README.md
+
 Access the singleton `delta.config.config` to get configuration
 values, specified either in YAML files or on the command line,
 and to load additional YAML files.

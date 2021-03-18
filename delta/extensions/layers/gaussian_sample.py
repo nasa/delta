@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-DELTA specific network layers.
+Gaussian sampling layer, used in variational autoencoders.
 """
 
 import tensorflow.keras.backend as K
@@ -28,6 +28,16 @@ from delta.ml.train import DeltaLayer
 # If layers inherit from callback as well we add them automatically on fit
 class GaussianSample(DeltaLayer):
     def __init__(self, kl_loss=True, **kwargs):
+        """
+        A layer that takes two inputs, a mean and a log variance, both of the same
+        dimensions. This layer returns a tensor of the same dimensions, sample
+        according to the provided mean and variance.
+
+        Parameters
+        ----------
+        kl_loss: bool
+            Add a kl loss term for the layer if true, to encourage a Normal(0, 1) distribution.
+        """
         super().__init__(**kwargs)
         self._use_kl_loss = kl_loss
         self._kl_enabled = K.variable(0.0, name=self.name + ':kl_enabled')

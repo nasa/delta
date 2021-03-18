@@ -22,6 +22,8 @@ Configuration options specific to machine learning.
 # when tensorflow isn't needed
 import os.path
 
+from typing import Optional
+
 import appdirs
 import pkg_resources
 import yaml
@@ -33,14 +35,20 @@ class ValidationSet:#pylint:disable=too-few-public-methods
     """
     Specifies the images and labels in a validation set.
     """
-    def __init__(self, images=None, labels=None, from_training=False, steps=1000):
+    def __init__(self, images: Optional[ImageSet]=None, labels: Optional[ImageSet]=None,
+                 from_training: bool=False, steps: int=1000):
         """
-        Uses the specified `delta.imagery.imagery_config.ImageSet`s images and labels.
-
-        If `from_training` is `True`, instead takes samples from the training set
-        before they are used for training.
-
-        The number of samples to use for validation is set by `steps`.
+        Parameters
+        ----------
+        images: ImageSet
+            Validation images.
+        labels: ImageSet
+            Optional, validation labels.
+        from_training: bool
+            If true, ignore images and labels arguments and take data from the training imagery.
+            The validation data will not be used for training.
+        steps: int
+            If from_training is true, take this many batches for validation.
         """
         self.images = images
         self.labels = labels
@@ -52,7 +60,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     """
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 stride=None, optimizer='Adam', max_tile_offset=None):
+                 stride=None, optimizer='Adam'):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
@@ -61,9 +69,11 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.metrics = metrics
         self.stride = stride
         self.optimizer = optimizer
-        self.max_tile_offset = max_tile_offset
 
-class NetworkModelConfig(config.DeltaConfigComponent):
+class NetworkConfig(config.DeltaConfigComponent):
+    """
+    Configuration for a neural network.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('yaml_file', str, 'yaml_file', config.validate_path,
@@ -90,6 +100,9 @@ class NetworkModelConfig(config.DeltaConfigComponent):
                 self._config_dict.update(yaml.safe_load(f))
 
 def validate_size(size, _):
+    """
+    Validate an image region size.
+    """
     if size is None:
         return size
     assert len(size) == 2, 'Size must be tuple.'
@@ -97,16 +110,10 @@ def validate_size(size, _):
     assert size[0] > 0 and size[1] > 0, 'Size must be positive.'
     return size
 
-class NetworkConfig(config.DeltaConfigComponent):
-    def __init__(self):
-        super().__init__()
-        self.register_component(NetworkModelConfig(), 'model')
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Network')
-        super().setup_arg_parser(group, components)
-
 class ValidationConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training validation.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('steps', int, 'steps', config.validate_positive,
@@ -154,8 +161,11 @@ def _validate_stride(stride, _):
     return stride
 
 class TrainingConfig(config.DeltaConfigComponent):
+    """
+    Configuration for training.
+    """
     def __init__(self):
-        super().__init__()
+        super().__init__(section_header='Training')
         self.register_field('stride', (list, int, None), None, _validate_stride,
                             'Pixels to skip when iterating over chunks. A value of 1 means to take every chunk.')
         self.register_field('epochs', int, None, config.validate_positive,
@@ -165,20 +175,18 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field('loss', (str, dict), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
-        self.register_field('max_tile_offset', int, None, config.validate_non_negative,
-                            'Each epoch, offset tiles by +1 up to max.')
         self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
         self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
+        self.register_field('log_folder', str, 'log_folder', config.validate_path,
+                            'Directory where dataset progress is recorded.')
+        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
+                            'When resuming a dataset, skip images where we have read this many tiles.')
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None
-
-    def setup_arg_parser(self, parser, components = None) -> None:
-        group = parser.add_argument_group('Training')
-        super().setup_arg_parser(group, components)
 
     def spec(self) -> TrainingSpec:
         """
@@ -198,8 +206,7 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            validation=validation,
                                            steps=self._config_dict['steps'],
                                            stride=self._config_dict['stride'],
-                                           optimizer=self._config_dict['optimizer'],
-                                           max_tile_offset=self._config_dict['max_tile_offset'])
+                                           optimizer=self._config_dict['optimizer'])
         return self.__training
 
     def _load_dict(self, d : dict, base_dir):
@@ -208,6 +215,9 @@ class TrainingConfig(config.DeltaConfigComponent):
 
 
 class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow checkpoints.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('frequency', int, 'frequency', None,
@@ -216,6 +226,9 @@ class MLFlowCheckpointsConfig(config.DeltaConfigComponent):
                             'If true, only keep the most recent checkpoint.')
 
 class MLFlowConfig(config.DeltaConfigComponent):
+    """
+    Configure MLFlow.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable MLFlow.')
@@ -238,6 +251,9 @@ class MLFlowConfig(config.DeltaConfigComponent):
         return uri
 
 class TensorboardConfig(config.DeltaConfigComponent):
+    """
+    Tensorboard configuration.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('enabled', bool, 'enabled', None, 'Enable Tensorboard.')

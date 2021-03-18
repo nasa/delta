@@ -29,9 +29,15 @@ from delta.config import config
 from delta.config.extensions import register_loss
 
 def ms_ssim(y_true, y_pred):
+    """
+    `tf.image.ssim_multiscale` as a loss function.
+    """
     return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
 
 def ms_ssim_mse(y_true, y_pred):
+    """
+    Sum of MS-SSIM and Mean Squared Error.
+    """
     return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
 
 # from https://gist.github.com/wassname/7793e2058c5c9dacb5212c0ac0b18a8a
@@ -45,13 +51,32 @@ def dice_coef(y_true, y_pred, smooth=1):
     return (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
 
 def dice_loss(y_true, y_pred):
+    """
+    Dice coefficient as a loss function.
+    """
     return 1 - dice_coef(y_true, y_pred)
 
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
     def __init__(self, mapping, name=None):
         """
-        Pass as argument either a list with probabilities for labels in order,
-        or a dictionary with classes mapped to their probabilities.
+        This is a base class for losses when the labels of the input images do not match the labels
+        output by the network. For example, if one class in the labels should be ignored, or two
+        classes in the label should map to the same output, or one label should be treated as a probability
+        between two classes. It applies a transform to the output labels and then applies the loss function.
+
+        Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+        in order, and nodata will be n+1).
+
+        Parameters
+        ----------
+        mapping
+            One of:
+             * A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+               [1, 0] will swap the order of two labels.
+             * A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+               number (see `delta.imagery.imagery_config.ClassesConfig.class_id` for class formats).
+        name: Optional[str]
+            Optional name for the loss function.
         """
         super().__init__(name=name)
         if isinstance(mapping, list):
@@ -74,31 +99,42 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         self._lookup = tf.constant(map_list, dtype=tf.float32)
 
 class MappedCategoricalCrossentropy(MappedLoss):
-    # this is cross entropy, but first replaces the labels with
-    # a probability distribution from a lookup table
+    """
+    `MappedLoss` for categorical_crossentropy.
+    """
     def call(self, y_true, y_pred):
         y_true = tf.squeeze(y_true)
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return tensorflow.keras.losses.categorical_crossentropy(true_convert, y_pred)
 
 class MappedBinaryCrossentropy(MappedLoss):
-    # this is cross entropy, but first replaces the labels with
-    # a probability distribution from a lookup table
+    """
+    `MappedLoss` for binary_crossentropy.
+    """
     def call(self, y_true, y_pred):
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return tensorflow.keras.losses.binary_crossentropy(true_convert, y_pred)
 
 class MappedDiceLoss(MappedLoss):
+    """
+    `MappedLoss` for `dice_loss`.
+    """
     def call(self, y_true, y_pred):
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return dice_loss(true_convert, y_pred)
 
 class MappedMsssim(MappedLoss):
+    """
+    `MappedLoss` for `ms_ssim`.
+    """
     def call(self, y_true, y_pred):
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         return ms_ssim(true_convert, y_pred)
 
 class MappedDiceBceMsssim(MappedLoss):
+    """
+    `MappedLoss` for sum of `ms_ssim`, `dice_loss`, and `binary_crossentropy`.
+    """
     def call(self, y_true, y_pred):
         true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
         dice = dice_loss(true_convert, y_pred)

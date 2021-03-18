@@ -39,7 +39,7 @@ from delta.ml.io import save_model
 
 def main(options):
 
-    log_folder = config.dataset.log_folder()
+    log_folder = config.train.log_folder()
     if log_folder:
         if not options.resume: # Start fresh and clear the read logs
             os.system('rm -f ' + log_folder + '/*')

@@ -24,7 +24,6 @@ import math
 import numpy as np
 from osgeo import gdal
 
-from delta.config import config
 from delta.imagery import delta_image, rectangle
 
 
@@ -42,13 +41,20 @@ _GDAL_TO_NUMPY_TYPES = {
 _NUMPY_TO_GDAL_TYPES = {v: k for k, v in _GDAL_TO_NUMPY_TYPES.items()}
 
 class TiffImage(delta_image.DeltaImage):
-    """For geotiffs."""
+    """Images supported by GDAL."""
 
     def __init__(self, path, nodata_value=None):
-        '''
-        Opens a geotiff for reading. paths can be either a single filename or a list.
-        For a list, the images are opened in order as a multi-band image, assumed to overlap.
-        '''
+        """
+        Opens a geotiff for reading.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Either a single filename or a list.
+            For a list, the images are opened in order as a multi-band image, assumed to overlap.
+        nodata_value: dtype of image
+            Value representing no data.
+        """
         super().__init__(nodata_value)
         paths = self._prep(path)
 
@@ -76,8 +82,17 @@ class TiffImage(delta_image.DeltaImage):
         """
         Prepare the file to be opened by other tools (unpack, etc).
 
-        Returns a list of underlying files to load instead of the original path.
-        This is intended to be overwritten by subclasses.
+        This can be overwritten by subclasses to, for example,
+        unpack a zip file to a cache directory.
+
+        Parameters
+        ----------
+        paths: str or List[str]
+            Paths passed to constructor
+
+        Returns
+        -------
+        Returns a list of underlying files to load instead of the original paths.
         """
         if isinstance(paths, str):
             return [paths]
@@ -88,11 +103,17 @@ class TiffImage(delta_image.DeltaImage):
             raise IOError('Operating on an image that has been closed.')
 
     def close(self):
+        """
+        Close the image.
+        """
         self._handles = None # gdal doesn't have a close function for some reason
         self._band_map = None
         self._paths = None
 
     def path(self):
+        """
+        Returns the paths returned by `_prep`.
+        """
         return self._path
 
     def num_bands(self):
@@ -108,7 +129,7 @@ class TiffImage(delta_image.DeltaImage):
         num_bands = len(bands) if bands else self.num_bands()
 
         if buf is None:
-            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.numpy_type())
+            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.dtype())
         for i, b in enumerate(bands):
             band_handle = self._gdal_band(b)
             s = buf[i, :, :].shape
@@ -124,58 +145,43 @@ class TiffImage(delta_image.DeltaImage):
         assert ret
         return ret
 
-    # using custom nodata from config TODO: use both
-    #def nodata_value(self, band=0):
-    #    '''
-    #    Returns the value that indicates no data is present in a pixel for the specified band.
-    #    '''
-    #    self.__asert_open()
-    #    return self._gdal_band(band).GetNoDataValue()
-
-    def data_type(self, band=0):
-        '''
+    def _gdal_type(self, band=0):
+        """
         Returns the GDAL data type of the image.
-        '''
+        """
         self.__asert_open()
         return self._gdal_band(band).DataType
 
-    def numpy_type(self, band=0):
+    def dtype(self):
         self.__asert_open()
-        dtype = self.data_type(band)
+        dtype = self._gdal_type(0)
         if dtype in _GDAL_TO_NUMPY_TYPES:
             return _GDAL_TO_NUMPY_TYPES[dtype]
         raise Exception('Unrecognized gdal data type: ' + str(dtype))
 
     def bytes_per_pixel(self, band=0):
-        '''
-        Returns the number of bytes per pixel
-        '''
+        """
+        Returns
+        -------
+        int:
+            the number of bytes per pixel
+        """
         self.__asert_open()
-        return gdal.GetDataTypeSize(self.data_type(band)) // 8
+        return gdal.GetDataTypeSize(self._gdal_type(band)) // 8
 
     def block_size(self):
-        """Returns (block height, block width)"""
-        (bs, _) = self.block_info()
-        return bs
-
-    def block_info(self, band=0):
-        """Returns ((block height, block width), (num blocks x, num blocks y))"""
+        """
+        Returns
+        -------
+        (int, int):
+            block height, block width
+        """
         self.__asert_open()
-        band_handle = self._gdal_band(band)
+        band_handle = self._gdal_band(0)
         block_size = band_handle.GetBlockSize()
-
-        num_blocks_x = int(math.ceil(self.width()  / block_size[0]))
-        num_blocks_y = int(math.ceil(self.height() / block_size[1]))
-
-        # we are backwards from gdal I think
-        return ((block_size[1], block_size[0]), (num_blocks_x, num_blocks_y))
+        return (block_size[1], block_size[0])
 
     def metadata(self):
-        '''
-        Returns all useful image metadata.
-
-        If multiple images were specified, returns the information from the first.
-        '''
         self.__asert_open()
         data = dict()
         h = self._handles[0]
@@ -187,17 +193,13 @@ class TiffImage(delta_image.DeltaImage):
         return data
 
     def block_aligned_roi(self, desired_roi):
-        '''
-        Returns the block aligned pixel region to read in a Rectangle format
-        to get the requested data region while respecting block boundaries.
-        '''
         self.__asert_open()
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         if not bounds.contains_rect(desired_roi):
             raise Exception('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(self.size()))
 
-        (block_size, unused_num_blocks) = self.block_info(0)
+        block_size = self.block_size()
         start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
         start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
         # Rect max is exclusive
@@ -216,24 +218,33 @@ class TiffImage(delta_image.DeltaImage):
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         return ans.get_intersection(bounds)
 
-    def save(self, path, tile_size=(0,0), nodata_value=None, show_progress=False):
+    def save(self, path, tile_size=None, nodata_value=None, show_progress=False):
         """
-        Save a TiffImage to the file output_path, optionally overwriting the tile_size.
-        Input tile size is (width, height)
+        Save to file, with preprocessing applied.
+
+        Parameters
+        ----------
+        path: str
+            Filename to save to.
+        tile_size: (int, int)
+            If specified, overwrite block size
+        nodata_value: image dtype
+            If specified, overwrite nodata value
+        show_progress: bool
+            Write progress bar to stdout
         """
 
         if nodata_value is None:
             nodata_value = self.nodata_value()
         # Use the input tile size for the block size unless the user specified one.
         block_size_y, block_size_x = self.block_size()
-        if tile_size[0] > 0:
+        if tile_size is not None:
             block_size_x = tile_size[0]
-        if tile_size[1] > 0:
             block_size_y = tile_size[1]
 
         # Set up the output image
         with _TiffWriter(path, self.width(), self.height(), self.num_bands(),
-                         self.data_type(), block_size_x, block_size_y,
+                         self._gdal_type(), block_size_x, block_size_y,
                          nodata_value, self.metadata()) as writer:
             input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
             output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
@@ -251,35 +262,30 @@ class TiffImage(delta_image.DeltaImage):
 
             self.process_rois(output_rois, callback_function, show_progress=show_progress)
 
-class RGBAImage(TiffImage):
-    """Basic RGBA images where the alpha channel needs to be stripped"""
-
-    def _prep(self, paths):
-        """Converts RGBA images to RGB images"""
-
-        # Get the path to the cached image
-        fname = os.path.basename(paths)
-        output_path = config.io.cache.manager().register_item(fname)
-
-        if not os.path.exists(output_path):
-            # Just remove the alpha band from the original image
-            cmd = 'gdal_translate -b 1 -b 2 -b 3 ' + paths + ' ' + output_path
-            os.system(cmd)
-        return [output_path]
-
-def numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
+def _numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
     if dtype in _NUMPY_TO_GDAL_TYPES:
         return _NUMPY_TO_GDAL_TYPES[dtype]
     raise Exception('Unrecognized numpy data type: ' + str(dtype))
 
-def write_tiff(output_path, data, metadata=None):
-    """Try to write a tiff file"""
+def write_tiff(output_path: str, data: np.ndarray, metadata: dict=None):
+    """
+    Write a numpy array to a file as a tiff.
+
+    Parameters
+    ----------
+    output_path: str
+        Filename to save tiff file to
+    data: numpy.ndarray
+        Image data to save.
+    metadata: dict
+        Optional metadata to include.
+    """
 
     if len(data.shape) < 3:
         num_bands = 1
     else:
         num_bands = data.shape[2]
-    data_type = numpy_dtype_to_gdal_type(data.dtype)
+    data_type = _numpy_dtype_to_gdal_type(data.dtype)
 
     TILE_SIZE=256
 
@@ -399,31 +405,25 @@ class _TiffWriter:
             gdal_band.WriteArray(data[:, :, band], y, x)
 
 class TiffWriter(delta_image.DeltaImageWriter):
+    """
+    Write a geotiff to a file.
+    """
     def __init__(self, filename):
         self._filename = filename
         self._tiff_w = None
 
     def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
-        """
-        Prepare for writing with the given size and dtype.
-        """
         assert (len(size) == 3), ('Error: len(size) of '+str(size)+' != 3')
         TILE_SIZE = 256
         self._tiff_w = _TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
-                                   data_type=numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
+                                   data_type=_numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
                                    nodata_value=nodata_value,
                                    tile_width=min(TILE_SIZE, size[0]), tile_height=min(TILE_SIZE, size[1]))
 
     def write(self, data, x, y):
-        """
-        Writes the data as a rectangular block starting at the given coordinates.
-        """
         self._tiff_w.write_region(data, x, y)
 
     def close(self):
-        """
-        Finish writing.
-        """
         if self._tiff_w is not None:
             self._tiff_w.close()
 

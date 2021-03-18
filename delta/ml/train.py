@@ -44,7 +44,13 @@ class DeltaLayer(Layer):
     """
     def callback(self): # pylint:disable=no-self-use
         """
-        Returns a Keras callback to be added, or None.
+        Override this method to make a layer automatically register
+        a training callback.
+
+        Returns
+        -------
+        tensorflow.keras.callbacks.Callback:
+            The callback to register (or None).
         """
         return None
 
@@ -148,26 +154,6 @@ class _EpochResetCallback(tf.keras.callbacks.Callback):
         if epoch != self.last_epoch:
             self.ids.reset_access_counts()
 
-class _TileOffsetCallback(tf.keras.callbacks.Callback):
-    """
-    Reset imagery_dataset file counts on epoch end
-    """
-    def __init__(self, ids, max_tile_offset):
-        super().__init__()
-        self.ids = ids
-        self.max_tile_offset = max_tile_offset
-        self.ids.set_tile_offset((0, 0))
-
-    def on_epoch_end(self, epoch, _=None): #pylint: disable=W0613
-        (tox, toy) = self.ids.tile_offset()
-        tox += 1
-        if tox == self.max_tile_offset:
-            tox = 0
-            toy += 1
-            if toy == self.max_tile_offset:
-                toy = 0
-        self.ids.set_tile_offset((tox, toy))
-
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
@@ -254,8 +240,6 @@ def _build_callbacks(model, dataset, training_spec):
         callbacks.append(tcb)
 
     callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
-    if training_spec.max_tile_offset:
-        callbacks.append(_TileOffsetCallback(dataset, training_spec.max_tile_offset))
 
     callbacks.extend(config_callbacks())
 
@@ -271,7 +255,20 @@ class ContinueTrainingException(Exception):
     Callbacks can raise this exception to modify the model, recompile, and
     continue training.
     """
-    def __init__(self, msg=None, completed_epochs=0, recompile_model=False, learning_rate=None):
+    def __init__(self, msg: str=None, completed_epochs: int=0,
+                 recompile_model: bool=False, learning_rate: float=None):
+        """
+        Parameters
+        ----------
+        msg: str
+            Optional error message.
+        completed_epochs: int
+            The number of epochs that have been finished. (resumes from the next epoch)
+        recompile_model: bool
+            If True, recompile the model. This is necessary if the model has been changed.
+        learning_rate: float
+            Optionally set the learning rate to the given value.
+        """
         super().__init__(msg)
         self.completed_epochs = completed_epochs
         self.recompile_model = recompile_model
@@ -280,6 +277,20 @@ class ContinueTrainingException(Exception):
 def compile_model(model_fn, training_spec, resume_path=None):
     """
     Compile and check that the model is valid.
+
+    Parameters
+    ----------
+    model_fn: Callable[[], tensorflow.keras.model.Model]
+        Function to construct a keras Model.
+    training_spec: delta.ml.ml_config.TrainingSpec
+        Trainnig parameters.
+    resume_path: str
+        File name to load initial model weights from.
+
+    Returns
+    -------
+    tensorflow.keras.models.Model:
+        The compiled model, ready for training.
     """
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
@@ -314,6 +325,22 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
     """
     Trains the specified model on a dataset according to a training
     specification.
+
+    Parameters
+    ----------
+    model_fn: Callable[[], tensorflow.keras.model.Model]
+        Function that constructs a model.
+    dataset: delta.imagery.imagery_dataset.ImageryDataset
+        Dataset to train on.
+    training_spec: delta.ml.ml_config.TrainingSpec
+        Training parameters.
+    resume_path: str
+        Optional file to load initial model weights from.
+
+    Returns
+    -------
+    (tensorflow.keras.models.Model, History):
+        The trained model and the training history.
     """
     model = compile_model(model_fn, training_spec, resume_path)
     assert model.input_shape[3] == dataset.num_bands(), 'Number of bands in model does not match data.'

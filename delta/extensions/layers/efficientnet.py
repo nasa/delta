@@ -16,9 +16,12 @@
 # limitations under the License.
 
 #pylint:disable=dangerous-default-value, too-many-arguments
-
-# taken from tensorflow and modified to remove initial layers
+"""
+An implementation of EfficientNet. This is
+taken from tensorflow but modified to remove initial layers.
+"""
 # https://github.com/keras-team/keras-applications/blob/master/keras_applications/efficientnet.py
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

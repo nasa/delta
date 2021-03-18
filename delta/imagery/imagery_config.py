@@ -37,13 +37,18 @@ class ImageSet:
     """
     def __init__(self, images, image_type, preprocess=None, nodata_value=None):
         """
-        The parameters for the constructor are:
-
-         * An iterable of image filenames `images`
-         * The image type (i.e., tiff, worldview, landsat) `image_type`
-         * An optional preprocessing function to apply to the image,
-           following the signature in `delta.imagery.sources.delta_image.DeltaImage.set_process`.
-         * A `nodata_value` for pixels to disregard
+        Parameters
+        ----------
+        images: Iterator[str]
+            Image filenames
+        image_type: str
+            The image type as a string (i.e., tiff, worldview, landsat). Must have
+            been previously registered with `delta.config.extensions.register_image_reader`.
+        preprocess: Callable
+            Optional preprocessing function to apply to the image
+            following the signature in `delta.imagery.delta_image.DeltaImage.set_preprocess`.
+        nodata_value: image dtype
+            A no data value for pixels to disregard
         """
         self._images = images
         self._image_type = image_type
@@ -52,27 +57,54 @@ class ImageSet:
 
     def type(self):
         """
-        The type of the image, a string.
+        Returns
+        -------
+        str:
+            The type of the image
         """
         return self._image_type
     def preprocess(self):
         """
-        Return the preprocessing function.
+        Returns
+        -------
+        Callable:
+            The preprocessing function
         """
         return self._preprocess
     def nodata_value(self):
         """
-        Value of pixels to disregard.
+        Returns
+        -------
+        image dtype:
+            Value of pixels to disregard.
         """
         return self._nodata_value
 
     def set_nodata_value(self, nodata):
         """
         Set the pixel value to disregard.
+
+        Parameters
+        ----------
+        nodata: image dtype
+            The pixel value to set as nodata
         """
         self._nodata_value = nodata
 
     def load(self, index):
+        """
+        Loads the image of the given index.
+
+        Parameters
+        ----------
+        index: int
+            Index of the image to load.
+
+        Returns
+        -------
+        `delta.imagery.delta_image.DeltaImage`:
+            The image
+        """
         img = image_reader(self.type())(self[index], self.nodata_value())
         if self._preprocess:
             img.set_preprocess(self._preprocess)
@@ -132,7 +164,12 @@ def __find_images(conf, matching_images=None, matching_conf=None):
             for m in matching_images:
                 rel_path   = os.path.relpath(m, matching_conf['directory'])
                 label_path = os.path.join(conf['directory'], rel_path)
-                images.append(os.path.splitext(label_path)[0] + extension)
+                if matching_conf['directory'] is None:
+                    images.append(os.path.splitext(label_path)[0] + extension)
+                else:
+                    # if custom extension, remove it
+                    label_path = label_path[:-len(__extension(matching_conf))]
+                    images.append(label_path + extension)
 
     for img in images:
         if not os.path.exists(img):
@@ -187,6 +224,12 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
                                class_shift, len(classes_comp) if labels_nodata is not None else None))
 
 class ImagePreprocessConfig(DeltaConfigComponent):
+    """
+    Configuration for image preprocessing.
+
+    Expects a list of preprocessing functions registered
+    with `delta.config.extensions.register_preprocess`.
+    """
     def __init__(self):
         super().__init__()
         self._functions = []
@@ -209,6 +252,16 @@ class ImagePreprocessConfig(DeltaConfigComponent):
                 self._functions.append((name, func[name]))
 
     def function(self, image_type):
+        """
+        Parameters
+        ----------
+        image_type: str
+            Type of the image
+        Returns
+        -------
+        Callable:
+            The specified preprocessing function to apply to the image.
+        """
         prep = lambda data, _, dummy: data
         for (name, args) in self._functions:
             t = preprocess_function(name)
@@ -226,6 +279,11 @@ def _validate_paths(paths, base_dir):
     return out
 
 class ImageSetConfig(DeltaConfigComponent):
+    """
+    Configuration for a set of images.
+
+    Used for images, labels, and validation images and labels.
+    """
     def __init__(self, name=None):
         super().__init__()
         self.register_field('type', str, 'type', None, 'Image type.')
@@ -236,14 +294,20 @@ class ImageSetConfig(DeltaConfigComponent):
         self.register_field('nodata_value', (float, int), None, None, 'Value of pixels to ignore.')
 
         if name:
-            self.register_arg('type', '--' + name + '-type')
-            self.register_arg('file_list', '--' + name + '-file-list')
-            self.register_arg('directory', '--' + name + '-dir')
-            self.register_arg('extension', '--' + name + '-extension')
+            self.register_arg('type', '--' + name + '-type', name + '_type')
+            self.register_arg('file_list', '--' + name + '-file-list', name + '_file_list')
+            self.register_arg('directory', '--' + name + '-dir', name + '_directory')
+            self.register_arg('extension', '--' + name + '-extension', name + '_extension')
         self.register_component(ImagePreprocessConfig(), 'preprocess')
         self._name = name
 
     def preprocess_function(self):
+        """
+        Returns
+        -------
+        Callable:
+            Preprocessing function for the set of images.
+        """
         return self._components['preprocess'].function(self._config_dict['type'])
 
     def setup_arg_parser(self, parser, components = None) -> None:
@@ -263,7 +327,22 @@ class ImageSetConfig(DeltaConfigComponent):
             self._config_dict['file_list'] = None
 
 class LabelClass:
+    """
+    Label configuration.
+    """
     def __init__(self, value, name=None, color=None, weight=None):
+        """
+        Parameters
+        ----------
+        value: int
+            Pixel of the label
+        name: str
+            Name of the class to display
+        color: int
+            In visualizations, set the class to this RGB color.
+        weight: float
+            During training weight this class by this amount.
+        """
         color_order = [0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, \
                        0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf]
         if name is None:
@@ -280,6 +359,11 @@ class LabelClass:
         return 'Color: ' + self.name
 
 class ClassesConfig(DeltaConfigComponent):
+    """
+    Configuration for classes.
+
+    Specify either a number of classes or list of classes with details.
+    """
     def __init__(self):
         super().__init__()
         self._classes = []
@@ -332,8 +416,17 @@ class ClassesConfig(DeltaConfigComponent):
 
     def class_id(self, class_name):
         """
-        class_name can either be an int (original pixel value in images) or the name of a class.
-        Returns the ID of the class in the labels after transformation in image preprocessing.
+        Parameters
+        ----------
+        class_name: int or str
+            Either the original pixel value in images (int) or the name (str) of a class.
+            The special value 'nodata' will give the nodata class, if any.
+
+        Returns
+        -------
+        int:
+            the ID of the class in the labels after default image preprocessing (labels are arranged
+            to a canonical order, with nodata always coming after them.)
         """
         if class_name == len(self._classes) or class_name == 'nodata':
             return len(self._classes)
@@ -343,6 +436,12 @@ class ClassesConfig(DeltaConfigComponent):
         raise ValueError('Class ' + class_name + ' not found.')
 
     def weights(self):
+        """
+        Returns
+        -------
+        List[float]
+            List of class weights for use in training, if specified.
+        """
         weights = []
         for c in self._classes:
             if c.weight is not None:
@@ -353,6 +452,12 @@ class ClassesConfig(DeltaConfigComponent):
         return weights
 
     def classes_to_indices_func(self):
+        """
+        Returns
+        -------
+        Callable[[numpy.ndarray], numpy.ndarray]:
+            Function to convert label image to canonical form
+        """
         if not self._conversions:
             return None
         def convert(data):
@@ -363,6 +468,12 @@ class ClassesConfig(DeltaConfigComponent):
         return convert
 
     def indices_to_classes_func(self):
+        """
+        Returns
+        -------
+        Callable[[numpy.ndarray], numpy.ndarray]:
+            Reverse of `classes_to_indices_func`.
+        """
         if not self._conversions:
             return None
         def convert(data):
@@ -373,14 +484,15 @@ class ClassesConfig(DeltaConfigComponent):
         return convert
 
 class DatasetConfig(DeltaConfigComponent):
+    """
+    Configuration for a dataset.
+    """
     def __init__(self):
         super().__init__('Dataset')
         self.register_component(ImageSetConfig('image'), 'images', '__image_comp')
         self.register_component(ImageSetConfig('label'), 'labels', '__label_comp')
         self.__images = None
         self.__labels = None
-        self.register_field('log_folder', str, 'log_folder', validate_path,
-                            'Directory where dataset progress is recorded.')
         self.register_component(ClassesConfig(), 'classes')
 
     def reset(self):
@@ -390,7 +502,10 @@ class DatasetConfig(DeltaConfigComponent):
 
     def images(self) -> ImageSet:
         """
-        Returns the training images.
+        Returns
+        -------
+        ImageSet:
+            the training images
         """
         if self.__images is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
@@ -400,7 +515,10 @@ class DatasetConfig(DeltaConfigComponent):
 
     def labels(self) -> ImageSet:
         """
-        Returns the label images.
+        Returns
+        -------
+        ImageSet:
+            the label images
         """
         if self.__labels is None:
             (self.__images, self.__labels) = load_images_labels(self._components['images'],
@@ -409,6 +527,9 @@ class DatasetConfig(DeltaConfigComponent):
         return self.__labels
 
 class CacheConfig(DeltaConfigComponent):
+    """
+    Configuration for cache.
+    """
     def __init__(self):
         super().__init__()
         self.register_field('dir', str, None, validate_path, 'Cache directory.')
@@ -422,7 +543,10 @@ class CacheConfig(DeltaConfigComponent):
 
     def manager(self) -> disk_folder_cache.DiskCache:
         """
-        Returns the disk cache object to manage the cache.
+        Returns
+        -------
+        `disk_folder_cache.DiskCache`:
+            the object to manage the cache
         """
         if self._cache_manager is None:
             # Auto-populating defaults here is a workaround so small tools can skip the full
@@ -444,6 +568,9 @@ def _validate_tile_size(size, _):
     return size
 
 class IOConfig(DeltaConfigComponent):
+    """
+    Configuration for I/O.
+    """
     def __init__(self):
         super().__init__('IO')
         self.register_field('threads', int, None, None, 'Number of threads to use.')
@@ -451,13 +578,18 @@ class IOConfig(DeltaConfigComponent):
                             'Size of an image tile to load in memory at once.')
         self.register_field('interleave_images', int, 'interleave_images', validate_positive,
                             'Number of images to interleave at a time when training.')
-        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
-                            'When resuming a dataset, skip images where we have read this many tiles.')
 
         self.register_arg('threads', '--threads')
 
         self.register_component(CacheConfig(), 'cache')
+
     def threads(self):
+        """
+        Returns
+        -------
+        int:
+            number of threads to use for I/O
+        """
         if 'threads' in self._config_dict and self._config_dict['threads']:
             return self._config_dict['threads']
         return min(1, os.cpu_count() // 2)

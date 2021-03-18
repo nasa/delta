@@ -30,13 +30,29 @@ import tensorflow as tf
 from delta.config import config
 
 class ImageryDataset: # pylint: disable=too-many-instance-attributes
-    """Create dataset with all files as described in the provided config file.
+    """
+    A dataset for tiling very large imagery for training with tensorflow.
     """
 
     def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
                  tile_shape=(256, 256), tile_overlap=None):
         """
-        Initialize the dataset based on the specified image and label ImageSets
+        Parameters
+        ----------
+        images: ImageSet
+            Images to train on
+        labels: ImageSet
+            Corresponding labels to train on
+        output_shape: (int, int)
+            Shape of the corresponding labels for a given chunk or tile size.
+        chunk_shape: (int, int)
+            If specified, divide tiles into individual chunks of this shape.
+        stride: (int, int)
+            Skip this stride between chunks. Only valid with chunk_shape.
+        tile_shape: (int, int)
+            Size of tiles to load from the images at a time.
+        tile_overlap: (int, int)
+            If specified, overlap tiles by this amount.
         """
 
         self._resume_mode = False
@@ -56,7 +72,6 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
-        self._tile_offset = None
 
         if labels:
             assert len(images) == len(labels)
@@ -72,7 +87,15 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     # I think we should probably get rid of it at some point.
     def set_resume_mode(self, resume_mode, log_folder):
         """
-        Enable / disable resume mode and set a folder to store read log files.
+        Enable / disable resume mode and configure it.
+
+        Parameters
+        ----------
+        resume_mode: bool
+            If true, log and check access counts for if imagery can be skipped
+            this epoch.
+        log_folder: str
+            Folder to log access counts to
         """
         self._resume_mode = resume_mode
         self._log_folder = log_folder
@@ -80,7 +103,16 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             os.mkdir(self._log_folder)
 
     def _resume_log_path(self, image_id):
-        """Return the path to the read log for an input image"""
+        """
+        Parameters
+        ----------
+        image_id: int
+
+        Returns
+        -------
+        str:
+            the path to the read log for an input image
+        """
         if not self._log_folder:
             return None
         image_path = self._images[image_id]
@@ -90,8 +122,20 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         return log_path
 
     def resume_log_read(self, image_id): #pylint: disable=R0201
-        """Reads an access count file containing a boolean and a count.
-           The boolean is set to true if we need to check the count."""
+        """
+        Reads an access count file containing a boolean and a count.
+
+        Parameters
+        ----------
+        image_id: int
+            Image id to check logs for
+
+        Returns
+        -------
+        (bool, int):
+            need_to_check, access count
+            The boolean is set to true if we need to check the count.
+        """
         path = self._resume_log_path(image_id)
         try:
             with portalocker.Lock(path, 'r', timeout=300) as f:
@@ -110,6 +154,18 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             return (False, 0)
 
     def resume_log_update(self, image_id, count=None, need_check=False):  #pylint: disable=R0201
+        """
+        Update logs of when images are read. Should only be needed internally.
+
+        Parameters
+        ----------
+        image_id: int
+            The image to update
+        count: int
+            Number of tiles that have been read
+        need_check: bool
+            Set flag for if a check is needed
+        """
         log_path  = self._resume_log_path(image_id)
         if not log_path:
             return
@@ -120,11 +176,15 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             f.write('%d %d' % (int(need_check), count))
 
     def reset_access_counts(self, set_need_check=False):
-        """Go through all the access files and reset one of the values.
-           This is needed for resume mode to work.
-           Call with default value to reset the counts to zero.  Call with
-           "set_need_check" to keep the count and mark that it needs to be checked.
-           Call with default after each epoch, call (True) at start of training."""
+        """
+        Go through all the access files and reset the counts. Should be done at the end of each epoch.
+
+        Parameters
+        ----------
+        set_need_check: bool
+            if true, keep the count and mark that it needs to be checked. (should be
+            set at the start of training)
+        """
         if not self._log_folder:
             return
         if config.general.verbose():
@@ -133,6 +193,17 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             self.resume_log_update(i, count=0, need_check=set_need_check)
 
     def _list_tiles(self, i): # pragma: no cover
+        """
+        Parameters
+        ----------
+        i: int
+            Image to list tiles for.
+
+        Returns
+        -------
+        List[Rectangle]:
+            List of tiles to read from the given image
+        """
         # If we need to skip this file because of the read count, no need to look up tiles.
         if self._resume_mode:
             file_path = self._images[i]
@@ -141,7 +212,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 if config.general.verbose():
                     print('get_image_tile_list for index ' + str(i) + ' -> ' + file_path)
                 (need_to_check, count) = self.resume_log_read(i)
-                if need_to_check and (count > config.io.resume_cutoff()):
+                if need_to_check and (count > config.train.resume_cutoff()):
                     if config.general.verbose():
                         print('Skipping index ' + str(i) + ' tile gen with count '
                               + str(count) + ' -> ' + file_path)
@@ -173,6 +244,18 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     def _tile_generator(self, i, is_labels): # pragma: no cover
         """
         A generator that yields image tiles from the given image.
+
+        Parameters
+        ----------
+        i: int
+            Image id
+        is_labels: bool
+            Load the label if true, image if false
+
+        Returns
+        -------
+        Iterator[numpy.ndarray]:
+            Iterator over iamge tiles.
         """
         i = int(i)
         tiles = self._list_tiles(i)
@@ -189,27 +272,6 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         preprocess = image.get_preprocess()
         image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
         bands = range(image.num_bands())
-
-        # apply tile offset. do here so we always have same number of tiles (causes problems with tf)
-        if self._tile_offset:
-            def shift_tile(t):
-                t.shift(self._tile_offset[0], self._tile_offset[1])
-                t.max_x = min(t.max_x, image.width())
-                t.max_y = min(t.max_y, image.height())
-                if t.width() < self._tile_shape[0]:
-                    t.min_x = t.max_x - self._tile_shape[0]
-                if t.height() < self._tile_shape[1]:
-                    t.min_y = t.max_y - self._tile_shape[1]
-            for (rect, subtiles) in tiles:
-                shift_tile(rect)
-                for t in subtiles:
-                    # just use last tile that fits
-                    if t.max_x > rect.width():
-                        t.max_x = rect.width()
-                        t.min_x = rect.width() - self._tile_shape[0]
-                    if t.max_y > rect.height():
-                        t.max_y = rect.height()
-                        t.min_y = rect.height() - self._tile_shape[1]
 
         # read one row ahead of what we process now
         next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
@@ -236,7 +298,18 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     def _load_images(self, is_labels, data_type):
         """
         Loads a list of images as tensors.
-        If label_list is specified, load labels instead. The corresponding image files are still required however.
+
+        Parameters
+        ----------
+        is_labels: bool
+            Load labels if true, images if not
+        data_type: numpy.dtype
+            Data type that will be returned.
+
+        Returns
+        -------
+        Dataset:
+            Dataset of image tiles
         """
         r = tf.data.Dataset.range(len(self._images))
         r = r.shuffle(1000, seed=0, reshuffle_each_iteration=True) # shuffle same way for labels and non-labels
@@ -285,7 +358,10 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
 
     def data(self):
         """
-        Unbatched dataset of image chunks.
+        Returns
+        -------
+        Dataset:
+            image chunks / tiles.
         """
         ret = self._load_images(False, self._data_type)
         if self._chunk_shape:
@@ -295,7 +371,10 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
 
     def labels(self):
         """
-        Unbatched dataset of labels.
+        Returns
+        -------
+        Dataset:
+            Unbatched dataset of labels corresponding to `data()`.
         """
         label_set = self._load_images(True, self._label_type)
         if self._chunk_shape or self._output_shape:
@@ -306,16 +385,23 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
 
     def dataset(self, class_weights=None):
         """
-        Return the underlying TensorFlow dataset object that this class creates.
+        Returns a tensorflow dataset as configured by the class.
 
-        class_weights: list of weights in the classes.
-        If class_weights is specified, returns a dataset of (data, labels, weights) instead.
+        Parameters
+        ----------
+        class_weights: list
+            list of weights for the classes.
+
+        Returns
+        -------
+        tensorflow Dataset:
+            With (data, labels, optionally weights)
         """
 
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
-        if self._labels.nodata_value() is not None and self._tile_offset is None:
+        if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if class_weights is not None:
             class_weights.append(0.0)
@@ -325,10 +411,25 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         return ds
 
     def num_bands(self):
-        """Return the number of bands in each image of the data set"""
+        """
+        Returns
+        -------
+        int:
+            number of bands in each image
+        """
         return self._num_bands
 
     def set_chunk_output_shapes(self, chunk_shape, output_shape):
+        """
+        Parameters
+        ----------
+        chunk_shape: (int, int)
+            Size of chunks to read at a time. Set to None to
+            use on a per tile basis (i.e., for FCNs).
+        output_shape: (int, int)
+            Shape output by the network. May differ from the input size
+            (dervied from chunk_shape or tile_shape)
+        """
         if chunk_shape:
             assert len(chunk_shape) == 2, 'Chunk must be two dimensional.'
             assert (chunk_shape[0] % 2) == (chunk_shape[1] % 2) == \
@@ -342,59 +443,97 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
 
     def chunk_shape(self):
         """
-        Size of chunks used for inputs.
+        Returns
+        -------
+        (int, int):
+            Size of chunks used for inputs.
         """
         return self._chunk_shape
 
     def input_shape(self):
-        """Input size for the network."""
+        """
+        Returns
+        -------
+        Tuple[int, ...]:
+            Input size for the network.
+        """
         if self._chunk_shape:
             return (self._chunk_shape[0], self._chunk_shape[1], self._num_bands)
         return (None, None, self._num_bands)
 
     def output_shape(self):
-        """Output size of blocks of labels"""
+        """
+        Returns
+        -------
+        Tuple[int, ...]:
+            Output size, size of blocks of labels
+        """
         if self._output_shape:
             return (self._output_shape[0], self._output_shape[1], self._output_dims)
         return (None, None, self._output_dims)
 
     def image_set(self):
-        """Returns set of images"""
+        """
+        Returns
+        -------
+        ImageSet:
+            set of images
+        """
         return self._images
     def label_set(self):
-        """Returns set of label images"""
+        """
+        Returns
+        -------
+        ImageSet:
+            set of labels
+        """
         return self._labels
 
     def set_tile_shape(self, tile_shape):
-        """Set the tile size."""
+        """
+        Set the tile size.
+
+        Parameters
+        ----------
+        tile_shape: (int, int)
+            New tile shape"""
         self._tile_shape = tile_shape
 
     def tile_shape(self):
-        """Returns tile size."""
+        """
+        Returns
+        -------
+        Tuple[int, ...]:
+            tile shape to load at a time
+        """
         return self._tile_shape
 
     def tile_overlap(self):
-        """Returns the amount tiles overlap, for FCNS."""
+        """
+        Returns
+        -------
+        Tuple[int, ...]:
+            the amount tiles overlap
+        """
         return self._tile_overlap
 
-    def tile_offset(self):
-        """Offset for start of tiles when tiling (for FCNs)."""
-        return self._tile_offset
-
-    def set_tile_offset(self, offset):
-        """Set offset for start of tiles when tiling (for FCNs)."""
-        self._tile_offset = offset
-
     def stride(self):
+        """
+        Returns
+        -------
+        Tuple[int, ...]:
+            Stride between chunks (only when chunk_shape is set).
+        """
         return self._stride
 
 class AutoencoderDataset(ImageryDataset):
-    """Slightly modified dataset class for the Autoencoder which does not use separate label files"""
+    """
+    Slightly modified dataset class for the autoencoder.
+
+    Instead of specifying labels, the inputs are used as labels.
+    """
 
     def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None):
-        """
-        The images are used as labels as well.
-        """
         super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
                          stride=stride, tile_overlap=tile_overlap)
         self._labels = self._images

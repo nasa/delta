@@ -17,6 +17,9 @@
 
 """
 Module for extensions to DELTA.
+
+This is a collection of default extensions that come with DELTA. If you
+are interested in making your own extensions, see `delta.config.extensions`.
 """
 
 from .defaults import initialize

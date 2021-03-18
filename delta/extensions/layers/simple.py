@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-DELTA specific network layers.
+Simple helpful layers.
 """
 
 import tensorflow as tf
@@ -25,8 +25,13 @@ import tensorflow.keras.backend as K
 
 from delta.config.extensions import register_layer
 
-# If layers inherit from callback as well we add them automatically on fit
 class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
+    """
+    Global average pooling in 2D for fully convolutional networks.
+
+    Takes the global average over the entire input, and repeats
+    it to return a tensor the same size as the input.
+    """
     def compute_output_shape(self, input_shape):
         return input_shape
 
@@ -39,6 +44,9 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
         return mean * ones
 
 class ReflectionPadding2D(tensorflow.keras.layers.Layer):
+    """
+    Add reflected padding of the given size surrounding the input.
+    """
     def __init__(self, padding=(1, 1), **kwargs):
         super().__init__(**kwargs)
         self.padding = tuple(padding)

@@ -20,16 +20,27 @@ Read data in numpy arrays.
 """
 
 import os
+from typing import Optional
+
 import numpy as np
 
 from delta.imagery import delta_image
 
 class NumpyImage(delta_image.DeltaImage):
     """
-    Numpy image data tensorflow dataset wrapper (see imagery_dataset.py).
-    Can set either path to load a file, or data to load a numpy array directly.
+    Load a numpy array as an image.
     """
-    def __init__(self, data=None, path=None, nodata_value=None):
+    def __init__(self, data: Optional[np.ndarray]=None, path: Optional[str]=None, nodata_value=None):
+        """
+        Parameters
+        ----------
+        data: Optional[numpy.ndarray]
+            Loads a numpy array directly.
+        path: Optional[str]
+            Load a numpy array from a file with `numpy.load`. Only one of data or path should be given.
+        nodata_value
+            The pixel value representing no data.
+        """
         super().__init__(nodata_value)
 
         if path:
@@ -43,11 +54,6 @@ class NumpyImage(delta_image.DeltaImage):
             self._data = data
 
     def _read(self, roi, bands, buf=None):
-        """
-        Read the image of the given data type. An optional roi specifies the boundaries.
-
-        This function is intended to be overwritten by subclasses.
-        """
         if buf is None:
             buf = np.zeros(shape=(roi.width(), roi.height(), self.num_bands() ), dtype=self._data.dtype)
         (min_x, max_x, min_y, max_y) = roi.bounds()
@@ -55,12 +61,13 @@ class NumpyImage(delta_image.DeltaImage):
         return buf
 
     def size(self):
-        """Return the size of this image in pixels, as (width, height)."""
         return (self._data.shape[1], self._data.shape[0])
 
     def num_bands(self):
-        """Return the number of bands in the image."""
         return self._data.shape[2]
+
+    def dtype(self):
+        return self._data.dtype
 
 class NumpyWriter(delta_image.DeltaImageWriter):
     def __init__(self):

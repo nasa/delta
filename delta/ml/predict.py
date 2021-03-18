@@ -28,10 +28,6 @@ import tensorflow as tf
 
 from delta.imagery import rectangle
 
-#pylint: disable=unsubscriptable-object
-# Pylint was barfing lines 32 and 76. See relevant bug report
-# https://github.com/PyCQA/pylint/issues/1498
-
 class Predictor(ABC):
     """
     Abstract class to run prediction for an image given a model.
@@ -42,10 +38,18 @@ class Predictor(ABC):
         self._tile_shape = tile_shape
 
     @abstractmethod
-    def _initialize(self, shape, label, image):
+    def _initialize(self, shape, image, label=None):
         """
         Called at the start of a new prediction.
-        The output shape, label image, and image being read are passed as inputs.
+
+        Parameters
+        ----------
+        shape: (int, int)
+            The final output shape from the network.
+        image: delta.imagery.delta_image.DeltaImage
+            The image to classify.
+        label: delta.imagery.delta_image.DeltaImage
+            The label image, if provided (otherwise None).
         """
 
     def _complete(self):
@@ -55,14 +59,41 @@ class Predictor(ABC):
         """Cancel the operation and cleanup neatly."""
 
     @abstractmethod
-    def _process_block(self, pred_image, x, y, labels, label_nodata):
+    def _process_block(self, pred_image: np.ndarray, x: int, y: int, labels: np.ndarray, label_nodata):
         """
-        Processes a predicted block. The predictions are in pred_image,
-        (sx, sy) is the starting coordinates of the block, and the corresponding labels
-        if available are passed as labels.
+        Processes a predicted block. Must be overriden in subclasses.
+
+        Parameters
+        ----------
+        pred_image: numpy.ndarray
+            Output of model for a block of the image.
+        x: int
+            Top-left x coordinate of block.
+        y: int
+            Top-left y coordinate of block.
+        labels: numpy.ndarray
+            Labels (or None if not available) for same block as `pred_image`.
+        label_nodata: dtype of labels
+            Pixel value for nodata (or None).
         """
 
-    def _predict_array(self, data, image_nodata_value):
+    def _predict_array(self, data: np.ndarray, image_nodata_value):
+        """
+        Runs model on data.
+
+        Parameters
+        ----------
+        data: np.ndarray
+            Block of image to apply the model to.
+        image_nodata_value: dtype of data
+            Nodata value in image. If given, nodata values are
+            replaced with nans in output.
+
+        Returns
+        -------
+        np.ndarray:
+            Result of applying model to data.
+        """
         net_input_shape = self._model.input_shape[1:]
         net_output_shape = self._model.output_shape[1:]
 
@@ -117,9 +148,25 @@ class Predictor(ABC):
 
     def predict(self, image, label=None, input_bounds=None, overlap=(0, 0)):
         """
-        Runs the model on `image`, comparing the results to `label` if specified.
-        Results are limited to `input_bounds`. Returns output, the meaning of which
-        depends on the subclass.
+        Runs the model on an image. The behavior is specific to the subclass.
+
+        Parameters
+        ----------
+        image: delta.imagery.delta_image.DeltaImage
+            Image to evalute.
+        label: delta.imagery.delta_image.DeltaImage
+            Optional label to compare to.
+        input_bounds: delta.imagery.rectangle.Rectangle
+            If specified, only evaluate the given portion of the image.
+        overlap: (int, int)
+            `predict` evaluates the image by selecting tiles, dependent on the tile_shape
+            provided in the subclass. If an overlap is specified, the tiles will be overlapped
+            by the given amounts in the x and y directions. Subclasses may select or interpolate
+            to favor tile interior pixels for improved classification.
+
+        Returns
+        -------
+        The result of the `_complete` function, which depends on the sublcass.
         """
         net_input_shape = self._model.input_shape[1:]
         net_output_shape = self._model.output_shape[1:]
@@ -147,7 +194,7 @@ class Predictor(ABC):
             tiles = input_bounds.make_tile_rois((block_size_x - offset_r, block_size_y - offset_c),
                                                 include_partials=False, overlap_shape=(-offset_r, -offset_c))
 
-        self._initialize(output_shape, label, image)
+        self._initialize(output_shape, image, label)
 
         label_nodata = label.nodata_value() if label else None
 
@@ -193,8 +240,25 @@ class LabelPredictor(Predictor):
     def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
-        output_image, prob_image, and error_image are all DeltaImageWriter's.
-        colormap and error_colors are all numpy arrays mapping classes to colors.
+        Parameters
+        ----------
+        model: tensorflow.keras.models.Model
+            Model to evaluate.
+        tile_shape: (int, int)
+            Shape of tiles to process.
+        output_image: str
+            If specified, output the results to this image.
+        show_progress: bool
+            Print progress to command line.
+        colormap: List[Any]
+            Map classes to colors given in the colormap.
+        prob_image: str
+            If given, output a probability image to this file. Probabilities are scaled as bytes
+            1-255, with 0 as nodata.
+        error_image: str
+            If given, output an image showing where the classification is incorrect.
+        error_colors: List[Any]
+            Colormap for the error_image.
         """
         super().__init__(model, tile_shape, show_progress)
         self._confusion_matrix = None
@@ -219,7 +283,7 @@ class LabelPredictor(Predictor):
         self._prob_o = None
         self._errors = None
 
-    def _initialize(self, shape, label, image):
+    def _initialize(self, shape, image, label=None):
         net_output_shape = self._model.output_shape[1:]
         self._num_classes = net_output_shape[-1]
         if self._prob_image:
@@ -332,17 +396,27 @@ class ImagePredictor(Predictor):
     """
     def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, transform=None):
         """
-        Trains on model, outputs to output_image, which is a DeltaImageWriter.
-
-        transform is a tuple (function, output numpy type, number of bands) applied
-        to the output image.
+        Parameters
+        ----------
+        model: tensorflow.keras.models.Model
+            Model to evaluate.
+        tile_shape: (int, int)
+            Shape of tiles to process at a time.
+        output_image: str
+            File to output results to.
+        show_progress: bool
+            Print progress to screen.
+        transform: (Callable[[numpy.ndarray], numpy.ndarray], output_type, num_bands)
+            The callable will be applied to the results from the network before saving
+            to a file. The results should be of type output_type and the third dimension
+            should be size num_bands.
         """
         super().__init__(model, tile_shape, show_progress)
         self._output_image = output_image
         self._output = None
         self._transform = transform
 
-    def _initialize(self, shape, label, image):
+    def _initialize(self, shape, image, label=None):
         net_output_shape = self._model.output_shape[1:]
         if self._output_image is not None:
             dtype = np.float32 if self._transform is None else np.dtype(self._transform[1])

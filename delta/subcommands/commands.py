@@ -48,6 +48,7 @@ def setup_classify(subparsers):
     sub.add_argument('--no-colormap', dest='noColormap', action='store_true',
                      help='Save raw classification values instead of colormapped values.')
     sub.add_argument('--overlap', dest='overlap', type=int, default=0, help='Classify with the autoencoder.')
+    sub.add_argument('--validation', dest='validation', help='Classify validation images instead.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main_classify)

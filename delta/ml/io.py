@@ -28,12 +28,25 @@ from delta.config import config
 def save_model(model, filename):
     """
     Save a model. Includes DELTA configuration.
+
+    Parameters
+    ----------
+    model: tensorflow.keras.models.Model
+        The model to save.
+    filename: str
+        Output filename.
     """
     model.save(filename, save_format='h5')
     with h5py.File(filename, 'r+') as f:
         f.attrs['delta'] = config.export()
 
 def print_layer(l):
+    """
+    Print a layer to stdout.
+
+    l: tensorflow.keras.layers.Layer
+        The layer to print.
+    """
     s = "{:<25}".format(l.name) + ' ' + '{:<20}'.format(str(l.input_shape)) + \
         ' -> ' + '{:<20}'.format(str(l.output_shape))
     c = l.get_config()
@@ -44,6 +57,14 @@ def print_layer(l):
     print(s)
 
 def print_network(a, tile_shape=None):
+    """
+    Print a model to stdout.
+
+    a: tensorflow.keras.models.Model
+        The model to print.
+    tile_shape: Optional[Tuple[int, int]]
+        If specified, print layer output sizes (necessary for FCN only).
+    """
     for l in a.layers:
         print_layer(l)
     in_shape = a.layers[0].input_shape[0]
