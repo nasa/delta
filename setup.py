@@ -47,7 +47,7 @@ setuptools.setup(
     ],
     install_requires=[
         'tensorflow>=2.1',
-        'usgs',
+        'usgs<0.3',
         'scipy',
         'matplotlib',
         'mlflow',
