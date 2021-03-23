@@ -32,9 +32,10 @@ class Predictor(ABC):
     """
     Abstract class to run prediction for an image given a model.
     """
-    def __init__(self, model, tile_shape=None, show_progress=False):
+    def __init__(self, model, tile_shape=None, show_progress=False, progress_text=None):
         self._model = model
         self._show_progress = show_progress
+        self._progress_text = progress_text
         self._tile_shape = tile_shape
 
     @abstractmethod
@@ -226,7 +227,8 @@ class Predictor(ABC):
                                 None if labels is None else labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
 
         try:
-            image.process_rois(tiles, callback_function, show_progress=self._show_progress)
+            image.process_rois(tiles, callback_function, show_progress=self._show_progress,
+                               progress_prefix=self._progress_text)
         except KeyboardInterrupt:
             self._abort()
             raise
@@ -237,7 +239,7 @@ class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
-    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, # pylint:disable=too-many-arguments
+    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, progress_text=None, # pylint:disable=too-many-arguments
                  colormap=None, prob_image=None, error_image=None, error_colors=None):
         """
         Parameters
@@ -260,7 +262,7 @@ class LabelPredictor(Predictor):
         error_colors: List[Any]
             Colormap for the error_image.
         """
-        super().__init__(model, tile_shape, show_progress)
+        super().__init__(model, tile_shape, show_progress, progress_text)
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
@@ -394,7 +396,8 @@ class ImagePredictor(Predictor):
     """
     Predicts an image from an image.
     """
-    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, transform=None):
+    def __init__(self, model, tile_shape=None, output_image=None, show_progress=False,
+                 progress_text=None, transform=None):
         """
         Parameters
         ----------
@@ -411,7 +414,7 @@ class ImagePredictor(Predictor):
             to a file. The results should be of type output_type and the third dimension
             should be size num_bands.
         """
-        super().__init__(model, tile_shape, show_progress)
+        super().__init__(model, tile_shape, show_progress, progress_text)
         self._output_image = output_image
         self._output = None
         self._transform = transform

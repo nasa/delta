@@ -314,7 +314,7 @@ class DeltaImage(ABC):
 
     def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
                      callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
-                     show_progress: bool=False) -> None:
+                     show_progress: bool=False, progress_prefix: str=None) -> None:
         """
         Apply a callback function to a list of ROIs.
 
@@ -327,11 +327,15 @@ class DeltaImage(ABC):
             of the current region and a numpy array of pixel values as inputs.
         show_progress: bool
             Print a progress bar on the command line if true.
+        progress_prefix: str
+            Text to print at start of progress bar.
         """
+        if progress_prefix is None:
+            progress_prefix = 'Blocks Processed'
         for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
             callback_function(roi, buf)
             if show_progress:
-                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix='Blocks Processed:')
+                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix=progress_prefix + ':')
         if show_progress:
             print()
 
