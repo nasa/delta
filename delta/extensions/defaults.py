@@ -37,6 +37,7 @@ def initialize():
     register_extension('delta.extensions.layers.efficientnet')
     register_extension('delta.extensions.layers.simple')
 
+    register_extension('delta.extensions.augmentations')
     register_extension('delta.extensions.losses')
     register_extension('delta.extensions.metrics')
     register_extension('delta.extensions.preprocess')

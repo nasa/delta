@@ -319,6 +319,29 @@ def callback_from_dict(callback_dict: Union[dict, str]) -> tensorflow.keras.call
         raise ValueError('Unknown callback %s.' % (cb_type))
     return callback_class(**callback_dict[cb_type])
 
+def augmentation_from_dict(aug_dict: Union[dict, str]):
+    """
+    Construct an augmenation function from a dictionary.
+
+    Parameters
+    ----------
+    aug_dict: Union[dict, str]
+        Config dictionary defining an augmentation.
+
+    Returns
+    -------
+    Callable
+        The augmentation function.
+    """
+    assert len(aug_dict.keys()) == 1, f'Error: augmentation has more than one type {aug_dict.keys()}'
+    aug_type = next(iter(aug_dict.keys()))
+    aug_class = extensions.augmentation(aug_type)
+    if aug_class is None:
+        raise ValueError('Unknown augmentation %s.' % (aug_type))
+    if aug_dict[aug_type] is None:
+        aug_dict[aug_type] = {}
+    return aug_class(**aug_dict[aug_type])
+
 def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
     """
     Returns
@@ -341,3 +364,20 @@ def config_model(num_bands: int) -> Callable[[], tensorflow.keras.models.Model]:
                       'num_bands' : num_bands}
 
     return model_from_dict(config.train.network.to_dict(), params_exposed)
+
+def config_augmentation():
+    """
+    Returns
+    -------
+    Callable
+        Augmentation function that applies all augmentations in configuration.
+    """
+    augs = config.train.augmentations()
+    if augs is None:
+        return None
+    assert isinstance(augs, list), 'Augmentations must be a list.'
+    func = None
+    for a in augs:
+        f = augmentation_from_dict(a)
+        func = f if func is None else (lambda f1, f2: lambda x, y: f1(*f2(x, y)))(f, func)
+    return func
