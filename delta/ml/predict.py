@@ -253,7 +253,7 @@ class LabelPredictor(Predictor):
         show_progress: bool
             Print progress to command line.
         colormap: List[Any]
-            Map classes to colors given in the colormap.
+            Map classes to colors given in the colormap for output_image.
         prob_image: str
             If given, output a probability image to this file. Probabilities are scaled as bytes
             1-255, with 0 as nodata.
@@ -266,7 +266,9 @@ class LabelPredictor(Predictor):
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
-        if colormap is not None:
+        if output_image is None:
+            colormap = None
+        elif colormap is not None:
             # convert python list to numpy array
             if not isinstance(colormap, np.ndarray):
                 a = np.zeros(shape=(len(colormap), 3), dtype=np.uint8)
@@ -299,7 +301,6 @@ class LabelPredictor(Predictor):
                   (self._colormap.shape[0], self._num_classes))
             if self._colormap.shape[0] > self._num_classes:
                 self._num_classes = self._colormap.shape[0]
-
         if label:
             self._errors = np.zeros(shape, dtype=np.bool)
             self._confusion_matrix = np.zeros((self._num_classes, self._num_classes), dtype=np.int32)
