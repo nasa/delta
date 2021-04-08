@@ -433,7 +433,7 @@ class ClassesConfig(DeltaConfigComponent):
         for (i, c) in enumerate(self._classes):
             if class_name in (c.value, c.name):
                 return i
-        raise ValueError('Class ' + class_name + ' not found.')
+        raise ValueError('Class ' + str(class_name) + ' not found.')
 
     def weights(self):
         """
