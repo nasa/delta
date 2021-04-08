@@ -51,15 +51,6 @@ def test_ms_ssim():
     assert l(tf.zeros((1, 180, 180, 1)), tf.zeros((1, 180, 180, 1))) == 0.0
 
 def test_mapped():
-    mcce = ext.loss('MappedCategoricalCrossentropy')
-    z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)
-    o = tf.ones((3, 3, 3, 3), dtype=tf.float32)
-    assert tf.reduce_sum(mcce([0, 0]).call(z, o)) == 0.0
-    assert tf.reduce_sum(mcce([1, 0]).call(z, o)) > 10.0
-    oo = tf.ones((3, 3, 3, 3, 2), dtype=tf.float32)
-    assert tf.reduce_sum(mcce([[0, 0], [1, 1]]).call(z, oo)) == 0.0
-    assert tf.reduce_sum(mcce([[1, 1], [0, 0]]).call(z, oo)) > 10.0
-
     config_reset()
     test_str = '''
     dataset:
@@ -71,12 +62,32 @@ def test_mapped():
     '''
     config.load(yaml_str=test_str)
 
+    mcce = ext.loss('MappedCategoricalCrossentropy')
+    z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)
+    o = tf.ones((3, 3, 3, 3), dtype=tf.float32)
+    assert tf.reduce_sum(mcce([0, 0]).call(z, o)) == 0.0
+    assert tf.reduce_sum(mcce([1, 0]).call(z, o)) > 10.0
+    oo = tf.ones((3, 3, 3, 3, 2), dtype=tf.float32)
+    assert tf.reduce_sum(mcce([[0, 0], [1, 1]]).call(z, oo)) == 0.0
+    assert tf.reduce_sum(mcce([[1, 1], [0, 0]]).call(z, oo)) > 10.0
+
     assert tf.reduce_sum(mcce({0: 0, 1:0}).call(z, o)) == 0.0
     assert tf.reduce_sum(mcce({'class_0': 0, 'class_1':0}).call(z, o)) == 0.0
     assert tf.reduce_sum(mcce({0:1, 1:0}).call(z, o)) > 10.0
     assert tf.reduce_sum(mcce({'class_0': 1, 'class_1':0}).call(z, o)) > 10.0
 
 def test_sparse_recall():
+    config_reset()
+    test_str = '''
+    dataset:
+      classes:
+        - 0:
+            name: class_0
+        - 1:
+            name: class_1
+    '''
+    config.load(yaml_str=test_str)
+
     m0 = ext.metric('SparseRecall')(0)
     m1 = ext.metric('SparseRecall')(1)
     z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)

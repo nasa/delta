@@ -74,6 +74,6 @@ def print_network(a, tile_shape=None):
     print('Size: ' + str(in_shape[1:]) + ' --> ' + str(out_shape[1:]))
     if out_shape[1] is not None and out_shape[2] is not None:
         print('Compression Rate - ', out_shape[1] * out_shape[2] * out_shape[3] /
-                                     (in_shape[1] * in_shape[2] * in_shape[3]))
+              (in_shape[1] * in_shape[2] * in_shape[3]))
     print('Layers - ', len(a.layers))
     print('Trainable Parameters - ', np.sum([K.count_params(w) for w in a.trainable_weights]))

@@ -67,7 +67,7 @@ def print_classes(cm):
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
         with np.errstate(invalid='ignore'):
             print('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' % \
-                    (name,
+                    (name.ljust(20),
                      np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
                      np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
                      int(np.sum(cm[i, :])), int(np.sum(cm))))
@@ -150,6 +150,7 @@ def main(options):
                 full_cm += cm
     stop_time = time.time()
     if labels:
+        print('Overall:')
         print_classes(full_cm)
     print('Elapsed time = ', stop_time - start_time)
     return 0
