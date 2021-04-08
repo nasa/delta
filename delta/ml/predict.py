@@ -336,8 +336,8 @@ class LabelPredictor(Predictor):
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._prob_image is not None:
-            prob = 1.0 + (pred_image * 254.0)
-            prob = prob.astype(np.uint8)
+            prob = np.clip((pred_image * 254.0).astype(np.uint8), 0, 254)
+            prob = 1 + prob
             prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
             self._prob_image.write(prob, x, y)
 
