@@ -19,7 +19,6 @@
 Tools for loading input images into the TensorFlow Dataset class.
 """
 from concurrent.futures import ThreadPoolExecutor
-import copy
 import functools
 import random
 import os
@@ -282,15 +281,13 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 next_buf = self._iopool.submit((lambda x: (lambda: image.read(tiles[x + 1][0])))(c))
             if cur_buf is None:
                 continue
-            buf = cur_buf.result()
+            if preprocess:
+                buf = preprocess(cur_buf.result(), rect, bands)
+            else:
+                buf = cur_buf.result()
             (rect, sub_tiles) = tiles[c]
             for s in sub_tiles:
-                if preprocess:
-                    t = copy.copy(s)
-                    t.shift(rect.min_x, rect.min_y)
-                    yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
-                else:
-                    yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+                yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
 
             if not is_labels: # update access count per row
                 self.resume_log_update(i, need_check=False)

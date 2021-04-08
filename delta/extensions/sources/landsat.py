@@ -93,9 +93,9 @@ def get_scene_info(path):
     return output
 
 __LANDSAT_BANDS_DICT = {
-  '5': [1, 2, 3, 4, 5, 6, 7],
-  '7': [1, 2, 3, 4, 5, 6, 7], # Don't forget the extra thermal band!
-  '8': [1, 2, 3, 4, 5, 6, 7, 9]
+    '5': [1, 2, 3, 4, 5, 6, 7],
+    '7': [1, 2, 3, 4, 5, 6, 7], # Don't forget the extra thermal band!
+    '8': [1, 2, 3, 4, 5, 6, 7, 9]
 }
 
 def _get_landsat_bands_to_use(sensor_name):

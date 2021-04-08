@@ -87,6 +87,7 @@ class SparsePrecision(SparseMetric): # pragma: no cover
     """
     def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
         super().__init__(label, class_id, name, binary)
+        self._nodata_id = config.dataset.classes.class_id('nodata')
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
@@ -99,6 +100,10 @@ class SparsePrecision(SparseMetric): # pragma: no cover
         else:
             y_pred = tf.math.argmax(y_pred, axis=-1)
             right_class_pred = tf.math.equal(y_pred, self._class_id)
+
+        if self._nodata_id:
+            valid = tf.math.not_equal(y_true, self._nodata_id)
+            right_class_pred = tf.math.logical_and(right_class_pred, valid)
 
         total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
         self._total_class.assign_add(total_class)
