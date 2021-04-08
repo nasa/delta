@@ -23,9 +23,9 @@ import tempfile
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+import h5py
 
 import conftest
-import h5py
 
 from delta.config import config
 from delta.extensions.sources import npy
