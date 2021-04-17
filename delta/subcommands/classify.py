@@ -111,7 +111,8 @@ def classify_image(model, image, label, path, net_name, options):
         sys.exit(0)
 
     if options.autoencoder:
-        write_tiff('orig_' + net_name + '_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
+        write_tiff('orig_' + net_name + '_' + base_name + '.tiff',
+                   image.read() if options.noColormap else ae_convert(image.read()),
                    metadata=image.metadata())
 
     if label:
