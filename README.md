@@ -98,6 +98,19 @@ View all the logged training information through mlflow by running::
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
 
+Data Preparation
+=============
+
+Delta is capable of processing compressed input images but processing will go faster if you preprocess
+your input data.  You can do this using the tool scripts/fetch/unpack_inputs.py as in this example:
+
+```
+  python3 scripts/fetch/unpack_inputs.py --input-folder raw_images --output-folder unpacked_images \
+  --image-type worldview --image-ext .zip
+```
+
+The images will be unpacked and preprocessed in the output folder, ready for training or classification.
+
 Contributors
 ============
 We welcome pull requests to contribute to DELTA. However, due to NASA legal restrictions, we must require
