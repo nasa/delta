@@ -20,7 +20,8 @@
 #pylint: disable=R0914
 
 """
-Try to unpack compressed input images to an output folder
+Unpack compressed input images to an output folder so that they do not
+need to be unpacked into a cache during training.
 """
 import os
 import sys

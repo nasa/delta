@@ -159,8 +159,6 @@ class Sentinel1Image(tiff.TiffImage):
 
         return unpack_s1_to_folder(zip_path, unpack_folder)
 
-    # This function is currently set up for the HDDS archived WV data, files from other
-    #  locations will need to be handled differently.
     def _prep(self, paths):
         """Prepares a Sentinel1 file from the archive for processing.
            Returns the path to the file ready to use.
