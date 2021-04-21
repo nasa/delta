@@ -22,12 +22,29 @@ Installation
 
 3. Checkout the delta repository and install with pip:
 
-```bash
-git clone http://github.com/nasa/delta
-python3 -m pip install delta
-```
+    ```bash
+    git clone http://github.com/nasa/delta
+    python3 -m pip install delta
+    ```
 
 DELTA is now installed and ready to use!
+
+#### Alternate install using a Conda environment 
+1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+2. Checkout the delta repository and cd into the directory:
+    ```
+    git clone http://github.com/nasa/delta
+    cd ./delta
+    ```
+   
+3. Run the following commands to create a conda environment, install dependences, and install delta:
+    ```bash
+    conda create --name delta "python=3.6.9" gdal
+    conda activate delta
+    pip install tensorflow==2.3.2
+    pip install . # This command should be run in the ./delta directory we made in step 2
+    ```
 
 Documentation
 =============
