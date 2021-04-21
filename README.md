@@ -98,6 +98,22 @@ View all the logged training information through mlflow by running::
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
 
+Data Preparation
+=============
+
+By default DELTA operates on compressed input images which are unpacked to a temporary cache before
+they are processed.  You can speed up processing by pre-unpacking your input data to a new folder
+using the tool scripts/fetch/unpack_inputs.py as in this example:
+
+```
+  python3 scripts/fetch/unpack_inputs.py --input-folder raw_images --output-folder unpacked_images \
+  --image-type worldview --image-ext .zip
+```
+
+The images will be unpacked in the output folder, ready for training or classification. To train or
+classify with unpacked data, the image type specified in the configuration file remains the same but
+the extension should match the new extension in the unpacked folders (.tif for worldview, .vrt for Sentinel1).
+
 Contributors
 ============
 We welcome pull requests to contribute to DELTA. However, due to NASA legal restrictions, we must require
