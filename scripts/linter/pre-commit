@@ -1,9 +1,16 @@
 #!/bin/bash
 
 # only check files being committed (but not deleted files)
-git diff-index --cached HEAD --name-only --diff-filter=ACMRTUXB |
-grep '\.py$' |
-xargs --null --no-run-if-empty ./scripts/linter/lint;
+TO_BE_LINTED=$(git diff-index --cached HEAD --name-only --diff-filter=ACMRTUXB |
+grep '\.py$')
+
+# rewrote previous command to be cross platform compatible for linux and mac.
+# Mac xargs doesn't support -- options and doesn't support --no-run-if-empty at all with default libraries
+if [ ! -z "$TO_BE_LINTED" ]; then
+  echo $TO_BE_LINTED | xargs -0 ./scripts/linter/lint;
+else
+  echo "No files to lint."
+fi
 
 if [ "$?" != "0" ]; then
   echo "Linter failed."

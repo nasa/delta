@@ -129,7 +129,7 @@ class Predictor(ABC):
         best = np.zeros((chunks.shape[0],) + net_output_shape, dtype=out_type.as_numpy_dtype)
         # do 8 MB at a time... this is arbitrary, may want to change in future
         BATCH_SIZE = max(1, int(8 * 1024 * 1024 / net_input_shape[0] / net_input_shape[1] /
-                            net_input_shape[2] / out_type.size))
+                                net_input_shape[2] / out_type.size))
         for i in range(0, chunks.shape[0], BATCH_SIZE):
             best[i:i+BATCH_SIZE] = self._model.predict_on_batch(chunks[i:i+BATCH_SIZE])
 
@@ -253,7 +253,7 @@ class LabelPredictor(Predictor):
         show_progress: bool
             Print progress to command line.
         colormap: List[Any]
-            Map classes to colors given in the colormap.
+            Map classes to colors given in the colormap for output_image.
         prob_image: str
             If given, output a probability image to this file. Probabilities are scaled as bytes
             1-255, with 0 as nodata.
@@ -266,7 +266,9 @@ class LabelPredictor(Predictor):
         self._confusion_matrix = None
         self._num_classes = None
         self._output_image = output_image
-        if colormap is not None:
+        if output_image is None:
+            colormap = None
+        elif colormap is not None:
             # convert python list to numpy array
             if not isinstance(colormap, np.ndarray):
                 a = np.zeros(shape=(len(colormap), 3), dtype=np.uint8)
@@ -299,7 +301,6 @@ class LabelPredictor(Predictor):
                   (self._colormap.shape[0], self._num_classes))
             if self._colormap.shape[0] > self._num_classes:
                 self._num_classes = self._colormap.shape[0]
-
         if label:
             self._errors = np.zeros(shape, dtype=np.bool)
             self._confusion_matrix = np.zeros((self._num_classes, self._num_classes), dtype=np.int32)
@@ -335,8 +336,8 @@ class LabelPredictor(Predictor):
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
         if self._prob_image is not None:
-            prob = 1.0 + (pred_image * 254.0)
-            prob = prob.astype(np.uint8)
+            prob = np.clip((pred_image * 254.0).astype(np.uint8), 0, 254)
+            prob = 1 + prob
             prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
             self._prob_image.write(prob, x, y)
 

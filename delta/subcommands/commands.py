@@ -39,6 +39,10 @@ def main_validate(options):
     from .import validate
     validate.main(options)
 
+def main_visualize(options):
+    from .import visualize
+    visualize.main(options)
+
 def setup_classify(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
     config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
@@ -74,4 +78,11 @@ def setup_validate(subparsers):
 
     sub.set_defaults(function=main_validate)
 
-SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]
+def setup_visualize(subparsers):
+    sub = subparsers.add_parser('visualize', help='Visualize input dataset.')
+    sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Visualize for the autoencoder.')
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset', 'train'])
+
+    sub.set_defaults(function=main_visualize)
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate, setup_visualize]

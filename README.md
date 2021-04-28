@@ -22,12 +22,29 @@ Installation
 
 3. Checkout the delta repository and install with pip:
 
-```bash
-git clone http://github.com/nasa/delta
-python3 -m pip install delta
-```
+    ```bash
+    git clone http://github.com/nasa/delta
+    python3 -m pip install delta
+    ```
 
 DELTA is now installed and ready to use!
+
+#### Alternate install using a Conda environment 
+1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
+
+2. Checkout the delta repository and cd into the directory:
+    ```
+    git clone http://github.com/nasa/delta
+    cd ./delta
+    ```
+   
+3. Run the following commands to create a conda environment, install dependences, and install delta:
+    ```bash
+    conda create --name delta "python=3.6.9" gdal
+    conda activate delta
+    pip install tensorflow==2.3.2
+    pip install . # This command should be run in the ./delta directory we made in step 2
+    ```
 
 Documentation
 =============
@@ -97,6 +114,22 @@ View all the logged training information through mlflow by running::
 
 and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.
+
+Data Preparation
+=============
+
+By default DELTA operates on compressed input images which are unpacked to a temporary cache before
+they are processed.  You can speed up processing by pre-unpacking your input data to a new folder
+using the tool scripts/fetch/unpack_inputs.py as in this example:
+
+```
+  python3 scripts/fetch/unpack_inputs.py --input-folder raw_images --output-folder unpacked_images \
+  --image-type worldview --image-ext .zip
+```
+
+The images will be unpacked in the output folder, ready for training or classification. To train or
+classify with unpacked data, the image type specified in the configuration file remains the same but
+the extension should match the new extension in the unpacked folders (.tif for worldview, .vrt for Sentinel1).
 
 Contributors
 ============

@@ -67,7 +67,7 @@ def print_classes(cm):
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
         with np.errstate(invalid='ignore'):
             print('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' % \
-                    (name,
+                    (name.ljust(20),
                      np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
                      np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
                      int(np.sum(cm[i, :])), int(np.sum(cm))))
@@ -81,7 +81,7 @@ def classify_image(model, image, label, path, net_name, options):
 
     error_image = None
     if label:
-        error_image = writer('errors_' + base_name + '.tiff')
+        error_image = writer('errors_' + net_name + '_' + base_name + '.tiff')
         assert image.size() == label.size(), 'Image and label do not match.'
 
     ts = config.io.tile_size()
@@ -111,7 +111,8 @@ def classify_image(model, image, label, path, net_name, options):
         sys.exit(0)
 
     if options.autoencoder:
-        write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
+        write_tiff('orig_' + net_name + '_' + base_name + '.tiff',
+                   image.read() if options.noColormap else ae_convert(image.read()),
                    metadata=image.metadata())
 
     if label:
@@ -120,7 +121,7 @@ def classify_image(model, image, label, path, net_name, options):
         print_classes(cm)
         if len(config.dataset.classes) != cm.shape[0]:
             class_names = list(map(lambda x: 'Class %d' % (x), range(cm.shape[0])))
-        save_confusion(cm, class_names, 'confusion_' + base_name + '.pdf')
+        save_confusion(cm, class_names, 'confusion_' + net_name + '_' + base_name + '.pdf')
         return cm
     return None
 
@@ -150,6 +151,7 @@ def main(options):
                 full_cm += cm
     stop_time = time.time()
     if labels:
+        print('Overall:')
         print_classes(full_cm)
     print('Elapsed time = ', stop_time - start_time)
     return 0
