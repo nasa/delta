@@ -333,14 +333,19 @@ def augmentation_from_dict(aug_dict: Union[dict, str]):
     Callable
         The augmentation function.
     """
-    assert len(aug_dict.keys()) == 1, f'Error: augmentation has more than one type {aug_dict.keys()}'
-    aug_type = next(iter(aug_dict.keys()))
+    if isinstance(aug_dict, str):
+        aug_type = aug_dict
+        params = {}
+    else:
+        assert len(aug_dict.keys()) == 1, f'Error: augmentation has more than one type {aug_dict.keys()}'
+        aug_type = next(iter(aug_dict.keys()))
+        params = aug_dict[aug_type]
+        if params is None:
+            params = {}
     aug_class = extensions.augmentation(aug_type)
     if aug_class is None:
         raise ValueError('Unknown augmentation %s.' % (aug_type))
-    if aug_dict[aug_type] is None:
-        aug_dict[aug_type] = {}
-    return aug_class(**aug_dict[aug_type])
+    return aug_class(**params)
 
 def config_callbacks() -> List[tensorflow.keras.callbacks.Callback]:
     """
