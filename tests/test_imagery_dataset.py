@@ -38,33 +38,17 @@ def test_basics(dataset_block_label):
     assert d.tile_shape() == [256, 1024]
     assert d.tile_overlap() == (0, 0)
 
-def test_block_label(dataset_block_label):
-    """
-    Tests basic functionality of a dataset on 3x3 blocks.
-    """
-    num_data = 0
-    for image in dataset_block_label.data():
-        img = image.numpy()
-        assert img.dtype == np.float32
-        unique = np.unique(img)
-        assert (0 in unique or 1 in unique and len(unique) <= 2)
-        num_data += 1
-    num_label = 0
-    for label in dataset_block_label.labels():
-        num_label += 1
-    assert num_label == num_data
-
-    ds = dataset_block_label.dataset()
+def check_blocks(ds, true_value=1):
     for (image, label) in ds.take(100):
         if label[1, 1]:
-            assert image[0][0][0] == 1
-            assert image[0][1][0] == 1
-            assert image[0][2][0] == 1
-            assert image[1][0][0] == 1
-            assert image[1][2][0] == 1
-            assert image[2][0][0] == 1
-            assert image[2][1][0] == 1
-            assert image[2][2][0] == 1
+            assert image[0][0][0] == true_value
+            assert image[0][1][0] == true_value
+            assert image[0][2][0] == true_value
+            assert image[1][0][0] == true_value
+            assert image[1][2][0] == true_value
+            assert image[2][0][0] == true_value
+            assert image[2][1][0] == true_value
+            assert image[2][2][0] == true_value
         v1 = image[0][0][0] == 0
         v2 = image[0][1][0] == 0
         v3 = image[0][2][0] == 0
@@ -79,6 +63,34 @@ def test_block_label(dataset_block_label):
         v8 = image[2][2][0] == 0
         if v6 or v7 or v8:
             assert label[1, 1] == 0
+
+def test_block_label(dataset_block_label):
+    """
+    Tests basic functionality of a dataset on 3x3 blocks.
+    """
+    num_data = 0
+    for image in dataset_block_label.data():
+        img = image.numpy()
+        assert img.dtype == np.float32
+        unique = np.unique(img)
+        assert (0 in unique or 1 in unique and len(unique) <= 2)
+        num_data += 1
+    num_label = 0
+    for _ in dataset_block_label.labels():
+        num_label += 1
+    assert num_label == num_data
+
+    ds = dataset_block_label.dataset()
+    check_blocks(ds.take(100))
+
+def test_augment(dataset_block_label):
+    """
+    Tests augmentation function on a dataset.
+    """
+    def augment(image, label):
+        return (image * 2, label)
+    ds = dataset_block_label.dataset(augment_function=augment)
+    check_blocks(ds.take(100), 2)
 
 def test_nodata(dataset_block_label):
     """

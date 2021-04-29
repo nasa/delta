@@ -28,7 +28,7 @@ import tensorflow as tf
 
 from delta.config import config
 from delta.imagery import imagery_dataset
-from delta.ml.config_parser import config_model
+from delta.ml.config_parser import config_model, config_augmentation
 
 done_plot = False
 img_plots = []
@@ -137,7 +137,7 @@ def main(options):
     labels = []
     PLOT_AT_ONCE=7
 
-    for result in ids.dataset(config.dataset.classes.weights()):
+    for result in ids.dataset(config.dataset.classes.weights(), config_augmentation()):
         image = result[0].numpy()
         label = result[1].numpy()
         pw = (image.shape[0] - label.shape[0]) // 2

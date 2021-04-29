@@ -34,7 +34,8 @@ from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
 from .io import save_model, print_network
-from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
+from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, \
+                           optimizer_from_dict, config_augmentation
 
 class DeltaLayer(Layer):
     """
@@ -83,7 +84,7 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc):
-    ds = ids.dataset(config.dataset.classes.weights())
+    ds = ids.dataset(config.dataset.classes.weights(), config_augmentation())
 
     validation=None
     if tc.validation:
