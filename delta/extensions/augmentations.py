@@ -70,7 +70,7 @@ def random_flip_up_down(probability=0.5):
         return result
     return rand_flip
 
-def random_rotation(probability=0.5, max_angle=5.0):
+def random_rotate(probability=0.5, max_angle=5.0):
     """
     Apply a random rotation.
 
@@ -123,5 +123,5 @@ def random_translate(probability=0.5, max_pixels=7):
 
 register_augmentation('random_flip_left_right', random_flip_left_right)
 register_augmentation('random_flip_up_down', random_flip_up_down)
-register_augmentation('random_rotation', random_rotation)
+register_augmentation('random_rotate', random_rotate)
 register_augmentation('random_translate', random_translate)
