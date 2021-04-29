@@ -77,6 +77,8 @@ train:
     Adam:
       learning_rate: 0.001
   callbacks:       ~
+  # augmentation functions to apply to training data
+  augmentations:   ~
   validation:
     steps:         1000
     # if true, skips the first steps from the training set to use for validation instead

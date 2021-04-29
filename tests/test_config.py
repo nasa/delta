@@ -383,6 +383,48 @@ def test_train():
     assert tc.validation.steps == 20
     assert tc.validation.from_training
 
+def test_augmentations():
+    config_reset()
+    test_str = '''
+    train:
+      augmentations:
+        - random_flip_left_right:
+            probability: 1.0
+        - random_flip_up_down:
+            probability: 1.0
+    '''
+    config.load(yaml_str=test_str)
+    aug = config_parser.config_augmentation()
+    a = tf.constant(np.expand_dims(np.array([[0, 1], [2, 3]]), (0, 3)))
+    o = tf.constant(np.expand_dims(np.array([[3, 2], [1, 0]]), (0, 3)))
+    (b, c) = aug(a, a)
+    assert (b.numpy() == o.numpy()).all()
+    assert (c.numpy() == o.numpy()).all()
+
+    config_reset()
+    test_str = '''
+    train:
+      augmentations:
+        - random_flip_left_right:
+            probability: 1.0
+        - random_flip_up_down:
+            probability: 1.0
+        - random_rotate:
+            probability: 1.0
+            max_angle: 0.5
+        - random_translate:
+            probability: 1.0
+            max_pixels: 10
+    '''
+    config.load(yaml_str=test_str)
+    aug = config_parser.config_augmentation()
+    a = tf.constant(np.expand_dims(np.array([[0, 1], [2, 3]]), (0, 3)))
+    o = tf.constant(np.expand_dims(np.array([[3, 2], [1, 0]]), (0, 3)))
+    (b, c) = aug(a, a)
+    # just make sure it doesn't crash
+    assert b.numpy().shape == o.numpy().shape
+    assert c.numpy().shape == o.numpy().shape
+
 def test_mlflow():
     config_reset()
 
