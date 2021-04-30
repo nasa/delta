@@ -64,15 +64,17 @@ def identity_config(binary_identity_tiff_filenames):
     shutil.rmtree(tmpdir)
 
 def test_predict_main(identity_config, tmp_path):
-    config_reset()
-    model_path = tmp_path / 'model.h5'
-    inputs = tf.keras.layers.Input((32, 32, 2))
-    tf.keras.Model(inputs, inputs).save(model_path)
-    args = 'delta classify --config %s %s' % (identity_config, model_path)
-    old = os.getcwd()
-    os.chdir(tmp_path) # put temporary outputs here
-    main(args.split())
-    os.chdir(old)
+    # DONE: add some tests here for prob_error_image?
+    for cmd_option in ["","--prob", "--continuous-error"]:
+        config_reset()
+        model_path = tmp_path / 'model.h5'
+        inputs = tf.keras.layers.Input((32, 32, 2))
+        tf.keras.Model(inputs, inputs).save(model_path)
+        args = 'delta classify --config %s %s %s' % (identity_config, model_path, cmd_option)
+        old = os.getcwd()
+        os.chdir(tmp_path) # put temporary outputs here
+        main(args.split())
+        os.chdir(old)
 
 def test_train_main(identity_config, tmp_path):
     config_reset()
