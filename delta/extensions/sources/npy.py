@@ -57,13 +57,18 @@ class NumpyImage(delta_image.DeltaImage):
         if buf is None:
             buf = np.zeros(shape=(roi.width(), roi.height(), self.num_bands() ), dtype=self._data.dtype)
         (min_x, max_x, min_y, max_y) = roi.bounds()
-        buf = self._data[min_y:max_y,min_x:max_x,:]
+        if len(self._data.shape) == 2:
+            buf = self._data[min_x:max_x,min_y:max_y]
+        else:
+            buf = self._data[min_x:max_x,min_y:max_y,:]
         return buf
 
     def size(self):
-        return (self._data.shape[1], self._data.shape[0])
+        return (self._data.shape[0], self._data.shape[1])
 
     def num_bands(self):
+        if len(self._data.shape) == 2:
+            return 1
         return self._data.shape[2]
 
     def dtype(self):

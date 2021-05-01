@@ -25,6 +25,7 @@ import numpy as np
 from osgeo import gdal
 
 from delta.imagery import delta_image, rectangle
+from delta.extensions.sources.npy import NumpyImage
 
 
 # Suppress GDAL warnings, errors become exceptions so we get them
@@ -179,7 +180,7 @@ class TiffImage(delta_image.DeltaImage):
         self.__asert_open()
         band_handle = self._gdal_band(0)
         block_size = band_handle.GetBlockSize()
-        return (block_size[1], block_size[0])
+        return (block_size[0], block_size[1])
 
     def metadata(self):
         self.__asert_open()
@@ -234,40 +235,16 @@ class TiffImage(delta_image.DeltaImage):
             Write progress bar to stdout
         """
 
-        if nodata_value is None:
-            nodata_value = self.nodata_value()
-        # Use the input tile size for the block size unless the user specified one.
-        block_size_y, block_size_x = self.block_size()
-        if tile_size is not None:
-            block_size_x = tile_size[0]
-            block_size_y = tile_size[1]
-
-        # Set up the output image
-        with _TiffWriter(path, self.width(), self.height(), self.num_bands(),
-                         self._gdal_type(), block_size_x, block_size_y,
-                         nodata_value, self.metadata()) as writer:
-            input_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
-            output_rois = input_bounds.make_tile_rois((block_size_x, block_size_y), include_partials=True)
-
-            def callback_function(output_roi, data):
-                """Callback function to write the first channel to the output file."""
-
-                # Figure out some ROI positioning values
-                block_x = output_roi.min_x / block_size_x
-                block_y = output_roi.min_y / block_size_y
-
-                # Loop on bands
-                for band in range(data.shape[2]):
-                    writer.write_block(data[:, :, band], block_x, block_y, band)
-
-            self.process_rois(output_rois, callback_function, show_progress=show_progress)
+        write_tiff(path, image=self, nodata=nodata_value, block_size=tile_size,
+                   show_progress=show_progress)
 
 def _numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
     if dtype in _NUMPY_TO_GDAL_TYPES:
         return _NUMPY_TO_GDAL_TYPES[dtype]
     raise Exception('Unrecognized numpy data type: ' + str(dtype))
 
-def write_tiff(output_path: str, data: np.ndarray, metadata: dict=None):
+def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.DeltaImage=None,
+               nodata=None, metadata: dict=None, block_size=None, show_progress: bool=False):
     """
     Write a numpy array to a file as a tiff.
 
@@ -277,29 +254,55 @@ def write_tiff(output_path: str, data: np.ndarray, metadata: dict=None):
         Filename to save tiff file to
     data: numpy.ndarray
         Image data to save.
+    image: delta_image.DeltaImage
+        Image data to save (specify one of this or data).
+    nodata: Any
+        Nodata value.
     metadata: dict
         Optional metadata to include.
+    block_size: Tuple[int]
+        Optionally override block size for writing.
+    show_progress: bool
+        Display command line progress bar.
     """
 
-    if len(data.shape) < 3:
-        num_bands = 1
-    else:
-        num_bands = data.shape[2]
-    data_type = _numpy_dtype_to_gdal_type(data.dtype)
+    if data is not None:
+        assert image is None, 'Must specify one of data or image.'
+        image = NumpyImage(data, nodata_value=nodata)
+    assert image is not None, 'Must specify either data or image.'
+    num_bands = image.num_bands()
+    data_type = _numpy_dtype_to_gdal_type(image.dtype())
+    size = (image.width(), image.height())
+    # gdal requires block size of 16 when writing...
+    ts = (min(max(1, image.block_size()[0] // 16) * 16, 1024), \
+          min(max(1, image.block_size()[1] // 16) * 16, 1024))
+    if block_size:
+        ts = block_size
+    if nodata is None:
+        nodata = image.nodata_value()
+    if metadata is None:
+        metadata = image.metadata()
 
-    TILE_SIZE=256
+    with _TiffWriter(output_path, size[0], size[1], num_bands=num_bands,
+                     data_type=data_type, metadata=metadata, nodata_value=nodata,
+                     tile_width=ts[0], tile_height=ts[1]) as writer:
+        input_bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
+        output_rois = input_bounds.make_tile_rois(ts, include_partials=True)
+        def callback_function(output_roi, data):
+            """Callback function to write the first channel to the output file."""
 
-    with _TiffWriter(output_path, data.shape[0], data.shape[1], num_bands=num_bands,
-                     data_type=data_type, metadata=metadata, tile_width=min(TILE_SIZE, data.shape[0]),
-                     tile_height=min(TILE_SIZE, data.shape[1])) as writer:
-        for x in range(0, data.shape[0], TILE_SIZE):
-            for y in range(0, data.shape[1], TILE_SIZE):
-                block = (x // TILE_SIZE, y // TILE_SIZE)
-                if len(data.shape) < 3:
-                    writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE], block[0], block[1], 0)
-                else:
-                    for b in range(num_bands):
-                        writer.write_block(data[x:x+TILE_SIZE, y:y+TILE_SIZE, b], block[0], block[1], b)
+            # Figure out some ROI positioning values
+            block_x = output_roi.min_x / ts[0]
+            block_y = output_roi.min_y / ts[1]
+
+            # Loop on bands
+            if len(data.shape) == 2:
+                writer.write_block(data[:, :], block_x, block_y, 0)
+            else:
+                for band in range(num_bands):
+                    writer.write_block(data[:, :, band], block_x, block_y, band)
+
+        image.process_rois(output_rois, callback_function, show_progress=show_progress)
 
 class _TiffWriter:
     """
@@ -314,7 +317,9 @@ class _TiffWriter:
         self._handle = None
 
         # Constants
-        options = ['COMPRESS=LZW', 'BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
+        options = ['BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
+        if data_type not in (gdal.GDT_Float32, gdal.GDT_Float64):
+            options += ['COMPRESS=LZW']
         options += ['BLOCKXSIZE='+str(self._tile_width),
                     'BLOCKYSIZE='+str(self._tile_height)]
         MIN_SIZE_FOR_TILES=100
