@@ -30,6 +30,7 @@ from delta.config import config
 from delta.config.extensions import custom_objects, image_writer
 from delta.ml import predict
 from delta.extensions.sources.tiff import write_tiff
+from delta.ml.io import load_model
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
@@ -128,11 +129,13 @@ def classify_image(model, image, label, path, net_name, options):
 def main(options):
 
     # TODO: Share the way this is done with in ml/train.py
-    if config.general.gpus() == 0:
-        with tf.device('/cpu:0'):
-            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
-    else:
-        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
+    #if config.general.gpus() == 0:
+    #    with tf.device('/cpu:0'):
+    #        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
+    #else:
+    #    model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
+    model = load_model(options.model)
+    print('model.output_shape = ' + str(model.output_shape))
 
     start_time = time.time()
     images = config.dataset.images()

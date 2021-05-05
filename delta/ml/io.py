@@ -22,8 +22,10 @@ Functions for IO specific to ML.
 import h5py
 import numpy as np
 import tensorflow.keras.backend as K
+import tensorflow
 
 from delta.config import config
+from delta.config.extensions import custom_objects
 
 def save_model(model, filename):
     """
@@ -36,9 +38,27 @@ def save_model(model, filename):
     filename: str
         Output filename.
     """
-    model.save(filename, save_format='h5')
-    with h5py.File(filename, 'r+') as f:
-        f.attrs['delta'] = config.export()
+    if filename.endswith('.h5'):
+        model.save(filename, save_format='h5')
+        with h5py.File(filename, 'r+') as f:
+            f.attrs['delta'] = config.export()
+    else: # SavedModel format
+        model.save(filename)
+        #tensorflow.saved_model.save(model, filename)
+        # TODO: Record the config!
+
+def load_model(filename):
+    """
+    Load a model.
+
+    Parameters
+    ----------
+    filename: str
+        Input filename.
+    """
+    model = tensorflow.keras.models.load_model(filename, compile=False, custom_objects=custom_objects())
+    return model
+
 
 def print_layer(l):
     """

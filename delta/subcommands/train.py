@@ -33,7 +33,7 @@ from delta.config.extensions import custom_objects
 from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.config_parser import config_model
-from delta.ml.io import save_model
+from delta.ml.io import save_model, load_model
 
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
@@ -55,7 +55,7 @@ def main(options):
     img = images.load(0)
     model = config_model(img.num_bands())
     if options.resume is not None:
-        temp_model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
+        temp_model = load_model(options.resume)
     else:
         # this one is not built with proper scope, just used to get input and output shapes
         temp_model = model()

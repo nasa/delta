@@ -30,7 +30,7 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
     An abstract class for metrics applied to integer class labels,
     with networks that output one-hot encoding.
     """
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, label_id: int=None, **kwargs):
         """
         Parameters
         ----------
@@ -47,19 +47,25 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
         """
         super().__init__(name=name)
         self._binary = binary
-        self._label_id = config.dataset.classes.class_id(label)
+        self._label_id = config.dataset.classes.class_id(label) if label_id is None else label_id
         self._class_id = class_id if class_id is not None else self._label_id
 
     def reset_state(self):
         for s in self.variables:
             s.assign(tf.zeros(shape=s.shape))
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({'binary': self._binary, 'class_id': self._class_id, 'label_id': self._label_id})
+        return config
+
 class SparseRecall(SparseMetric): # pragma: no cover
     """
     Recall.
     """
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
@@ -85,8 +91,9 @@ class SparsePrecision(SparseMetric): # pragma: no cover
     """
     Precision.
     """
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._nodata_id = config.dataset.classes.class_id('nodata')
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
@@ -118,11 +125,16 @@ class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
     """
     Accuracy.
     """
-    def __init__(self, label, name: str=None):
-        super().__init__(label, label, name, False)
+    def __init__(self, label=None, name: str=None, **kwargs):
+        if 'binary' in kwargs: # Strip these out so they are not used twice
+            del kwargs['binary']
+        if 'class_id' in kwargs:
+            del kwargs['class_id']
+        super().__init__(label, label, name, binary=False, **kwargs)
         self._nodata_id = config.dataset.classes.class_id('nodata')
         self._total = self.add_weight('total', initializer='zeros')
         self._correct = self.add_weight('correct', initializer='zeros')
+
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
