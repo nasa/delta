@@ -39,7 +39,7 @@ def save_model(model, filename):
     filename: str
         Output filename.
     """
-    if filename.endswith('.h5'):
+    if str(filename).endswith('.h5'):
         model.save(filename, save_format='h5')
         with h5py.File(filename, 'r+') as f:
             f.attrs['delta'] = config.export()
