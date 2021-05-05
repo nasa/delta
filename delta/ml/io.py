@@ -19,6 +19,7 @@
 Functions for IO specific to ML.
 """
 
+import os
 import h5py
 import numpy as np
 import tensorflow.keras.backend as K
@@ -44,8 +45,12 @@ def save_model(model, filename):
             f.attrs['delta'] = config.export()
     else: # SavedModel format
         model.save(filename)
-        #tensorflow.saved_model.save(model, filename)
-        # TODO: Record the config!
+        # Record the config values into a subfolder of the savedmodel output folder
+        config_copy_folder = os.path.join(filename, 'assets.extra')
+        config_copy_path   = os.path.join(config_copy_folder, 'delta_config.yaml')
+        os.mkdir(config_copy_folder)
+        with open(config_copy_path, 'w') as f:
+            f.write(config.export())
 
 def load_model(filename):
     """
