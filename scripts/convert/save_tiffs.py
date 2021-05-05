@@ -48,9 +48,11 @@ def main(args):
     for (i, name) in enumerate(images):
         img = images.load(i)
         path = os.path.join(options.output_dir, os.path.splitext(os.path.basename(name))[0] + '.tiff')
-        assert not os.path.exists(path), 'File already exists.'
-        print(name, '-->', path)
-        tiff.write_tiff(path, image=img)
+        if os.path.exists(path):
+            print(path + ' already exists, skipping.')
+        else:
+            print(name, '-->', path)
+            tiff.write_tiff(path, image=img)
 
     return 0
 

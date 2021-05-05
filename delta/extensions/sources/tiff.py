@@ -274,8 +274,7 @@ def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.Delta
     data_type = _numpy_dtype_to_gdal_type(image.dtype())
     size = (image.width(), image.height())
     # gdal requires block size of 16 when writing...
-    ts = (min(max(1, image.block_size()[0] // 16) * 16, 1024), \
-          min(max(1, image.block_size()[1] // 16) * 16, 1024))
+    ts = image.block_size()
     if block_size:
         ts = block_size
     if nodata is None:
@@ -287,13 +286,14 @@ def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.Delta
                      data_type=data_type, metadata=metadata, nodata_value=nodata,
                      tile_width=ts[0], tile_height=ts[1]) as writer:
         input_bounds = rectangle.Rectangle(0, 0, width=size[0], height=size[1])
+        ts = writer.tile_shape()
         output_rois = input_bounds.make_tile_rois(ts, include_partials=True)
         def callback_function(output_roi, data):
             """Callback function to write the first channel to the output file."""
 
             # Figure out some ROI positioning values
-            block_x = output_roi.min_x / ts[0]
-            block_y = output_roi.min_y / ts[1]
+            block_x = output_roi.min_x // ts[0]
+            block_y = output_roi.min_y // ts[1]
 
             # Loop on bands
             if len(data.shape) == 2:
@@ -316,18 +316,25 @@ class _TiffWriter:
         self._tile_width  = tile_width
         self._handle = None
 
-        # Constants
+        self.__initialize(path, num_bands, data_type, nodata_value, metadata)
+
+    def __initialize(self, path, num_bands, data_type, nodata_value, metadata):
         options = ['BigTIFF=IF_SAFER', 'INTERLEAVE=BAND']
         if data_type not in (gdal.GDT_Float32, gdal.GDT_Float64):
             options += ['COMPRESS=LZW']
+
+        MIN_SIZE_FOR_TILES=100
+        if self._width > MIN_SIZE_FOR_TILES or self._height > MIN_SIZE_FOR_TILES:
+            options += ['TILED=YES']
+            # requires 16 byte alignment in tiled mode
+            self._tile_width = min(max(1, self._tile_width // 16) * 16, 1024)
+            self._tile_height = min(max(1, self._tile_height // 16) * 16, 1024)
+
         options += ['BLOCKXSIZE='+str(self._tile_width),
                     'BLOCKYSIZE='+str(self._tile_height)]
-        MIN_SIZE_FOR_TILES=100
-        if width > MIN_SIZE_FOR_TILES or height > MIN_SIZE_FOR_TILES:
-            options += ['TILED=YES']
 
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, height, width, num_bands, data_type, options)
+        self._handle = driver.Create(path, self._height, self._width, num_bands, data_type, options)
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
@@ -350,6 +357,9 @@ class _TiffWriter:
     def __exit__(self, *unused):
         self.close()
         return False
+
+    def tile_shape(self):
+        return (self._tile_width, self._tile_height)
 
     def close(self):
         if self._handle is not None:
