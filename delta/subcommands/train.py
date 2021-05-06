@@ -92,8 +92,12 @@ def main(options):
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
     tf.keras.backend.clear_session()
 
+    # Try to have the internal model format we use match the output model format
+    internal_model_extension = '.savedmodel'
+    if options.model and ('.h5' in options.model):
+        internal_model_extension = '.h5'
     try:
-        model, _ = train(model, ids, config.train.spec(), options.resume)
+        model, _ = train(model, ids, config.train.spec(), options.resume, internal_model_extension)
 
         if options.model is not None:
             save_model(model, options.model)

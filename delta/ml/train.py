@@ -159,11 +159,12 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
     """
-    def __init__(self, temp_dir):
+    def __init__(self, temp_dir, model_extension):
         super().__init__()
         self.epoch = 0
         self.batch = 0
         self.temp_dir = temp_dir
+        self.model_extension = model_extension
 
     def on_epoch_end(self, epoch, logs=None):
         self.epoch = epoch
@@ -181,12 +182,11 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                     continue
                 mlflow.log_metric(k, logs[k], step=batch)
         if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
-            config.train.default_model_extension()
-            filename = os.path.join(self.temp_dir, '%d%s' % (batch, config.train.default_model_extension()))
+            filename = os.path.join(self.temp_dir, '%d%s' % (batch, self.model_extension))
             save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
                 old = filename
-                filename = os.path.join(self.temp_dir, 'latest' + config.train.default_model_extension())
+                filename = os.path.join(self.temp_dir, 'latest' + self.model_extension)
                 os.rename(old, filename)
             mlflow.log_artifact(filename, 'checkpoints')
             if os.path.isdir(filename):
@@ -194,7 +194,7 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
             else:
                 os.remove(filename)
 
-def _mlflow_train_setup(model, dataset, training_spec):
+def _mlflow_train_setup(model, dataset, training_spec, model_extension):
     mlflow.set_tracking_uri(config.mlflow.uri())
     mlflow.set_experiment(config.mlflow.experiment())
     mlflow.start_run()
@@ -207,9 +207,9 @@ def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.log_artifact(fname)
     os.remove(fname)
 
-    return _MLFlowCallback(temp_dir)
+    return _MLFlowCallback(temp_dir, model_extension)
 
-def _build_callbacks(model, dataset, training_spec):
+def _build_callbacks(model, dataset, training_spec, model_extension):
     """
     Create callbacks needed based on configuration.
 
@@ -225,7 +225,7 @@ def _build_callbacks(model, dataset, training_spec):
 
     mcb = None
     if config.mlflow.enabled():
-        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        mcb = _mlflow_train_setup(model, dataset, training_spec, model_extension)
         callbacks.append(mcb)
         if config.general.verbose():
             print('Using mlflow folder: ' + mlflow.get_artifact_uri())
@@ -329,7 +329,7 @@ def compile_model(model_fn, training_spec, resume_path=None):
 
     return model
 
-def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
+def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, internal_model_extension='.h5'):
     """
     Trains the specified model on a dataset according to a training
     specification.
@@ -359,7 +359,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 
-    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
+    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec, internal_model_extension)
 
     try:
 
@@ -396,9 +396,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
                                      callbacks=callbacks, verbose=1)
 
         if config.mlflow.enabled():
-            model_path = os.path.join(mcb.temp_dir, 'final_model' + config.train.default_model_extension())
+            model_path = os.path.join(mcb.temp_dir, 'final_model' + internal_model_extension)
             print('\nFinished, saving model to %s.'
-                  % (mlflow.get_artifact_uri() + '/final_model' + config.train.default_model_extension()))
+                  % (mlflow.get_artifact_uri() + '/final_model' + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
             if os.path.isdir(model_path):
@@ -412,9 +412,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
             mlflow.log_param('Epoch', mcb.epoch)
             mlflow.log_param('Batch', mcb.batch)
             mlflow.end_run('FAILED')
-            model_path = os.path.join(mcb.temp_dir, 'aborted_model' + config.train.default_model_extension())
+            model_path = os.path.join(mcb.temp_dir, 'aborted_model' + internal_model_extension)
             print('\nAborting, saving current model to %s.'
-                  % (mlflow.get_artifact_uri() + '/aborted_model' + config.train.default_model_extension()))
+                  % (mlflow.get_artifact_uri() + '/aborted_model' + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
             if os.path.isdir(model_path):

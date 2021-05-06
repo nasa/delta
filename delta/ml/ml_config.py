@@ -184,8 +184,6 @@ class TrainingConfig(config.DeltaConfigComponent):
                             'Directory where dataset progress is recorded.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
-        self.register_field('default_model_extension', str, 'default_model_extension', None,
-                            'Default extension to use to save models [.h5 or .savedmodel].')
         self.register_field('augmentations', list, None, None, None)
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')

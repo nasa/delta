@@ -101,7 +101,6 @@ train:
       extension:   default
       file_list:   ~
       files:       ~
-  default_model_extension: .h5 # Default format used to save model files [.h5 or .savedmodel]
   log_folder:         ~ # Storage location for any record keeping files about the input dataset
   # When resuming training with a log_folder, skip input image where we have
   # already loaded this many tiles.
