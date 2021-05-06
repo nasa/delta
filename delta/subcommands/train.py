@@ -29,11 +29,10 @@ import os
 import tensorflow as tf
 
 from delta.config import config
-from delta.config.extensions import custom_objects
 from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.config_parser import config_model
-from delta.ml.io import save_model
+from delta.ml.io import save_model, load_model
 
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
@@ -55,7 +54,7 @@ def main(options):
     img = images.load(0)
     model = config_model(img.num_bands())
     if options.resume is not None:
-        temp_model = tf.keras.models.load_model(options.resume, custom_objects=custom_objects())
+        temp_model = load_model(options.resume)
     else:
         # this one is not built with proper scope, just used to get input and output shapes
         temp_model = model()
@@ -93,8 +92,12 @@ def main(options):
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
     tf.keras.backend.clear_session()
 
+    # Try to have the internal model format we use match the output model format
+    internal_model_extension = '.savedmodel'
+    if options.model and ('.h5' in options.model):
+        internal_model_extension = '.h5'
     try:
-        model, _ = train(model, ids, config.train.spec(), options.resume)
+        model, _ = train(model, ids, config.train.spec(), options.resume, internal_model_extension)
 
         if options.model is not None:
             save_model(model, options.model)

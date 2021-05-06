@@ -20,24 +20,12 @@ Functions to support Sentinel1 satellites.
 """
 
 import os
+import shutil
 import portalocker
 
 from delta.config import config
 from delta.imagery import utilities
 from . import tiff
-
-
-# Unpack procedure:
-# - Start with .zip files
-# - Unpack to .SAFE folders containing .tif files
-# - Use SNAP to
-# - (or) Use gdalbuildvrt to creat a merged.vrt file
-
-
-this_folder = os.path.dirname(os.path.abspath(__file__))
-SNAP_GRAPH_PATH = os.path.join(this_folder,
-                               'sentinel1_default_snap_preprocess_graph.xml')
-SNAP_SCRIPT_PATH = os.path.join(this_folder, 'snap_process_sentinel1.sh')
 
 
 # Using the .vrt does not make much sense with SNAP but it is consistent
@@ -65,10 +53,32 @@ def get_files_from_unpack_folder(folder):
 
     return tiff_files
 
+def run_ffilipponi_preprocessing(source_file, target_file):
+    '''Execute the ffilipponi SNAP preprocessing script using the gpt tool
+
+       Filipponi, F. (2019). Sentinel-1 GRD Preprocessing Workflow. In
+       Multidisciplinary Digital Publishing Institute Proceedings (Vol. 18, No. 1, p. 11).
+
+       https://github.com/ffilipponi/Sentinel-1_GRD_preprocessing
+    '''
+
+    gpt_path    = shutil.which('gpt')
+    this_folder = os.path.dirname(os.path.abspath(__file__))
+    xml_path    = os.path.join(this_folder, 'sentinel1_ffilipponi_snap_preprocess_graph.xml')
+
+    parameters = """-Pfilter='None' -Presolution=10.0 -Porigin=5.0 -Pdem='SRTM 1Sec HGT' -Pfilter='None' -Pcrs='GEOGCS["WGS84(DD)", DATUM["WGS84", SPHEROID["WGS84", 6378137.0, 298.257223563]], PRIMEM["Greenwich", 0.0], UNIT["degree", 0.017453292519943295], AXIS["Geodetic longitude", EAST], AXIS["Geodetic latitude", NORTH]]'""" ##pylint: disable=C0301
+
+    cmd = gpt_path +' '+ xml_path +' -e -Poutput=' + target_file + ' -Pinput=' + source_file +' '+ parameters
+    print(cmd)
+    os.system(cmd)
+
 
 def unpack_s1_to_folder(zip_path, unpack_folder):
     '''Returns the merged image path from the unpack folder.
        Unpacks the zip file and merges the source images as needed.'''
+
+    if shutil.which('gpt') is None:
+        raise Exception('Could not find the tool "gpt", do you have ESA SNAP installed and on your PATH?')
 
     with portalocker.Lock(zip_path, 'r', timeout=300) as unused: #pylint: disable=W0612
 
@@ -115,14 +125,15 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             # - The SNAP tool *must* write to a .tif extension, so we have to
             #   rename the file if we want something else.
             temp_out_path = merged_path.replace('.vrt', '.tif')
-            cmd = (SNAP_SCRIPT_PATH + ' ' + SNAP_GRAPH_PATH + ' '
-                   + unpack_folder + ' ' + temp_out_path)
+            run_ffilipponi_preprocessing(unpack_folder, temp_out_path)
+
+            dimap_path = temp_out_path + '.dim'
+            cmd = 'pconvert -s 0,0 -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
             print(cmd)
             os.system(cmd)
             MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger
             if not os.path.exists(temp_out_path):
-                raise Exception('Failed to run ESA SNAP preprocessing.\n'
-                                +'Do you have SNAP installed in the default location?')
+                raise Exception('Failed to run ESA SNAP preprocessing!')
             if os.path.getsize(temp_out_path) < MIN_IMAGE_SIZE:
                 raise Exception('SNAP encountered a problem processing the file!')
             os.system('mv ' + temp_out_path + ' ' + merged_path)
@@ -176,6 +187,9 @@ class Sentinel1Image(tiff.TiffImage):
 
             unpack_folder = os.path.dirname(paths)
             tif_path = get_merged_path(unpack_folder)
+
+        if ext == '.tif': # Manually unpacked
+            tif_path = paths
 
         assert tif_path is not None, f'Error: Unsupported extension {ext}'
 

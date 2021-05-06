@@ -341,4 +341,5 @@ def custom_objects():
     __initialize()
     d = __layers.copy()
     d.update(__losses.copy())
+    d.update(__metrics.copy())
     return d

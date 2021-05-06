@@ -46,6 +46,15 @@ DELTA is now installed and ready to use!
     pip install . # This command should be run in the ./delta directory we made in step 2
     ```
 
+
+#### Installing ESA SNAP ####
+
+In order to process Sentinel-1 images you will need to instal the ESA SNAP tool.  You can download it here:
+```https://step.esa.int/main/download/snap-download/```
+
+Once it is installed, you will need to add SNAP's bin folder to your path like this:
+```export PATH=$PATH:/where/you/installed/snap/bin```
+
 Documentation
 =============
 DELTA can be used either as a command line tool or as a python library.
