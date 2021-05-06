@@ -22,6 +22,7 @@ from typing import List, Optional
 import tensorflow
 import tensorflow.keras.models
 
+from delta.ml.io import load_model
 from delta.config.extensions import register_layer
 
 class InputSelectLayer(tensorflow.keras.layers.Layer):
@@ -76,7 +77,7 @@ def pretrained(filename, encoding_layer, outputs: Optional[List[str]]=None, trai
     training: bool
         Standard tensorflow option, used for batch norm layers.
     """
-    model = tensorflow.keras.models.load_model(filename, compile=False)
+    model = load_model(filename)
 
     if isinstance(encoding_layer, int):
         break_point = lambda x, y: x == encoding_layer
