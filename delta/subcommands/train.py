@@ -29,7 +29,6 @@ import os
 import tensorflow as tf
 
 from delta.config import config
-from delta.config.extensions import custom_objects
 from delta.imagery import imagery_dataset
 from delta.ml.train import train
 from delta.ml.config_parser import config_model

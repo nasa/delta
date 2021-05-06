@@ -397,7 +397,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
 
         if config.mlflow.enabled():
             model_path = os.path.join(mcb.temp_dir, 'final_model' + config.train.default_model_extension())
-            print('\nFinished, saving model to %s.' % (mlflow.get_artifact_uri() + '/final_model' + config.train.default_model_extension()))
+            print('\nFinished, saving model to %s.'
+                  % (mlflow.get_artifact_uri() + '/final_model' + config.train.default_model_extension()))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
             if os.path.isdir(model_path):
@@ -412,7 +413,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
             mlflow.log_param('Batch', mcb.batch)
             mlflow.end_run('FAILED')
             model_path = os.path.join(mcb.temp_dir, 'aborted_model' + config.train.default_model_extension())
-            print('\nAborting, saving current model to %s.' % (mlflow.get_artifact_uri() + '/aborted_model' + config.train.default_model_extension()))
+            print('\nAborting, saving current model to %s.'
+                  % (mlflow.get_artifact_uri() + '/aborted_model' + config.train.default_model_extension()))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
             if os.path.isdir(model_path):

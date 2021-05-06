@@ -55,9 +55,9 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
             s.assign(tf.zeros(shape=s.shape))
 
     def get_config(self):
-        config = super().get_config()
-        config.update({'binary': self._binary, 'class_id': self._class_id, 'label_id': self._label_id})
-        return config
+        cfg = super().get_config()
+        cfg.update({'binary': self._binary, 'class_id': self._class_id, 'label_id': self._label_id})
+        return cfg
 
 class SparseRecall(SparseMetric): # pragma: no cover
     """
