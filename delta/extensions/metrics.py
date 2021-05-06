@@ -40,6 +40,8 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
         class_id: Optional[int]
             For multi-class one-hot outputs, used if the output class ID is different than the
             one in the label image.
+        label_id: Optional[int]
+            Internal use only, for reconstructing this class from a .savedmodel format
         name: str
             Metric name.
         binary: bool

@@ -48,7 +48,8 @@ def save_model(model, filename):
         # Record the config values into a subfolder of the savedmodel output folder
         config_copy_folder = os.path.join(filename, 'assets.extra')
         config_copy_path   = os.path.join(config_copy_folder, 'delta_config.yaml')
-        os.mkdir(config_copy_folder)
+        if not os.path.exists(config_copy_folder):
+            os.mkdir(config_copy_folder)
         with open(config_copy_path, 'w') as f:
             f.write(config.export())
 
