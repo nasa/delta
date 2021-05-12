@@ -33,7 +33,7 @@ def check_landsat_tiff(filename):
     assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
     assert input_reader.dtype() == np.float32
-    assert input_reader.block_size() == (6, 37)
+    assert input_reader.block_size() == (37, 6)
 
     meta = input_reader.metadata()
     geo = meta['geotransform']
