@@ -201,17 +201,17 @@ class TiffImage(delta_image.DeltaImage):
                             + ' is outside the bounds of image with size' + str(self.size()))
 
         block_size = self.block_size()
-        start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
-        start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
+        start_block_x = int(math.floor(desired_roi.min_x     / block_size[1]))
+        start_block_y = int(math.floor(desired_roi.min_y     / block_size[0]))
         # Rect max is exclusive
-        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[0]))
+        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[1]))
         # The stops are inclusive
-        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
+        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[0]))
 
-        start_x = start_block_x * block_size[0]
-        start_y = start_block_y * block_size[1]
-        w = (stop_block_x - start_block_x + 1) * block_size[0]
-        h = (stop_block_y - start_block_y + 1) * block_size[1]
+        start_x = start_block_x * block_size[1]
+        start_y = start_block_y * block_size[0]
+        w = (stop_block_x - start_block_x + 1) * block_size[1]
+        h = (stop_block_y - start_block_y + 1) * block_size[0]
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
