@@ -29,7 +29,6 @@ import tensorflow as tf
 from delta.config import config
 from delta.config.extensions import image_writer
 from delta.ml import predict
-from delta.extensions.sources.tiff import write_tiff
 from delta.ml.io import load_model
 
 matplotlib.use('Agg')
@@ -75,15 +74,32 @@ def print_classes(cm):
     print('%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100)))
 
 def classify_image(model, image, label, path, net_name, options):
-    base_name = os.path.splitext(os.path.basename(path))[0]
+    out_path, base_name = os.path.split(path)
+    base_name = os.path.splitext(base_name)[0]
+    base_out = (options.outprefix if options.outprefix else net_name + '_') + base_name + '.tiff'
+
+
+    # check if is subdirectory
+    if options.basedir and os.path.abspath(options.basedir) == \
+            os.path.commonpath([os.path.abspath(options.basedir), os.path.abspath(out_path)]):
+        out_path = os.path.relpath(out_path, options.basedir)
+    else:
+        out_path = ''
+    if options.outdir:
+        out_path = os.path.join(options.outdir, out_path)
+    if out_path:
+        os.makedirs(out_path, exist_ok=True)
+
     writer = image_writer('tiff')
-    prob_image = writer(net_name + '_' + base_name + '.tiff') if options.prob else None
-    output_image = writer(net_name + '_' + base_name + '.tiff') if not options.prob else None
 
     error_image = None
-    if label:
-        error_image = writer('errors_' + net_name + '_' + base_name + '.tiff')
+    if label and options.errors:
+        error_image = writer(os.path.join(out_path, 'errors_' + base_out))
         assert image.size() == label.size(), 'Image and label do not match.'
+
+    prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
+    output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
+
 
     ts = config.io.tile_size()
     if options.autoencoder:
@@ -111,10 +127,10 @@ def classify_image(model, image, label, path, net_name, options):
         print('\nAborted.')
         sys.exit(0)
 
-    if options.autoencoder:
-        write_tiff('orig_' + net_name + '_' + base_name + '.tiff',
-                   image.read() if options.noColormap else ae_convert(image.read()),
-                   metadata=image.metadata())
+    #if options.autoencoder:
+    #    write_tiff('orig_' + net_name + '_' + base_name + '.tiff',
+    #               image.read() if options.noColormap else ae_convert(image.read()),
+    #               metadata=image.metadata())
 
     if label:
         cm = predictor.confusion_matrix()
@@ -122,7 +138,9 @@ def classify_image(model, image, label, path, net_name, options):
         print_classes(cm)
         if len(config.dataset.classes) != cm.shape[0]:
             class_names = list(map(lambda x: 'Class %d' % (x), range(cm.shape[0])))
-        save_confusion(cm, class_names, 'confusion_' + net_name + '_' + base_name + '.pdf')
+        if options.confusion:
+            save_confusion(cm, class_names,
+                           os.path.join(out_path, 'confusion_' + os.path.splitext(base_out)[0] + '.pdf'))
         return cm
     return None
 
@@ -134,6 +152,10 @@ def main(options):
     images = config.dataset.images()
     labels = config.dataset.labels()
     net_name = os.path.splitext(os.path.basename(options.model))[0]
+
+    if len(images) == 0:
+        print('No images specified.')
+        return 0
 
     full_cm = None
     if options.autoencoder:
