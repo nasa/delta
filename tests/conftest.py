@@ -92,6 +92,24 @@ def original_file():
 
     shutil.rmtree(tmpdir)
 
+# DONE: create for the incremental_config and test_classify_* tests
+#  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
+@pytest.fixture(scope="session")
+def incremental_tiff_filenames():
+    tmpdir = tempfile.mkdtemp()
+    image_path = os.path.join(tmpdir, 'image.tiff')
+    label_path = os.path.join(tmpdir, 'label.tiff')
+
+    image = np.reshape(np.arange(0,1,.01), (10,10))
+    # image = np.random.random((128, 128)) #pylint: disable=no-member
+    label = (image >= 0.5).astype(np.uint8)
+    # label = 2 * image
+    tiff.write_tiff(image_path, image)
+    tiff.write_tiff(label_path, label)
+    yield ([image_path], [label_path])
+
+    shutil.rmtree(tmpdir)
+
 @pytest.fixture(scope="session")
 def doubling_tiff_filenames():
     tmpdir = tempfile.mkdtemp()
