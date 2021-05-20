@@ -64,41 +64,6 @@ def identity_config(binary_identity_tiff_filenames):
 
     shutil.rmtree(tmpdir)
 
-# # TODO: create for the test_classify_* tests
-# #   - uses incremental_tiff_filenames
-# #   - add some nodata testing as well?
-# @pytest.fixture(scope="session")
-# def incremental_config(incremental_tiff_filenames):
-#     tmpdir = tempfile.mkdtemp()
-#
-#     config_path = os.path.join(tmpdir, 'dataset.yaml')
-#     with open(config_path, 'w') as f:
-#         f.write('''
-#         dataset:
-#           images:
-#             nodata_value: ~
-#             files:
-#         ''')
-#
-#         for fn in incremental_tiff_filenames[0]:
-#             f.write('      - %s\n' % (fn))
-#         f.write('''
-#           labels:
-#             nodata_value: 2
-#             files:
-#         ''')
-#         for fn in incremental_tiff_filenames[1]:
-#             f.write('      - %s\n' % (fn))
-#         f.write('''
-#           classes: 2
-#         io:
-#           tile_size: [10, 10]
-#         ''')
-#
-#     yield config_path
-#
-#     shutil.rmtree(tmpdir)
-
 def test_classify_main(identity_config, tmp_path):
     config_reset()
     model_path = tmp_path / 'model.h5'
@@ -137,6 +102,7 @@ def test_predict_prob_output(incremental_tiff_filenames, tmp_path):
 #  - check that output file is continuous  but int-ed
 #  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
 #  - expect first half to be positive and last half negative with the right quantities - will be inted of course
+# TODO: add multi-class test?
 def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_image_path = str(tmp_path / "test_continuous_error_image.tiff")
@@ -169,6 +135,7 @@ def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
 #  - check that output file is continuous  but int-ed
 #  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
 #  - expect both halves to be positive with right quantities
+# TODO: add multi-class test?
 def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_abs_image_path = str(tmp_path / "test_continuous_error_abs_image.tiff")
@@ -176,7 +143,7 @@ def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_pat
 
     inputs = tf.keras.layers.Input((10, 10, 1))
     model = tf.keras.Model(inputs, inputs)
-    pred = LabelPredictor(model, continuous_error_abs_image=continuous_error_abs_image)
+    pred = LabelPredictor(model, continuous_abs_error_image=continuous_error_abs_image)
     image = TiffImage(incremental_tiff_filenames[0])
     label = TiffImage(incremental_tiff_filenames[1])
     pred.predict(image, label)

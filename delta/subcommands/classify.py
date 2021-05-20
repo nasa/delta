@@ -92,10 +92,19 @@ def classify_image(model, image, label, path, net_name, options):
 
     writer = image_writer('tiff')
 
+    # DONE: need to implement prob_error_image writer
     error_image = None
-    if label and options.errors:
-        error_image = writer(os.path.join(out_path, 'errors_' + base_out))
+    continuous_error_image = None
+    continuous_abs_error_image = None
+    if label:
         assert image.size() == label.size(), 'Image and label do not match.'
+        if options.errors:
+            error_image = writer(os.path.join(out_path, 'errors_' + base_out))
+        if options.continuous_error:
+            continuous_error_image = writer(os.path.join(out_path, 'continuous_errors_' + base_out))
+        if options.continuous_abs_error:
+            continuous_abs_error_image = writer(os.path.join(out_path, 'continuous_abs_errors_' + base_out))
+
 
     prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
     output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
@@ -112,9 +121,10 @@ def classify_image(model, image, label, path, net_name, options):
                                  [0xFF, 0x00, 0x00]], dtype=np.uint8)
         if options.noColormap:
             colors=None # Forces raw one channel output
+        # DONE: need to add prob_error_image
         predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
                                            prob_image=prob_image, error_image=error_image,
-                                           error_colors=error_colors)
+                                           error_colors=error_colors, continuous_error_image=continuous_error_image, continuous_abs_error_image=continuous_abs_error_image)
 
     overlap = (options.overlap, options.overlap)
     try:

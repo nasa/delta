@@ -239,8 +239,9 @@ class LabelPredictor(Predictor):
     """
     Predicts integer labels for an image.
     """
+    # DONE: need to add prob_error_image here
     def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, progress_text=None, # pylint:disable=too-many-arguments
-                 colormap=None, prob_image=None, error_image=None, error_colors=None):
+                 colormap=None, prob_image=None, error_image=None, error_colors=None, continuous_error_image=None, continuous_abs_error_image=None):
         """
         Parameters
         ----------
@@ -261,6 +262,13 @@ class LabelPredictor(Predictor):
             If given, output an image showing where the classification is incorrect.
         error_colors: List[Any]
             Colormap for the error_image.
+        # DONE: need to add prob_error_image
+        continuous_error_image: delta.extensions.sources.tiff.TiffWriter
+            If given, outputs an error image showing the difference between the predicted probability and the binary label. i.e. prediction - label. The values [-1,1] are linearly scaled and clipped as bytes
+            [1-255], with 0 as nodata.
+        continuous_abs_error_image: delta.extensions.sources.tiff.TiffWriter
+            If given, outputs an error image showing the absolute value of the difference between the predicted probability and the binary label. i.e. abs(prediction - label). The values [0,1] are linearly scaled and clipped as bytes
+            [1-255], with 0 as nodata.
         """
         super().__init__(model, tile_shape, show_progress, progress_text)
         self._confusion_matrix = None
@@ -283,6 +291,9 @@ class LabelPredictor(Predictor):
         self._error_colors = error_colors
         if self._error_image:
             assert self._error_colors is not None, 'Must specify error_colors.'
+        # DONE: add prob_error_image
+        self._continuous_error_image = continuous_error_image
+        self._continuous_abs_error_image = continuous_abs_error_image
         self._output = None
         self._prob_o = None
         self._errors = None
@@ -293,6 +304,16 @@ class LabelPredictor(Predictor):
         if self._prob_image:
             self._prob_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
                                         image.metadata(), nodata_value=0)
+
+        # DONE: need to add prob_error_image
+        # DONE: check self._num_classes to ensure expected functionality
+        if self._continuous_error_image:
+            self._continuous_error_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
+                                                    image.metadata(), nodata_value=0)
+
+        if self._continuous_abs_error_image:
+            self._continuous_abs_error_image.initialize((shape[0], shape[1], self._num_classes), np.dtype(np.uint8),
+                                                        image.metadata(), nodata_value=0)
 
         if self._num_classes == 1: # special case
             self._num_classes = 2
@@ -324,6 +345,12 @@ class LabelPredictor(Predictor):
             self._prob_image.close()
         if self._error_image:
             self._error_image.close()
+        # DONE: need to add prob_error_image
+        if self._continuous_error_image:
+            self._continuous_error_image.close()
+        # DONE: need to add prob_error_image
+        if self._continuous_abs_error_image:
+            self._continuous_abs_error_image.close()
 
     def _abort(self):
         self._complete()
@@ -333,12 +360,19 @@ class LabelPredictor(Predictor):
             self._prob_image.abort()
         if self._error_image is not None:
             self._error_image.abort()
+        # DONE: need to add prob_error_image
+        if self._continuous_error_image is not None:
+            self._continuous_error_image.abort()
+        # DONE: need to add prob_error_image
+        if self._continuous_abs_error_image is not None:
+            self._continuous_abs_error_image.abort()
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
         # DONE: code refactoring
         # create a masked array. The mask is true where pred_image = np.nan
-        pred_image_ma = np.ma.masked_invalid(pred_image)
-        if len(pred_image.shape) == 3:
+        # TODO: why do I have to use squeeze here? When running tests an extra dimension get tacked on/
+        pred_image_ma = np.ma.masked_invalid(np.squeeze(pred_image))
+        if len(pred_image_ma.shape) == 3:
             # sets the first layer mask as the mask for all layers
             pred_first_layer_mask_duplicated = \
                 np.repeat(pred_image_ma.mask[:,:,0,np.newaxis], repeats=pred_image_ma.shape[2], axis=2) # DONE: need to deal with 2 dimension array
@@ -359,8 +393,30 @@ class LabelPredictor(Predictor):
         if labels is None and self._output_image is None:
             return
 
+        # DONE: need to add prob_error_image and abs
+        if self._continuous_error_image or self._continuous_abs_error_image:
+            # TODO: implement for multiclass prediction
+            # will need to separate out labels into different labels so that errors can have their own image label
+            if len(pred_image_ma.shape) == 3:
+                raise NotImplementedError
+
+            continuous_error = pred_image_ma - labels_ma
+
+            if self._continuous_error_image:
+                # shift and int continuous error for image output
+                continuous_error_inted = np.clip(((continuous_error * 127) + 128).astype(np.uint8), 1, 255)
+                # fill nodata values in array with 0 and write to image
+                self._continuous_error_image.write(continuous_error_inted.filled(0), x, y)
+
+            if self._continuous_abs_error_image:
+                continuous_abs_error = np.abs(continuous_error)
+                # shift and int continuous error for image output
+                continuous_abs_error_inted = np.clip(((continuous_abs_error * 254) + 1).astype(np.uint8), 1, 255)
+                # fill nodata values in array with 0 and write to image
+                self._continuous_abs_error_image.write(continuous_abs_error_inted.filled(0), x, y)
+
         # prob_image = pred_image # DONE: get rid of once this variable is dealt with
-        if len(pred_image.shape) == 2:
+        if len(pred_image_ma.shape) == 2:
             # convert prediction image from continuous to binary: 1 where => 0.5 and 0 where < 0.5
             # pred_image[~np.isnan(pred_image)] = pred_image[~np.isnan(pred_image)] >= 0.5
             class_int_image = (pred_image_ma >= 0.5).astype(int)
@@ -424,15 +480,15 @@ class LabelPredictor(Predictor):
                 #     pred_image[pred_image == -1] = self._colormap.shape[0]
 
                 # create array to be filled with correct shape
-                result = np.zeros((pred_image.shape[0], pred_image.shape[1], self._colormap.shape[1]))
+                result = np.zeros((pred_image_ma.shape[0], pred_image_ma.shape[1], self._colormap.shape[1]))
 
                 # When pred_image.shape is 2, then prob_image is the binarized version of the paramater
                 # pred_image passed to function. When pred_image.shape is 3,
                 # prob_image is just the original pred_image passed to the function.
-                if len(pred_image.shape) == 2:
+                if len(pred_image_ma.shape) == 2:
                     result_image = np.expand_dims(class_int_image, -1)
                 else:
-                    result_image = np.ma.masked_invalid(pred_image)
+                    result_image = pred_image_ma
 
                 # for each layer of prob_image
                 # for i in range(prob_image.shape[2]):
