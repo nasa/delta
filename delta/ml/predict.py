@@ -335,57 +335,121 @@ class LabelPredictor(Predictor):
             self._error_image.abort()
 
     def _process_block(self, pred_image, x, y, labels, label_nodata):
+        # DONE: code refactoring
+        # create a masked array. The mask is true where pred_image = np.nan
+        pred_image_ma = np.ma.masked_invalid(pred_image)
+        if len(pred_image.shape) == 3:
+            # sets the first layer mask as the mask for all layers
+            pred_first_layer_mask_duplicated = \
+                np.repeat(pred_image_ma.mask[:,:,0,np.newaxis], repeats=pred_image_ma.shape[2], axis=2) # DONE: need to deal with 2 dimension array
+            pred_image_ma.mask = pred_first_layer_mask_duplicated
+
+        labels_ma = np.ma.masked_equal(labels, label_nodata)
+
         if self._prob_image is not None:
-            prob = np.clip((pred_image * 254.0).astype(np.uint8), 0, 254)
+            # scale and clip image to 1-255 with 0 being reserved for nodata where pred_image is nan
+            # prob = np.clip((pred_image * 254.0).astype(np.uint8), 0, 254)
+            prob = np.clip((pred_image_ma * 254.0).astype(np.uint8), 0, 254)
             prob = 1 + prob
-            prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
+            # prob[np.isnan(pred_image[:, :, 0] if len(pred_image.shape) == 3 else pred_image)] = 0
+            # fill nodata values in array with 0
+            prob = prob.filled(0)
             self._prob_image.write(prob, x, y)
 
         if labels is None and self._output_image is None:
             return
 
-        prob_image = pred_image
+        # prob_image = pred_image # DONE: get rid of once this variable is dealt with
         if len(pred_image.shape) == 2:
-            pred_image[~np.isnan(pred_image)] = pred_image[~np.isnan(pred_image)] >= 0.5
-            pred_image = pred_image.astype(int)
-            prob_image = np.expand_dims(prob_image, -1)
+            # convert prediction image from continuous to binary: 1 where => 0.5 and 0 where < 0.5
+            # pred_image[~np.isnan(pred_image)] = pred_image[~np.isnan(pred_image)] >= 0.5
+            class_int_image = (pred_image_ma >= 0.5).astype(int)
+            # pred_image = pred_image.astype(int)
+            # prob_image = np.expand_dims(prob_image, -1) # DONE: not needed because we can just use .filled which doesn't care about shape
         else:
-            pred_image = np.argmax(pred_image, axis=2)
+            # returns the indicies of the maximum value bound by the axis
+            # this would return 0-max depth depending on max value. Selects which class prediction was highest
+            # pred_image = np.argmax(pred_image, axis=2) # DONE: how am I dealing with this?
+            class_int_image = np.ma.MaskedArray(np.argmax(pred_image_ma, axis=2), mask=pred_image_ma.mask[:,:,0])
 
-        # nodata pixels were set to nan in the probability image
-        pred_image[np.isnan(prob_image[:, :, 0])] = -1
+        # set pred_image nodata mask - nodata pixels were set to nan in the probability image
+        # pred_image[np.isnan(prob_image[:, :, 0])] = -1 # DONE: probably don't need this cause we can just use .filled
 
         if labels is not None:
-            incorrect = (labels != pred_image).astype(int)
+            # identify incorrect predictions
+            # incorrect = (labels != pred_image).astype(int)
+            incorrect = (labels_ma != class_int_image).astype(int) # DONE: make sure this performs an or operation on their combined mask. If it does, then can just use this for the valid_labels and valid_pred masks below
 
-            valid_labels = labels
-            valid_pred = pred_image
-            if label_nodata is not None:
-                invalid = np.logical_or((labels == label_nodata), pred_image == -1)
-                valid = np.logical_not(invalid)
-                incorrect[invalid] = 0
-                valid_labels = labels[valid]
-                valid_pred = pred_image[valid]
+            # valid_labels = labels
+            # combine the masks for labels and pred_image
+            # you can't have a valid label where prediction is invalid and vice versa
+            valid_labels  = labels_ma.copy()
+            valid_labels.mask = incorrect.mask
+            valid_pred = class_int_image.copy()
+            valid_pred.mask = incorrect.mask
+            # valid_pred = pred_image
+            # DONE: create a masked array for labels and use label_nodata to determine mask value and then take advantage of masked arrays
+            # DONE: using masked arrays already performs an or operation on the mask and then can just fill that appropriately before we output to imagery.
+            # if label_nodata is not None:
+            #     # identify areas outside prediction area (nodata value or -1) and mask those areas with 0
+            #     invalid = np.logical_or((labels == label_nodata), pred_image == -1)
+            #     valid = np.logical_not(invalid)
+            #     incorrect[invalid] = 0
+            #     valid_labels = labels[valid]
+            #     valid_pred = pred_image[valid]
 
             if self._error_image:
-                self._error_image.write(self._error_colors[incorrect], x, y)
-            cm = tf.math.confusion_matrix(np.ndarray.flatten(valid_labels),
-                                          np.ndarray.flatten(valid_pred),
+                # self._error_image.write(self._error_colors[incorrect], x, y)
+                # filling with zero makes invalid areas 0
+                self._error_image.write(self._error_colors[incorrect.filled(0)], x, y)
+
+            # cm = tf.math.confusion_matrix(np.ndarray.flatten(valid_labels),
+            #                               np.ndarray.flatten(valid_pred),
+            #                               self._num_classes)
+            # compressed returns a flatten version of the masked array including only valid values
+            cm = tf.math.confusion_matrix(valid_labels.compressed(),
+                                          valid_pred.compressed(),
                                           self._num_classes)
             self._confusion_matrix[:, :] += cm
 
         if self._output_image is not None:
             if self._colormap is not None:
+                # create a third entry in the color map that is all 0s
                 colormap = np.zeros((self._colormap.shape[0] + 1, self._colormap.shape[1]))
                 colormap[0:-1, :] = self._colormap
-                if labels is not None and label_nodata is not None:
-                    pred_image[pred_image == -1] = self._colormap.shape[0]
+
+                # # since pred_image is never actually written to output, this is never used. Why is it here?
+                # if labels is not None and label_nodata is not None:
+                #     # assign the number of color map values to pred_image where it's invalid
+                #     pred_image[pred_image == -1] = self._colormap.shape[0]
+
+                # create array to be filled with correct shape
                 result = np.zeros((pred_image.shape[0], pred_image.shape[1], self._colormap.shape[1]))
-                for i in range(prob_image.shape[2]):
-                    result += (colormap[i, :] * prob_image[:, :, i, np.newaxis]).astype(colormap.dtype)
+
+                # When pred_image.shape is 2, then prob_image is the binarized version of the paramater
+                # pred_image passed to function. When pred_image.shape is 3,
+                # prob_image is just the original pred_image passed to the function.
+                if len(pred_image.shape) == 2:
+                    result_image = np.expand_dims(class_int_image, -1)
+                else:
+                    result_image = np.ma.masked_invalid(pred_image)
+
+                # for each layer of prob_image
+                # for i in range(prob_image.shape[2]):
+                for i in range(result_image.shape[2]):
+                    # # assign the appropriate color map value for each layer. This will result in a single layer
+                    # with the appropriate colors added for each layer if an inted version of the image is used.
+                    # When just water is predicted this results in a single color. However when multiple types
+                    # are predicted this will result in a probability blended mixture of colors.
+                    # result += (colormap[i, :] * prob_image[:, :, i, np.newaxis]).astype(colormap.dtype)
+                    result += (colormap[i, :] * result_image[:, :, i, np.newaxis]).filled(np.nan).astype(colormap.dtype) # DONE: need to expand dims for result_image
+
+                # result is written as output image and nans aren't filled with anything. Just numpy float nan
                 self._output_image.write(result, x, y)
             else:
-                self._output_image.write(pred_image, x, y)
+                # self._output_image.write(pred_image, x, y)
+                # fill nodata values in array with -1 and write to output image
+                self._output_image.write(class_int_image.filled(-1), x, y)
 
     def confusion_matrix(self):
         """
