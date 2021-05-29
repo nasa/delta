@@ -75,11 +75,6 @@ def test_classify_main(identity_config, tmp_path):
     main(args.split())
     os.chdir(old)
 
-# DONE: for testing --prob
-#  - check that output file is continuous  but int-ed
-#  - create square numpy (10,10) image that contains 0.00-0.99
-#  - basic input output match check
-#  - do I need to add nodata to the test?
 def test_predict_prob_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     prob_image_path = str(tmp_path / "test_prob_image.tiff")
@@ -98,12 +93,6 @@ def test_predict_prob_output(incremental_tiff_filenames, tmp_path):
     incremental_array = incremental_image.read()
     np.testing.assert_array_equal(prob_array, np.clip((incremental_array * 254.0).astype(np.uint8), 0, 254) + 1)
 
-# DONE: for testing --continuous-error
-#  - check that output file is continuous  but int-ed
-#  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
-#  - expect first half to be positive and last half negative with the right quantities - will be inted of course
-# DONE: add multi-class test? - later
-# DONE: change/remove error_image and consolidate continuous error into that with a bool option
 def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_image_path = str(tmp_path / "test_continuous_error_image.tiff")
@@ -124,20 +113,9 @@ def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
     label_image = TiffImage(incremental_tiff_filenames[1])
     label_array = label_image.read()
     error_array = incremental_array - label_array
-    # np.clip(((error_array * 127) + 128).astype(np.uint8), 1, 255)
     error_array_inted = np.clip(((error_array * 127) + 128).astype(np.uint8), 1, 255)
-    # -1 1
-    # * 127 => -127 127
-    # + 128 => 1 255
     np.testing.assert_array_equal(continuous_error_array, error_array_inted)
 
-
-# DONE: for testing --continuous-error-abs
-#  - check that output file is continuous  but int-ed
-#  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
-#  - expect both halves to be positive with right quantities
-# DONE: add multi-class test? - later
-# DONE: change/remove error_image and consolidate continuous error into that with a bool option
 def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_abs_image_path = str(tmp_path / "test_continuous_error_abs_image.tiff")

@@ -57,12 +57,13 @@ def setup_classify(subparsers):
     sub.add_argument('--basedir', dest='basedir', type=str, help='Preserve paths of files relative to this directory.')
     sub.add_argument('--outprefix', dest='outprefix', type=str, help='Prefix to output filenames.')
     sub.add_argument('--confusion', dest='confusion', action='store_true', help='Save confusion matrix.')
-    # DONE: change/remove errors and add boolean abs_error option
-    sub.add_argument('--error', dest='error', action='store_true', help='Save image of model errors. Values will be difference between predicted probability and the binary labels.')
-    sub.add_argument('--error-abs', dest='error_abs', action='store_true', help='Save image of absolute value of model errors. Values will be the absolute value of the difference between predicted probability and binary label. If both --error and --error-abs are provided, --error-abs will take precidence.')
-    # sub.add_argument('--continuous-error', dest='continuous_error', action='store_true', help='Save error image as continuous values instead of binary values. Values will be difference between predicted probability and binary label.')
-    # sub.add_argument('--continuous-abs-error', dest='continuous_abs_error', action='store_true', help='Save error image as continuous absolute values instead of binary values. Values will be the absolute value of the difference between predicted probability and binary label.')
-    # DONE: add something for prob_error_image
+    sub.add_argument('--error', dest='error', action='store_true',
+                     help='Save image of model errors. Values will be difference between predicted probability and '
+                          'the binary labels.')
+    sub.add_argument('--error-abs', dest='error_abs', action='store_true',
+                     help='Save image of absolute value of model errors. Values will be the absolute value of the '
+                          'difference between predicted probability and binary label. If both --error and --error-abs '
+                          'are provided, --error-abs will take precidence.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main_classify)
