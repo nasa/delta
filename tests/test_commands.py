@@ -102,7 +102,8 @@ def test_predict_prob_output(incremental_tiff_filenames, tmp_path):
 #  - check that output file is continuous  but int-ed
 #  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
 #  - expect first half to be positive and last half negative with the right quantities - will be inted of course
-# TODO: add multi-class test?
+# DONE: add multi-class test? - later
+# DONE: change/remove error_image and consolidate continuous error into that with a bool option
 def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_image_path = str(tmp_path / "test_continuous_error_image.tiff")
@@ -110,7 +111,7 @@ def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
 
     inputs = tf.keras.layers.Input((10, 10, 1))
     model = tf.keras.Model(inputs, inputs)
-    pred = LabelPredictor(model, continuous_error_image=continuous_error_image)
+    pred = LabelPredictor(model, error_image=continuous_error_image, error_abs=False)
     image = TiffImage(incremental_tiff_filenames[0])
     label = TiffImage(incremental_tiff_filenames[1])
     pred.predict(image, label)
@@ -135,7 +136,8 @@ def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
 #  - check that output file is continuous  but int-ed
 #  - create square numpy (10,10) image that contains 0.00-0.99 and label image that is first half 0, second half 1.
 #  - expect both halves to be positive with right quantities
-# TODO: add multi-class test?
+# DONE: add multi-class test? - later
+# DONE: change/remove error_image and consolidate continuous error into that with a bool option
 def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_path):
     writer = image_writer('tiff')
     continuous_error_abs_image_path = str(tmp_path / "test_continuous_error_abs_image.tiff")
@@ -143,7 +145,7 @@ def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_pat
 
     inputs = tf.keras.layers.Input((10, 10, 1))
     model = tf.keras.Model(inputs, inputs)
-    pred = LabelPredictor(model, continuous_abs_error_image=continuous_error_abs_image)
+    pred = LabelPredictor(model, error_image=continuous_error_abs_image, error_abs=True)
     image = TiffImage(incremental_tiff_filenames[0])
     label = TiffImage(incremental_tiff_filenames[1])
     pred.predict(image, label)

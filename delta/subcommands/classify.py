@@ -93,17 +93,22 @@ def classify_image(model, image, label, path, net_name, options):
     writer = image_writer('tiff')
 
     # DONE: need to implement prob_error_image writer
+    # DONE: change/remove error_image and consolidate continuous error into that with a bool option
     error_image = None
-    continuous_error_image = None
-    continuous_abs_error_image = None
+    # continuous_error_image = None
+    # continuous_abs_error_image = None
     if label:
         assert image.size() == label.size(), 'Image and label do not match.'
-        if options.errors:
-            error_image = writer(os.path.join(out_path, 'errors_' + base_out))
-        if options.continuous_error:
-            continuous_error_image = writer(os.path.join(out_path, 'continuous_errors_' + base_out))
-        if options.continuous_abs_error:
-            continuous_abs_error_image = writer(os.path.join(out_path, 'continuous_abs_errors_' + base_out))
+        if options.error_abs:
+            error_image = writer(os.path.join(out_path, 'error_abs_' + base_out))
+        elif options.error:
+            error_image = writer(os.path.join(out_path, 'error_' + base_out))
+        # if options.errors:
+        #     error_image = writer(os.path.join(out_path, 'errors_' + base_out))
+        # if options.continuous_error:
+        #     continuous_error_image = writer(os.path.join(out_path, 'continuous_errors_' + base_out))
+        # if options.continuous_abs_error:
+        #     continuous_abs_error_image = writer(os.path.join(out_path, 'continuous_abs_errors_' + base_out))
 
 
     prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
@@ -117,14 +122,15 @@ def classify_image(model, image, label, path, net_name, options):
                                            None if options.noColormap else (ae_convert, np.uint8, 3))
     else:
         colors = list(map(lambda x: x.color, config.dataset.classes))
-        error_colors = np.array([[0x0, 0x0, 0x0],
-                                 [0xFF, 0x00, 0x00]], dtype=np.uint8)
+        # error_colors = np.array([[0x0, 0x0, 0x0],
+        #                          [0xFF, 0x00, 0x00]], dtype=np.uint8)
         if options.noColormap:
             colors=None # Forces raw one channel output
         # DONE: need to add prob_error_image
-        predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
-                                           prob_image=prob_image, error_image=error_image,
-                                           error_colors=error_colors, continuous_error_image=continuous_error_image, continuous_abs_error_image=continuous_abs_error_image)
+        # DONE: change/remove error_image and consolidate continuous error into that with a bool option
+        predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors, prob_image=prob_image, error_image=error_image, error_abs=options.error_abs)
+        # , error_colors=error_colors)
+                                           # continuous_error_image=continuous_error_image, continuous_abs_error_image=continuous_abs_error_image)
 
     overlap = (options.overlap, options.overlap)
     try:
