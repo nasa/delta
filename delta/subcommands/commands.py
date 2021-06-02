@@ -56,8 +56,14 @@ def setup_classify(subparsers):
     sub.add_argument('--outdir', dest='outdir', type=str, help='Directory to save output to.')
     sub.add_argument('--basedir', dest='basedir', type=str, help='Preserve paths of files relative to this directory.')
     sub.add_argument('--outprefix', dest='outprefix', type=str, help='Prefix to output filenames.')
-    sub.add_argument('--errors', dest='errors', action='store_true', help='Save error images.')
     sub.add_argument('--confusion', dest='confusion', action='store_true', help='Save confusion matrix.')
+    sub.add_argument('--error', dest='error', action='store_true',
+                     help='Save image of model errors. Values will be difference between predicted probability and '
+                          'the binary labels.')
+    sub.add_argument('--error-abs', dest='error_abs', action='store_true',
+                     help='Save image of absolute value of model errors. Values will be the absolute value of the '
+                          'difference between predicted probability and binary label. If both --error and --error-abs '
+                          'are provided, --error-abs will take precidence.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main_classify)
