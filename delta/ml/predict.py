@@ -23,10 +23,41 @@ on images.
 from abc import ABC, abstractmethod
 import math
 import numpy as np
-
+import PIL
+from PIL import ImageDraw
 import tensorflow as tf
 
 from delta.imagery import rectangle
+
+def mask_outside_shapes(shapes, image, x, y, mask_value):
+    '''Writes the mask value to "image" in all locations outside one of the shapes'''
+
+    if not shapes: # Skip this step if no shapes were passed in
+        return
+
+    def adjust_coords(inputs, x, y):
+        '''Return a copy of the input coordinates adjusted by the x,y coordinate'''
+        output = []
+        for pair in inputs:
+            output.append((pair[0] - x, pair[1] - y))
+        return output
+
+    # Draw all of the shapes on to a new image
+    mask_image = PIL.Image.new('L', (image.shape[1], image.shape[0]), color=0)
+    painter = PIL.ImageDraw.Draw(mask_image)
+    for s in shapes:
+        coords = adjust_coords(s.exterior.coords, x, y)
+        painter.polygon(coords, fill=1)
+        for i in s.interiors: # Interior polygons are "holes" in the shapes
+            coords = adjust_coords(i.coords, x, y)
+            painter.polygon(coords, fill=0)
+
+    # Apply the mask to the input image
+    mask_pixels = mask_image.load()
+    for r in range(image.shape[0]):
+        for c in range(image.shape[1]):
+            if not mask_pixels[c,r]:
+                image[r,c,0] = mask_value
 
 class Predictor(ABC):
     """
@@ -147,7 +178,8 @@ class Predictor(ABC):
 
         return retval
 
-    def predict(self, image, label=None, input_bounds=None, overlap=(0, 0)):
+    def predict(self, image, label=None, input_bounds=None, overlap=(0, 0),
+                roi_shapes=None):
         """
         Runs the model on an image. The behavior is specific to the subclass.
 
@@ -164,6 +196,9 @@ class Predictor(ABC):
             provided in the subclass. If an overlap is specified, the tiles will be overlapped
             by the given amounts in the x and y directions. Subclasses may select or interpolate
             to favor tile interior pixels for improved classification.
+        roi_shapes: List[shapely.geometry.BaseGeometry]
+            A list of the shapes that we want to compute results for.  All values are in pixel
+            coordinates.
 
         Returns
         -------
@@ -181,7 +216,8 @@ class Predictor(ABC):
         if net_input_shape[0] is None and net_input_shape[1] is None:
             assert net_output_shape[0] is None and net_output_shape[1] is None
             out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
-            tiles = input_bounds.make_tile_rois(ts, include_partials=False,
+
+            tiles = input_bounds.make_tile_rois(ts, include_partials=True,
                                                 overlap_shape=(ts[0] - out_shape[1] + overlap[0],
                                                                ts[1] - out_shape[2] + overlap[1]),
                                                 partials_overlap=True)
@@ -192,8 +228,9 @@ class Predictor(ABC):
             output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
             block_size_x = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
             block_size_y = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
-            tiles = input_bounds.make_tile_rois((block_size_x - offset_r, block_size_y - offset_c),
-                                                include_partials=False, overlap_shape=(-offset_r, -offset_c))
+
+            tiles = input_bounds.make_tile_rois((block_size_x - offset_c, block_size_y - offset_r),
+                                                include_partials=True, overlap_shape=(-offset_c, -offset_r))
 
         self._initialize(output_shape, image, label)
 
@@ -208,11 +245,15 @@ class Predictor(ABC):
 
             labels = None
             if label:
-                label_x = roi.min_x + (roi.width() - pred_image.shape[0]) // 2
-                label_y = roi.min_y + (roi.height() - pred_image.shape[1]) // 2
+                label_x = roi.min_x + (roi.width() - pred_image.shape[1]) // 2
+                label_y = roi.min_y + (roi.height() - pred_image.shape[0]) // 2
                 label_roi = rectangle.Rectangle(label_x, label_y,
-                                                label_x + pred_image.shape[0], label_y + pred_image.shape[1])
-                labels = np.squeeze(label.read(label_roi))
+                                                label_x + pred_image.shape[1], label_y + pred_image.shape[0])
+
+                cropped_label = label.read(label_roi)
+                # Mask all regions outside the specified shapes
+                mask_outside_shapes(roi_shapes, cropped_label, label_x, label_y, label_nodata)
+                labels = np.squeeze(cropped_label)
 
             tl = [0, 0]
             tl = (overlap[0] // 2 if block_x > 0 else 0, overlap[1] // 2 if block_y > 0 else 0)

@@ -103,7 +103,9 @@ def test_geotiff_write(tmpdir):
     Tests writing a landsat geotiff.
     '''
 
-    numpy_image = np.zeros((3, 5), dtype=np.uint8)
+    HEIGHT = 3
+    WIDTH = 5
+    numpy_image = np.zeros((HEIGHT, WIDTH), dtype=np.uint8)
     numpy_image[0, 0] = 0
     numpy_image[0, 1] = 1
     numpy_image[0, 2] = 2
@@ -125,7 +127,7 @@ def test_geotiff_write(tmpdir):
     assert np.allclose(numpy_image, data)
 
     writer = TiffWriter(filename)
-    writer.initialize((3, 5, 1), numpy_image.dtype)
+    writer.initialize((WIDTH, HEIGHT, 1), numpy_image.dtype)
     writer.write(numpy_image, 0, 0)
     writer.close()
 

@@ -57,26 +57,26 @@ def config_reset():
                 ''')
 
 def generate_tile(width=32, height=32, blocks=50):
-    """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
-    image = np.zeros((width, height, 1), np.float32)
-    label = np.zeros((width, height), np.uint8)
+    """Generate a heightXwidthX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
+    image = np.zeros((height, width, 1), np.float32)
+    label = np.zeros((height, width), np.uint8)
     for _ in range(blocks):
         x = random.randint(2, width - 3)
         y = random.randint(2, height - 3)
         # ensure non-overlapping
-        while (image[x + 2, y - 2 : y + 2, 0] > 0.0).any() or (image[x + 2, y - 2 : y + 2, 0] > 0.0).any() or \
-              (image[x - 1 : x + 1, y - 2, 0] > 0.0).any() or (image[x - 1 : x + 1, y + 2, 0] > 0.0).any():
+        while (image[y - 2 : y + 2, x + 2, 0] > 0.0).any() or (image[y - 2 : y + 2, x + 2, 0] > 0.0).any() or \
+              (image[y - 2, x - 1 : x + 1, 0] > 0.0).any() or (image[y + 2, x - 1 : x + 1, 0] > 0.0).any():
             x = random.randint(2, width - 3)
             y = random.randint(2, height - 3)
-        image[x + 1, y - 1, 0] = 1.0
-        image[x    , y - 1, 0] = 1.0
-        image[x - 1, y - 1, 0] = 1.0
-        image[x + 1, y    , 0] = 1.0
-        image[x - 1, y    , 0] = 1.0
-        image[x + 1, y + 1, 0] = 1.0
-        image[x    , y + 1, 0] = 1.0
-        image[x - 1, y + 1, 0] = 1.0
-        label[x, y] = 1
+        image[y - 1, x + 1, 0] = 1.0
+        image[y - 1, x    , 0] = 1.0
+        image[y - 1, x - 1, 0] = 1.0
+        image[y    , x + 1, 0] = 1.0
+        image[y    , x - 1, 0] = 1.0
+        image[y + 1, x + 1, 0] = 1.0
+        image[y + 1, x    , 0] = 1.0
+        image[y + 1, x - 1, 0] = 1.0
+        label[y, x] = 1
     return (image, label)
 
 @pytest.fixture(scope="session")
@@ -85,7 +85,7 @@ def original_file():
     image_path = os.path.join(tmpdir, 'image.tiff')
     label_path = os.path.join(tmpdir, 'label.tiff')
 
-    (image, label) = generate_tile(64, 32, 50)
+    (image, label) = generate_tile(width=32, height=64, blocks=50)
     tiff.write_tiff(image_path, image)
     tiff.write_tiff(label_path, label)
     yield (image_path, label_path)
@@ -137,6 +137,7 @@ def binary_identity_tiff_filenames():
 
 @pytest.fixture(scope="session")
 def worldview_filenames(original_file):
+    '''Create a fake WorldView 2 data structure on disk using artificial image data'''
     tmpdir = tempfile.mkdtemp()
     image_name = 'WV02N42_939570W073_2520792013040400000000MS00_GU004003002'
     imd_name = '19MAY13164205-M2AS-503204071020_01_P003.IMD'
@@ -167,6 +168,7 @@ def worldview_filenames(original_file):
 
 @pytest.fixture(scope="session")
 def landsat_filenames(original_file):
+    '''Create a fake Landsat data structure on disk using artificial image data'''
     tmpdir = tempfile.mkdtemp()
     image_name = 'L1_IGNORE_AAABBB_DATE'
     mtl_name = image_name + '_MTL.txt'

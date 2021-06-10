@@ -226,7 +226,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             label = self._labels.load(i)
             if label.size() != img.size():
                 raise AssertionError('Label file ' + self._labels[i] + ' with size ' + str(label.size())
-                                     + ' does not match input image size of ' + str(img.size()))
+                                     + ' does not match input image ' + self._images[i] + ' size of ' + str(img.size()))
         tile_shape = self._tile_shape
         if self._chunk_shape:
             assert tile_shape[0] >= self._chunk_shape[0] and \
@@ -284,7 +284,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 buf = cur_buf.result()
             (rect, sub_tiles) = tiles[c]
             for s in sub_tiles:
-                yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+                yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
 
             if not is_labels: # update access count per row
                 self.resume_log_update(i, need_check=False)

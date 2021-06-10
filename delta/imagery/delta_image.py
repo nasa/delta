@@ -308,9 +308,9 @@ class DeltaImage(ABC):
                 y0 = roi.min_y - read_roi.min_y
                 num_remaining -= 1
                 if len(buf.shape) == 2:
-                    b = buf[x0:x0 + roi.width(), y0:y0 + roi.height()]
+                    b = buf[y0:y0 + roi.height(), x0:x0 + roi.width()]
                 else:
-                    b = buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :]
+                    b = buf[y0:y0 + roi.height(), x0:x0 + roi.width(), :]
                 yield (roi, b, (total_rois - num_remaining, total_rois))
             if i + NUM_AHEAD < len(jobs):
                 pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))

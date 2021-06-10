@@ -56,7 +56,6 @@ class TiffImage(delta_image.DeltaImage):
         nodata_value: dtype of image
             Value representing no data.
         """
-        super().__init__(nodata_value)
         paths = self._prep(path)
 
         self._path = path
@@ -75,6 +74,12 @@ class TiffImage(delta_image.DeltaImage):
                 raise Exception('Images %s and %s have different sizes!' % (self._paths[0], self._paths[i]))
             for j in range(h.RasterCount):
                 self._band_map.append((i, j + 1)) # gdal uses 1-based band indexing
+
+        if nodata_value is None:
+            temp = self._gdal_band(0).GetNoDataValue()
+            super().__init__(temp)
+        else:
+            super().__init__(nodata_value)
 
     def __del__(self):
         self.close()
@@ -123,21 +128,22 @@ class TiffImage(delta_image.DeltaImage):
 
     def size(self):
         self.__asert_open()
-        return (self._handles[0].RasterYSize, self._handles[0].RasterXSize)
+        return (self._handles[0].RasterXSize, self._handles[0].RasterYSize)
 
     def _read(self, roi, bands, buf=None):
         self.__asert_open()
         num_bands = len(bands) if bands else self.num_bands()
 
         if buf is None:
-            buf = np.zeros(shape=(num_bands, roi.width(), roi.height()), dtype=self.dtype())
+            buf = np.zeros(shape=(num_bands, roi.height(), roi.width()), dtype=self.dtype())
         for i, b in enumerate(bands):
             band_handle = self._gdal_band(b)
             s = buf[i, :, :].shape
-            if s != (roi.width(), roi.height()):
+            if s != (roi.height(), roi.width()):
                 raise IOError('Buffer shape should be (%d, %d) but is (%d, %d)!' %
-                              (roi.width(), roi.height(), s[0], s[1]))
-            band_handle.ReadAsArray(roi.min_y, roi.min_x, roi.height(), roi.width(), buf_obj=buf[i, :, :])
+                              (roi.height(), roi.width(), s[0], s[1]))
+            band_handle.ReadAsArray(yoff=roi.min_y, xoff=roi.min_x,
+                                    win_ysize=roi.height(), win_xsize=roi.width(), buf_obj=buf[i, :, :])
         return np.transpose(buf, [1, 2, 0])
 
     def _gdal_band(self, band):
@@ -175,7 +181,7 @@ class TiffImage(delta_image.DeltaImage):
         Returns
         -------
         (int, int):
-            block height, block width
+            block width, block height
         """
         self.__asert_open()
         band_handle = self._gdal_band(0)
@@ -201,17 +207,17 @@ class TiffImage(delta_image.DeltaImage):
                             + ' is outside the bounds of image with size' + str(self.size()))
 
         block_size = self.block_size()
-        start_block_x = int(math.floor(desired_roi.min_x     / block_size[1]))
-        start_block_y = int(math.floor(desired_roi.min_y     / block_size[0]))
+        start_block_x = int(math.floor(desired_roi.min_x     / block_size[0]))
+        start_block_y = int(math.floor(desired_roi.min_y     / block_size[1]))
         # Rect max is exclusive
-        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[1]))
+        stop_block_x = int(math.floor((desired_roi.max_x-1) / block_size[0]))
         # The stops are inclusive
-        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[0]))
+        stop_block_y = int(math.floor((desired_roi.max_y-1) / block_size[1]))
 
-        start_x = start_block_x * block_size[1]
-        start_y = start_block_y * block_size[0]
-        w = (stop_block_x - start_block_x + 1) * block_size[1]
-        h = (stop_block_y - start_block_y + 1) * block_size[0]
+        start_x = start_block_x * block_size[0]
+        start_y = start_block_y * block_size[1]
+        w = (stop_block_x - start_block_x + 1) * block_size[0]
+        h = (stop_block_y - start_block_y + 1) * block_size[1]
 
         # Restrict the output region to the bounding box of the image.
         # - Needed to handle images with partial tiles at the boundaries.
@@ -272,7 +278,7 @@ def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.Delta
     assert image is not None, 'Must specify either data or image.'
     num_bands = image.num_bands()
     data_type = _numpy_dtype_to_gdal_type(image.dtype())
-    size = (image.width(), image.height())
+    size = image.size()
     # gdal requires block size of 16 when writing...
     ts = image.block_size()
     if block_size:
@@ -334,7 +340,8 @@ class _TiffWriter:
                     'BLOCKYSIZE='+str(self._tile_height)]
 
         driver = gdal.GetDriverByName('GTiff')
-        self._handle = driver.Create(path, self._height, self._width, num_bands, data_type, options)
+        self._handle = driver.Create(path, ysize=self._height, xsize=self._width,
+                                     bands=num_bands, eType=data_type, options=options)
         if not self._handle:
             raise Exception('Failed to create output file: ' + path)
 
@@ -385,16 +392,16 @@ class _TiffWriter:
                          (block_y == num_tiles[1]-1))
 
         if is_edge_block: # Data must fit inside the image size
-            max_x = block_x * self._tile_width  + data.shape[0]
-            max_y = block_y * self._tile_height + data.shape[1]
+            max_x = block_x * self._tile_width  + data.shape[1]
+            max_y = block_y * self._tile_height + data.shape[0]
             if max_x > self._width or max_y > self._height:
                 raise Exception('Error: Data block max position '
                                 + str((max_x, max_y))
                                 + ' falls outside the image bounds: '
                                 + str((self._width, self._height)))
         else: # Shape must be exactly one tile
-            if ( (data.shape[0] != self._tile_width) or
-                 (data.shape[1] != self._tile_height)  ):
+            if ( (data.shape[1] != self._tile_width) or
+                 (data.shape[0] != self._tile_height)  ):
                 raise Exception('Error: Data block size is ' + str(data.shape)
                                 + ', output file block size is '
                                 + str((self._tile_width, self._tile_height)))
@@ -402,7 +409,8 @@ class _TiffWriter:
         gdal_band = self._handle.GetRasterBand(band+1)
         assert gdal_band
 
-        gdal_band.WriteArray(data, block_y * self._tile_height, block_x * self._tile_width)
+        gdal_band.WriteArray(data, yoff=block_y * self._tile_height,
+                             xoff=block_x * self._tile_width)
 
     def write_region(self, data, x, y):
         assert 0 <= y < self._height
@@ -411,13 +419,13 @@ class _TiffWriter:
         if len(data.shape) < 3:
             gdal_band = self._handle.GetRasterBand(1)
             assert gdal_band
-            gdal_band.WriteArray(data, y, x)
+            gdal_band.WriteArray(data, yoff=y, xoff=x)
             return
 
         for band in range(data.shape[2]):
             gdal_band = self._handle.GetRasterBand(band+1)
             assert gdal_band
-            gdal_band.WriteArray(data[:, :, band], y, x)
+            gdal_band.WriteArray(data[:, :, band], yoff=y, xoff=x)
 
 class TiffWriter(delta_image.DeltaImageWriter):
     """

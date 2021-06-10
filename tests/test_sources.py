@@ -26,6 +26,9 @@ import numpy as np
 
 from delta.extensions.sources import landsat, worldview
 
+TEST_BUF_HEIGHT = 64
+TEST_BUF_WIDTH = 32
+
 @pytest.fixture(scope="function")
 def wv_image(worldview_filenames):
     return worldview.WorldviewImage(worldview_filenames[0])
@@ -37,7 +40,7 @@ def landsat_image(landsat_filenames):
 # very basic, doesn't actually look at content
 def test_wv_image(wv_image):
     buf = wv_image.read()
-    assert buf.shape == (64, 32, 1)
+    assert buf.shape == (TEST_BUF_HEIGHT, TEST_BUF_WIDTH, 1)
     assert buf[0, 0, 0] == 0.0
 
     assert wv_image.meta_path() is not None
@@ -46,12 +49,12 @@ def test_wv_image(wv_image):
 
     worldview.toa_preprocess(wv_image, calc_reflectance=False)
     buf = wv_image.read()
-    assert buf.shape == (64, 32, 1)
+    assert buf.shape == (TEST_BUF_HEIGHT, TEST_BUF_WIDTH, 1)
     assert buf[0, 0, 0] == 0.0
 
 def test_landsat_image(landsat_image):
     buf = landsat_image.read()
-    assert buf.shape == (64, 32, 1)
+    assert buf.shape == (TEST_BUF_HEIGHT, TEST_BUF_WIDTH, 1)
     assert buf[0, 0, 0] == 0.0
 
     assert landsat_image.radiance_mult()[0] == 2.0
@@ -64,12 +67,12 @@ def test_landsat_image(landsat_image):
 
     landsat.toa_preprocess(landsat_image, calc_reflectance=True)
     buf = landsat_image.read()
-    assert buf.shape == (64, 32, 1)
+    assert buf.shape == (TEST_BUF_HEIGHT, TEST_BUF_WIDTH, 1)
     assert buf[0, 0, 0] == 0.0
 
     landsat.toa_preprocess(landsat_image)
     buf = landsat_image.read()
-    assert buf.shape == (64, 32, 1)
+    assert buf.shape == (TEST_BUF_HEIGHT, TEST_BUF_WIDTH, 1)
     assert buf[0, 0, 0] == 0.0
 
 def test_wv_cache(wv_image):
