@@ -54,7 +54,9 @@ setuptools.setup(
         'mlflow',
         'portalocker',
         'appdirs',
-        'gdal'
+        'gdal',
+        'shapely',
+        'pillow'
         #'numpy', # these are included by tensorflow with restrictions
         #'h5py'
     ],
