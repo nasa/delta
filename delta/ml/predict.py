@@ -24,7 +24,7 @@ from abc import ABC, abstractmethod
 import math
 import numpy as np
 import PIL
-from PIL import ImageDraw
+from PIL import ImageDraw #pylint: disable=W0611
 import tensorflow as tf
 
 from delta.imagery import rectangle
