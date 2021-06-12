@@ -63,7 +63,7 @@ same underlying options.
     * `clip` with `bounds` argument: clip all pixels to bounds.
    Preprocessing commands are registered with `delta.config.extensions.register_preprocess`.
    A full list of defaults (and examples of how to create new ones) can be found in `delta.extensions.preprocess`.
- * `nodata_value`: A pixel value to ignore in the images.
+ * `nodata_value`: A pixel value to ignore in the images. Will try to determine from the file if this is not specified.
  * `classes`: Either an integer number of classes or a list of individual classes. If individual classes are specified,
    each list item should be the pixel value of the class in the label images, and a dictionary with the
    following potential attributes (see example below):

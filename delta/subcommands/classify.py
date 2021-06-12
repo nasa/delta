@@ -82,7 +82,7 @@ def print_classes(cm):
     print('%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100)))
 
 
-def classify_image(model, image, label, path, net_name, options, shapes):
+def classify_image(model, image, label, path, net_name, options, shapes=None):
     out_path, base_name = os.path.split(path)
     base_name = os.path.splitext(base_name)[0]
     base_out = (options.outprefix if options.outprefix else net_name + '_') + base_name + '.tiff'
@@ -259,7 +259,7 @@ def main(options): #pylint: disable=R0912
         for (i, image_path) in enumerate(images):
             this_image = images.load(i)
             wkt_path = get_wkt_path(image_path, config.classify.wkt_dir())
-            shapes = []
+            shapes = None
 
             if region_name == 'no_label':
                 if os.path.isfile(wkt_path):
