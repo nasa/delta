@@ -278,7 +278,6 @@ class ClassifyConfig(config.DeltaConfigComponent):
     """
     def __init__(self):
         super().__init__()
-        self.register_field('metrics', list, 'metrics', None, 'List of metrics to apply.')
         self.register_field('regions', list, None, None,
                             'List of region tags to compute statistics over, default is all tags.')
         self.register_field('wkt_dir', str, None, None,
@@ -287,7 +286,7 @@ class ClassifyConfig(config.DeltaConfigComponent):
     def regions(self):
         if 'regions' in self._config_dict:
             return self._config_dict['regions']
-        return ['']
+        return None
 
     def wkt_dir(self):
         if 'wkt_dir' in self._config_dict:
