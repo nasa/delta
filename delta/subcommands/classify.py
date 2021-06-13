@@ -231,6 +231,15 @@ def shapes_to_pixel_coordinates(shapes, image_path):
         raise Exception('Unrecognized shape type: ' + s.geom_type)
     return output_shapes
 
+def load_wkt_shapes(wkt_path, image_path, region_name):
+    '''Loads shapes (in image coordinates) from an image's WKT file'''
+
+    if os.path.isfile(wkt_path):
+        geo_shapes = load_shapes_matching_tag(wkt_path, region_name)
+        if geo_shapes:
+            return shapes_to_pixel_coordinates(geo_shapes, image_path)
+    return []
+
 def main(options): #pylint: disable=R0912
 
     model = load_model(options.model)
@@ -262,26 +271,18 @@ def main(options): #pylint: disable=R0912
             shapes = None
 
             if region_name == 'no_label':
-                if os.path.isfile(wkt_path):
-                    # Individually compute untagged regions
-                    geo_shapes = load_shapes_matching_tag(wkt_path, None)
-                    if not geo_shapes:
-                        continue
-                    shapes = shapes_to_pixel_coordinates(geo_shapes, image_path)
-                    for s in shapes:
-                        cm = classify_image(model, this_image, labels.load(i),
-                                            image_path, net_name, options, [s])
-                        print('For image ' + image_path + ',  shape: ' + str(s))
-                        print_classes(cm)
+                # Individually compute untagged regions
+                shapes = load_wkt_shapes(wkt_path, image_path, None)
+                for s in shapes:
+                    cm = classify_image(model, this_image, labels.load(i),
+                                        image_path, net_name, options, [s])
+                    print('For image ' + image_path + ',  shape: ' + str(s))
+                    print_classes(cm)
                 continue
 
             # Load shapes from file if they are specified for this image/region pair
             if region_name != 'all':
-                if os.path.isfile(wkt_path):
-                    geo_shapes = load_shapes_matching_tag(wkt_path, region_name)
-                    if not geo_shapes:
-                        continue
-                    shapes = shapes_to_pixel_coordinates(geo_shapes, image_path)
+                shapes = load_wkt_shapes(wkt_path, image_path, region_name)
                 if not shapes:
                     continue # This region name not specified for this image
 
