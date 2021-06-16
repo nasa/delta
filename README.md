@@ -101,7 +101,7 @@ Configuration and Extensions
 
 DELTA provides many options for customizing data inputs and training. All options are configured via
 YAML files. Some options can be overwritten with command line options (use
-`delta --help` to see which). See the `delta.config` README to learn about available configuration
+`delta --help` to see which). See the [`delta.config` README](delta/config/README.md) to learn about available configuration
 options.
 
 DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
