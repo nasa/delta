@@ -27,13 +27,19 @@ import PIL
 from PIL import ImageDraw #pylint: disable=W0611
 import tensorflow as tf
 
-from delta.imagery import rectangle
+from delta.imagery.rectangle import Rectangle
 
 def mask_outside_shapes(shapes, image, x, y, mask_value):
     '''Writes the mask value to "image" in all locations outside one of the shapes'''
 
     if not shapes: # Skip this step if no shapes were passed in
         return
+
+    image_rect = Rectangle(x, y, width=image.shape[1], height=image.shape[0])
+    #print('image_rect = ' + str(image_rect))
+
+    #temp = PIL.Image.fromarray(image[:,:,0], mode='L')
+    #temp.save('input_mask.tif')
 
     def adjust_coords(inputs, x, y):
         '''Return a copy of the input coordinates adjusted by the x,y coordinate'''
@@ -43,14 +49,25 @@ def mask_outside_shapes(shapes, image, x, y, mask_value):
         return output
 
     # Draw all of the shapes on to a new image
-    mask_image = PIL.Image.new('L', (image.shape[1], image.shape[0]), color=0)
-    painter = PIL.ImageDraw.Draw(mask_image)
+    mask_image = None
+    painter = None
     for s in shapes:
+        #print(s)
+        shape_rect = Rectangle(*s.bounds)
+        if not shape_rect.overlaps(image_rect):
+            #print('not in shape ' + str(shape_rect))
+            continue
+        if not mask_image:
+            mask_image = PIL.Image.new('L', (image.shape[1], image.shape[0]), color=0)
+            painter = PIL.ImageDraw.Draw(mask_image)
         coords = adjust_coords(s.exterior.coords, x, y)
         painter.polygon(coords, fill=1)
         for i in s.interiors: # Interior polygons are "holes" in the shapes
             coords = adjust_coords(i.coords, x, y)
             painter.polygon(coords, fill=0)
+    if not mask_image:
+        #print('No shape intersection')
+        return
 
     # Apply the mask to the input image
     mask_pixels = mask_image.load()
@@ -58,6 +75,14 @@ def mask_outside_shapes(shapes, image, x, y, mask_value):
         for c in range(image.shape[1]):
             if not mask_pixels[c,r]:
                 image[r,c,0] = mask_value
+
+    #mask_image.save('canvas.tif')
+    #temp = PIL.Image.fromarray(image[:,:,0], mode='L')
+    #fname = ('output_%d_%d_%d.tif' % (x, y, len(shapes)))
+    #temp.save(fname)
+    #temp.save('output_mask.tif')
+    #print('mask_outside_shapes done')
+    #raise Exception('eosenuseonu')
 
 class Predictor(ABC):
     """
@@ -209,18 +234,18 @@ class Predictor(ABC):
 
         # Set up the output image
         if not input_bounds:
-            input_bounds = rectangle.Rectangle(0, 0, width=image.width(), height=image.height())
+            input_bounds = Rectangle(0, 0, width=image.width(), height=image.height())
         output_shape = (input_bounds.width(), input_bounds.height())
-
+        #print('input_bounds = ' + str(input_bounds))
         ts = self._tile_shape if self._tile_shape else (image.width(), image.height())
         if net_input_shape[0] is None and net_input_shape[1] is None:
             assert net_output_shape[0] is None and net_output_shape[1] is None
             out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
 
-            tiles = input_bounds.make_tile_rois(ts, include_partials=True,
+            tiles = input_bounds.make_tile_rois(ts, include_partials=False,
                                                 overlap_shape=(ts[0] - out_shape[1] + overlap[0],
                                                                ts[1] - out_shape[2] + overlap[1]),
-                                                partials_overlap=True)
+                                                partials_overlap=False)
 
         else:
             offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
@@ -230,8 +255,8 @@ class Predictor(ABC):
             block_size_y = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
 
             tiles = input_bounds.make_tile_rois((block_size_x - offset_c, block_size_y - offset_r),
-                                                include_partials=True, overlap_shape=(-offset_c, -offset_r))
-
+                                                include_partials=False, overlap_shape=(-offset_c, -offset_r))
+        #print('tiles = ' + str(tiles))
         self._initialize(output_shape, image, label)
 
         label_nodata = label.nodata_value() if label else None
@@ -247,8 +272,8 @@ class Predictor(ABC):
             if label:
                 label_x = roi.min_x + (roi.width() - pred_image.shape[1]) // 2
                 label_y = roi.min_y + (roi.height() - pred_image.shape[0]) // 2
-                label_roi = rectangle.Rectangle(label_x, label_y,
-                                                label_x + pred_image.shape[1], label_y + pred_image.shape[0])
+                label_roi = Rectangle(label_x, label_y,
+                                      label_x + pred_image.shape[1], label_y + pred_image.shape[0])
 
                 cropped_label = label.read(label_roi)
                 # Mask all regions outside the specified shapes

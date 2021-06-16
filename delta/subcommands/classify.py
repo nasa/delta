@@ -112,7 +112,15 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
     prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
     output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
 
+    # 
     ts = config.io.tile_size()
+    roi = get_roi_containing_shapes(shapes)
+    if roi:
+        if ts[0] > roi.width():
+            ts[0] = roi.width()
+        if ts[1] > roi.height():
+            ts[1] = roi.height()
+
     if options.autoencoder:
         label = image
         predictor = predict.ImagePredictor(model, ts, output_image, True, base_name,
@@ -124,7 +132,6 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
         predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
                                            prob_image=prob_image, error_image=error_image, error_abs=options.error_abs)
 
-    roi = get_roi_containing_shapes(shapes)
     overlap = (options.overlap, options.overlap)
     try:
         if config.general.gpus() == 0:
@@ -167,7 +174,7 @@ def load_shapes_matching_tag(wkt_path, tag):
        If tag is None, return untagged regions'''
     shapes = []
     with open(wkt_path, 'r') as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, skipinitialspace=True)
         for row in reader:
             raw_line = ', '.join(row)
             if ('POLYGON' not in raw_line) or (len(row) != 2):
@@ -184,6 +191,7 @@ def load_shapes_matching_tag(wkt_path, tag):
                         continue
     return shapes
 
+# MOVE
 def get_roi_containing_shapes(shapes) -> Rectangle:
     '''Return a Rectangle containing all the shapes or None if none were passed in'''
     if not shapes:
