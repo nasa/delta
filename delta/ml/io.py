@@ -22,7 +22,7 @@ Functions for IO specific to ML.
 import os
 import h5py
 import numpy as np
-import tensorflow.keras.backend as K
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 import tensorflow
 
 from delta.config import config

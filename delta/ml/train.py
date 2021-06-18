@@ -27,8 +27,8 @@ import shutil
 import mlflow
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
-from tensorflow.keras.layers import Layer
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.keras.layers import Layer #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset

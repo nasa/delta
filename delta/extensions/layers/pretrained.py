@@ -20,7 +20,7 @@ Use a pretrained model inside another network.
 """
 from typing import List, Optional
 import tensorflow
-import tensorflow.keras.models
+import tensorflow.keras.models #pylint: disable=no-name-in-module
 
 from delta.ml.io import load_model
 from delta.config.extensions import register_layer
@@ -38,7 +38,7 @@ class InputSelectLayer(tensorflow.keras.layers.Layer):
         """
         super().__init__(**kwargs)
         self._arg = arg_number
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument
         return inputs[self._arg]
     def get_config(self):
         return {'arg_number' : self._arg}
