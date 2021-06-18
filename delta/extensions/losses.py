@@ -22,8 +22,8 @@ Various helpful loss functions.
 import numpy as np
 
 import tensorflow as tf
-import tensorflow.keras.losses
-import tensorflow.keras.backend as K
+import tensorflow.keras.losses #pylint: disable=no-name-in-module
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import register_loss
