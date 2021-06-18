@@ -267,8 +267,8 @@ def metric_from_dict(metric_spec: Union[dict, str]) -> tensorflow.keras.metrics.
     if mc is None:
         try:
             mc = loss_from_dict(metric_spec)
-        except:
-            raise ValueError('Unknown metric %s.' % (name)) # pylint: disable=raise-missing-from
+        except ValueError as v:
+            raise ValueError('Unknown metric %s.' % (name)) from v
     if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
         mc = mc(**params)
     return mc
