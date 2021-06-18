@@ -20,7 +20,7 @@ Custom callbacks that come with DELTA.
 """
 
 import tensorflow
-import tensorflow.keras.callbacks
+import tensorflow.keras.callbacks #pylint: disable=no-name-in-module
 
 from delta.config.extensions import register_callback
 from delta.ml.train import ContinueTrainingException
@@ -51,7 +51,7 @@ class SetTrainable(tensorflow.keras.callbacks.Callback):
         self._lr = learning_rate
         self._triggered = False
 
-    def on_epoch_begin(self, epoch, logs=None):
+    def on_epoch_begin(self, epoch, logs=None): # pylint: disable=unused-argument
         if epoch == self._epoch:
             if self._triggered:
                 return
