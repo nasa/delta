@@ -40,9 +40,8 @@ DELTA is now installed and ready to use!
    
 3. Run the following commands to create a conda environment, install dependences, and install delta:
     ```bash
-    conda create --name delta "python=3.6.9" gdal
+   conda create --name delta --yes python gdal
     conda activate delta
-    pip install tensorflow==2.3.2
     pip install . # This command should be run in the ./delta directory we made in step 2
     ```
 
