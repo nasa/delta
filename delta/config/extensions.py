@@ -29,6 +29,9 @@ All extensions can take keyword arguments that can be specified in the config fi
 #pylint:disable=global-statement
 
 import importlib
+from typing import Dict
+from delta.imagery.delta_image import DeltaImage
+from delta.imagery.delta_image import DeltaImageWriter
 
 __extensions_to_load = set()
 __layers = {}
@@ -172,7 +175,7 @@ def register_preprocess(function_name : str, prep_function):
     global __prep_funcs
     __prep_funcs[function_name] = prep_function
 
-def layer(layer_type : str):
+def layer(layer_type : str) -> str:
     """
     Retrieve a custom layer by name.
 
@@ -189,7 +192,7 @@ def layer(layer_type : str):
     __initialize()
     return __layers.get(layer_type)
 
-def loss(loss_type : str):
+def loss(loss_type : str) -> str:
     """
     Retrieve a custom loss by name.
 
@@ -206,7 +209,7 @@ def loss(loss_type : str):
     __initialize()
     return __losses.get(loss_type)
 
-def metric(metric_type : str):
+def metric(metric_type : str) -> str:
     """
     Retrieve a custom metric by name.
 
@@ -223,7 +226,7 @@ def metric(metric_type : str):
     __initialize()
     return __metrics.get(metric_type)
 
-def callback(cb_type : str):
+def callback(cb_type : str) -> str:
     """
     Retrieve a custom callback by name.
 
@@ -240,7 +243,7 @@ def callback(cb_type : str):
     __initialize()
     return __callbacks.get(cb_type)
 
-def preprocess_function(prep_type : str):
+def preprocess_function(prep_type : str) -> str:
     """
     Retrieve a custom preprocessing function by name.
 
@@ -257,7 +260,7 @@ def preprocess_function(prep_type : str):
     __initialize()
     return __prep_funcs.get(prep_type)
 
-def image_reader(reader_type : str):
+def image_reader(reader_type : str) -> DeltaImage:
     """
     Get the reader of the given type.
 
@@ -274,7 +277,7 @@ def image_reader(reader_type : str):
     __initialize()
     return __readers.get(reader_type)
 
-def image_writer(writer_type : str):
+def image_writer(writer_type : str) -> DeltaImageWriter:
     """
     Get the writer of the given type.
 
@@ -291,7 +294,7 @@ def image_writer(writer_type : str):
     __initialize()
     return __writers.get(writer_type)
 
-def custom_objects():
+def custom_objects() -> Dict:
     """
     Returns a dictionary of all supported custom objects for use
     by tensorflow. Passed as an argument to load_model.
