@@ -60,7 +60,7 @@ def generate_tile(width=32, height=32, blocks=50):
     """Generate a widthXheightX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
     image = np.zeros((width, height, 1), np.float32)
     label = np.zeros((width, height), np.uint8)
-    for _ in range(blocks):
+    for _ in np.arange(blocks):
         x = random.randint(2, width - 3)
         y = random.randint(2, height - 3)
         # ensure non-overlapping
