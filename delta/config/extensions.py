@@ -41,6 +41,7 @@ __losses = {}
 __metrics = {}
 __callbacks = {}
 __prep_funcs = {}
+__augmentations = {}
 
 def __initialize():
     """
@@ -163,6 +164,8 @@ def register_preprocess(function_name : str, prep_function):
     """
     Register a preprocessing function for use in delta.
 
+    Preprocessing functions are called on numpy arrays when the data is read from disk.
+
     Parameters
     ----------
     function_name: str
@@ -175,7 +178,28 @@ def register_preprocess(function_name : str, prep_function):
     global __prep_funcs
     __prep_funcs[function_name] = prep_function
 
+<<<<<<< HEAD
 def layer(layer_type : str) -> str:
+=======
+def register_augmentation(function_name : str, aug_function):
+    """
+    Register an augmentation for use in delta.
+
+    Augmentations are called on tensors before the data is used for training.
+    Both the image and the label are passed to an augmentation function.
+
+    Parameters
+    ----------
+    function_name: str
+        Name of the augmentation function.
+    aug_function:
+        A function of the form aug(image, label), where image and labels are both tensors.
+    """
+    global __augmentations
+    __augmentations[function_name] = aug_function
+
+def layer(layer_type : str):
+>>>>>>> 6b6d58f03e7d871f9fb09d9935715ac7f281234f
     """
     Retrieve a custom layer by name.
 
@@ -260,7 +284,28 @@ def preprocess_function(prep_type : str) -> str:
     __initialize()
     return __prep_funcs.get(prep_type)
 
+<<<<<<< HEAD
 def image_reader(reader_type : str) -> DeltaImage:
+=======
+def augmentation(aug_type : str):
+    """
+    Retrieve a custom augmentation by name.
+
+    Parameters
+    ----------
+    aug_type: str
+        Name of the augmentation.
+
+    Returns
+    -------
+    Augmentation Function
+        The previously registered augmentation function.
+    """
+    __initialize()
+    return __augmentations.get(aug_type)
+
+def image_reader(reader_type : str):
+>>>>>>> 6b6d58f03e7d871f9fb09d9935715ac7f281234f
     """
     Get the reader of the given type.
 
@@ -307,4 +352,5 @@ def custom_objects() -> Dict:
     __initialize()
     d = __layers.copy()
     d.update(__losses.copy())
+    d.update(__metrics.copy())
     return d

@@ -307,14 +307,17 @@ class DeltaImage(ABC):
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
                 num_remaining -= 1
-                yield (roi, buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :],
-                       (total_rois - num_remaining, total_rois))
+                if len(buf.shape) == 2:
+                    b = buf[x0:x0 + roi.width(), y0:y0 + roi.height()]
+                else:
+                    b = buf[x0:x0 + roi.width(), y0:y0 + roi.height(), :]
+                yield (roi, b, (total_rois - num_remaining, total_rois))
             if i + NUM_AHEAD < len(jobs):
                 pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))
 
     def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
                      callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
-                     show_progress: bool=False) -> None:
+                     show_progress: bool=False, progress_prefix: str=None) -> None:
         """
         Apply a callback function to a list of ROIs.
 
@@ -327,11 +330,15 @@ class DeltaImage(ABC):
             of the current region and a numpy array of pixel values as inputs.
         show_progress: bool
             Print a progress bar on the command line if true.
+        progress_prefix: str
+            Text to print at start of progress bar.
         """
+        if progress_prefix is None:
+            progress_prefix = 'Blocks Processed'
         for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
             callback_function(roi, buf)
             if show_progress:
-                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix='Blocks Processed:')
+                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix=progress_prefix + ':')
         if show_progress:
             print()
 

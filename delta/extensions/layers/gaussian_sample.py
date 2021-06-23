@@ -19,8 +19,8 @@
 Gaussian sampling layer, used in variational autoencoders.
 """
 
-import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import Callback
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.keras.callbacks import Callback #pylint: disable=no-name-in-module
 
 from delta.config.extensions import register_layer
 from delta.ml.train import DeltaLayer
@@ -56,7 +56,7 @@ class GaussianSample(DeltaLayer):
                     K.set_value(kl_enabled, 1.0)
         return GaussianSampleCallback()
 
-    def call(self, inputs, **_):
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument, arguments-differ
         mean, log_var = inputs
         batch = K.shape(mean)[0]
         dim = K.int_shape(mean)[1:]

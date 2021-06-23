@@ -10,3 +10,4 @@ htmlcov
 .idea/
 .cache
 html
+.DS_Store

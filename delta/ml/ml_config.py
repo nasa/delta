@@ -184,6 +184,7 @@ class TrainingConfig(config.DeltaConfigComponent):
                             'Directory where dataset progress is recorded.')
         self.register_field('resume_cutoff', int, 'resume_cutoff', None,
                             'When resuming a dataset, skip images where we have read this many tiles.')
+        self.register_field('augmentations', list, None, None, None)
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
         self.__training = None
@@ -208,6 +209,9 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            stride=self._config_dict['stride'],
                                            optimizer=self._config_dict['optimizer'])
         return self.__training
+
+    def augmentations(self):
+        return self._config_dict['augmentations']
 
     def _load_dict(self, d : dict, base_dir):
         self.__training = None

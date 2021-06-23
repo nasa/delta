@@ -39,6 +39,10 @@ def main_validate(options):
     from .import validate
     validate.main(options)
 
+def main_visualize(options):
+    from .import visualize
+    visualize.main(options)
+
 def setup_classify(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
     config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
@@ -49,6 +53,17 @@ def setup_classify(subparsers):
                      help='Save raw classification values instead of colormapped values.')
     sub.add_argument('--overlap', dest='overlap', type=int, default=0, help='Classify with the autoencoder.')
     sub.add_argument('--validation', dest='validation', help='Classify validation images instead.')
+    sub.add_argument('--outdir', dest='outdir', type=str, help='Directory to save output to.')
+    sub.add_argument('--basedir', dest='basedir', type=str, help='Preserve paths of files relative to this directory.')
+    sub.add_argument('--outprefix', dest='outprefix', type=str, help='Prefix to output filenames.')
+    sub.add_argument('--confusion', dest='confusion', action='store_true', help='Save confusion matrix.')
+    sub.add_argument('--error', dest='error', action='store_true',
+                     help='Save image of model errors. Values will be difference between predicted probability and '
+                          'the binary labels.')
+    sub.add_argument('--error-abs', dest='error_abs', action='store_true',
+                     help='Save image of absolute value of model errors. Values will be the absolute value of the '
+                          'difference between predicted probability and binary label. If both --error and --error-abs '
+                          'are provided, --error-abs will take precidence.')
     sub.add_argument('model', help='File to save the network to.')
 
     sub.set_defaults(function=main_classify)
@@ -74,4 +89,11 @@ def setup_validate(subparsers):
 
     sub.set_defaults(function=main_validate)
 
-SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]
+def setup_visualize(subparsers):
+    sub = subparsers.add_parser('visualize', help='Visualize input dataset.')
+    sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Visualize for the autoencoder.')
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset', 'train'])
+
+    sub.set_defaults(function=main_visualize)
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate, setup_visualize]

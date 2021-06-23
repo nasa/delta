@@ -20,8 +20,9 @@ Use a pretrained model inside another network.
 """
 from typing import List, Optional
 import tensorflow
-import tensorflow.keras.models
+import tensorflow.keras.models #pylint: disable=no-name-in-module
 
+from delta.ml.io import load_model
 from delta.config.extensions import register_layer
 
 class InputSelectLayer(tensorflow.keras.layers.Layer):
@@ -37,7 +38,7 @@ class InputSelectLayer(tensorflow.keras.layers.Layer):
         """
         super().__init__(**kwargs)
         self._arg = arg_number
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument
         return inputs[self._arg]
     def get_config(self):
         return {'arg_number' : self._arg}
@@ -76,7 +77,7 @@ def pretrained(filename, encoding_layer, outputs: Optional[List[str]]=None, trai
     training: bool
         Standard tensorflow option, used for batch norm layers.
     """
-    model = tensorflow.keras.models.load_model(filename, compile=False)
+    model = load_model(filename)
 
     if isinstance(encoding_layer, int):
         break_point = lambda x, y: x == encoding_layer

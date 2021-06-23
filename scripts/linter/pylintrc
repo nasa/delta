@@ -5,7 +5,8 @@
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-#init-hook='import sys; import os; sys.path.append(os.path.abspath("."))'
+# Manually added PYTHONPATH to sys.path because there's a bug with pylint and virtualenvs correctly inheriting PYTHONPATH
+init-hook='import sys; import os; sys.path.extend([os.path.abspath("."),*os.environ["PYTHONPATH"].split(":")])'
 
 # Profiled execution.
 profile=no

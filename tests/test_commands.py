@@ -30,6 +30,7 @@ from conftest import config_reset
 from delta.extensions.sources.tiff import TiffImage
 from delta.ml.predict import LabelPredictor, ImagePredictor
 from delta.subcommands.main import main
+from delta.config.extensions import image_writer
 
 @pytest.fixture(scope="session")
 def identity_config(binary_identity_tiff_filenames):
@@ -63,7 +64,7 @@ def identity_config(binary_identity_tiff_filenames):
 
     shutil.rmtree(tmpdir)
 
-def test_predict_main(identity_config, tmp_path):
+def test_classify_main(identity_config, tmp_path):
     config_reset()
     model_path = tmp_path / 'model.h5'
     inputs = tf.keras.layers.Input((32, 32, 2))
@@ -73,6 +74,70 @@ def test_predict_main(identity_config, tmp_path):
     os.chdir(tmp_path) # put temporary outputs here
     main(args.split())
     os.chdir(old)
+
+def test_predict_prob_output(incremental_tiff_filenames, tmp_path):
+    writer = image_writer('tiff')
+    prob_image_path = str(tmp_path / "test_prob_image.tiff")
+    prob_image = writer(prob_image_path)
+
+    inputs = tf.keras.layers.Input((10, 10, 1))
+    model = tf.keras.Model(inputs, inputs)
+    pred = LabelPredictor(model, prob_image=prob_image)
+    image = TiffImage(incremental_tiff_filenames[0])
+    pred.predict(image)
+
+    prob_image_output = TiffImage(prob_image_path)
+    assert prob_image_output.dtype() == np.uint8
+    prob_array = prob_image_output.read()
+    incremental_image = TiffImage(incremental_tiff_filenames[0])
+    incremental_array = incremental_image.read()
+    np.testing.assert_array_equal(prob_array, np.clip((incremental_array * 254.0).astype(np.uint8), 0, 254) + 1)
+
+def test_predict_continuous_error_output(incremental_tiff_filenames, tmp_path):
+    writer = image_writer('tiff')
+    continuous_error_image_path = str(tmp_path / "test_continuous_error_image.tiff")
+    continuous_error_image = writer(continuous_error_image_path)
+
+    inputs = tf.keras.layers.Input((10, 10, 1))
+    model = tf.keras.Model(inputs, inputs)
+    pred = LabelPredictor(model, error_image=continuous_error_image, error_abs=False)
+    image = TiffImage(incremental_tiff_filenames[0])
+    label = TiffImage(incremental_tiff_filenames[1])
+    pred.predict(image, label)
+
+    continuous_error_image_output = TiffImage(continuous_error_image_path)
+    assert continuous_error_image_output.dtype() == np.uint8
+    continuous_error_array = continuous_error_image_output.read()
+    incremental_image = TiffImage(incremental_tiff_filenames[0])
+    incremental_array = incremental_image.read()
+    label_image = TiffImage(incremental_tiff_filenames[1])
+    label_array = label_image.read()
+    error_array = incremental_array - label_array
+    error_array_inted = np.clip(((error_array * 127) + 128).astype(np.uint8), 1, 255)
+    np.testing.assert_array_equal(continuous_error_array, error_array_inted)
+
+def test_predict_continuous_error_abs_output(incremental_tiff_filenames, tmp_path):
+    writer = image_writer('tiff')
+    continuous_error_abs_image_path = str(tmp_path / "test_continuous_error_abs_image.tiff")
+    continuous_error_abs_image = writer(continuous_error_abs_image_path)
+
+    inputs = tf.keras.layers.Input((10, 10, 1))
+    model = tf.keras.Model(inputs, inputs)
+    pred = LabelPredictor(model, error_image=continuous_error_abs_image, error_abs=True)
+    image = TiffImage(incremental_tiff_filenames[0])
+    label = TiffImage(incremental_tiff_filenames[1])
+    pred.predict(image, label)
+
+    continuous_error_abs_image_output = TiffImage(continuous_error_abs_image_path)
+    assert continuous_error_abs_image_output.dtype() == np.uint8
+    continuous_error_abs_array = continuous_error_abs_image_output.read()
+    incremental_image = TiffImage(incremental_tiff_filenames[0])
+    incremental_array = incremental_image.read()
+    label_image = TiffImage(incremental_tiff_filenames[1])
+    label_array = label_image.read()
+    error_abs_array = np.abs(incremental_array - label_array)
+    error_abs_array_inted = np.clip(((error_abs_array * 254) + 1).astype(np.uint8), 1, 255)
+    np.testing.assert_array_equal(continuous_error_abs_array, error_abs_array_inted)
 
 def test_train_main(identity_config, tmp_path):
     config_reset()

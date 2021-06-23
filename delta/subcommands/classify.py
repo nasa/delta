@@ -20,15 +20,16 @@ Classify input images given a model.
 """
 import os.path
 
+import sys
 import time
 import numpy as np
 import matplotlib
 import tensorflow as tf
 
 from delta.config import config
-from delta.config.extensions import custom_objects, image_writer
+from delta.config.extensions import image_writer
 from delta.ml import predict
-from delta.extensions.sources.tiff import write_tiff
+from delta.ml.io import load_model
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
@@ -60,91 +61,115 @@ def ae_convert(data):
     r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
+def print_classes(cm):
+    for i in range(cm.shape[0]):
+        name = config.dataset.classes[i].name if \
+               len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
+        with np.errstate(invalid='ignore'):
+            print('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' % \
+                    (name.ljust(20),
+                     np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
+                     np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
+                     int(np.sum(cm[i, :])), int(np.sum(cm))))
+    print('%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100)))
+
+def classify_image(model, image, label, path, net_name, options):
+    out_path, base_name = os.path.split(path)
+    base_name = os.path.splitext(base_name)[0]
+    base_out = (options.outprefix if options.outprefix else net_name + '_') + base_name + '.tiff'
+
+
+    # check if is subdirectory
+    if options.basedir and os.path.abspath(options.basedir) == \
+            os.path.commonpath([os.path.abspath(options.basedir), os.path.abspath(out_path)]):
+        out_path = os.path.relpath(out_path, options.basedir)
+    else:
+        out_path = ''
+    if options.outdir:
+        out_path = os.path.join(options.outdir, out_path)
+    if out_path:
+        os.makedirs(out_path, exist_ok=True)
+
+    writer = image_writer('tiff')
+
+    error_image = None
+    if label:
+        assert image.size() == label.size(), 'Image and label do not match.'
+        if options.error_abs:
+            error_image = writer(os.path.join(out_path, 'error_abs_' + base_out))
+        elif options.error:
+            error_image = writer(os.path.join(out_path, 'error_' + base_out))
+
+    prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
+    output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
+
+
+    ts = config.io.tile_size()
+    if options.autoencoder:
+        label = image
+        predictor = predict.ImagePredictor(model, ts, output_image, True, base_name,
+                                           None if options.noColormap else (ae_convert, np.uint8, 3))
+    else:
+        colors = list(map(lambda x: x.color, config.dataset.classes))
+        if options.noColormap:
+            colors=None # Forces raw one channel output
+        predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
+                                           prob_image=prob_image, error_image=error_image, error_abs=options.error_abs)
+
+    overlap = (options.overlap, options.overlap)
+    try:
+        if config.general.gpus() == 0:
+            with tf.device('/cpu:0'):
+                predictor.predict(image, label, overlap=overlap)
+        else:
+            predictor.predict(image, label, overlap=overlap)
+    except KeyboardInterrupt:
+        print('\nAborted.')
+        sys.exit(0)
+
+    #if options.autoencoder:
+    #    write_tiff('orig_' + net_name + '_' + base_name + '.tiff',
+    #               image.read() if options.noColormap else ae_convert(image.read()),
+    #               metadata=image.metadata())
+
+    if label:
+        cm = predictor.confusion_matrix()
+        class_names = list(map(lambda x: x.name, config.dataset.classes))
+        print_classes(cm)
+        if len(config.dataset.classes) != cm.shape[0]:
+            class_names = list(map(lambda x: 'Class %d' % (x), range(cm.shape[0])))
+        if options.confusion:
+            save_confusion(cm, class_names,
+                           os.path.join(out_path, 'confusion_' + os.path.splitext(base_out)[0] + '.pdf'))
+        return cm
+    return None
+
 def main(options):
 
-    # TODO: Share the way this is done with in ml/train.py
-    cpuOnly = (config.general.gpus()==0)
-
-    if cpuOnly:
-        with tf.device('/cpu:0'):
-            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
-    else:
-        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
-
-    colors = list(map(lambda x: x.color, config.dataset.classes))
-    error_colors = np.array([[0x0, 0x0, 0x0],
-                             [0xFF, 0x00, 0x00]], dtype=np.uint8)
-    if options.noColormap:
-        colors=None # Forces raw one channel output
+    model = load_model(options.model)
 
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
     net_name = os.path.splitext(os.path.basename(options.model))[0]
 
+    if len(images) == 0:
+        print('No images specified.')
+        return 0
+
     full_cm = None
     if options.autoencoder:
         labels = None
     for (i, path) in enumerate(images):
-        image = images.load(i)
-        base_name = os.path.splitext(os.path.basename(path))[0]
-        writer = image_writer('tiff')
-        prob_image = writer(net_name + '_' + base_name + '.tiff') if options.prob else None
-        output_image = writer(net_name + '_' + base_name + '.tiff') if not options.prob else None
-
-        error_image = None
-        label = None
-        if labels:
-            error_image = writer('errors_' + base_name + '.tiff')
-            label = labels.load(i)
-            assert image.size() == label.size(), 'Image and label do not match.'
-
-        ts = config.io.tile_size()
-        if options.autoencoder:
-            label = image
-            predictor = predict.ImagePredictor(model, ts, output_image, True,
-                                               None if options.noColormap else (ae_convert, np.uint8, 3))
-        else:
-            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
-                                               prob_image=prob_image, error_image=error_image,
-                                               error_colors=error_colors)
-
-        overlap = (options.overlap, options.overlap)
-        try:
-            if cpuOnly:
-                with tf.device('/cpu:0'):
-                    predictor.predict(image, label, overlap=overlap)
-            else:
-                predictor.predict(image, label, overlap=overlap)
-        except KeyboardInterrupt:
-            print('\nAborted.')
-            return 0
-
-        if labels:
-            cm = predictor.confusion_matrix()
+        cm = classify_image(model, images.load(i), labels.load(i) if labels else None, path, net_name, options)
+        if cm is not None:
             if full_cm is None:
                 full_cm = np.copy(cm).astype(np.int64)
             else:
                 full_cm += cm
-            for j in range(cm.shape[0]):
-                print('%s--- Precision: %.2f%%    Recall: %.2f%%      Pixels: %d / %d' % \
-                      (config.dataset.classes[j].name,
-                       100 * cm[j,j] / np.sum(cm[:, j]),
-                       100 * cm[j,j] / np.sum(cm[j, :]),
-                       int(np.sum(cm[j, :])), int(np.sum(cm))))
-            print('%.2f%% Correct: %s' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
-            save_confusion(cm, map(lambda x: x.name, config.dataset.classes), 'confusion_' + base_name + '.pdf')
-
-        if options.autoencoder:
-            write_tiff('orig_' + base_name + '.tiff', image.read() if options.noColormap else ae_convert(image.read()),
-                       metadata=image.metadata())
     stop_time = time.time()
     if labels:
-        for i in range(full_cm.shape[0]):
-            print('%s--- Precision: %.2f%%    Recall: %.2f%%        Pixels: %d / %d' % \
-                    (config.dataset.classes[i].name,
-                     100 * full_cm[i,i] / np.sum(full_cm[:, i]),
-                     100 * full_cm[i,i] / np.sum(full_cm[i, :]),
-                     int(np.sum(cm[j, :])), int(np.sum(cm))))
+        print('Overall:')
+        print_classes(full_cm)
     print('Elapsed time = ', stop_time - start_time)
     return 0

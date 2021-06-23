@@ -19,7 +19,6 @@
 Tools for loading input images into the TensorFlow Dataset class.
 """
 from concurrent.futures import ThreadPoolExecutor
-import copy
 import functools
 import random
 import os
@@ -82,9 +81,6 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
 
-    # TODO: I am skeptical that this works with multiple epochs.
-    # It is also less important now that training is so much faster.
-    # I think we should probably get rid of it at some point.
     def set_resume_mode(self, resume_mode, log_folder):
         """
         Enable / disable resume mode and configure it.
@@ -282,15 +278,13 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 next_buf = self._iopool.submit((lambda x: (lambda: image.read(tiles[x + 1][0])))(c))
             if cur_buf is None:
                 continue
-            buf = cur_buf.result()
+            if preprocess:
+                buf = preprocess(cur_buf.result(), rect, bands)
+            else:
+                buf = cur_buf.result()
             (rect, sub_tiles) = tiles[c]
             for s in sub_tiles:
-                if preprocess:
-                    t = copy.copy(s)
-                    t.shift(rect.min_x, rect.min_y)
-                    yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
-                else:
-                    yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+                yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
 
             if not is_labels: # update access count per row
                 self.resume_log_update(i, need_check=False)
@@ -383,7 +377,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 return label_set.unbatch()
         return label_set
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         """
         Returns a tensorflow dataset as configured by the class.
 
@@ -391,6 +385,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         ----------
         class_weights: list
             list of weights for the classes.
+        augment_function: Callable[[Tensor, Tensor], (Tensor, Tensor)]
+            Function to be applied to the image and label before use.
 
         Returns
         -------
@@ -403,6 +399,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
         if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
+        if augment_function is not None:
+            ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         if class_weights is not None:
             class_weights.append(0.0)
             lookup = tf.constant(class_weights)
@@ -542,5 +540,5 @@ class AutoencoderDataset(ImageryDataset):
     def labels(self):
         return self.data()
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         return self.data().map(lambda x: (x, x))

@@ -22,8 +22,8 @@ Various helpful loss functions.
 import numpy as np
 
 import tensorflow as tf
-import tensorflow.keras.losses
-import tensorflow.keras.backend as K
+import tensorflow.keras.losses #pylint: disable=no-name-in-module
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import register_loss
@@ -79,8 +79,21 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
             Optional name for the loss function.
         """
         super().__init__(name=name)
+        self._nodata_classes = []
         if isinstance(mapping, list):
             map_list = mapping
+            # replace nodata
+            for (i, me) in enumerate(map_list):
+                if me == 'nodata':
+                    j = 0
+                    while map_list[i] == 'nodata':
+                        if j == len(map_list):
+                            raise ValueError('All mapping entries are nodata.')
+                        if map_list[j] != 'nodata':
+                            map_list[i] = map_list[j]
+                            break
+                        j += 1
+                    self._nodata_classes.append(i)
         else:
             # automatically set nodata to 0 (even if there is none it's fine)
             entry = mapping[next(iter(mapping))]
@@ -93,10 +106,33 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
                 i = config.dataset.classes.class_id(k)
                 if isinstance(mapping[k], (int, float)):
                     map_list[i] = mapping[k]
+                elif mapping[k] == 'nodata':
+                    self._nodata_classes.append(i)
                 else:
                     assert len(mapping[k]) == map_list.shape[1], 'Mapping entry wrong length.'
                     map_list[i, :] = np.asarray(mapping[k])
         self._lookup = tf.constant(map_list, dtype=tf.float32)
+
+    # makes nodata labels 0 in predictions
+    def preprocess(self, y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+
+        true_convert = tf.gather(self._lookup, y_true, axis=None)
+        nodata_value = config.dataset.classes.class_id('nodata')
+        nodata = (y_true == nodata_value)
+
+        # ignore additional nodata classes
+        for c in self._nodata_classes:
+            nodata = tf.logical_or(nodata, y_true == c)
+
+        while len(nodata.shape) < len(y_pred.shape):
+            nodata = tf.expand_dims(nodata, -1)
+
+        # zero all nodata entries
+        y_pred = y_pred * tf.cast(tf.logical_not(nodata), tf.float32)
+
+        true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
+        return (true_convert, y_pred)
 
 class MappedCategoricalCrossentropy(MappedLoss):
     """
@@ -104,43 +140,45 @@ class MappedCategoricalCrossentropy(MappedLoss):
     """
     def call(self, y_true, y_pred):
         y_true = tf.squeeze(y_true)
-        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
-        return tensorflow.keras.losses.categorical_crossentropy(true_convert, y_pred)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.categorical_crossentropy(y_true, y_pred)
 
 class MappedBinaryCrossentropy(MappedLoss):
     """
     `MappedLoss` for binary_crossentropy.
     """
     def call(self, y_true, y_pred):
-        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
-        return tensorflow.keras.losses.binary_crossentropy(true_convert, y_pred)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
 
 class MappedDiceLoss(MappedLoss):
     """
     `MappedLoss` for `dice_loss`.
     """
     def call(self, y_true, y_pred):
-        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
-        return dice_loss(true_convert, y_pred)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return dice_loss(y_true, y_pred)
 
 class MappedMsssim(MappedLoss):
     """
     `MappedLoss` for `ms_ssim`.
     """
     def call(self, y_true, y_pred):
-        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
-        return ms_ssim(true_convert, y_pred)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return ms_ssim(y_true, y_pred)
 
 class MappedDiceBceMsssim(MappedLoss):
     """
     `MappedLoss` for sum of `ms_ssim`, `dice_loss`, and `binary_crossentropy`.
     """
     def call(self, y_true, y_pred):
-        true_convert = tf.gather(self._lookup, tf.cast(y_true, tf.int32), axis=None)
-        dice = dice_loss(true_convert, y_pred)
-        bce = tensorflow.keras.losses.binary_crossentropy(true_convert, y_pred)
-        bce = K.mean(bce)
-        msssim = K.mean(ms_ssim(true_convert, y_pred))
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        dice = dice_loss(y_true, y_pred)
+        bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
+        msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
+        msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
+
         return dice + bce + msssim
 
 
