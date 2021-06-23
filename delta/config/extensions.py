@@ -178,9 +178,6 @@ def register_preprocess(function_name : str, prep_function):
     global __prep_funcs
     __prep_funcs[function_name] = prep_function
 
-<<<<<<< HEAD
-def layer(layer_type : str) -> str:
-=======
 def register_augmentation(function_name : str, aug_function):
     """
     Register an augmentation for use in delta.
@@ -198,8 +195,7 @@ def register_augmentation(function_name : str, aug_function):
     global __augmentations
     __augmentations[function_name] = aug_function
 
-def layer(layer_type : str):
->>>>>>> 6b6d58f03e7d871f9fb09d9935715ac7f281234f
+def layer(layer_type : str) -> str:
     """
     Retrieve a custom layer by name.
 
@@ -284,10 +280,7 @@ def preprocess_function(prep_type : str) -> str:
     __initialize()
     return __prep_funcs.get(prep_type)
 
-<<<<<<< HEAD
-def image_reader(reader_type : str) -> DeltaImage:
-=======
-def augmentation(aug_type : str):
+def augmentation(aug_type : str) -> str:
     """
     Retrieve a custom augmentation by name.
 
@@ -304,8 +297,7 @@ def augmentation(aug_type : str):
     __initialize()
     return __augmentations.get(aug_type)
 
-def image_reader(reader_type : str):
->>>>>>> 6b6d58f03e7d871f9fb09d9935715ac7f281234f
+def image_reader(reader_type : str) -> DeltaImage:
     """
     Get the reader of the given type.
 
