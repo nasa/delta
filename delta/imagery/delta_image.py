@@ -70,7 +70,8 @@ class DeltaImage(ABC):
             roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         else:
             if roi.min_x < 0 or roi.min_y < 0 or roi.max_x > self.width() or roi.max_y > self.height():
-                raise IndexError(f'Rectangle ({roi.min_x}, {roi.min_y}, {roi.max_x}, {roi.max_y}) outside of bounds ({self.width()}, {self.height()}).')
+                raise IndexError(f'Rectangle ({roi.min_x}, {roi.min_y}, {roi.max_x}, {roi.max_y}) \
+                    outside of bounds ({self.width()}, {self.height()}).')
         if bands is None:
             bands = range(self.num_bands())
         if isinstance(bands, int):
