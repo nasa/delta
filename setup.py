@@ -61,5 +61,5 @@ setuptools.setup(
     scripts=scripts,
     include_package_data = True,
     package_data = {'' : ['*.cfg']},
-    python_requires='>=3.5',
+    python_requires='>=3.6',
 )
