@@ -73,13 +73,12 @@ def print_layer(l):
     l: tensorflow.keras.layers.Layer
         The layer to print.
     """
-    s = "{:<25}".format(l.name) + ' ' + '{:<20}'.format(str(l.input_shape)) + \
-        ' -> ' + '{:<20}'.format(str(l.output_shape))
+    s = f"{l.name:<25} {str(l.input_shape):<20} -> {str(l.output_shape):20}"
     c = l.get_config()
     if 'strides' in c:
-        s += ' s: ' + '{:<10}'.format(str(c['strides']))
+        s += f" s: {str(c['strides'])}"
     if 'kernel_size' in c:
-        s += ' ks: ' + str(c['kernel_size'])
+        s += f" ks: {str(c['kernel_size'])}"
     print(s)
 
 def print_network(a, tile_shape=None):
