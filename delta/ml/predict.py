@@ -24,22 +24,20 @@ from abc import ABC, abstractmethod
 import math
 import numpy as np
 import PIL
-from PIL import ImageDraw #pylint: disable=W0611
+from PIL import ImageDraw
+from numpy.core.fromnumeric import take #pylint: disable=W0611
 import tensorflow as tf
 
 from delta.imagery.rectangle import Rectangle
 
-def mask_outside_shapes(shapes, image, x, y, mask_value):
-    '''Writes the mask value to "image" in all locations outside one of the shapes'''
+def mask_outside_shapes(shapes, image, y, x, mask_value):
+    '''Writes the mask value to "image" in all locations outside one of the shapes.
+       y,x = the top left coordinate of "image" in the full uncropped image'''
 
     if not shapes: # Skip this step if no shapes were passed in
         return
 
     image_rect = Rectangle(x, y, width=image.shape[1], height=image.shape[0])
-    #print('image_rect = ' + str(image_rect))
-
-    #temp = PIL.Image.fromarray(image[:,:,0], mode='L')
-    #temp.save('input_mask.tif')
 
     def adjust_coords(inputs, x, y):
         '''Return a copy of the input coordinates adjusted by the x,y coordinate'''
@@ -52,10 +50,8 @@ def mask_outside_shapes(shapes, image, x, y, mask_value):
     mask_image = None
     painter = None
     for s in shapes:
-        #print(s)
         shape_rect = Rectangle(*s.bounds)
         if not shape_rect.overlaps(image_rect):
-            #print('not in shape ' + str(shape_rect))
             continue
         if not mask_image:
             mask_image = PIL.Image.new('L', (image.shape[1], image.shape[0]), color=0)
@@ -66,7 +62,6 @@ def mask_outside_shapes(shapes, image, x, y, mask_value):
             coords = adjust_coords(i.coords, x, y)
             painter.polygon(coords, fill=0)
     if not mask_image:
-        #print('No shape intersection')
         return
 
     # Apply the mask to the input image
@@ -75,14 +70,6 @@ def mask_outside_shapes(shapes, image, x, y, mask_value):
         for c in range(image.shape[1]):
             if not mask_pixels[c,r]:
                 image[r,c,0] = mask_value
-
-    #mask_image.save('canvas.tif')
-    #temp = PIL.Image.fromarray(image[:,:,0], mode='L')
-    #fname = ('output_%d_%d_%d.tif' % (x, y, len(shapes)))
-    #temp.save(fname)
-    #temp.save('output_mask.tif')
-    #print('mask_outside_shapes done')
-    #raise Exception('eosenuseonu')
 
 class Predictor(ABC):
     """
@@ -116,7 +103,7 @@ class Predictor(ABC):
         """Cancel the operation and cleanup neatly."""
 
     @abstractmethod
-    def _process_block(self, pred_image: np.ndarray, x: int, y: int, labels: np.ndarray, label_nodata):
+    def _process_block(self, pred_image: np.ndarray, y: int, x: int, labels: np.ndarray, label_nodata):
         """
         Processes a predicted block. Must be overriden in subclasses.
 
@@ -124,10 +111,10 @@ class Predictor(ABC):
         ----------
         pred_image: numpy.ndarray
             Output of model for a block of the image.
-        x: int
-            Top-left x coordinate of block.
         y: int
             Top-left y coordinate of block.
+        x: int
+            Top-left x coordinate of block.
         labels: numpy.ndarray
             Labels (or None if not available) for same block as `pred_image`.
         label_nodata: dtype of labels
@@ -164,10 +151,10 @@ class Predictor(ABC):
         if net_input_shape[0] is None and net_input_shape[1] is None:
             result = np.squeeze(self._model.predict_on_batch(image))
             if image_nodata_value is not None:
-                x0 = (data.shape[0] - result.shape[0]) // 2
-                y0 = (data.shape[1] - result.shape[1]) // 2
+                x0 = (data.shape[1] - result.shape[1]) // 2
+                y0 = (data.shape[0] - result.shape[0]) // 2
                 invalid = (data if len(data.shape) == 2 else \
-                          data[:, :, 0])[x0:x0 + result.shape[0], y0:y0 + result.shape[1]] == image_nodata_value
+                          data[:, :, 0])[y0:y0 + result.shape[0], x0:x0 + result.shape[1]] == image_nodata_value
                 if len(result.shape) == 2:
                     result[invalid] = math.nan
                 else:
@@ -176,6 +163,7 @@ class Predictor(ABC):
 
         out_shape = (data.shape[0] - net_input_shape[0] + net_output_shape[0],
                      data.shape[1] - net_input_shape[1] + net_output_shape[1])
+
         out_type = tf.dtypes.as_dtype(self._model.dtype)
         chunks = tf.image.extract_patches(image, [1, net_input_shape[0], net_input_shape[1], 1],
                                           [1, net_output_shape[0], net_output_shape[1], 1],
@@ -196,9 +184,9 @@ class Predictor(ABC):
             retval[r:r+net_output_shape[0],c:c+net_output_shape[1],:] = best[chunk_idx,:,:,:]
 
         if image_nodata_value is not None:
-            ox = (data.shape[0] - out_shape[0]) // 2
-            oy = (data.shape[1] - out_shape[1]) // 2
-            output_slice = data[ox:-ox, oy:-oy, 0]
+            ox = (data.shape[1] - out_shape[1]) // 2
+            oy = (data.shape[0] - out_shape[0]) // 2
+            output_slice = data[oy:-oy, ox:-ox, 0]
             retval[output_slice == image_nodata_value] = math.nan
 
         return retval
@@ -219,7 +207,7 @@ class Predictor(ABC):
         overlap: (int, int)
             `predict` evaluates the image by selecting tiles, dependent on the tile_shape
             provided in the subclass. If an overlap is specified, the tiles will be overlapped
-            by the given amounts in the x and y directions. Subclasses may select or interpolate
+            by the given amounts in the y and x directions. Subclasses may select or interpolate
             to favor tile interior pixels for improved classification.
         roi_shapes: List[shapely.geometry.BaseGeometry]
             A list of the shapes that we want to compute results for.  All values are in pixel
@@ -233,68 +221,77 @@ class Predictor(ABC):
         net_output_shape = self._model.output_shape[1:]
 
         # Set up the output image
+        image_rect = Rectangle(0, 0, width=image.width(), height=image.height())
         if not input_bounds:
-            input_bounds = Rectangle(0, 0, width=image.width(), height=image.height())
-        output_shape = (input_bounds.width(), input_bounds.height())
-        #print('input_bounds = ' + str(input_bounds))
-        ts = self._tile_shape if self._tile_shape else (image.width(), image.height())
+            input_bounds = image_rect
+        output_shape = (input_bounds.height(), input_bounds.width())
+
+        ts = self._tile_shape if self._tile_shape else (image.height(), image.width())
+
         if net_input_shape[0] is None and net_input_shape[1] is None:
             assert net_output_shape[0] is None and net_output_shape[1] is None
             out_shape = self._model.compute_output_shape((0, ts[0], ts[1], net_input_shape[2]))
 
-            tiles = input_bounds.make_tile_rois(ts, include_partials=False,
-                                                overlap_shape=(ts[0] - out_shape[1] + overlap[0],
-                                                               ts[1] - out_shape[2] + overlap[1]),
-                                                partials_overlap=False)
+            overlap_shape=(ts[0] - out_shape[1] + overlap[0],
+                           ts[1] - out_shape[2] + overlap[1])
+            tiles, tiles_valid = input_bounds.make_tile_rois_yx(ts, include_partials=False,
+                                                   overlap_shape=overlap_shape,
+                                                   partials_overlap=True, containing_rect=image_rect)
 
         else:
             offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
             offset_c = -net_input_shape[1] + net_output_shape[1] + overlap[1]
             output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
-            block_size_x = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
-            block_size_y = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
+            block_size_y = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
+            block_size_x = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
 
-            tiles = input_bounds.make_tile_rois((block_size_x - offset_c, block_size_y - offset_r),
-                                                include_partials=False, overlap_shape=(-offset_c, -offset_r))
-        #print('tiles = ' + str(tiles))
+            tiles, tiles_valid = input_bounds.make_tile_rois_yx((block_size_y - offset_r, block_size_x - offset_c),
+                                                   include_partials=False, overlap_shape=(-offset_r, -offset_c),
+                                                   partials_overlap=True, containing_rect=image_rect)
+
         self._initialize(output_shape, image, label)
 
         label_nodata = label.nodata_value() if label else None
 
-        def callback_function(roi, data):
+        def callback_function(roi, data, tile_valid_roi):
+            ''''''
+            # Pred_image should correspond to 'roi'
             pred_image = self._predict_array(data, image.nodata_value())
 
-            block_x = (roi.min_x - input_bounds.min_x)
-            block_y = (roi.min_y - input_bounds.min_y)
-            (sx, sy) = (block_x , block_y)
+            # Next we crop pred_image down to the valid (non_overlapping) output area,
+            # this coordinate is the top left location of the cropped image in the final output
+            # image that we will write.
+            relative_x = tile_valid_roi.min_x - input_bounds.min_x
+            relative_y = tile_valid_roi.min_y - input_bounds.min_y
+
+            # Convert the valid ROI to be relative to this individual tile ROI
+            local_valid_roi = Rectangle(tile_valid_roi.min_x - roi.min_x,
+                                        tile_valid_roi.min_y - roi.min_y,
+                                        width=tile_valid_roi.width(),
+                                        height=tile_valid_roi.height())
 
             labels = None
             if label:
-                label_x = roi.min_x + (roi.width() - pred_image.shape[1]) // 2
-                label_y = roi.min_y + (roi.height() - pred_image.shape[0]) // 2
-                label_roi = Rectangle(label_x, label_y,
-                                      label_x + pred_image.shape[1], label_y + pred_image.shape[0])
-
-                cropped_label = label.read(label_roi)
+                # Read the corresponding portion of the label image
+                cropped_label = label.read(tile_valid_roi)
                 # Mask all regions outside the specified shapes
-                mask_outside_shapes(roi_shapes, cropped_label, label_x, label_y, label_nodata)
+                mask_outside_shapes(roi_shapes, cropped_label, tile_valid_roi.min_y, tile_valid_roi.min_x, label_nodata)
                 labels = np.squeeze(cropped_label)
 
-            tl = [0, 0]
-            tl = (overlap[0] // 2 if block_x > 0 else 0, overlap[1] // 2 if block_y > 0 else 0)
-            br = (roi.max_x - roi.min_x, roi.max_y - roi.min_y)
-            br = (br[0] - (overlap[0] // 2 if roi.max_x < input_bounds.max_x else 0),
-                  br[1] - (overlap[1] // 2 if roi.max_x < input_bounds.max_x else 0))
+            # Crop out the valid portion of the image
             if len(pred_image.shape) == 2:
-                input_block = pred_image[tl[0]:br[0], tl[1]:br[1]]
+                input_block = pred_image[local_valid_roi.min_y:local_valid_roi.max_y,
+                                         local_valid_roi.min_x:local_valid_roi.max_x]
             else:
-                input_block = pred_image[tl[0]:br[0], tl[1]:br[1], :]
-            self._process_block(input_block, sx + tl[0], sy + tl[1],
-                                None if labels is None else labels[tl[0]:br[0], tl[1]:br[1]], label_nodata)
+                input_block = pred_image[local_valid_roi.min_y:local_valid_roi.max_y,
+                                         local_valid_roi.min_x:local_valid_roi.max_x, :]
+
+            self._process_block(input_block, relative_y, relative_x,
+                                labels, label_nodata)
 
         try:
             image.process_rois(tiles, callback_function, show_progress=self._show_progress,
-                               progress_prefix=self._progress_text)
+                               progress_prefix=self._progress_text, roi_extra_data=tiles_valid)
         except KeyboardInterrupt:
             self._abort()
             raise
@@ -401,7 +398,8 @@ class LabelPredictor(Predictor):
         if self._error_image is not None:
             self._error_image.abort()
 
-    def _process_block(self, pred_image, x, y, labels, label_nodata):
+    def _process_block(self, pred_image, y, x, labels, label_nodata):
+
         # create a masked array. The mask is true where pred_image = np.nan
         pred_image_ma = np.ma.masked_invalid(np.squeeze(pred_image))
         if len(pred_image_ma.shape) == 3:
@@ -418,7 +416,7 @@ class LabelPredictor(Predictor):
             prob = 1 + prob
             # fill nodata values in array with 0
             prob = prob.filled(0)
-            self._prob_image.write(prob, x, y)
+            self._prob_image.write(prob, y, x)
 
         if labels is None and self._output_image is None:
             return
@@ -455,12 +453,12 @@ class LabelPredictor(Predictor):
                     # shift and int continuous error for image output
                     continuous_abs_error_inted = np.clip(((continuous_abs_error * 254) + 1).astype(np.uint8), 1, 255)
                     # fill nodata values in array with 0 and write to image
-                    self._error_image.write(continuous_abs_error_inted.filled(0), x, y)
+                    self._error_image.write(continuous_abs_error_inted.filled(0), y, x)
                 else:
                     # shift and int continuous error for image output
                     continuous_error_inted = np.clip(((continuous_error * 127) + 128).astype(np.uint8), 1, 255)
                     # fill nodata values in array with 0 and write to image
-                    self._error_image.write(continuous_error_inted.filled(0), x, y)
+                    self._error_image.write(continuous_error_inted.filled(0), y, x)
 
             cm = tf.math.confusion_matrix(valid_labels.compressed(), # pylint: disable=E1101
                                           valid_pred.compressed(),
@@ -493,10 +491,10 @@ class LabelPredictor(Predictor):
                     result += (colormap[i, :] * result_image[:, :, i, np.newaxis]).filled(np.nan).astype(colormap.dtype)
 
                 # result is written as output image and nans aren't filled with anything. Just numpy float nan
-                self._output_image.write(result, x, y)
+                self._output_image.write(result, y, x)
             else:
                 # fill nodata values in array with -1 and write to output image
-                self._output_image.write(class_int_image.filled(-1), x, y)
+                self._output_image.write(class_int_image.filled(-1), y, x)
 
     def confusion_matrix(self):
         """
@@ -547,9 +545,9 @@ class ImagePredictor(Predictor):
         if self._output_image is not None:
             self._output_image.abort()
 
-    def _process_block(self, pred_image, x, y, labels, label_nodata):
+    def _process_block(self, pred_image, y, x, labels, label_nodata):
         if self._output_image is not None:
             im = pred_image
             if self._transform is not None:
                 im = self._transform[0](im)
-            self._output_image.write(im, x, y)
+            self._output_image.write(im, y, x)

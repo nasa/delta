@@ -150,7 +150,7 @@ class DeltaImage(ABC):
         Returns
         -------
         Tuple[int, int]:
-            The size of this image in pixels, as (width, height).
+            The size of this image in pixels, as (height, width).
         """
 
     @abstractmethod
@@ -201,7 +201,7 @@ class DeltaImage(ABC):
         int:
             The number of image columns
         """
-        return self.size()[0]
+        return self.size()[1]
 
     def height(self) -> int:
         """
@@ -210,7 +210,7 @@ class DeltaImage(ABC):
         int:
             The number of image rows
         """
-        return self.size()[1]
+        return self.size()[0]
 
     def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
               partials_overlap: bool=False, by_block=False):
@@ -222,7 +222,7 @@ class DeltaImage(ABC):
         shape: (int, int)
             Shape of each tile
         overlap_shape: (int, int)
-            Amount to overlap tiles in x and y direction
+            Amount to overlap tiles in y and x direction
         partials: bool
             If true, include partial tiles at the edge of the image.
         min_shape: (int, int)
@@ -241,12 +241,12 @@ class DeltaImage(ABC):
             instead, where the first rectangle is a larger block containing multiple tiles in a list.
         """
         input_bounds = rectangle.Rectangle(0, 0, max_x=self.width(), max_y=self.height())
-        return input_bounds.make_tile_rois(shape, overlap_shape=overlap_shape, include_partials=partials,
-                                           min_shape=min_shape, partials_overlap=partials_overlap,
-                                           by_block=by_block)
+        return input_bounds.make_tile_rois_yx(shape, overlap_shape=overlap_shape, include_partials=partials,
+                                              min_shape=min_shape, partials_overlap=partials_overlap,
+                                              by_block=by_block)[0]
 
-    def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle]) -> \
-                  Iterator[Tuple[rectangle.Rectangle, np.ndarray, int, int]]:
+    def roi_generator(self, requested_rois: Iterator[rectangle.Rectangle],
+                      roi_extra_data=None) -> Iterator[Tuple[rectangle.Rectangle, np.ndarray, int, int]]:
         """
         Generator that yields image blocks of the requested rois.
 
@@ -263,7 +263,10 @@ class DeltaImage(ABC):
             the third is the index of the current region of interest, and the fourth is the total
             number of rois.
         """
+        if roi_extra_data and len(roi_extra_data) != len(requested_rois):
+            raise Exception('Number of ROIs and extra ROI data must be the same!')
         block_rois = copy.copy(requested_rois)
+        block_roi_extra_data = copy.copy(roi_extra_data)
 
         whole_bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         for roi in requested_rois:
@@ -281,6 +284,7 @@ class DeltaImage(ABC):
             read_roi = self.block_aligned_roi(block_rois[0])
 
             applicable_rois = []
+            applicable_rois_extra_data = []
 
             # Loop through the remaining ROIs and apply the callback function to each
             # ROI that is contained in the section we read in.
@@ -291,8 +295,12 @@ class DeltaImage(ABC):
                     index += 1
                     continue
                 applicable_rois.append(block_rois.pop(index))
+                if block_roi_extra_data:
+                    applicable_rois_extra_data.append(block_roi_extra_data.pop(index))
+                else:
+                    applicable_rois_extra_data.append(None)
 
-            jobs.append((read_roi, applicable_rois))
+            jobs.append((read_roi, applicable_rois, applicable_rois_extra_data))
 
         # only do a few reads ahead since otherwise we will exhaust our memory
         pending = []
@@ -301,9 +309,9 @@ class DeltaImage(ABC):
         for i in range(min(NUM_AHEAD, len(jobs))):
             pending.append(exe.submit(functools.partial(self.read, jobs[i][0])))
         num_remaining = total_rois
-        for (i, (read_roi, rois)) in enumerate(jobs):
+        for (i, (read_roi, rois, rois_extra_data)) in enumerate(jobs):
             buf = pending.pop(0).result()
-            for roi in rois:
+            for roi, extra_data in zip(rois, rois_extra_data):
                 x0 = roi.min_x - read_roi.min_x
                 y0 = roi.min_y - read_roi.min_y
                 num_remaining -= 1
@@ -311,13 +319,14 @@ class DeltaImage(ABC):
                     b = buf[y0:y0 + roi.height(), x0:x0 + roi.width()]
                 else:
                     b = buf[y0:y0 + roi.height(), x0:x0 + roi.width(), :]
-                yield (roi, b, (total_rois - num_remaining, total_rois))
+                yield (roi, b, extra_data, (total_rois - num_remaining, total_rois))
             if i + NUM_AHEAD < len(jobs):
                 pending.append(exe.submit(functools.partial(self.read, jobs[i + NUM_AHEAD][0])))
 
     def process_rois(self, requested_rois: Iterator[rectangle.Rectangle],
                      callback_function: Callable[[rectangle.Rectangle, np.ndarray], None],
-                     show_progress: bool=False, progress_prefix: str=None) -> None:
+                     show_progress: bool=False, progress_prefix: str=None,
+                     roi_extra_data=None) -> None:
         """
         Apply a callback function to a list of ROIs.
 
@@ -325,18 +334,21 @@ class DeltaImage(ABC):
         ----------
         requested_rois: Iterator[Rectangle]
             Regions of interest to evaluate
-        callback_function: Callable[[rectangle.Rectangle, np.ndarray], None]
+        callback_function: Callable[[rectangle.Rectangle, np.ndarray, any], None]
             A function to apply to each requested region. Pass the bounding box
-            of the current region and a numpy array of pixel values as inputs.
+            of the current region, a numpy array of pixel values as inputs, and an undefined
+            data object.
         show_progress: bool
             Print a progress bar on the command line if true.
         progress_prefix: str
             Text to print at start of progress bar.
+        roi_extra_data:
+            An optional list of extra information associated with each region.
         """
         if progress_prefix is None:
             progress_prefix = 'Blocks Processed'
-        for (roi, buf, (i, total)) in self.roi_generator(requested_rois):
-            callback_function(roi, buf)
+        for (roi, buf, extra_data, (i, total)) in self.roi_generator(requested_rois, roi_extra_data):
+            callback_function(roi, buf, extra_data)
             if show_progress:
                 utilities.progress_bar('%d / %d' % (i, total), i / total, prefix=progress_prefix + ':')
         if show_progress:
@@ -364,7 +376,7 @@ class DeltaImageWriter(ABC):
         """
 
     @abstractmethod
-    def write(self, data: np.ndarray, x: int, y: int):
+    def write(self, data: np.ndarray, y: int, x: int):
         """
         Write a portion of the image.
 
@@ -372,8 +384,8 @@ class DeltaImageWriter(ABC):
         ----------
         data: np.ndarray
             A block of image data to write.
-        x: int
         y: int
+        x: int
             Top-left coordinates of the block of data to write.
         """
 

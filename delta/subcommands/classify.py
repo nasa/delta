@@ -112,14 +112,8 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
     prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
     output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
 
-    # 
     ts = config.io.tile_size()
     roi = get_roi_containing_shapes(shapes)
-    if roi:
-        if ts[0] > roi.width():
-            ts[0] = roi.width()
-        if ts[1] > roi.height():
-            ts[1] = roi.height()
 
     if options.autoencoder:
         label = image

@@ -64,7 +64,7 @@ class NumpyImage(delta_image.DeltaImage):
         return buf
 
     def size(self):
-        return (self._data.shape[1], self._data.shape[0])
+        return (self._data.shape[0], self._data.shape[1])
 
     def num_bands(self):
         if len(self._data.shape) == 2:
@@ -81,7 +81,7 @@ class NumpyWriter(delta_image.DeltaImageWriter):
     def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         self._buffer = np.zeros(shape=size, dtype=numpy_dtype)
 
-    def write(self, data, x, y):
+    def write(self, data, y, x):
         self._buffer[y:y+data.shape[0], x:x+data.shape[1]] = data
 
     def close(self):

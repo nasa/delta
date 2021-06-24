@@ -332,13 +332,13 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     def _reshape_labels(self, labels): # pragma: no cover
         """Reshape the labels to account for the chunking process."""
         if self._chunk_shape:
-            w = (self._chunk_shape[0] - self._output_shape[0]) // 2
-            h = (self._chunk_shape[1] - self._output_shape[1]) // 2
+            h = (self._chunk_shape[0] - self._output_shape[0]) // 2
+            w = (self._chunk_shape[1] - self._output_shape[1]) // 2
         else:
-            w = (tf.shape(labels)[0] - self._output_shape[0]) // 2
-            h = (tf.shape(labels)[1] - self._output_shape[1]) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
-                                               tf.shape(labels)[1] - 2 * h)
+            h = (tf.shape(labels)[0] - self._output_shape[0]) // 2
+            w = (tf.shape(labels)[1] - self._output_shape[1]) // 2
+        labels = tf.image.crop_to_bounding_box(labels, h, w, tf.shape(labels)[0] - 2 * h,
+                                               tf.shape(labels)[1] - 2 * w)
         if not self._chunk_shape:
             return labels
 

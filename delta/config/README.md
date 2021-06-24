@@ -143,6 +143,28 @@ These options are used in the `delta train` command.
    training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
    on very large training sets (thousands of large images).
 
+Classify
+-----
+These options are used in the `delta classify` command.
+
+ * `regions`: A list of region names to look for in WKT files associated with images.
+ * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
+
+```Sample config entries:
+classify:
+  regions:
+   - sample_region_name
+   - another_region
+  wkt_dir: /alternate/wkt/location/
+```
+
+By default when classify is run with labels available for the input image, it will compute some statistics
+across all of the images and also on a per-image basis. You can also provide a WKT formatted shape file for
+each input image containing one or more polygons/multipolygons, each with one or more region names. For each
+region name specified in the config file, all regions including this name will have their statistics jointly
+computed. In addition, all regions without a name will have their statistics individually computed. WKT files
+should have the same names as their associated image files but with the extension ".wkt.csv"
+
 ### Network
 
 For the `layers` attribute, any [Keras Layer](https://keras.io/api/layers/) can
