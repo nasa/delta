@@ -21,8 +21,6 @@ Simple rectangle class, useful for dealing with ROIs and tiles.
 import math
 import copy
 
-from numpy.lib.shape_base import tile
-
 class Rectangle:
     """
     Simple rectangle class for ROIs. Max values are NON-INCLUSIVE.
@@ -181,7 +179,7 @@ class Rectangle:
         overlap_area = self.get_intersection(other_rect)
         return overlap_area.has_area()
 
-    def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0),
+    def make_tile_rois(self, tile_shape, overlap_shape=(0, 0), include_partials=True, min_shape=(0, 0), #pylint: disable=R0912,R0914
                        partials_overlap=False, by_block=False, containing_rect=None):
         """
         Return a list of tiles encompassing the entire area of this Rectangle.
