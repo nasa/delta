@@ -235,8 +235,8 @@ class Predictor(ABC):
             overlap_shape=(ts[0] - out_shape[1] + overlap[0],
                            ts[1] - out_shape[2] + overlap[1])
             tiles, tiles_valid = input_bounds.make_tile_rois_yx(ts, include_partials=False,
-                                                   overlap_shape=overlap_shape,
-                                                   partials_overlap=True, containing_rect=image_rect)
+                                                                overlap_shape=overlap_shape,
+                                                                partials_overlap=True, containing_rect=image_rect)
 
         else:
             offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
@@ -246,8 +246,9 @@ class Predictor(ABC):
             block_size_x = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
 
             tiles, tiles_valid = input_bounds.make_tile_rois_yx((block_size_y - offset_r, block_size_x - offset_c),
-                                                   include_partials=False, overlap_shape=(-offset_r, -offset_c),
-                                                   partials_overlap=True, containing_rect=image_rect)
+                                                                include_partials=False,
+                                                                overlap_shape=(-offset_r, -offset_c),
+                                                                partials_overlap=True, containing_rect=image_rect)
 
         self._initialize(output_shape, image, label)
 
