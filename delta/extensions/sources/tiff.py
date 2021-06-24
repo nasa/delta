@@ -418,8 +418,6 @@ class _TiffWriter:
         assert 0 <= y < self._height
         assert 0 <= x < self._width
 
-        print('write ' + str(data.shape) + ' y = ' + str(y) +', x = '+ str(x))
-
         if len(data.shape) < 3:
             gdal_band = self._handle.GetRasterBand(1)
             assert gdal_band
@@ -442,7 +440,6 @@ class TiffWriter(delta_image.DeltaImageWriter):
     def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         assert (len(size) == 3), ('Error: len(size) of '+str(size)+' != 3')
         TILE_SIZE = 256
-        print('TiffWriter initialize with size ' + str(size))
         self._tiff_w = _TiffWriter(self._filename, size[0], size[1], num_bands=size[2],
                                    data_type=_numpy_dtype_to_gdal_type(numpy_dtype), metadata=metadata,
                                    nodata_value=nodata_value,

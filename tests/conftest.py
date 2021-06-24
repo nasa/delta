@@ -60,7 +60,7 @@ def generate_tile(width=32, height=32, blocks=50):
     """Generate a heightXwidthX3 image, with blocks pixels surrounded by ones and the rest zeros in band 0"""
     image = np.zeros((height, width, 1), np.float32)
     label = np.zeros((height, width), np.uint8)
-    for _ in range(blocks):
+    for _ in np.arange(blocks):
         x = random.randint(2, width - 3)
         y = random.randint(2, height - 3)
         # ensure non-overlapping
@@ -210,23 +210,21 @@ def load_dataset(source, output_size, chunk_size=3, autoencoder=False):
     config_reset()
     (image_path, label_path) = source[0]
     config.load(yaml_str=
-                '''
+                f'''
                 io:
                   cache:
-                    dir: %s
+                    dir: {os.path.dirname(image_path)}
                 dataset:
                   images:
-                    type: %s
-                    directory: %s
-                    extension: %s
+                    type: {source[2]}
+                    directory: {os.path.dirname(image_path)}
+                    extension: {source[1]}
                     preprocess: ~
                   labels:
-                    type: %s
-                    directory: %s
-                    extension: %s
-                    preprocess: ~''' %
-                (os.path.dirname(image_path), source[2], os.path.dirname(image_path), source[1],
-                 source[4], os.path.dirname(label_path), source[3]))
+                    type: {source[4]}
+                    directory: {os.path.dirname(label_path)}
+                    extension: {source[3]}
+                    preprocess: ~''')
 
     if autoencoder:
         return imagery_dataset.AutoencoderDataset(config.dataset.images(), (chunk_size, chunk_size),

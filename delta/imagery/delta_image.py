@@ -70,8 +70,8 @@ class DeltaImage(ABC):
             roi = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         else:
             if roi.min_x < 0 or roi.min_y < 0 or roi.max_x > self.width() or roi.max_y > self.height():
-                raise IndexError('Rectangle (%d, %d, %d, %d) outside of bounds (%d, %d).' %
-                                 (roi.min_x, roi.min_y, roi.max_x, roi.max_y, self.width(), self.height()))
+                raise IndexError(f'Rectangle ({roi.min_x}, {roi.min_y}, {roi.max_x}, {roi.max_y}) \
+                    outside of bounds ({self.width()}, {self.height()}).')
         if bands is None:
             bands = range(self.num_bands())
         if isinstance(bands, int):
@@ -185,7 +185,7 @@ class DeltaImage(ABC):
         """
         return desired_roi
 
-    def block_size(self): #pylint: disable=no-self-use
+    def block_size(self) -> Tuple[int, int]: #pylint: disable=no-self-use
         """
         Returns
         -------
@@ -213,7 +213,7 @@ class DeltaImage(ABC):
         return self.size()[0]
 
     def tiles(self, shape, overlap_shape=(0, 0), partials: bool=True, min_shape=(0, 0),
-              partials_overlap: bool=False, by_block=False):
+              partials_overlap: bool=False, by_block=False) -> List:
         """
         Splits the image into tiles with the given properties.
 
@@ -350,7 +350,7 @@ class DeltaImage(ABC):
         for (roi, buf, extra_data, (i, total)) in self.roi_generator(requested_rois, roi_extra_data):
             callback_function(roi, buf, extra_data)
             if show_progress:
-                utilities.progress_bar('%d / %d' % (i, total), i / total, prefix=progress_prefix + ':')
+                utilities.progress_bar(f'{i} / {total}', i / total, prefix=f'{progress_prefix} :')
         if show_progress:
             print()
 

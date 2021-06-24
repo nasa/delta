@@ -46,7 +46,7 @@ setuptools.setup(
         "Operating System :: OS Independent"
     ],
     install_requires=[
-        'tensorflow>=2.1,<2.5',
+        'tensorflow>=2.1',
         'tensorflow_addons',
         'usgs<0.3',
         'scipy',
@@ -63,5 +63,5 @@ setuptools.setup(
     scripts=scripts,
     include_package_data = True,
     package_data = {'' : ['*.cfg']},
-    python_requires='>=3.5',
+    python_requires='>=3.6',
 )

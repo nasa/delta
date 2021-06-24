@@ -69,7 +69,7 @@ def validate_positive(num: Union[int, float], _: str) -> Union[int, float]:
         If number is not positive.
     """
     if num <= 0:
-        raise ValueError('%d is not positive' % (num))
+        raise ValueError(f'{num} is not positive')
     return num
 
 def validate_non_negative(num: Union[int, float], _: str) -> Union[int, float]:
@@ -89,7 +89,7 @@ def validate_non_negative(num: Union[int, float], _: str) -> Union[int, float]:
         If number is negative.
     """
     if num < 0:
-        raise ValueError('%d is negative' % (num))
+        raise ValueError(f'{num} is negative')
     return num
 
 class _NotSpecified: #pylint:disable=too-few-public-methods
@@ -198,7 +198,7 @@ class DeltaConfigComponent:
             If `help` and `type` are not specified, will use the values from field registration.
             If `default` is not specified, will use the value from the config files.
         """
-        assert field in self._fields, 'Field %s not registered.' % (field)
+        assert field in self._fields, f'Field {field} not registered.'
         if 'help' not in kwargs:
             kwargs['help'] = self._descs[field]
         if 'type' not in kwargs:
@@ -228,14 +228,14 @@ class DeltaConfigComponent:
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
-            raise ValueError('Unexpected field %s in config file.' % (name))
+            raise ValueError(f'Unexpected field {name} in config file.')
         if value is not None and not isinstance(value, self._types[name]):
-            raise TypeError('%s must be of type %s, is %s.' % (name, self._types[name], value))
+            raise TypeError(f'{name} must be of type {self._types[name]}, is {value}.')
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
             except Exception as e:
-                raise AssertionError('Value %s for %s is invalid.' % (value, name)) from e
+                raise AssertionError(f'Value {value} for {name} is invalid.') from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
@@ -315,7 +315,7 @@ class DeltaConfig(DeltaConfigComponent):
         base_path = None
         if yaml_file:
             if not os.path.exists(yaml_file):
-                raise FileNotFoundError('Config file does not exist: ' + yaml_file)
+                raise FileNotFoundError(f'Config file does not exist: {yaml_file}')
             with open(yaml_file, 'r') as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))

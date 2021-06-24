@@ -40,9 +40,8 @@ DELTA is now installed and ready to use!
    
 3. Run the following commands to create a conda environment, install dependences, and install delta:
     ```bash
-    conda create --name delta "python=3.6.9" gdal
+   conda create --name delta --yes python gdal
     conda activate delta
-    pip install tensorflow==2.3.2
     pip install . # This command should be run in the ./delta directory we made in step 2
     ```
 
@@ -101,7 +100,7 @@ Configuration and Extensions
 
 DELTA provides many options for customizing data inputs and training. All options are configured via
 YAML files. Some options can be overwritten with command line options (use
-`delta --help` to see which). See the `delta.config` README to learn about available configuration
+`delta --help` to see which). See the [`delta.config` README](delta/config/README.md) to learn about available configuration
 options.
 
 DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,

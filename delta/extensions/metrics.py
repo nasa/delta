@@ -20,7 +20,7 @@ Various helpful loss functions.
 """
 
 import tensorflow as tf
-import tensorflow.keras.metrics
+import tensorflow.keras.metrics #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import register_metric
@@ -47,7 +47,7 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
         binary: bool
             Use binary threshold (0.5) or argmax on one-hot encoding.
         """
-        super().__init__(name=name)
+        super().__init__(name=name, **kwargs)
         self._binary = binary
         self._label_id = config.dataset.classes.class_id(label) if label_id is None else label_id
         self._class_id = class_id if class_id is not None else self._label_id
