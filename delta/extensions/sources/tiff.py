@@ -183,7 +183,7 @@ class TiffImage(delta_image.DeltaImage):
 
     def metadata(self):
         self.__asert_open()
-        data = dict()
+        data = {}
         h = self._handles[0]
         data['projection'] = h.GetProjection()
         data['geotransform'] = h.GetGeoTransform()
