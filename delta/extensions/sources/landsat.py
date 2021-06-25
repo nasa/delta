@@ -43,7 +43,7 @@ def _parse_mtl_file(mtl_path):
                     'REFLECTANCE_MULT', 'REFLECTANCE_ADD',
                     'K1_CONSTANT', 'K2_CONSTANT']
 
-    data = dict()
+    data = {}
     with open(mtl_path, 'r') as f:
         for line in f:
             line = line.replace('"','') # Clean up
@@ -72,7 +72,7 @@ def _parse_mtl_file(mtl_path):
                         break
 
                     if tag not in data:
-                        data[tag] = dict()
+                        data[tag] = {}
                     if tag == 'FILE_NAME':
                         data[tag][band] = value # String
                     else:
