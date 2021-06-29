@@ -27,8 +27,7 @@ with training parameters given in `train.yaml`:
 ```yaml
 train:
   network:
-    model:
-      yaml_file: networks/convpool.yaml
+    yaml_file: networks/convpool.yaml
   epochs: 10
 ```
 
