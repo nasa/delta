@@ -282,6 +282,8 @@ class ClassifyConfig(config.DeltaConfigComponent):
                             'List of region tags to compute statistics over, default is all tags.')
         self.register_field('wkt_dir', str, None, None,
                             'Look for WKT files in this folder, default is look in the input image folder.')
+        self.register_field('results_file', str, None, None,
+                            'Also write statistics to this file.')
 
     def regions(self):
         if 'regions' in self._config_dict:
@@ -291,6 +293,11 @@ class ClassifyConfig(config.DeltaConfigComponent):
     def wkt_dir(self):
         if 'wkt_dir' in self._config_dict:
             return self._config_dict['wkt_dir']
+        return None
+
+    def results_file(self):
+        if 'results_file' in self._config_dict:
+            return self._config_dict['results_file']
         return None
 
 def register():

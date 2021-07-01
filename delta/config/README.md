@@ -149,6 +149,7 @@ These options are used in the `delta classify` command.
 
  * `regions`: A list of region names to look for in WKT files associated with images.
  * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
+ * `results_file`: Write a copy of the output statistics to this file
 
 ```Sample config entries:
 classify:

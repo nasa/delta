@@ -69,17 +69,32 @@ def ae_convert(data):
     r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
-def print_classes(cm):
+def print_classes(cm, comment):
+
+    output_file = config.classify.results_file()
+    if output_file is not None:
+        file_handle = open(output_file, 'a')
+
+    print(comment)
+    if output_file is not None:
+        file_handle.write(comment + '\n')
     for i in range(cm.shape[0]):
         name = config.dataset.classes[i].name if \
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
         with np.errstate(invalid='ignore'):
-            print('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' % \
-                    (name.ljust(20),
-                     np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
-                     np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
-                     int(np.sum(cm[i, :])), int(np.sum(cm))))
-    print('%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100)))
+            s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' %
+                  (name.ljust(20),
+                   np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
+                   np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
+                   int(np.sum(cm[i, :])), int(np.sum(cm))))
+            print(s)
+            if output_file is not None:
+                file_handle.write(s + '\n')
+    s = '%6.2f%% Correct\n' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + '\n')
+        file_handle.close()
 
 
 def classify_image(model, image, label, path, net_name, options, shapes=None):
@@ -255,6 +270,10 @@ def main(options): #pylint: disable=R0912
         print('No images specified.')
         return 0
 
+    result_file = config.classify.results_file()
+    if os.path.exists(result_file):
+        os.remove(config.classify.results_file())
+
     if options.autoencoder or not labels:
         labels = None
         regions = ['all'] # Each whole image
@@ -264,8 +283,13 @@ def main(options): #pylint: disable=R0912
         if specified_regions:
             regions += specified_regions
 
+    print('')
     for region_name in regions:
-        print('Computing statistics for region: ' + region_name)
+        s = 'Computing statistics for region: ' + region_name
+        print(s)
+        if result_file is not None:
+            with open(result_file, 'a') as file_handle:
+                file_handle.write(s + '\n')
         full_cm = None
         for (i, image_path) in enumerate(images):
             this_image = images.load(i)
@@ -278,8 +302,7 @@ def main(options): #pylint: disable=R0912
                 for s in shapes:
                     cm = classify_image(model, this_image, labels.load(i),
                                         image_path, net_name, options, [s])
-                    print('For image ' + image_path + ',  shape: ' + str(s))
-                    print_classes(cm)
+                    print_classes(cm, 'For image ' + image_path + ',  shape: ' + str(s))
                 continue
 
             # Load shapes from file if they are specified for this image/region pair
@@ -293,15 +316,13 @@ def main(options): #pylint: disable=R0912
                                 image_path, net_name, options, shapes)
             if cm is not None:
                 if (region_name == 'all') and (len(images) > 1):
-                    print('For image: ' + image_path)
-                    print_classes(cm)
+                    print_classes(cm, 'For image: ' + image_path)
                 if full_cm is None:
                     full_cm = np.copy(cm).astype(np.int64)
                 else:
                     full_cm += cm
         if labels and (full_cm is not None):
-            print('Overall:')
-            print_classes(full_cm)
+            print_classes(full_cm, 'Overall:')
     stop_time = time.time()
     print('Elapsed time = ', stop_time - start_time)
     return 0
