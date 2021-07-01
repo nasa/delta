@@ -271,7 +271,7 @@ def main(options): #pylint: disable=R0912
         return 0
 
     result_file = config.classify.results_file()
-    if os.path.exists(result_file):
+    if result_file and os.path.exists(result_file):
         os.remove(config.classify.results_file())
 
     if options.autoencoder or not labels:
