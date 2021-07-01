@@ -81,11 +81,16 @@ def print_classes(cm, comment):
     for i in range(cm.shape[0]):
         name = config.dataset.classes[i].name if \
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
+        # TODO: loss
         with np.errstate(invalid='ignore'):
-            s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' %
-                 (name.ljust(20),
-                  np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
-                  np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
+            precision_percent = np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100) # Column = predictions
+            recall_percent = np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100) # Row = actual values
+            accuracy_string = ''
+            if len(config.dataset.classes) == 2:
+                accuracy_percent = np.nan_to_num((cm[0,0] + cm[1,1]) / np.sum(cm) * 100)
+                accuracy_string = '    Accuracy: %6.2f%%' % (accuracy_percent)
+            s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%%s        Pixels: %d / %d' %
+                 (name.ljust(20), precision_percent, recall_percent, accuracy_string,
                   int(np.sum(cm[i, :])), int(np.sum(cm))))
             print(s)
             if output_file is not None:
