@@ -83,10 +83,10 @@ def print_classes(cm, comment):
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
         with np.errstate(invalid='ignore'):
             s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Pixels: %d / %d' %
-                  (name.ljust(20),
-                   np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
-                   np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
-                   int(np.sum(cm[i, :])), int(np.sum(cm))))
+                 (name.ljust(20),
+                  np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100),
+                  np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100),
+                  int(np.sum(cm[i, :])), int(np.sum(cm))))
             print(s)
             if output_file is not None:
                 file_handle.write(s + '\n')
