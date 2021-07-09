@@ -304,7 +304,7 @@ class LabelPredictor(Predictor):
     Predicts integer labels for an image.
     """
     def __init__(self, model, tile_shape=None, output_image=None, show_progress=False, progress_text=None, # pylint:disable=too-many-arguments
-                 colormap=None, prob_image=None, error_image=None, error_abs=False):
+                 colormap=None, prob_image=None, error_image=None, error_abs=False, metrics=None):
         """
         Parameters
         ----------
@@ -330,6 +330,8 @@ class LabelPredictor(Predictor):
             The values [0,1] are linearly scaled and clipped as bytes [1-255], with 0 as nodata.
         error_colors: List[Any]
             Colormap for the error_image.
+        metrics: List[Any]
+            List of Metric class instances to compute with (requires labels).
         """
         super().__init__(model, tile_shape, show_progress, progress_text)
         self._confusion_matrix = None
@@ -352,6 +354,7 @@ class LabelPredictor(Predictor):
         self._error_abs = error_abs
         self._output = None
         self._prob_o = None
+        self._metrics = metrics
 
     def _initialize(self, shape, image, label=None):
         net_output_shape = self._model.output_shape[1:]
@@ -436,7 +439,7 @@ class LabelPredictor(Predictor):
 
             # combine the masks for labels and pred_image
             # you can't have a valid label where prediction is invalid and vice versa
-            valid_labels  = labels_ma.copy()
+            valid_labels = labels_ma.copy()
             valid_labels.mask = incorrect.mask
             valid_pred = class_int_image.copy()
             valid_pred.mask = incorrect.mask
@@ -465,6 +468,10 @@ class LabelPredictor(Predictor):
                                           valid_pred.compressed(),
                                           self._num_classes)
             self._confusion_matrix[:, :] += cm
+
+            if self._metrics:
+                for m in self._metrics:
+                    m.update_state(valid_labels.compressed(), valid_pred.compressed()) #pylint: disable=E1101
 
         if self._output_image is not None:
             if self._colormap is not None:
@@ -502,6 +509,15 @@ class LabelPredictor(Predictor):
         Returns a matrix counting true labels matched to predicted labels.
         """
         return self._confusion_matrix
+
+    def metrics(self):
+        """
+        Returns the list of metric objects
+        """
+        if self._metrics is None:
+            return []
+        return self._metrics
+
 
 class ImagePredictor(Predictor):
     """

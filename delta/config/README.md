@@ -157,6 +157,19 @@ classify:
    - sample_region_name
    - another_region
   wkt_dir: /alternate/wkt/location/
+  results_file: log_here.txt
+  metrics:
+    - SparseRecall: # Works
+        label: No Water
+        name: sparse_recall
+        binary: true
+    - MappedDice: # Works!
+        mapping:
+          Water: 1.0
+          No Water: 0.0
+          Maybe Water: 0.5
+          Cloud: 0.0
+        name: dice 
 ```
 
 By default when classify is run with labels available for the input image, it will compute some statistics

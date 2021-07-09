@@ -32,12 +32,15 @@ from osgeo import gdal
 import numpy as np
 import matplotlib
 import tensorflow as tf
+import tensorflow.keras.metrics #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import image_writer
 from delta.imagery.rectangle import Rectangle
 from delta.ml import predict
 from delta.ml.io import load_model
+from delta.ml.config_parser import metric_from_dict
+
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
@@ -69,7 +72,7 @@ def ae_convert(data):
     r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
-def print_classes(cm, comment):
+def print_classes(cm, metrics, comment):
 
     output_file = config.classify.results_file()
     if output_file is not None:
@@ -81,7 +84,6 @@ def print_classes(cm, comment):
     for i in range(cm.shape[0]):
         name = config.dataset.classes[i].name if \
                len(config.dataset.classes) == cm.shape[0] else ('Class %d' % (i))
-        # TODO: loss
         with np.errstate(invalid='ignore'):
             precision_percent = np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100) # Column = predictions
             recall_percent = np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100) # Row = actual values
@@ -95,14 +97,47 @@ def print_classes(cm, comment):
             print(s)
             if output_file is not None:
                 file_handle.write(s + '\n')
-    s = '%6.2f%% Correct\n' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    s = '%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + '\n')
+
+    s = ''
+    for m in metrics:
+        s += 'metric: ' + m.name + ' = ' + str(float(m.result())) + '\n'
     print(s)
     if output_file is not None:
         file_handle.write(s + '\n')
         file_handle.close()
 
 
-def classify_image(model, image, label, path, net_name, options, shapes=None):
+class LossToMetricWrapper(tensorflow.keras.metrics.Metric):
+    """Wrap a Loss object to make it behave like a Metric object"""
+    def __init__(self, loss_object):
+        super().__init__(name=loss_object.name)
+        self._loss_object = loss_object
+        self._scaled_value = self.add_weight('scaled_value', initializer='zeros')
+        self._total_size = self.add_weight('total_size', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+        this_loss = self._loss_object.call(y_true, y_pred)
+        count = tf.cast(tf.size(y_true), dtype=tf.float32) #pylint: disable=E1123,E1120
+        scaled_value = tf.multiply(this_loss, tf.cast(count, dtype=tf.float32)) #pylint: disable=E1123,E1120
+        self._scaled_value = tf.add(self._scaled_value, scaled_value)
+        self._total_size = tf.add(self._total_size, count)
+
+    def result(self):
+        return tf.divide(self._scaled_value, self._total_size)
+
+def get_metrics():
+    """Returns a list of specified metrics, wrapping up losses as metrics"""
+    metrics = [metric_from_dict(m) for m in config.classify.metrics()]
+    metrics = [LossToMetricWrapper(m) if issubclass(type(m), tf.keras.losses.Loss) else m for m in metrics]
+    return metrics
+
+def classify_image(model, image, label, path, net_name, options,
+                   shapes=None, persistent_metrics=None):
+    '''Classify an image and return the confusion matrix and metrics if labels were provided'''
     out_path, base_name = os.path.split(path)
     base_name = os.path.splitext(base_name)[0]
     base_out = (options.outprefix if options.outprefix else net_name + '_') + base_name + '.tiff'
@@ -135,6 +170,8 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
     ts = config.io.tile_size()
     roi = get_roi_containing_shapes(shapes)
 
+    metrics = None
+    num_temp_metrics = 0
     if options.autoencoder:
         label = image
         predictor = predict.ImagePredictor(model, ts, output_image, True, base_name,
@@ -143,8 +180,14 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
         colors = list(map(lambda x: x.color, config.dataset.classes))
         if options.noColormap:
             colors=None # Forces raw one channel output
+        if label:
+            metrics = get_metrics() # For single images
+            num_temp_metrics = len(metrics)
+            if persistent_metrics is not None: # Persistent metrics over all images
+                metrics = metrics + persistent_metrics
         predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
-                                           prob_image=prob_image, error_image=error_image, error_abs=options.error_abs)
+                                           prob_image=prob_image, error_image=error_image, error_abs=options.error_abs,
+                                           metrics=metrics)
 
     overlap = (options.overlap, options.overlap)
     try:
@@ -170,7 +213,9 @@ def classify_image(model, image, label, path, net_name, options, shapes=None):
         if options.confusion and (not shapes):
             save_confusion(cm, class_names,
                            os.path.join(out_path, 'confusion_' + os.path.splitext(base_out)[0] + '.pdf'))
-        return cm
+        metrics = predictor.metrics()
+        metrics, persistent_metrics = (metrics[0:num_temp_metrics], metrics[num_temp_metrics:])
+        return cm, metrics, persistent_metrics
     return None
 
 def get_wkt_path(image_path, wkt_folder=None):
@@ -295,7 +340,10 @@ def main(options): #pylint: disable=R0912
         if result_file is not None:
             with open(result_file, 'a') as file_handle:
                 file_handle.write(s + '\n')
+        # If there are multiple images we need to maintain separate metric objects
+        # to keep summary statistics over all the images
         full_cm = None
+        full_metrics = get_metrics() if len(images) > 1 else None
         for (i, image_path) in enumerate(images):
             this_image = images.load(i)
             wkt_path = get_wkt_path(image_path, config.classify.wkt_dir())
@@ -305,9 +353,10 @@ def main(options): #pylint: disable=R0912
                 # Individually compute untagged regions
                 shapes = load_wkt_shapes(wkt_path, image_path, None)
                 for s in shapes:
-                    cm = classify_image(model, this_image, labels.load(i),
-                                        image_path, net_name, options, [s])
-                    print_classes(cm, 'For image ' + image_path + ',  shape: ' + str(s))
+                    cm, metrics, full_metrics = classify_image(model, this_image, labels.load(i),
+                                                               image_path, net_name, options,
+                                                               shapes=[s], persistent_metrics=None)
+                    print_classes(cm, metrics, 'For image ' + image_path + ',  shape: ' + str(s))
                 continue
 
             # Load shapes from file if they are specified for this image/region pair
@@ -316,18 +365,21 @@ def main(options): #pylint: disable=R0912
                 if not shapes:
                     continue # This region name not specified for this image
 
-            cm = classify_image(model, this_image,
-                                labels.load(i) if labels else None,
-                                image_path, net_name, options, shapes)
+            cm, metrics, full_metrics = classify_image(model, this_image,
+                                                       labels.load(i) if labels else None,
+                                                       image_path, net_name, options,
+                                                       shapes, persistent_metrics=full_metrics)
             if cm is not None:
                 if (region_name == 'all') and (len(images) > 1):
-                    print_classes(cm, 'For image: ' + image_path)
+                    print_classes(cm, metrics, 'For image: ' + image_path)
                 if full_cm is None:
                     full_cm = np.copy(cm).astype(np.int64)
                 else:
                     full_cm += cm
+                if len(images) == 1: # So the statistics are printed properly outside the loop
+                    full_metrics = metrics
         if labels and (full_cm is not None):
-            print_classes(full_cm, 'Overall:')
+            print_classes(full_cm, full_metrics, 'Overall:')
     stop_time = time.time()
     print('Elapsed time = ', stop_time - start_time)
     return 0
