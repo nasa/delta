@@ -150,6 +150,8 @@ These options are used in the `delta classify` command.
  * `regions`: A list of region names to look for in WKT files associated with images.
  * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
  * `results_file`: Write a copy of the output statistics to this file
+ * `metrics`: Include either losses or metrics here as specified in the Train section.  Currently some metrics
+   will throw an exception when used this way, more support for them is planned.
 
 ```Sample config entries:
 classify:
