@@ -179,7 +179,7 @@ across all of the images and also on a per-image basis. You can also provide a W
 each input image containing one or more polygons/multipolygons, each with one or more region names. For each
 region name specified in the config file, all regions including this name will have their statistics jointly
 computed. In addition, all regions without a name will have their statistics individually computed. WKT files
-should have the same names as their associated image files but with the extension ".wkt.csv"
+should have the same names as their associated image files but with the extension ".wkt.csv".  There is a sample WKT file, along with a picture of the described regions, [here](../docs/sample.wkt.csv)
 
 ### Network
 
