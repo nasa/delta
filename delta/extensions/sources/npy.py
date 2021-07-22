@@ -55,12 +55,12 @@ class NumpyImage(delta_image.DeltaImage):
 
     def _read(self, roi, bands, buf=None):
         if buf is None:
-            buf = np.zeros(shape=(roi.width(), roi.height(), self.num_bands() ), dtype=self._data.dtype)
+            buf = np.zeros(shape=(roi.height(), roi.width(), self.num_bands() ), dtype=self._data.dtype)
         (min_x, max_x, min_y, max_y) = roi.bounds()
         if len(self._data.shape) == 2:
-            buf = self._data[min_x:max_x,min_y:max_y]
+            buf = self._data[min_y:max_y,min_x:max_x]
         else:
-            buf = self._data[min_x:max_x,min_y:max_y,:]
+            buf = self._data[min_y:max_y,min_x:max_x,:]
         return buf
 
     def size(self):
@@ -81,8 +81,8 @@ class NumpyWriter(delta_image.DeltaImageWriter):
     def initialize(self, size, numpy_dtype, metadata=None, nodata_value=None):
         self._buffer = np.zeros(shape=size, dtype=numpy_dtype)
 
-    def write(self, data, x, y):
-        self._buffer[x:x+data.shape[0], y:y+data.shape[1]] = data
+    def write(self, data, y, x):
+        self._buffer[y:y+data.shape[0], x:x+data.shape[1]] = data
 
     def close(self):
         pass

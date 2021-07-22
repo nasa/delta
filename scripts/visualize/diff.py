@@ -37,7 +37,7 @@ output_image.initialize((img1.width(), img1.height(), 3), np.uint8, img1.metadat
 assert img1.width()== img2.width() and img1.height() == img2.height() and \
        img1.num_bands() == img2.num_bands(), 'Images must be same size.'
 
-def callback_function(roi, data):
+def callback_function(roi, data, _):
     data2 = img2.read(roi)
     diff = np.mean((data - data2) ** 2, axis=-1)
     diff = np.uint8(np.clip(diff * 128.0, 0.0, 255.0))
@@ -45,7 +45,7 @@ def callback_function(roi, data):
     output_image.write(out, roi.min_x, roi.min_y)
 
 input_bounds = rectangle.Rectangle(0, 0, width=img1.width(), height=img1.height())
-output_rois = input_bounds.make_tile_rois((2048, 2048), include_partials=True)
+output_rois = input_bounds.make_tile_rois((2048, 2048), include_partials=True)[0]
 
 img1.process_rois(output_rois, callback_function, show_progress=True)
 
