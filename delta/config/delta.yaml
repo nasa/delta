@@ -105,7 +105,7 @@ train:
   # When resuming training with a log_folder, skip input image where we have
   # already loaded this many tiles.
   resume_cutoff:     10
- 
+
 mlflow:
   # default to ~/.local/share/delta/mlflow
   enabled:        true

@@ -226,7 +226,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             label = self._labels.load(i)
             if label.size() != img.size():
                 raise AssertionError('Label file ' + self._labels[i] + ' with size ' + str(label.size())
-                                     + ' does not match input image size of ' + str(img.size()))
+                                     + ' does not match input image ' + self._images[i] + ' size of ' + str(img.size()))
         tile_shape = self._tile_shape
         if self._chunk_shape:
             assert tile_shape[0] >= self._chunk_shape[0] and \
@@ -284,7 +284,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 buf = cur_buf.result()
             (rect, sub_tiles) = tiles[c]
             for s in sub_tiles:
-                yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+                yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
 
             if not is_labels: # update access count per row
                 self.resume_log_update(i, need_check=False)
@@ -332,13 +332,13 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     def _reshape_labels(self, labels): # pragma: no cover
         """Reshape the labels to account for the chunking process."""
         if self._chunk_shape:
-            w = (self._chunk_shape[0] - self._output_shape[0]) // 2
-            h = (self._chunk_shape[1] - self._output_shape[1]) // 2
+            h = (self._chunk_shape[0] - self._output_shape[0]) // 2
+            w = (self._chunk_shape[1] - self._output_shape[1]) // 2
         else:
-            w = (tf.shape(labels)[0] - self._output_shape[0]) // 2
-            h = (tf.shape(labels)[1] - self._output_shape[1]) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
-                                               tf.shape(labels)[1] - 2 * h)
+            h = (tf.shape(labels)[0] - self._output_shape[0]) // 2
+            w = (tf.shape(labels)[1] - self._output_shape[1]) // 2
+        labels = tf.image.crop_to_bounding_box(labels, h, w, tf.shape(labels)[0] - 2 * h,
+                                               tf.shape(labels)[1] - 2 * w)
         if not self._chunk_shape:
             return labels
 

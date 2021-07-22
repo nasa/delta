@@ -272,6 +272,40 @@ class TensorboardConfig(config.DeltaConfigComponent):
             tbd = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
         return tbd
 
+class ClassifyConfig(config.DeltaConfigComponent):
+    """
+    Configure classification options.
+    """
+    def __init__(self):
+        super().__init__()
+        self.register_field('regions', list, None, None,
+                            'List of region tags to compute statistics over, default is all tags.')
+        self.register_field('metrics', list, None, None, 'List of metrics to apply.')
+        self.register_field('wkt_dir', str, None, None,
+                            'Look for WKT files in this folder, default is look in the input image folder.')
+        self.register_field('results_file', str, None, None,
+                            'Also write statistics to this file.')
+
+    def regions(self):
+        if 'regions' in self._config_dict:
+            return self._config_dict['regions']
+        return None
+
+    def wkt_dir(self):
+        if 'wkt_dir' in self._config_dict:
+            return self._config_dict['wkt_dir']
+        return None
+
+    def results_file(self):
+        if 'results_file' in self._config_dict:
+            return self._config_dict['results_file']
+        return None
+
+    def metrics(self):
+        if 'metrics' in self._config_dict:
+            return self._config_dict['metrics']
+        return []
+
 def register():
     """
     Registers machine learning config options with the global config manager.
@@ -284,3 +318,5 @@ def register():
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')
     config.config.register_component(TensorboardConfig(), 'tensorboard')
+    config.config.register_component(ClassifyConfig(), 'classify')
+    

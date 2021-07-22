@@ -63,7 +63,7 @@ same underlying options.
     * `clip` with `bounds` argument: clip all pixels to bounds.
    Preprocessing commands are registered with `delta.config.extensions.register_preprocess`.
    A full list of defaults (and examples of how to create new ones) can be found in `delta.extensions.preprocess`.
- * `nodata_value`: A pixel value to ignore in the images.
+ * `nodata_value`: A pixel value to ignore in the images. Will try to determine from the file if this is not specified.
  * `classes`: Either an integer number of classes or a list of individual classes. If individual classes are specified,
    each list item should be the pixel value of the class in the label images, and a dictionary with the
    following potential attributes (see example below):
@@ -142,6 +142,44 @@ These options are used in the `delta train` command.
    has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
    training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
    on very large training sets (thousands of large images).
+
+Classify
+-----
+These options are used in the `delta classify` command.
+
+ * `regions`: A list of region names to look for in WKT files associated with images.
+ * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
+ * `results_file`: Write a copy of the output statistics to this file
+ * `metrics`: Include either losses or metrics here as specified in the Train section.  Currently some metrics
+   will throw an exception when used this way, more support for them is planned.
+
+```Sample config entries:
+classify:
+  regions:
+   - sample_region_name
+   - another_region
+  wkt_dir: /alternate/wkt/location/
+  results_file: log_here.txt
+  metrics:
+    - SparseRecall: # Works
+        label: No Water
+        name: sparse_recall
+        binary: true
+    - MappedDice: # Works!
+        mapping:
+          Water: 1.0
+          No Water: 0.0
+          Maybe Water: 0.5
+          Cloud: 0.0
+        name: dice 
+```
+
+By default when classify is run with labels available for the input image, it will compute some statistics
+across all of the images and also on a per-image basis. You can also provide a WKT formatted shape file for
+each input image containing one or more polygons/multipolygons, each with one or more region names. For each
+region name specified in the config file, all regions including this name will have their statistics jointly
+computed. In addition, all regions without a name will have their statistics individually computed. WKT files
+should have the same names as their associated image files but with the extension ".wkt.csv".  There is a sample WKT file, along with a picture of the described regions, [here](../../docs/sample.wkt.csv)
 
 ### Network
 
