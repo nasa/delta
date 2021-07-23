@@ -47,7 +47,7 @@ do
   OUT_PATH=$OUTPUT_DIR/$(realpath $p -s --relative-to $INPUT_DIR)
   OUT_PATH=$(realpath -m $(dirname $OUT_PATH)/${PREFIX}$(basename $OUT_PATH))
   if [[ ! -f $OUT_PATH ]] ; then
-    echo $p > $PROCESS_FILE
+    echo $p >> $PROCESS_FILE
   fi
 done < $TEMP_FILE
 rm $TEMP_FILE
