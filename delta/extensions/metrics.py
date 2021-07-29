@@ -71,7 +71,8 @@ class SparseRecall(SparseMetric): # pragma: no cover
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
-    def update_state(self, y_true, y_pred): #pylint: disable=unused-argument, arguments-differ
+    # sample_weight is unused but required by tensorflow
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         right_class = tf.math.equal(y_true, self._label_id)
         if self._binary:
@@ -100,7 +101,7 @@ class SparsePrecision(SparseMetric): # pragma: no cover
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
-    def update_state(self, y_true, y_pred): #pylint: disable=unused-argument, arguments-differ
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         right_class = tf.math.equal(y_true, self._label_id)
         if self._binary:
