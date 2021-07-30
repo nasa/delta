@@ -213,10 +213,10 @@ class WorldviewImage(tiff.TiffImage):
 
 # The np.where clause handles input nodata values.
 
-def _apply_toa_radiance(data, _, bands, factors, widths):
+def _apply_toa_radiance(data, _, _bands, factors, widths):
     """Apply a top of atmosphere radiance conversion to WorldView data"""
     buf = np.zeros(data.shape, dtype=np.float32)
-    for b in bands:
+    for b in range(data.shape[2]):
         f = factors[b]
         w = widths[b]
         buf[:, :, b] = np.where(data[:, :, b] > 0, (data[:, :, b] * f) / w, OUTPUT_NODATA)

@@ -231,10 +231,10 @@ class Rectangle:
 
         output_tiles = []
         unique_tiles = []
-        for c in range(0, num_tiles[0]):
+        for r in range(0, num_tiles[1]):
             row_tiles = []
             unique_row_tiles = []
-            for r in range(0, num_tiles[1]):
+            for c in range(0, num_tiles[0]):
                 tile = Rectangle(self.min_x + c*tile_spacing_x,
                                  self.min_y + r*tile_spacing_y,
                                  width=tile_width, height=tile_height)
@@ -282,10 +282,10 @@ class Rectangle:
             if by_block and row_tiles:
                 row_rect = Rectangle(row_tiles[0].min_x, row_tiles[0].min_y,
                                      row_tiles[-1].max_x, row_tiles[-1].max_y)
-                for r in row_tiles:
-                    r.shift(-row_rect.min_x, -row_rect.min_y)
-                for r in unique_row_tiles:
-                    r.shift(-row_rect.min_x, -row_rect.min_y)
+                for t in row_tiles:
+                    t.shift(-row_rect.min_x, -row_rect.min_y)
+                for t in unique_row_tiles:
+                    t.shift(-row_rect.min_x, -row_rect.min_y)
                 output_tiles.append((row_rect, row_tiles))
                 unique_tiles.append((row_rect, unique_row_tiles))
 
