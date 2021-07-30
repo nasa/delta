@@ -144,7 +144,6 @@ class TiffImage(delta_image.DeltaImage):
         if bands:
             for i, b in enumerate(bands):
                 band_handle = self._gdal_band(b)
-                band_handle.ReadAsArray(roi.min_y, roi.min_x, roi.height(), roi.width(), buf_obj=buf[i, :, :])
                 band_handle.ReadAsArray(yoff=roi.min_y, xoff=roi.min_x,
                                         win_ysize=roi.height(), win_xsize=roi.width(), buf_obj=buf[i, :, :])
         else:
