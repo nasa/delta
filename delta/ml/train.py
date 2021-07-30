@@ -106,12 +106,12 @@ def _prep_datasets(ids, tc):
                                                   stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
         if validation:
-            validation = validation.batch(tc.batch_size, drop_remainder=True).prefetch(1)
+            validation = validation.batch(tc.batch_size, drop_remainder=True)#.prefetch(1)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size, drop_remainder=True)
-    ds = ds.prefetch(1)
+    #ds = ds.prefetch(1)
     if tc.steps:
         ds = ds.take(tc.steps)
     return (ds, validation)
@@ -136,22 +136,6 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Model - Shape - Output',   dataset.output_shape())
     mlflow.log_param('Model - Shape - Input',   dataset.input_shape())
     #mlflow.log_param('Status', 'Running') Illegal to change the value!
-
-class _EpochResetCallback(tf.keras.callbacks.Callback):
-    """
-    Reset imagery_dataset file counts on epoch end
-    """
-    def __init__(self, ids, stop_epoch):
-        super().__init__()
-        self.ids = ids
-        self.last_epoch = stop_epoch - 1
-
-    def on_epoch_end(self, epoch, _=None):
-        if config.general.verbose():
-            print('Finished epoch ' + str(epoch))
-        # Leave the counts from the last epoch just as a record
-        if epoch != self.last_epoch:
-            self.ids.reset_access_counts()
 
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
@@ -241,8 +225,6 @@ def _build_callbacks(model, dataset, training_spec, model_extension):
                                              write_images=True,
                                              embeddings_freq=1)
         callbacks.append(tcb)
-
-    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     callbacks.extend(config_callbacks())
 
@@ -360,11 +342,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
     (callbacks, mcb) = _build_callbacks(model, dataset, training_spec, internal_model_extension)
 
     try:
-
-        # Mark that we need to check the dataset counts the
-        # first time we try to read the images.
-        # This won't do anything unless we are resuming training.
-        dataset.reset_access_counts(set_need_check=True)
 
         if (training_spec.steps is None) or (training_spec.steps > 0):
             done = False

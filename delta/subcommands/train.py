@@ -21,7 +21,6 @@ Train a neural network.
 
 import sys
 import time
-import os
 
 #import logging
 #logging.getLogger("tensorflow").setLevel(logging.DEBUG)
@@ -37,14 +36,6 @@ from delta.ml.io import save_model, load_model
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
 def main(options):
-
-    log_folder = config.train.log_folder()
-    if log_folder:
-        if not options.resume: # Start fresh and clear the read logs
-            os.system('rm -f ' + log_folder + '/*')
-            print('Dataset progress recording in: ' + log_folder)
-        else:
-            print('Resuming dataset progress recorded in: ' + log_folder)
 
     images = config.dataset.images()
     if not images:
@@ -85,8 +76,6 @@ def main(options):
         ids = imagery_dataset.ImageryDataset(images, labels, out_shape, in_shape,
                                              tile_shape=tile_size, tile_overlap=tile_overlap,
                                              stride=stride)
-    if log_folder is not None:
-        ids.set_resume_mode(options.resume, log_folder)
 
     assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
