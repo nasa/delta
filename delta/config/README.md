@@ -134,7 +134,7 @@ These options are used in the `delta train` command.
  * `validation`: Specify validation data. The validation data is tested after each epoch to evaluate the
    classifier performance. Always use separate training and validation data!
    * `from_training` and `steps`: If `from_training` is true, take the `steps` training batches
-     and do not use it for training but for validation instead.
+     and do not use it for training but for validation instead. If `from_training` is false, `steps` is ignored.
    * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
      if `from_training` is false.
  * `log_folder` and `resume_cutoff`: If log_folder is specified, store read records of how much of each image

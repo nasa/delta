@@ -105,8 +105,6 @@ def _prep_datasets(ids, tc):
                     vimagery = AutoencoderDataset(vimg, ids.chunk_shape(), tile_shape=ids.tile_shape(),
                                                   stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
-                if tc.validation.steps:
-                    validation = validation.take(tc.validation.steps)
         if validation:
             validation = validation.batch(tc.batch_size, drop_remainder=True).prefetch(1)
     else:
