@@ -178,8 +178,8 @@ def test_rectangle_rois():
     assert len(valid_tiles) == 4
     for t in tiles:
         assert t.width() == 6 and t.height() == 6
-    assert valid_tiles[1].width() == 6 and valid_tiles[1].height() == 4
-    assert valid_tiles[2].width() == 4 and valid_tiles[2].height() == 6
+    assert valid_tiles[1].width() == 4 and valid_tiles[1].height() == 6
+    assert valid_tiles[2].width() == 6 and valid_tiles[2].height() == 4
     assert valid_tiles[3].width() == 4 and valid_tiles[3].height() == 4
     tiles = r.make_tile_rois((5, 5), include_partials=False, by_block=True)[0]
     assert len(tiles) == 2

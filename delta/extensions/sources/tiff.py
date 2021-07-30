@@ -132,18 +132,27 @@ class TiffImage(delta_image.DeltaImage):
 
     def _read(self, roi, bands, buf=None):
         self.__asert_open()
-        num_bands = len(bands) if bands else self.num_bands()
 
+        num_bands = len(bands) if bands else self.num_bands()
         if buf is None:
             buf = np.zeros(shape=(num_bands, roi.height(), roi.width()), dtype=self.dtype())
-        for i, b in enumerate(bands):
-            band_handle = self._gdal_band(b)
-            s = buf[i, :, :].shape
+        else:
+            s = buf[0, :, :].shape
             if s != (roi.height(), roi.width()):
                 raise IOError('Buffer shape should be (%d, %d) but is (%d, %d)!' %
                               (roi.height(), roi.width(), s[0], s[1]))
-            band_handle.ReadAsArray(yoff=roi.min_y, xoff=roi.min_x,
-                                    win_ysize=roi.height(), win_xsize=roi.width(), buf_obj=buf[i, :, :])
+        if bands:
+            for i, b in enumerate(bands):
+                band_handle = self._gdal_band(b)
+                band_handle.ReadAsArray(yoff=roi.min_y, xoff=roi.min_x,
+                                        win_ysize=roi.height(), win_xsize=roi.width(), buf_obj=buf[i, :, :])
+        else:
+            cur_band = 0
+            for h in self._handles:
+                h.ReadAsArray(yoff=roi.min_y, xoff=roi.min_x,
+                              ysize=roi.height(), xsize=roi.width(),
+                              buf_obj=buf[cur_band:cur_band + h.RasterCount, :, :])
+                cur_band += h.RasterCount
         return np.transpose(buf, [1, 2, 0])
 
     def _gdal_band(self, band):
