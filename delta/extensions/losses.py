@@ -28,11 +28,39 @@ import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 from delta.config import config
 from delta.config.extensions import register_loss
 
+
+def suggest_filter_size(image1, image2, power_factors, filter_size):
+    '''Figure out if we need to shrink the filter to accomodate a smaller
+       input image'''
+
+    cap = 2**(len(power_factors)-1)
+    if not(image1.shape[0]/cap >= filter_size and
+           image1.shape[1]/cap >= filter_size and
+           image1.shape[0]/cap >= filter_size and
+           image2.shape[1]/cap >= filter_size):
+        H = tf.math.reduce_min((image1.shape, image2.shape))
+        suggested_filter_size = int(H/(2**(len(power_factors)-1)))
+    else:
+        suggested_filter_size = filter_size
+    return suggested_filter_size
+
 def ms_ssim(y_true, y_pred):
     """
-    `tf.image.ssim_multiscale` as a loss function.
+    `tf.image.ssim_multiscale` as a loss function. This loss function requires two
+    dimensional inputs.
     """
-    return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
+    y_true = tf.cond(tf.math.equal(tf.rank(y_true), 3),
+                     lambda: y_true,
+                     lambda: tf.expand_dims(y_true, -1))
+    y_pred = tf.cond(tf.math.equal(tf.rank(y_pred), 3),
+                     lambda: y_pred,
+                     lambda: tf.expand_dims(y_pred, -1))
+
+    filter_size = 11 # Default size
+    power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
+    new_filter_size = suggest_filter_size(y_true, y_pred, power_factors, filter_size)
+    result = 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0, filter_size=new_filter_size)
+    return result
 
 def ms_ssim_mse(y_true, y_pred):
     """
