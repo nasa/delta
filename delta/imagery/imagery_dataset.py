@@ -76,6 +76,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
+        self._random_seed = random.randint(0, 1 << 16)
 
     def _list_tiles(self, i): # pragma: no cover
         """
@@ -132,7 +133,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             img.set_preprocess(None) # parallelize preprocessing outside lock
 
         def tile_gen():
-            rand = random.Random(epoch * 11617) # use same seed for labels and not labels, differ by epoch
+            # use same seed for labels and not labels, differ by epoch
+            rand = random.Random(self._random_seed + epoch * 11617)
             image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
             for (img, tiles) in image_tiles:
                 rand.shuffle(tiles)

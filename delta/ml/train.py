@@ -106,12 +106,11 @@ def _prep_datasets(ids, tc):
                                                   stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
         if validation:
-            validation = validation.batch(tc.batch_size, drop_remainder=True)#.prefetch(1)
+            validation = validation.batch(tc.batch_size, drop_remainder=True)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size, drop_remainder=True)
-    #ds = ds.prefetch(1)
     if tc.steps:
         ds = ds.take(tc.steps)
     return (ds, validation)
