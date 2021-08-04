@@ -199,7 +199,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         """
         self._epoch[1 if is_labels else 0] = 0 # count epochs for random
         return tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
-                                              is_labels=is_labels),
+                                                                is_labels=is_labels),
                                               output_types=data_type,
                                               output_shapes=tf.TensorShape((None, None, None)))
 
