@@ -49,12 +49,18 @@ def ms_ssim(y_true, y_pred):
     `tf.image.ssim_multiscale` as a loss function. This loss function requires two
     dimensional inputs.
     """
+    def expand_ytrue():
+        with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
+            return tf.expand_dims(y_true, -1)
+    def expand_ypred():
+        with tf.control_dependencies([tf.expand_dims(y_pred, -1)]):
+            return tf.expand_dims(y_pred, -1)
     y_true = tf.cond(tf.math.less(tf.rank(y_true), 3),
-                     lambda: y_true,
-                     lambda: tf.expand_dims(y_true, -1))
+                     expand_ytrue,
+                     lambda: y_true)
     y_pred = tf.cond(tf.math.less(tf.rank(y_pred), 3),
-                     lambda: y_pred,
-                     lambda: tf.expand_dims(y_pred, -1))
+                     expand_ypred,
+                     lambda: y_pred)
 
     filter_size = 11 # Default size
     power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
