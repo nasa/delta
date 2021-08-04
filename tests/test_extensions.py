@@ -46,11 +46,9 @@ def test_gaussian_sample():
 
 def test_ms_ssim():
     l = ext.loss('ms_ssim')
-    assert tf.math.reduce_mean(l(tf.zeros((1, 180, 180, 1)),
-                                 tf.zeros((1, 180, 180, 1)))) == 0.0
+    assert l(tf.zeros((1, 180, 180, 1)), tf.zeros((1, 180, 180, 1))) == 0.0
     l = ext.loss('ms_ssim_mse')
-    assert tf.math.reduce_mean(l(tf.zeros((1, 180, 180, 1)),
-                                 tf.zeros((1, 180, 180, 1)))) == 0.0
+    assert l(tf.zeros((1, 180, 180, 1)), tf.zeros((1, 180, 180, 1))) == 0.0
 
 def test_mapped():
     config_reset()
