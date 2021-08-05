@@ -72,7 +72,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
-        self._epoch = [0, 0]
+        self._epoch = [0, 0] # track images and labels separately for simplicity
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
@@ -123,8 +123,9 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         """
         # track epoch (must be same for label and non-label)
         epoch = self._epoch[1 if is_labels else 0]
-        self._epoch[1 if is_labels else 0] += 1 # note: can only do by epoch now
+        self._epoch[1 if is_labels else 0] += 1
         images = [(self._labels if is_labels else self._images).load(i) for i in range(len(self._images))]
+        # create lock and get preprocessing function for each image
         image_locks = {}
         image_preprocesses = {}
         for img in images:
@@ -132,12 +133,16 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             image_preprocesses[img] = img.get_preprocess()
             img.set_preprocess(None) # parallelize preprocessing outside lock
 
+        # generator that creates tiles in a random order, but consistent between images and labels
+        # returns generator of (img, tile_list) tuples
         def tile_gen():
-            # use same seed for labels and not labels, differ by epoch
+            # use same seed for labels and not labels, differ by epoch times big prime number
             rand = random.Random(self._random_seed + epoch * 11617)
             image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
+            # shuffle tiles within each image
             for (img, tiles) in image_tiles:
                 rand.shuffle(tiles)
+            # create iterator
             image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
             while image_tiles:
                 index = rand.randrange(len(image_tiles))
@@ -147,20 +152,23 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 except StopIteration:
                     del image_tiles[index]
 
+        # lock an image and read it. Necessary because gdal doesn't do multi-threading.
         def read_image(img, rect):
             lock = image_locks[img]
             preprocess = image_preprocesses[img]
             lock.acquire()
             buf = img.read(rect)
             lock.release()
+            # preprocess outside of lock for concurrency
             if preprocess:
                 buf = preprocess(buf, rect, None)
             return buf
 
+        # add a buffer to read to the multiprocessing queue
         def add_to_queue(buf_queue, item):
             (img, (rect, sub_tiles)) = item
             buf = self._iopool.submit(lambda: read_image(img, rect))
-            buf_queue.append((img, (rect, sub_tiles), buf))
+            buf_queue.append((rect, sub_tiles, buf))
 
         gen = tile_gen()
         buf_queue = []
@@ -170,8 +178,10 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             except StopIteration:
                 break
             add_to_queue(buf_queue, next_item)
+        # process buffers and yield sub tiles. For efficiency, we just
+        # return an entire buffer's sub tiles at once, so not fully random
         while buf_queue:
-            (img, (_, sub_tiles), buf) = buf_queue.pop(0)
+            (_, sub_tiles, buf) = buf_queue.pop(0)
             buf = buf.result()
             try:
                 add_to_queue(buf_queue, next(gen))
