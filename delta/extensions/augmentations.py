@@ -121,7 +121,33 @@ def random_translate(probability=0.5, max_pixels=7):
         return result
     return rand_translate
 
+def random_brightness(probability=0.5, min_factor=0.5, max_factor=1.5):
+    """
+    Apply a random brightness adjustment.
+
+    Parameters
+    ----------
+    probability: float
+        Probability to apply the transform.
+    min_factor: float
+    max_factor: float
+        Brightness will be chosen uniformly at random from [min_factor, max_factor].
+
+    Returns
+    -------
+    Augmentation function for the specified transform.
+    """
+    def rand_brightness(image, label):
+        r = tf.random.uniform(shape=[], dtype=tf.dtypes.float32)
+        t = tf.random.uniform([], min_factor, max_factor, tf.dtypes.float32)
+        result = tf.cond(r > probability, lambda: (image, label),
+                         lambda: (t * image,
+                                  label))
+        return result
+    return rand_brightness
+
 register_augmentation('random_flip_left_right', random_flip_left_right)
 register_augmentation('random_flip_up_down', random_flip_up_down)
 register_augmentation('random_rotate', random_rotate)
 register_augmentation('random_translate', random_translate)
+register_augmentation('random_brightness', random_brightness)
