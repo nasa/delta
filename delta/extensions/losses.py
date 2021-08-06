@@ -24,6 +24,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
 from delta.config.extensions import register_loss
@@ -56,6 +57,33 @@ def dice_loss(y_true, y_pred):
     Dice coefficient as a loss function.
     """
     return 1 - dice_coef(y_true, y_pred)
+
+
+# # Simple script which includes functions for calculating surface loss in keras
+# ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
+def calc_dist_map(seg):
+    res = np.zeros_like(seg)
+    posmask = seg.astype(np.bool)
+
+    if posmask.any():
+        negmask = ~posmask
+        res = distance(negmask) * negmask# - (distance(posmask) - 1) * posmask
+
+    return res
+
+def calc_dist_map_batch(y_true):
+    y_true_numpy = y_true.numpy()
+    result = np.stack([calc_dist_map(y) for y in [y_true_numpy, 1 - y_true_numpy]],
+                      axis=-1).astype(np.float32)
+    return result
+
+def surface_loss(y_true, y_pred):
+    y_true_dist_map = tf.py_function(func=calc_dist_map_batch,
+                                     inp=[y_true],
+                                     Tout=tf.float32)
+    #y_true_dist_map.set_shape(y_true.shape)
+    multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
+    return tf.squeeze(multipled)
 
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
     def __init__(self, mapping, name=None):
@@ -179,8 +207,9 @@ class MappedDiceBceMsssim(MappedLoss):
         bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
         msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
         msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
+        surf = surface_loss(y_true, y_pred)
 
-        return dice + bce + msssim
+        return 5 * dice + bce + 0.1 * surf + msssim
 
 
 register_loss('ms_ssim', ms_ssim)
