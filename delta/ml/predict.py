@@ -241,13 +241,13 @@ class Predictor(ABC):
         else:
             offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
             offset_c = -net_input_shape[1] + net_output_shape[1] + overlap[1]
+            overlap_shape=(net_input_shape[0] - net_output_shape[0] + overlap[0],
+                           net_input_shape[1] - net_output_shape[1] + overlap[1])
             output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
-            block_size_y = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
-            block_size_x = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
 
-            tiles, tiles_valid = input_bounds.make_tile_rois_yx((block_size_y - offset_r, block_size_x - offset_c),
+            tiles, tiles_valid = input_bounds.make_tile_rois_yx((net_input_shape[0], net_input_shape[1]),
                                                                 include_partials=False,
-                                                                overlap_shape=(-offset_r, -offset_c),
+                                                                overlap_shape=overlap_shape,
                                                                 partials_overlap=True, containing_rect=image_rect)
 
         self._initialize(output_shape, image, label)
