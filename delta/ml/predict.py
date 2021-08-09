@@ -471,7 +471,7 @@ class LabelPredictor(Predictor):
 
             if self._metrics:
                 for m in self._metrics:
-                    m.update_state(valid_labels, valid_pred) #pylint: disable=E1101
+                    m.update_state(valid_labels.compressed(), valid_pred.compressed()) #pylint: disable=E1101
 
         if self._output_image is not None:
             if self._colormap is not None:
