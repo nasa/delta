@@ -137,10 +137,6 @@ These options are used in the `delta train` command.
      and do not use it for training but for validation instead. If `from_training` is false, `steps` is ignored.
    * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
      if `from_training` is false.
- * `log_folder` and `resume_cutoff`: If log_folder is specified, store read records of how much of each image
-   has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
-   training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
-   on very large training sets (thousands of large images).
 
 Classify
 -----
@@ -246,9 +242,6 @@ I/O
  * `threads`: The number of threads to use for loading images into tensorflow.
  * `tile_size`: The size of a tile to load into memory at a time. For fully convolutional networks, the
    entire tile will be processed at a time, for others it will be chunked.
- * `interleave_images`: The number of images to interleave between. If this value is three, three images will
-   be opened at a time. Chunks / tiles will be interleaved from the first three tiles until one is completed, then
-   a new image will be opened. Larger interleaves can aid training (but comes at a cost in memory).
  * `cache`: Options for a cache, which is used by a few image types (currently worldview and landsat).
     * `dir`: Directory to store the cache. `default` gives a reasonable OS-specific default.
     * `limit`: Maximum number of items to store in the cache before deleting old entries.

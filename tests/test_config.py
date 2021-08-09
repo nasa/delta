@@ -40,7 +40,6 @@ def test_general():
     io:
       threads: 5
       tile_size: [5, 5]
-      interleave_images: 3
       cache:
         dir: nonsense
         limit: 2
@@ -51,7 +50,6 @@ def test_general():
     assert config.io.threads() == 5
     assert config.io.tile_size()[0] == 5
     assert config.io.tile_size()[1] == 5
-    assert config.io.interleave_images() == 3
     cache = config.io.cache.manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2

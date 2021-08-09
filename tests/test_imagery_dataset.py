@@ -226,22 +226,3 @@ def test_autoencoder(autoencoder):
     ds = autoencoder.dataset()
     for (image, label) in ds.take(1000):
         assert (image.numpy() == label.numpy()).all()
-
-def test_resume_mode(autoencoder, tmpdir):
-    """
-    Test imagery dataset's resume functionality.
-    """
-    try:
-        autoencoder.set_resume_mode(True, str(tmpdir))
-        autoencoder.reset_access_counts()
-        for i in range(len(autoencoder.image_set())):
-            autoencoder.resume_log_update(i, count=10000, need_check=True)
-            assert autoencoder.resume_log_read(i) == (True, 10000)
-
-        ds = autoencoder.dataset()
-        count = 0
-        for (_, unused_) in ds.take(100):
-            count += 1
-        assert count == 0
-    finally:
-        autoencoder.set_resume_mode(False, None)
