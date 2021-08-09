@@ -220,7 +220,7 @@ def classify_image(model, image, label, path, net_name, options,
         metrics = predictor.metrics()
         metrics, persistent_metrics = (metrics[0:num_temp_metrics], metrics[num_temp_metrics:])
         return cm, metrics, persistent_metrics
-    return None
+    return None, None, None
 
 def get_wkt_path(image_path, wkt_folder=None):
     '''Return the path to where the WKT file for an image should be'''

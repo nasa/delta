@@ -154,7 +154,7 @@ classify:
    - another_region
   wkt_dir: /alternate/wkt/location/
   results_file: log_here.txt
-  metrics:
+  metrics: # 2D metrics such as msssim are not supported
     - SparseRecall:
         label: No Water
         name: sparse_recall

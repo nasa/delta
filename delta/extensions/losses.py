@@ -49,6 +49,9 @@ def ms_ssim(y_true, y_pred):
     `tf.image.ssim_multiscale` as a loss function. This loss function requires two
     dimensional inputs.
     """
+
+    # This logic supports [h, w] inputs a well as [h, w, b] and [h, w, b, m] inputs by
+    # padding the dimensions up to three if needed.
     def expand_ytrue():
         with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
             return tf.expand_dims(y_true, -1)
