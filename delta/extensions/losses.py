@@ -62,7 +62,7 @@ def dice_loss(y_true, y_pred):
 
 # # Simple script which includes functions for calculating surface loss in keras
 # ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
-def calc_dist_map(seg):
+def _calc_dist_map(seg):
     res = np.zeros_like(seg)
     posmask = seg.astype(np.bool)
 
@@ -72,19 +72,18 @@ def calc_dist_map(seg):
 
     return res
 
-def calc_dist_map_batch(y_true):
+def _calc_dist_map_batch(y_true):
     y_true_numpy = y_true.numpy()
-    result = np.stack([calc_dist_map(y) for y in [y_true_numpy, 1 - y_true_numpy]],
+    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy, 1 - y_true_numpy]],
                       axis=-1).astype(np.float32)
     return result
 
 def surface_loss(y_true, y_pred):
-    y_true_dist_map = tf.py_function(func=calc_dist_map_batch,
+    y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
                                      inp=[y_true],
                                      Tout=tf.float32)
-    #y_true_dist_map.set_shape(y_true.shape)
     multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
-    return tf.squeeze(multipled)
+    return tf.squeeze(multipled, -1)
 
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
     def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
