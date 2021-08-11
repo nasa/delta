@@ -273,6 +273,31 @@ def metric_from_dict(metric_spec: Union[dict, str]) -> tensorflow.keras.metrics.
         mc = mc(**params)
     return mc
 
+def learning_rate_from_dict(spec: Union[dict, float]) -> \
+        Union[tensorflow.keras.optimizers.schedules.LearningRateSchedule, float]:
+    """
+    Construct a learning rate schedule from a dictionary or float.
+
+    Parameters
+    ----------
+    spec: Union[dict, float]
+        Config dictionary  or float defining a learning rate.
+
+    Returns
+    -------
+    Union[tensorflow.keras.schedules.LearingRateSchedule, float]
+        The learning rate schedule or constant learning rate
+    """
+    if isinstance(spec, float):
+        return spec
+    assert isinstance(spec, dict), 'Only dict or float supported for learning rate.'
+    assert len(spec.keys()) == 1, 'Only one learning rate may be specified.'
+    name = list(spec.keys())[0]
+    lc = getattr(tensorflow.keras.optimizers.schedules, name, None)
+    if lc is None:
+        raise ValueError('Unknown learning rate scheduler %s.' % (name))
+    return lc(**spec[name])
+
 def optimizer_from_dict(spec: Union[dict, str]) -> tensorflow.keras.optimizers.Optimizer:
     """
     Construct an optimizer from a dictionary or string.
@@ -288,6 +313,7 @@ def optimizer_from_dict(spec: Union[dict, str]) -> tensorflow.keras.optimizers.O
         The optimizer object.
     """
     (name, params) = _parse_str_or_dict(spec, 'optimizer')
+    params['learning_rate'] = learning_rate_from_dict(params['learning_rate'])
     mc = getattr(tensorflow.keras.optimizers, name, None)
     if mc is None:
         raise ValueError('Unknown optimizer %s.' % (name))
