@@ -313,7 +313,8 @@ def optimizer_from_dict(spec: Union[dict, str]) -> tensorflow.keras.optimizers.O
         The optimizer object.
     """
     (name, params) = _parse_str_or_dict(spec, 'optimizer')
-    params['learning_rate'] = learning_rate_from_dict(params['learning_rate'])
+    if 'learning_rate' in params:
+        params['learning_rate'] = learning_rate_from_dict(params['learning_rate'])
     mc = getattr(tensorflow.keras.optimizers, name, None)
     if mc is None:
         raise ValueError('Unknown optimizer %s.' % (name))
