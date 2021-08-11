@@ -144,13 +144,26 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 rand.shuffle(tiles)
             # create iterator
             image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
-            while image_tiles:
+            def rand_block():
                 index = rand.randrange(len(image_tiles))
-                (img, it) = image_tiles[index]
-                try:
-                    yield (img, next(it))
-                except StopIteration:
-                    del image_tiles[index]
+                result = image_tiles[index]
+                del image_tiles[index]
+                return result
+            cur_blocks = []
+            for i in range(max(0, config.io.interleave_blocks() - 1)):
+                if not image_tiles:
+                    break
+                cur_blocks.append(rand_block())
+            while image_tiles:
+                cur_blocks.append(rand_block())
+                while True:
+                    b = rand.randrange(len(cur_blocks))
+                    try:
+                        (img, it) = cur_blocks[b]
+                        yield (img, next(it))
+                    except StopIteration:
+                        del cur_blocks[b]
+                        break
 
         # lock an image and read it. Necessary because gdal doesn't do multi-threading.
         def read_image(img, rect):
