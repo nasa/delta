@@ -61,4 +61,10 @@ cd $OLD_DIR
 # run classification
 delta classify --image-file-list $PROCESS_FILE --outdir $OUTPUT_DIR --basedir $INPUT_DIR --outprefix $PREFIX --prob --overlap 32 $@
 
+# TODO: run presoak
+presoak --max-cost 20 --elevation $DATA_DIR/fel.vrtd/orig.vrt  --flow $DATA_DIR/p.vrtd/arcgis.vrt   --accumulation  $DATA_DIR/ad8.vrtd/arcgis.vrt  --image --output_dir
+
+
+# TODO: run arpan tool
+
 rm $PROCESS_FILE
