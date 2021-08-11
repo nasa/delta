@@ -27,6 +27,7 @@ import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import register_loss
+from delta.ml.config_parser import loss_from_dict
 
 def ms_ssim(y_true, y_pred):
     """
@@ -182,6 +183,39 @@ class MappedDiceBceMsssim(MappedLoss):
 
         return dice + bce + msssim
 
+class MappedLossSum(MappedLoss):
+    """
+    `MappedLoss` for sum of any loss functions.
+    """
+    def __init__(self, mapping, name=None, losses=None, weights=None):
+        """
+        Parameters
+        ----------
+        losses: List[Union[str, dict]]
+            List of loss functions to add.
+        weights: Union[List[float], None]
+            Optional list of weights for the corresponding loss functions.
+        """
+        super().__init__(mapping, name=name)
+        self._losses = list(map(loss_from_dict, losses))
+        if weights is None:
+            weights = [1] * len(losses)
+        self._weights = weights
+
+    def _get_loss(self, i, y_true, y_pred):
+        l = self._losses[i](y_true, y_pred)
+        while len(l.shape) < 3:
+            l = tf.expand_dims(l, -1)
+        return self._weights[0] * l
+
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        total = self._get_loss(0, y_true, y_pred)
+        for i in range(1, len(self._losses)):
+            total += self._get_loss(i, y_true, y_pred)
+
+        return total
 
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
@@ -191,3 +225,4 @@ register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)
 register_loss('MappedMsssim', MappedMsssim)
 register_loss('MappedDiceBceMsssim', MappedDiceBceMsssim)
+register_loss('MappedLossSum', MappedLossSum)
