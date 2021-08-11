@@ -242,6 +242,8 @@ I/O
  * `threads`: The number of threads to use for loading images into tensorflow.
  * `tile_size`: The size of a tile to load into memory at a time. For fully convolutional networks, the
    entire tile will be processed at a time, for others it will be chunked.
+ * `interleave_blocks`: When training, interleave tiles from this number of blocks at a time. Generally
+   higher is better, but limited by memory.
  * `cache`: Options for a cache, which is used by a few image types (currently worldview and landsat).
     * `dir`: Directory to store the cache. `default` gives a reasonable OS-specific default.
     * `limit`: Maximum number of items to store in the cache before deleting old entries.

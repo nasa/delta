@@ -243,7 +243,7 @@ class MappedLossSum(MappedLoss):
         l = self._losses[i](y_true, y_pred)
         while len(l.shape) < 3:
             l = tf.expand_dims(l, -1)
-        return self._weights[0] * l
+        return self._weights[i] * l
 
     def call(self, y_true, y_pred):
         (y_true, y_pred) = self.preprocess(y_true, y_pred)

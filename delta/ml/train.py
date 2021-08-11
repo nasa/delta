@@ -157,12 +157,12 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
 
     def on_train_batch_end(self, batch, logs=None):
         self.batch = batch
-        if batch % config.mlflow.frequency() == 0:
+        if batch > 0 and batch % config.mlflow.frequency() == 0:
             for k in logs.keys():
                 if k in ('batch', 'size'):
                     continue
                 mlflow.log_metric(k, logs[k], step=batch)
-        if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
+        if config.mlflow.checkpoints.frequency() and batch > 0 and batch % config.mlflow.checkpoints.frequency() == 0:
             filename = os.path.join(self.temp_dir, '%d%s' % (batch, self.model_extension))
             save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
