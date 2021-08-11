@@ -182,7 +182,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         # process buffers and yield sub tiles. For efficiency, we just
         # return an entire buffer's sub tiles at once, so not fully random
         cur_bufs = []
-        while buf_queue:
+        while buf_queue or cur_bufs:
             while len(cur_bufs) < config.io.interleave_blocks() and buf_queue:
                 (_, sub_tiles, buf) = buf_queue.pop(0)
                 cur_bufs.append((sub_tiles, buf.result()))
