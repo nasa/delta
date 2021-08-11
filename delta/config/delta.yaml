@@ -10,6 +10,7 @@ io:
   threads:           ~
   # size of tile to load into memory at a time as [rows, columns]
   tile_size:         [256, 1024]
+  interleave_blocks:  16
   cache:
     # default is OS-specific, in Linux, ~/.cache/delta
     dir:              default
