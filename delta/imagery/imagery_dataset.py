@@ -133,37 +133,25 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             image_preprocesses[img] = img.get_preprocess()
             img.set_preprocess(None) # parallelize preprocessing outside lock
 
+        # use same seed for labels and not labels, differ by epoch times big prime number
+        rand = random.Random(self._random_seed + epoch * 11617)
+
         # generator that creates tiles in a random order, but consistent between images and labels
         # returns generator of (img, tile_list) tuples
         def tile_gen():
-            # use same seed for labels and not labels, differ by epoch times big prime number
-            rand = random.Random(self._random_seed + epoch * 11617)
             image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
             # shuffle tiles within each image
             for (img, tiles) in image_tiles:
                 rand.shuffle(tiles)
             # create iterator
             image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
-            def rand_block():
-                index = rand.randrange(len(image_tiles))
-                result = image_tiles[index]
-                del image_tiles[index]
-                return result
-            cur_blocks = []
-            for i in range(max(0, config.io.interleave_blocks() - 1)):
-                if not image_tiles:
-                    break
-                cur_blocks.append(rand_block())
             while image_tiles:
-                cur_blocks.append(rand_block())
-                while True:
-                    b = rand.randrange(len(cur_blocks))
-                    try:
-                        (img, it) = cur_blocks[b]
-                        yield (img, next(it))
-                    except StopIteration:
-                        del cur_blocks[b]
-                        break
+                index = rand.randrange(len(image_tiles))
+                (img, it) = image_tiles[index]
+                try:
+                    yield (img, next(it))
+                except StopIteration:
+                    del image_tiles[index]
 
         # lock an image and read it. Necessary because gdal doesn't do multi-threading.
         def read_image(img, rect):
@@ -193,15 +181,24 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             add_to_queue(buf_queue, next_item)
         # process buffers and yield sub tiles. For efficiency, we just
         # return an entire buffer's sub tiles at once, so not fully random
+        cur_bufs = []
         while buf_queue:
-            (_, sub_tiles, buf) = buf_queue.pop(0)
-            buf = buf.result()
-            try:
-                add_to_queue(buf_queue, next(gen))
-            except StopIteration:
-                pass
-
-            for s in sub_tiles:
+            while len(cur_bufs) < config.io.interleave_blocks() and buf_queue:
+                (_, sub_tiles, buf) = buf_queue.pop(0)
+                cur_bufs.append((sub_tiles, buf.result()))
+                try:
+                    add_to_queue(buf_queue, next(gen))
+                except StopIteration:
+                    pass
+            while True:
+                buf_index = rand.randrange(len(cur_bufs))
+                (sub_tiles, buf) = cur_bufs[buf_index]
+                if not sub_tiles:
+                    del cur_bufs[buf_index]
+                    break
+                sub_index = rand.randrange(len(sub_tiles))
+                s = sub_tiles[sub_index]
+                del sub_tiles[sub_index]
                 yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
 
     def _load_images(self, is_labels, data_type):
