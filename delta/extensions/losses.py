@@ -24,6 +24,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils
 from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
@@ -86,7 +87,7 @@ def surface_loss(y_true, y_pred):
     return tf.squeeze(multipled)
 
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
-    def __init__(self, mapping, name=None):
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
         """
         This is a base class for losses when the labels of the input images do not match the labels
         output by the network. For example, if one class in the labels should be ignored, or two
@@ -107,7 +108,8 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         name: Optional[str]
             Optional name for the loss function.
         """
-        super().__init__(name=name)
+        super().__init__(name=name, reduction=reduction)
+        self._mapping = mapping
         self._nodata_classes = []
         if isinstance(mapping, list):
             map_list = mapping
@@ -163,6 +165,10 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
         return (true_convert, y_pred)
 
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, 'mapping' : self._mapping}
+
 class MappedCategoricalCrossentropy(MappedLoss):
     """
     `MappedLoss` for categorical_crossentropy.
@@ -207,9 +213,8 @@ class MappedDiceBceMsssim(MappedLoss):
         bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
         msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
         msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
-        surf = surface_loss(y_true, y_pred)
 
-        return 5 * dice + bce + 0.1 * surf + msssim
+        return dice + bce + msssim
 
 
 register_loss('ms_ssim', ms_ssim)
