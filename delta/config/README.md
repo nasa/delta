@@ -145,8 +145,7 @@ These options are used in the `delta classify` command.
  * `regions`: A list of region names to look for in WKT files associated with images.
  * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
  * `results_file`: Write a copy of the output statistics to this file
- * `metrics`: Include either losses or metrics here as specified in the Train section.  Currently some metrics
-   will throw an exception when used this way, more support for them is planned.
+ * `metrics`: Include either losses or metrics here as specified in the Train section.
 
 ```Sample config entries:
 classify:
@@ -155,12 +154,12 @@ classify:
    - another_region
   wkt_dir: /alternate/wkt/location/
   results_file: log_here.txt
-  metrics:
-    - SparseRecall: # Works
+  metrics: # 2D metrics such as msssim are not supported
+    - SparseRecall:
         label: No Water
         name: sparse_recall
-        binary: true
-    - MappedDice: # Works!
+        binary: true # Sparse metrics are only supported with binary = true
+    - MappedDice:
         mapping:
           Water: 1.0
           No Water: 0.0

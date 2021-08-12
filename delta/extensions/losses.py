@@ -29,11 +29,48 @@ from delta.config import config
 from delta.config.extensions import register_loss
 from delta.ml.config_parser import loss_from_dict
 
+
+def suggest_filter_size(image1, image2, power_factors, filter_size):
+    '''Figure out if we need to shrink the filter to accomodate a smaller
+       input image'''
+
+    cap = 2**(len(power_factors)-1)
+    if not(image1.shape[0]/cap >= filter_size and
+           image1.shape[1]/cap >= filter_size and
+           image1.shape[0]/cap >= filter_size and
+           image2.shape[1]/cap >= filter_size):
+        H = tf.math.reduce_min((image1.shape, image2.shape))
+        suggested_filter_size = int(H/(2**(len(power_factors)-1)))
+    else:
+        suggested_filter_size = filter_size
+    return suggested_filter_size
+
 def ms_ssim(y_true, y_pred):
     """
-    `tf.image.ssim_multiscale` as a loss function.
+    `tf.image.ssim_multiscale` as a loss function. This loss function requires two
+    dimensional inputs.
     """
-    return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
+
+    # This logic supports [h, w] inputs a well as [h, w, b] and [h, w, b, m] inputs by
+    # padding the dimensions up to three if needed.
+    def expand_ytrue():
+        with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
+            return tf.expand_dims(y_true, -1)
+    def expand_ypred():
+        with tf.control_dependencies([tf.expand_dims(y_pred, -1)]):
+            return tf.expand_dims(y_pred, -1)
+    y_true = tf.cond(tf.math.less(tf.rank(y_true), 3),
+                     expand_ytrue,
+                     lambda: y_true)
+    y_pred = tf.cond(tf.math.less(tf.rank(y_pred), 3),
+                     expand_ypred,
+                     lambda: y_pred)
+
+    filter_size = 11 # Default size
+    power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
+    new_filter_size = suggest_filter_size(y_true, y_pred, power_factors, filter_size)
+    result = 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0, filter_size=new_filter_size)
+    return result
 
 def ms_ssim_mse(y_true, y_pred):
     """

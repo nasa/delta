@@ -121,6 +121,10 @@ class LossToMetricWrapper(tensorflow.keras.metrics.Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         this_loss = self._loss_object.call(y_true, y_pred)
+        # In some situations the loss will not be a single number, take the mean to make it one
+        this_loss = tf.cond(tf.math.equal(tf.rank(this_loss), 0),
+                            lambda: this_loss,
+                            lambda: tf.math.reduce_mean(this_loss))
         count = tf.cast(tf.size(y_true), dtype=tf.float32) #pylint: disable=E1123,E1120
         scaled_value = tf.multiply(this_loss, tf.cast(count, dtype=tf.float32)) #pylint: disable=E1123,E1120
         self._scaled_value = tf.add(self._scaled_value, scaled_value)
@@ -216,7 +220,7 @@ def classify_image(model, image, label, path, net_name, options,
         metrics = predictor.metrics()
         metrics, persistent_metrics = (metrics[0:num_temp_metrics], metrics[num_temp_metrics:])
         return cm, metrics, persistent_metrics
-    return None
+    return None, None, None
 
 def get_wkt_path(image_path, wkt_folder=None):
     '''Return the path to where the WKT file for an image should be'''
