@@ -22,6 +22,7 @@ To use, follow the install instructions for deeplab2 above
 and add it to the PYTHONPATH. In the config file,
 add `delta.extensions.layers.deeplab2` to the extensions.
 """
+# pylint: disable=import-error # (deeplab2 is optional dependency)
 
 import tensorflow as tf
 
