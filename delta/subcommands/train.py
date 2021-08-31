@@ -67,7 +67,8 @@ def main(options):
 
     if options.autoencoder:
         ids = imagery_dataset.AutoencoderDataset(images, in_shape, tile_shape=tile_size,
-                                                 tile_overlap=tile_overlap, stride=stride)
+                                                 tile_overlap=tile_overlap, stride=stride,
+                                                 max_rand_offset=config.train.spec().max_tile_offset)
     else:
         labels = config.dataset.labels()
         if not labels:
@@ -75,7 +76,7 @@ def main(options):
             return 1
         ids = imagery_dataset.ImageryDataset(images, labels, out_shape, in_shape,
                                              tile_shape=tile_size, tile_overlap=tile_overlap,
-                                             stride=stride)
+                                             stride=stride, max_rand_offset=config.train.spec().max_tile_offset)
 
     assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'
