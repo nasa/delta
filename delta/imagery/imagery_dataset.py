@@ -108,7 +108,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
             assert tile_shape[0] >= self._chunk_shape[0] and \
                    tile_shape[1] >= self._chunk_shape[1], 'Tile too small.'
             return img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
-                             overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
+                             overlap_shape=self._tile_overlap,
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
                          overlap_shape=self._tile_overlap, by_block=True)
@@ -275,7 +275,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding='VALID')
-        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1]])
+        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1], 1])
         return result
 
     def data(self):

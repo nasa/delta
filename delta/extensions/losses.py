@@ -24,6 +24,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils
+from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
 from delta.config.extensions import register_loss
@@ -95,8 +97,34 @@ def dice_loss(y_true, y_pred):
     """
     return 1 - dice_coef(y_true, y_pred)
 
+
+# # Simple script which includes functions for calculating surface loss in keras
+# ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
+def _calc_dist_map(seg):
+    res = np.zeros_like(seg)
+    posmask = seg.astype(np.bool)
+
+    if posmask.any():
+        negmask = ~posmask
+        res = distance(negmask) * negmask# - (distance(posmask) - 1) * posmask
+
+    return res
+
+def _calc_dist_map_batch(y_true):
+    y_true_numpy = y_true.numpy()
+    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy, 1 - y_true_numpy]],
+                      axis=-1).astype(np.float32)
+    return result
+
+def surface_loss(y_true, y_pred):
+    y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
+                                     inp=[y_true],
+                                     Tout=tf.float32)
+    multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
+    return tf.squeeze(multipled, -1)
+
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
-    def __init__(self, mapping, name=None):
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
         """
         This is a base class for losses when the labels of the input images do not match the labels
         output by the network. For example, if one class in the labels should be ignored, or two
@@ -117,7 +145,8 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         name: Optional[str]
             Optional name for the loss function.
         """
-        super().__init__(name=name)
+        super().__init__(name=name, reduction=reduction)
+        self._mapping = mapping
         self._nodata_classes = []
         if isinstance(mapping, list):
             map_list = mapping
@@ -172,6 +201,10 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
 
         true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
         return (true_convert, y_pred)
+
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, 'mapping' : self._mapping}
 
 class MappedCategoricalCrossentropy(MappedLoss):
     """
