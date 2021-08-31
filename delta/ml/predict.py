@@ -241,13 +241,13 @@ class Predictor(ABC):
         else:
             offset_r = -net_input_shape[0] + net_output_shape[0] + overlap[0]
             offset_c = -net_input_shape[1] + net_output_shape[1] + overlap[1]
+            overlap_shape=(net_input_shape[0] - net_output_shape[0] + overlap[0],
+                           net_input_shape[1] - net_output_shape[1] + overlap[1])
             output_shape = (output_shape[0] + offset_r, output_shape[1] + offset_c)
-            block_size_y = net_input_shape[0] * max(1, ts[0] // net_input_shape[0])
-            block_size_x = net_input_shape[1] * max(1, ts[1] // net_input_shape[1])
 
-            tiles, tiles_valid = input_bounds.make_tile_rois_yx((block_size_y - offset_r, block_size_x - offset_c),
+            tiles, tiles_valid = input_bounds.make_tile_rois_yx((net_input_shape[0], net_input_shape[1]),
                                                                 include_partials=False,
-                                                                overlap_shape=(-offset_r, -offset_c),
+                                                                overlap_shape=overlap_shape,
                                                                 partials_overlap=True, containing_rect=image_rect)
 
         self._initialize(output_shape, image, label)
@@ -405,7 +405,9 @@ class LabelPredictor(Predictor):
     def _process_block(self, pred_image, y, x, labels, label_nodata):
 
         # create a masked array. The mask is true where pred_image = np.nan
-        pred_image_ma = np.ma.masked_invalid(np.squeeze(pred_image))
+        if len(pred_image.shape) == 3 and pred_image.shape[2] == 1:
+            pred_image = np.squeeze(pred_image, axis=2)
+        pred_image_ma = np.ma.masked_invalid(pred_image)
         if len(pred_image_ma.shape) == 3:
             # sets the first layer mask as the mask for all layers
             pred_first_layer_mask_duplicated = \
@@ -473,36 +475,40 @@ class LabelPredictor(Predictor):
                 for m in self._metrics:
                     m.update_state(valid_labels.compressed(), valid_pred.compressed()) #pylint: disable=E1101
 
-        if self._output_image is not None:
-            if self._colormap is not None:
-                # create a third entry in the color map that is all 0s
-                colormap = np.zeros((self._colormap.shape[0] + 1, self._colormap.shape[1]))
-                colormap[0:-1, :] = self._colormap
+        self._save_output_image(pred_image_ma, class_int_image, y, x)
 
-                # create array to be filled with correct shape
-                result = np.zeros((pred_image_ma.shape[0], pred_image_ma.shape[1], self._colormap.shape[1]))
+    def _save_output_image(self, pred_image_ma, class_int_image, y, x):
+        if self._output_image is None:
+            return
+        if self._colormap is not None:
+            # create a third entry in the color map that is all 0s
+            colormap = np.zeros((self._colormap.shape[0] + 1, self._colormap.shape[1]))
+            colormap[0:-1, :] = self._colormap
 
-                # When pred_image.shape is 2, then prob_image is the binarized version of the paramater
-                # pred_image passed to function. When pred_image.shape is 3,
-                # prob_image is just the original pred_image passed to the function.
-                if len(pred_image_ma.shape) == 2:
-                    result_image = np.expand_dims(class_int_image, -1)
-                else:
-                    result_image = pred_image_ma
+            # create array to be filled with correct shape
+            result = np.zeros((pred_image_ma.shape[0], pred_image_ma.shape[1], self._colormap.shape[1]))
 
-                # for each layer of prob_image
-                for i in range(result_image.shape[2]):
-                    # assign the appropriate color map value for each layer. This will result in a single layer
-                    # with the appropriate colors added for each layer if an inted version of the image is used.
-                    # When just water is predicted this results in a single color. However when multiple types
-                    # are predicted this will result in a probability blended mixture of colors.
-                    result += (colormap[i, :] * result_image[:, :, i, np.newaxis]).filled(np.nan).astype(colormap.dtype)
-
-                # result is written as output image and nans aren't filled with anything. Just numpy float nan
-                self._output_image.write(result, y, x)
+            # When pred_image.shape is 2, then prob_image is the binarized version of the paramater
+            # pred_image passed to function. When pred_image.shape is 3,
+            # prob_image is just the original pred_image passed to the function.
+            if len(pred_image_ma.shape) == 2:
+                result_image = np.expand_dims(class_int_image, -1)
             else:
-                # fill nodata values in array with -1 and write to output image
-                self._output_image.write(class_int_image.filled(-1), y, x)
+                result_image = pred_image_ma
+
+            # for each layer of prob_image
+            for i in range(result_image.shape[2]):
+                # assign the appropriate color map value for each layer. This will result in a single layer
+                # with the appropriate colors added for each layer if an inted version of the image is used.
+                # When just water is predicted this results in a single color. However when multiple types
+                # are predicted this will result in a probability blended mixture of colors.
+                result += (colormap[i, :] * result_image[:, :, i, np.newaxis]).filled(np.nan).astype(colormap.dtype)
+
+            # result is written as output image and nans aren't filled with anything. Just numpy float nan
+            self._output_image.write(result, y, x)
+        else:
+            # fill nodata values in array with -1 and write to output image
+            self._output_image.write(class_int_image.filled(-1), y, x)
 
     def confusion_matrix(self):
         """
