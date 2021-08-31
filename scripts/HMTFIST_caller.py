@@ -33,10 +33,8 @@ def check_required_data(args):
     '''Verify that all the specified input files exist on disk'''
 
     have_all_data = True
-
-    # TODO: pit, canopy, roughness
     required_list = [args.presoak_dir, args.delta_prediction_path,
-                     args.parameter_path]
+                     args.parameter_path, args.roughness_path, args.pits_path, args.canopy_path]
 
     presoak_file_list = ['input_fel.tif', 'merged_bank.tif', 'merged_stream.tif',
                          'merged_srcdir.tif']
@@ -57,11 +55,13 @@ def assemble_workdir(args):
 
     # Create a temporary working folder
     wd = args.work_dir
-    if not os.path.exists(wd):
-        os.mkdir(wd)
+    os.system('rm -rf ' + wd)
+    os.mkdir(wd)
 
     # Most of the input files are expected to be in the same input folder,
     # so create symlinks for wherever they are to the temporary working folder
+    new_srcdir_path = os.path.join(wd, 'srcdir.tif')
+    new_delta_path = os.path.join(wd, 'delta.tif')
     new_bank_path = os.path.join(wd, 'bank.tif')
     new_cost_path = os.path.join(wd, 'cost.tif')
     new_pits_path = os.path.join(wd, 'pits.tif')
@@ -71,25 +71,32 @@ def assemble_workdir(args):
     new_stream_path = os.path.join(wd, 'stream.csv')
     new_parameter_path = os.path.join(wd, 'parameters.csv')
 
+    # This file is not always present
+    old_stream_path = os.path.join(args.presoak_dir, 'merged_stream.csv')
+    if not os.path.exists(old_stream_path):
+        old_stream_path = os.path.join(args.presoak_dir, '1_stream.csv')
+
+    os.symlink(os.path.join(args.presoak_dir, 'merged_srcdir.tif'), new_srcdir_path)
+    os.symlink(args.delta_prediction_path, new_delta_path)
     os.symlink(os.path.join(args.presoak_dir, 'merged_bank.tif'), new_bank_path)
     os.symlink(os.path.join(args.presoak_dir, 'merged_cost.tif'), new_cost_path)
     os.symlink(args.pits_path, new_pits_path)
     os.symlink(args.canopy_path, new_canopy_path)
     os.symlink(args.roughness_path, new_roughness_path)
     os.symlink(os.path.join(args.presoak_dir, 'input_fel.tif'), new_fel_path)
-    os.symlink(os.path.join(args.presoak_dir, 'merged_stream.tif'), new_stream_path)
+    os.symlink(old_stream_path, new_stream_path)
     os.symlink(args.parameter_path, new_parameter_path)
 
     # Add a config file with all the names and paths
     config_path = os.path.join(wd, 'config.csv')
     with open(config_path, 'w') as f:
-        f.write(wd + '\n')
-        f.write(wd + '\n') # TODO source direction layer
-        f.write(args.delta_prediction_path + '\n')
-        for n in [new_bank_path, new_cost_path, new_pits_path, new_canopy_path,
+        f.write(wd + '/\n')
+        #f.write(new_srcdir_path +'/\n') # TODO source direction layer
+        #f.write(args.delta_prediction_path + '\n')
+        for n in [new_srcdir_path, new_delta_path, new_bank_path, new_cost_path, new_pits_path, new_canopy_path,
                   new_roughness_path, new_fel_path, new_parameter_path, new_stream_path]:
             f.write(os.path.basename(n) + '\n')
-        f.write(args.output_dir + '\n')
+        f.write(args.output_dir + '/\n')
         f.write('output_prediction.tif\n')
 
     return config_path
@@ -143,9 +150,15 @@ def main(argsIn):
     if not check_required_data(args):
         return 1
 
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
+
+    #TODO: Identify if output files are already present and skip running the tool
+
     # Run the tool
     config_path = assemble_workdir(args)
     cmd = args.exe_path + ' ' + config_path
+    print(cmd)
     os.system(cmd)
 
     # Clean up
