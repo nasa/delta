@@ -23,16 +23,18 @@ import functools
 import random
 import threading
 import tensorflow as tf
+import numpy as np
 
+from delta.imagery import rectangle
 from delta.config import config
 
-class ImageryDataset: # pylint: disable=too-many-instance-attributes
+class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-arguments
     """
     A dataset for tiling very large imagery for training with tensorflow.
     """
 
     def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
-                 tile_shape=(256, 256), tile_overlap=None):
+                 tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None):
         """
         Parameters
         ----------
@@ -50,6 +52,9 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             Size of tiles to load from the images at a time.
         tile_overlap: (int, int)
             If specified, overlap tiles by this amount.
+        max_rand_offset: int
+            If specified, in each epoch, offset all tiles by a random amount in x and y
+            in the range(-max_rand_offset, max_rand_offset).
         """
 
         self._iopool = ThreadPoolExecutor(config.io.threads())
@@ -67,6 +72,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
+        self._max_rand_offset = max_rand_offset if max_rand_offset else 0
 
         if labels:
             assert len(images) == len(labels)
@@ -153,14 +159,29 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 except StopIteration:
                     del image_tiles[index]
 
+        if self._max_rand_offset:
+            rand_offset = (rand.randint(-self._max_rand_offset, self._max_rand_offset),
+                           rand.randint(-self._max_rand_offset, self._max_rand_offset))
+        else:
+            rand_offset = (0, 0)
         # lock an image and read it. Necessary because gdal doesn't do multi-threading.
         def read_image(img, rect):
             lock = image_locks[img]
             preprocess = image_preprocesses[img]
+            buf = np.zeros(shape=(img.num_bands(), rect.height(), rect.width()), dtype=img.dtype())
+
+            mod_r = rectangle.Rectangle(min_x=rect.min_x, min_y=rect.min_y, max_x=rect.max_x, max_y=rect.max_y)
+            mod_r.shift(rand_offset[0], rand_offset[1])
+            request_r = mod_r.get_intersection(rectangle.Rectangle(min_x=0, min_y=0, width=img.width(),
+                                                                   height=img.height()))
+
             lock.acquire()
-            buf = img.read(rect)
+            partial_buf = buf[:, request_r.min_y - mod_r.min_y:mod_r.height() + request_r.max_y - mod_r.max_y,
+                              request_r.min_x - mod_r.min_x:mod_r.width() + request_r.max_x - mod_r.max_x]
+            img.read(request_r, buf=partial_buf)
             lock.release()
             # preprocess outside of lock for concurrency
+            buf = np.transpose(buf, [1, 2, 0])
             if preprocess:
                 buf = preprocess(buf, rect, None)
             return buf
@@ -304,7 +325,9 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
-        if self._labels.nodata_value() is not None:
+        # cannot do with max_rand_offset since would have different number of tiles which
+        # breaks keras fit
+        if self._labels.nodata_value() is not None and not self._max_rand_offset:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if augment_function is not None:
             ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
@@ -438,9 +461,10 @@ class AutoencoderDataset(ImageryDataset):
     Instead of specifying labels, the inputs are used as labels.
     """
 
-    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None):
+    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None,
+                 max_rand_offset=None):
         super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
-                         stride=stride, tile_overlap=tile_overlap)
+                         stride=stride, tile_overlap=tile_overlap, max_rand_offset=max_rand_offset)
         self._labels = self._images
         self._output_dims = self.num_bands()
 
