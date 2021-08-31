@@ -117,6 +117,8 @@ These options are used in the `delta train` command.
    default of ~ or 1 to use all available training data. Not used for fully convolutional networks.
  * `batch_size`: The number of patches to train on at a time. If running out of memory, reducing
    batch size may be helpful.
+ * `max_tile_offset`: If given, each epoch, offset all tiles by a random x and y value in the range
+   (-`max_tile_offset`, `max_tile_offset`). Useful for getting different tiles when training.
  * `steps`: If specified, stop training for each epoch after the given number of batches.
  * `epochs`: the number of times to iterate through all training data during training.
  * `loss`: [Keras loss function](https://keras.io/losses/). For integer classes, use

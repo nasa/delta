@@ -69,6 +69,7 @@ train:
   batch_size:      500
   steps:           ~ # number of batches to train on (or ~ for all)
   epochs:          5
+  max_tile_offset: ~
   loss:   sparse_categorical_crossentropy
   metrics:
     - sparse_categorical_accuracy
