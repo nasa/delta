@@ -103,6 +103,13 @@ train:
       file_list:   ~
       files:       ~
 
+classify:
+  prob_image: true
+  overlap: 0
+  regions: ~
+  metrics: ~
+  wkt_dir: ~
+
 mlflow:
   # default to ~/.local/share/delta/mlflow
   enabled:        true
