@@ -148,6 +148,7 @@ class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
         false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
         if self._nodata_id:
             valid = tf.math.not_equal(y_true, self._nodata_id)
+            true_positives = tf.math.logical_and(true_positives, valid)
             false_negatives = tf.math.logical_and(false_negatives, valid)
             total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
         else:
