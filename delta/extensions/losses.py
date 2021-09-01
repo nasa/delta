@@ -25,6 +25,7 @@ import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 from tensorflow.python.keras.utils import losses_utils
+import tensorflow_addons as tfa
 from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
@@ -97,6 +98,11 @@ def dice_loss(y_true, y_pred):
     """
     return 1 - dice_coef(y_true, y_pred)
 
+def focal_loss(y_true, y_pred):
+    """
+    Focal loss.
+    """
+    return tfa.losses.sigmoid_focal_crossentropy(y_true, y_pred)
 
 # # Simple script which includes functions for calculating surface loss in keras
 # ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
@@ -106,20 +112,22 @@ def _calc_dist_map(seg):
 
     if posmask.any():
         negmask = ~posmask
-        res = distance(negmask) * negmask# - (distance(posmask) - 1) * posmask
+        res = distance(negmask) * negmask - (distance(posmask) - 1) * posmask
 
     return res
 
 def _calc_dist_map_batch(y_true):
     y_true_numpy = y_true.numpy()
-    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy, 1 - y_true_numpy]],
+    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy == 0, y_true_numpy == 1]],
                       axis=-1).astype(np.float32)
     return result
 
 def surface_loss(y_true, y_pred):
+    # currently only works for binary classification of two classes
     y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
                                      inp=[y_true],
                                      Tout=tf.float32)
+    y_true_dist_map.set_shape((y_true.shape[0], y_true.shape[1], y_true.shape[2], y_true.shape[3], 2))
     multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
     return tf.squeeze(multipled, -1)
 
@@ -290,6 +298,8 @@ class MappedLossSum(MappedLoss):
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('dice', dice_loss)
+register_loss('surface', surface_loss)
+register_loss('focal', focal_loss)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
 register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)
