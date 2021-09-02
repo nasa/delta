@@ -443,8 +443,8 @@ class LabelPredictor(Predictor):
             # you can't have a valid label where prediction is invalid and vice versa
             valid_labels = labels_ma.copy()
             valid_labels.mask = incorrect.mask
-            valid_pred = class_int_image.copy()
-            valid_pred.mask = incorrect.mask
+            valid_pred_class = class_int_image.copy()
+            valid_pred_class.mask = incorrect.mask
 
             if self._error_image:
                 # TODO: implement for multiclass prediction
@@ -466,14 +466,16 @@ class LabelPredictor(Predictor):
                     # fill nodata values in array with 0 and write to image
                     self._error_image.write(continuous_error_inted.filled(0), y, x)
 
-            cm = tf.math.confusion_matrix(valid_labels.compressed(), # pylint: disable=E1101
-                                          valid_pred.compressed(),
-                                          self._num_classes)
+            vlcomp = valid_labels.compressed() # pylint: disable=no-member
+            cm = tf.math.confusion_matrix(vlcomp, valid_pred_class.compressed(), self._num_classes)
             self._confusion_matrix[:, :] += cm
 
-            if self._metrics:
+            if self._metrics and vlcomp.size > 0:
+                valid_pred = pred_image_ma.copy()
+                valid_pred.mask = incorrect.mask
+                vpcomp = valid_pred.compressed() #pylint: disable=no-member
                 for m in self._metrics:
-                    m.update_state(valid_labels.compressed(), valid_pred.compressed()) #pylint: disable=E1101
+                    m.update_state(vlcomp, vpcomp)
 
         self._save_output_image(pred_image_ma, class_int_image, y, x)
 

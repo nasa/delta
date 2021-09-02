@@ -72,9 +72,8 @@ def ae_convert(data):
     r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
-def print_classes(cm, metrics, comment):
+def print_classes(output_file, cm, metrics, comment):
 
-    output_file = config.classify.results_file()
     if output_file is not None:
         file_handle = open(output_file, 'a')
 
@@ -87,24 +86,20 @@ def print_classes(cm, metrics, comment):
         with np.errstate(invalid='ignore'):
             precision_percent = np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100) # Column = predictions
             recall_percent = np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100) # Row = actual values
-            accuracy_string = ''
-            if len(config.dataset.classes) == 2:
-                accuracy_percent = np.nan_to_num((cm[0,0] + cm[1,1]) / np.sum(cm) * 100)
-                accuracy_string = '    Accuracy: %6.2f%%' % (accuracy_percent)
-            s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%%s        Pixels: %d / %d' %
-                 (name.ljust(20), precision_percent, recall_percent, accuracy_string,
-                  int(np.sum(cm[i, :])), int(np.sum(cm))))
+            s = ('%s--- Precision: %6.2f%%    Recall: %6.2f%%        Frequency: %6.2f%%' %
+                 (name.ljust(20), precision_percent, recall_percent,
+                  float(np.sum(cm[i, :] / np.sum(cm)) * 100)))
             print(s)
             if output_file is not None:
                 file_handle.write(s + '\n')
-    s = '%6.2f%% Correct' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    s = '%6.2f%% Accuracy' % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
     print(s)
     if output_file is not None:
         file_handle.write(s + '\n')
 
     s = ''
     for m in metrics:
-        s += 'metric: ' + m.name + ' = ' + str(float(m.result())) + '\n'
+        s += '%s = %8.4f ' % (m.name, float(m.result()))
     print(s)
     if output_file is not None:
         file_handle.write(s + '\n')
@@ -116,25 +111,25 @@ class LossToMetricWrapper(tensorflow.keras.metrics.Metric):
     def __init__(self, loss_object):
         super().__init__(name=loss_object.name)
         self._loss_object = loss_object
-        self._scaled_value = self.add_weight('scaled_value', initializer='zeros')
-        self._total_size = self.add_weight('total_size', initializer='zeros')
+        self._moving_average = 0.0
+        self._total_count = 0
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         this_loss = self._loss_object.call(y_true, y_pred)
-        # In some situations the loss will not be a single number, take the mean to make it one
-        this_loss = tf.cond(tf.math.equal(tf.rank(this_loss), 0),
-                            lambda: this_loss,
-                            lambda: tf.math.reduce_mean(this_loss))
-        count = tf.cast(tf.size(y_true), dtype=tf.float32) #pylint: disable=E1123,E1120
-        scaled_value = tf.multiply(this_loss, tf.cast(count, dtype=tf.float32)) #pylint: disable=E1123,E1120
-        self._scaled_value = tf.add(self._scaled_value, scaled_value)
-        self._total_size = tf.add(self._total_size, count)
+        if isinstance(this_loss, tf.Tensor):
+            this_loss = this_loss.numpy()
+        elif not isinstance(this_loss, np.ndarray):
+            this_loss = np.ndarray(this_loss)
+        self._total_count += y_true.size
+        self._moving_average += (this_loss.mean() - self._moving_average) * (y_true.size / self._total_count)
 
     def result(self):
-        return tf.divide(self._scaled_value, self._total_size)
+        return self._moving_average
 
 def get_metrics():
     """Returns a list of specified metrics, wrapping up losses as metrics"""
+    if config.classify.metrics() is None:
+        return []
     metrics = [metric_from_dict(m) for m in config.classify.metrics()]
     metrics = [LossToMetricWrapper(m) if issubclass(type(m), tf.keras.losses.Loss) else m for m in metrics]
     return metrics
@@ -168,8 +163,8 @@ def classify_image(model, image, label, path, net_name, options,
         elif options.error:
             error_image = writer(os.path.join(out_path, 'error_' + base_out))
 
-    prob_image = writer(os.path.join(out_path, base_out)) if options.prob else None
-    output_image = writer(os.path.join(out_path, base_out)) if not options.prob else None
+    prob_image = writer(os.path.join(out_path, base_out)) if config.classify.prob_image() else None
+    output_image = writer(os.path.join(out_path, base_out)) if not config.classify.prob_image() else None
 
     ts = config.io.tile_size()
     roi = get_roi_containing_shapes(shapes)
@@ -193,7 +188,7 @@ def classify_image(model, image, label, path, net_name, options,
                                            prob_image=prob_image, error_image=error_image, error_abs=options.error_abs,
                                            metrics=metrics)
 
-    overlap = (options.overlap, options.overlap)
+    overlap = (config.classify.overlap(), config.classify.overlap())
     try:
         if config.general.gpus() == 0:
             with tf.device('/cpu:0'):
@@ -324,9 +319,9 @@ def main(options): #pylint: disable=R0912
         print('No images specified.')
         return 0
 
-    result_file = config.classify.results_file()
+    result_file = net_name + '_results.txt'
     if result_file and os.path.exists(result_file):
-        os.remove(config.classify.results_file())
+        os.remove(result_file)
 
     if options.autoencoder or not labels:
         labels = None
@@ -337,13 +332,7 @@ def main(options): #pylint: disable=R0912
         if specified_regions:
             regions += specified_regions
 
-    print('')
     for region_name in regions:
-        s = 'Computing statistics for region: ' + region_name
-        print(s)
-        if result_file is not None:
-            with open(result_file, 'a') as file_handle:
-                file_handle.write(s + '\n')
         # If there are multiple images we need to maintain separate metric objects
         # to keep summary statistics over all the images
         full_cm = None
@@ -360,7 +349,7 @@ def main(options): #pylint: disable=R0912
                     cm, metrics, full_metrics = classify_image(model, this_image, labels.load(i),
                                                                image_path, net_name, options,
                                                                shapes=[s], persistent_metrics=None)
-                    print_classes(cm, metrics, 'For image ' + image_path + ',  shape: ' + str(s))
+                    print_classes(result_file, cm, metrics, 'For image ' + image_path + ',  shape: ' + str(s))
                 continue
 
             # Load shapes from file if they are specified for this image/region pair
@@ -375,7 +364,7 @@ def main(options): #pylint: disable=R0912
                                                        shapes, persistent_metrics=full_metrics)
             if cm is not None:
                 if (region_name == 'all') and (len(images) > 1):
-                    print_classes(cm, metrics, 'For image: ' + image_path)
+                    print_classes(result_file, cm, metrics, 'Image: %s' % (image_path))
                 if full_cm is None:
                     full_cm = np.copy(cm).astype(np.int64)
                 else:
@@ -383,7 +372,7 @@ def main(options): #pylint: disable=R0912
                 if len(images) == 1: # So the statistics are printed properly outside the loop
                     full_metrics = metrics
         if labels and (full_cm is not None):
-            print_classes(full_cm, full_metrics, 'Overall:')
+            print_classes(result_file, full_cm, full_metrics, 'Overall:' if region_name == 'all' else region_name + ':')
     stop_time = time.time()
     print('Elapsed time = ', stop_time - start_time)
     return 0

@@ -144,9 +144,10 @@ Classify
 -----
 These options are used in the `delta classify` command.
 
+ * `prob_image`: If true, save an image with the network outputs as probabilities. Otherwise, map to the most likely class.
+ * `overlap`: If set, apply an overlap to the tiles during classification.
  * `regions`: A list of region names to look for in WKT files associated with images.
  * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
- * `results_file`: Write a copy of the output statistics to this file
  * `metrics`: Include either losses or metrics here as specified in the Train section.
 
 ```Sample config entries:
@@ -155,7 +156,6 @@ classify:
    - sample_region_name
    - another_region
   wkt_dir: /alternate/wkt/location/
-  results_file: log_here.txt
   metrics: # 2D metrics such as msssim are not supported
     - SparseRecall:
         label: No Water
