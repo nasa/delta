@@ -98,12 +98,6 @@ def dice_loss(y_true, y_pred):
     """
     return 1 - dice_coef(y_true, y_pred)
 
-def focal_loss(y_true, y_pred):
-    """
-    Focal loss.
-    """
-    return tfa.losses.sigmoid_focal_crossentropy(y_true, y_pred)
-
 # # Simple script which includes functions for calculating surface loss in keras
 # ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
 def _calc_dist_map(seg):
@@ -299,7 +293,7 @@ register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('dice', dice_loss)
 register_loss('surface', surface_loss)
-register_loss('focal', focal_loss)
+register_loss('focal', tfa.losses.SigmoidFocalCrossEntropy)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
 register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)
