@@ -67,7 +67,7 @@ train:
     layers:        ~
   stride:    ~
   batch_size:      500
-  steps:           ~ # number of batches to train on (or ~ for all)
+  steps:           ~ # number of batches in an epoch (~for dataset size)
   epochs:          5
   max_tile_offset: ~
   loss:   sparse_categorical_crossentropy
@@ -114,12 +114,12 @@ mlflow:
   # default to ~/.local/share/delta/mlflow
   enabled:        true
   uri:            default
-  # rate in batches to save metrics
+  # rate in epochs to save metrics
   frequency:      10000
   experiment_name: Default
   # rate in batches to save model checkpoints
   checkpoints:
-    frequency:          10000
+    frequency:          1
     only_save_latest:   true
 
 tensorboard:
