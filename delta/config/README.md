@@ -118,7 +118,8 @@ These options are used in the `delta train` command.
  * `batch_size`: The number of patches to train on at a time. If running out of memory, reducing
    batch size may be helpful.
  * `max_tile_offset`: If given, each epoch, offset all tiles by a random x and y value in the range
-   (-`max_tile_offset`, `max_tile_offset`). Useful for getting different tiles when training.
+   (-`max_tile_offset`, `max_tile_offset`). Useful for getting different tiles when training. Currently,
+   this feature is only supported if `steps` is set as well.
  * `steps`: If specified, stop training for each epoch after the given number of batches.
  * `epochs`: the number of times to iterate through all training data during training.
  * `loss`: [Keras loss function](https://keras.io/losses/). For integer classes, use
@@ -220,7 +221,7 @@ Used in the `delta train` and `delta mlflow_ui` commands to keep track of traini
    use too much disk space.
  * `checkpoints`: Configure saving of checkpoint networks to mlflow, in case something goes wrong or to compare
    networks from different stages of training.
-   * `frequency`: Frequency in batches to save a checkpoint. Networks can require a fair amount of disk space,
+   * `frequency`: Frequency in epochs to save a checkpoint. Networks can require a fair amount of disk space,
      so don't save too often.
    * `only_save_latest`: If true, only keep the network file from the most recent checkpoint.
 
