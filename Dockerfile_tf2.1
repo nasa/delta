@@ -1,0 +1,13 @@
+from tensorflow/tensorflow:2.1.2-gpu
+
+RUN apt update
+RUN apt install -y python3-dev libgdal-dev
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --upgrade setuptools requests numpy six
+RUN python3 -m pip install GDAL==`gdal-config --version` --global-option=build_ext --global-option="-I/usr/include/gdal/"
+
+COPY ./setup.py /src/
+RUN cd /src/ && python3 setup.py egg_info && sed -i '/tensorflow/d' delta.egg-info/requires.txt && python3 -m pip install -r delta.egg-info/requires.txt
+RUN python3 -m pip install tensorflow_addons==0.9.1
+COPY ./ /src/delta/
+RUN cd /src/delta && python3 -m pip install --no-dependencies .

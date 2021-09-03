@@ -23,6 +23,7 @@ See the `delta.config` documentation for details.
 """
 import math
 
+from packaging import version
 import tensorflow as tf
 import tensorflow_addons as tfa
 
@@ -90,9 +91,14 @@ def random_rotate(probability=0.5, max_angle=5.0):
     def rand_rotation(image, label):
         r = tf.random.uniform(shape=[], dtype=tf.dtypes.float32)
         theta = tf.random.uniform([], -max_angle, max_angle, tf.dtypes.float32)
-        result = tf.cond(r > probability, lambda: (image, label),
-                         lambda: (tfa.image.rotate(image, theta, fill_mode='reflect'),
-                                  tfa.image.rotate(label, theta, fill_mode='reflect')))
+        if version.parse(tfa.__version__) < version.parse('0.12'): # fill_mode not supported
+            result = tf.cond(r > probability, lambda: (image, label),
+                             lambda: (tfa.image.rotate(image, theta),
+                                      tfa.image.rotate(label, theta)))
+        else:
+            result = tf.cond(r > probability, lambda: (image, label),
+                             lambda: (tfa.image.rotate(image, theta, fill_mode='reflect'),
+                                      tfa.image.rotate(label, theta, fill_mode='reflect')))
         return result
     return rand_rotation
 
@@ -115,9 +121,14 @@ def random_translate(probability=0.5, max_pixels=7):
     def rand_translate(image, label):
         r = tf.random.uniform(shape=[], dtype=tf.dtypes.float32)
         t = tf.random.uniform([2], -max_pixels, max_pixels, tf.dtypes.float32)
-        result = tf.cond(r > probability, lambda: (image, label),
-                         lambda: (tfa.image.translate(image, t, fill_mode='reflect'),
-                                  tfa.image.translate(label, t, fill_mode='reflect')))
+        if version.parse(tfa.__version__) < version.parse('0.12'): # fill_mode not supported
+            result = tf.cond(r > probability, lambda: (image, label),
+                             lambda: (tfa.image.translate(image, t),
+                                      tfa.image.translate(label, t)))
+        else:
+            result = tf.cond(r > probability, lambda: (image, label),
+                             lambda: (tfa.image.translate(image, t, fill_mode='reflect'),
+                                      tfa.image.translate(label, t, fill_mode='reflect')))
         return result
     return rand_translate
 
