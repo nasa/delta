@@ -84,6 +84,9 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc):
+    if tc.max_tile_offset:
+        # with filtering nodata, number of tiles changes
+        assert tc.steps, 'max_tile_offset only supported with steps set.'
     ds = ids.dataset(config.dataset.classes.weights(), config_augmentation())
 
     validation=None
@@ -111,8 +114,6 @@ def _prep_datasets(ids, tc):
         validation = None
 
     ds = ds.batch(tc.batch_size, drop_remainder=True)
-    if tc.steps:
-        ds = ds.take(tc.steps)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -154,16 +155,8 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 mlflow.log_metric('Validation ' + k[4:], logs[k], epoch)
             else:
                 mlflow.log_metric('Epoch ' + k, logs[k], epoch)
-
-    def on_train_batch_end(self, batch, logs=None):
-        self.batch = batch
-        if batch > 0 and batch % config.mlflow.frequency() == 0:
-            for k in logs.keys():
-                if k in ('batch', 'size'):
-                    continue
-                mlflow.log_metric(k, logs[k], step=batch)
-        if config.mlflow.checkpoints.frequency() and batch > 0 and batch % config.mlflow.checkpoints.frequency() == 0:
-            filename = os.path.join(self.temp_dir, '%d%s' % (batch, self.model_extension))
+        if config.mlflow.checkpoints.frequency() and epoch > 0 and epoch % config.mlflow.checkpoints.frequency() == 0:
+            filename = os.path.join(self.temp_dir, '%d%s' % (epoch, self.model_extension))
             save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
                 old = filename
@@ -174,6 +167,14 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 shutil.rmtree(filename)
             else:
                 os.remove(filename)
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.batch = batch
+        if batch > 0 and batch % config.mlflow.frequency() == 0:
+            for k in logs.keys():
+                if k in ('batch', 'size'):
+                    continue
+                mlflow.log_metric(k, logs[k], step=batch)
 
 def _mlflow_train_setup(model, dataset, training_spec, model_extension):
     mlflow.set_tracking_uri(config.mlflow.uri())
@@ -343,6 +344,8 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
     try:
 
         if (training_spec.steps is None) or (training_spec.steps > 0):
+            if training_spec.steps is not None:
+                ds = ds.repeat() # repeat for ever, use steps and epochs to stop
             done = False
             epochs = training_spec.epochs
             initial_epoch = 0
@@ -354,7 +357,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
-                                        steps_per_epoch=None,
+                                        steps_per_epoch=training_spec.steps,
                                         verbose=1) # Set to 2 when logging
                     done = True
                 except ContinueTrainingException as cte:
@@ -400,8 +403,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
         if config.mlflow.enabled():
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
-
-    if config.mlflow.enabled():
-        mlflow.end_run()
+            mlflow.end_run()
 
     return model, history

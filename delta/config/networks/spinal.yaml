@@ -1,0 +1,158 @@
+params:
+  dropout_rate: 0.6
+  num_filters: 32
+layers:
+   - Input:
+       shape: [~, ~, num_bands]
+   - ReflectionPadding2D:
+       padding: [1, 1]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [1, 1]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - SpatialDropout2D:
+        rate: dropout_rate
+   - ReflectionPadding2D:
+       padding: [2, 2]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 2
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [2, 2]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 2
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - SpatialDropout2D:
+        rate: dropout_rate
+        name: branch_start
+   - Conv2D:
+        inputs: branch_start
+        filters: num_filters
+        kernel_size: [1, 1]
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [1, 1]
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+        name: b1
+   - ReflectionPadding2D:
+        inputs: branch_start
+        padding: [6, 6]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 6
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [6, 6]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 6
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+        name: b2
+   - ReflectionPadding2D:
+        inputs: branch_start
+        padding: [12, 12]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 12
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [12, 12]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 12
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+        name: b3
+   - ReflectionPadding2D:
+        inputs: branch_start
+        padding: [18, 18]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 18
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [18, 18]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 18
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+        name: b4
+   - ReflectionPadding2D:
+        inputs: branch_start
+        padding: [24, 24]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 24
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+   - ReflectionPadding2D:
+       padding: [24, 24]
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [3, 3]
+        dilation_rate: 24
+        padding: valid
+        activation: relu
+   - BatchNormalization:
+        name: b5
+#   - RepeatedGlobalAveragePooling2D:
+#        inputs: branch_start
+#        name: b6
+#   - Concatenate:
+#         inputs: [b1, b2, b3, b4, b5, b6]
+   - Concatenate:
+         inputs: [b1, b2, b3, b4, b5]
+   - SpatialDropout2D:
+        rate: dropout_rate
+   - Conv2D:
+        filters: num_filters
+        kernel_size: [1, 1]
+        padding: valid
+        activation: relu
+   - Conv2D:
+       filters: 1
+       kernel_size: [1, 1]
+       activation: sigmoid
+       padding: valid
