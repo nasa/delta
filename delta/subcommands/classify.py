@@ -31,6 +31,7 @@ from osgeo import gdal
 
 import numpy as np
 import matplotlib
+from packaging import version
 import tensorflow as tf
 import tensorflow.keras.metrics #pylint: disable=no-name-in-module
 
@@ -307,6 +308,8 @@ def load_wkt_shapes(wkt_path, image_path, region_name):
     return []
 
 def main(options): #pylint: disable=R0912
+    if version.parse(tf.__version__) < version.parse('2.2'): # eager execution not default
+        tf.config.experimental_run_functions_eagerly(True)
 
     model = load_model(options.model)
 
