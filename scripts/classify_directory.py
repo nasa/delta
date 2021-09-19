@@ -40,8 +40,6 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
         return True
 
     # Collect needed information from the sample image
-
-    # Call gdalwarp
     cmd = ['gdalinfo', '-proj4', sample_image_path]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in result.stdout.decode('ascii').split(os.linesep):
@@ -69,6 +67,7 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
            print('Caught exception: ' + str(e))
            return False
 
+    # Call gdalwarp to generate the output image
     cmd = ['gdalwarp', main_canopy_path, '-overwrite', '-t_srs', proj_str, '-te_srs', proj_str, '-te', minX, minY, maxX, maxY,
            '-tr', xres, yres, output_canopy_path]
     print(' '.join(cmd))
@@ -78,6 +77,70 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
 
     # Check result
     return is_valid_image(output_canopy_path)
+
+
+def add_dem_channel(source_path, dem_path, output_path):
+    '''Resize the dem to match the source path and append it as a new channel to the source image'''
+
+    if is_valid_image(output_path):
+        return True
+
+    # Collect needed information from the sample image
+
+    try:
+        cmd = ['gdalinfo', source_path]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result.check_returncode()
+        #for line in result.stdout.decode('ascii').split(os.linesep):
+        #    print(line)
+        for line in result.stdout.decode('ascii').split(os.linesep):
+            if 'Size is' in line:
+                parts = line.replace(',','').split()
+                width = parts[2]
+                height = parts[3]
+                break
+
+        temp_path1 = output_path + '_temp1.tif'
+        temp_path2 = output_path + '_temp2.tif'
+
+        cmd = ['gdal_translate', dem_path, '-outsize', width, height, temp_path1]
+        print(' '.join(cmd))
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result.check_returncode()
+        #for line in result.stdout.decode('ascii').split(os.linesep):
+        #    print(line)
+
+        cmd = ['gdal_edit.py', '-unsetnodata', temp_path1]
+        print(' '.join(cmd))
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result.check_returncode()
+        #for line in result.stdout.decode('ascii').split(os.linesep):
+        #    print(line)
+
+        cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.1*A)', '--outfile='+temp_path2]
+        print(' '.join(cmd))
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result.check_returncode()
+        #for line in result.stdout.decode('ascii').split(os.linesep):
+        #    print(line)
+
+        cmd = ['gdal_merge.py', '-a_nodata', 'nan', '-o', output_path, '-separate', source_path, temp_path2]
+        print(' '.join(cmd))
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        result.check_returncode()
+        #for line in result.stdout.decode('ascii').split(os.linesep):
+        #    print(line)
+
+        os.remove(temp_path1)
+        os.remove(temp_path2)
+
+    except Exception as e:
+        print('Caught exception: ' + str(e))
+        return False
+
+    # Check result
+    return is_valid_image(output_path)
+
 
 
 
@@ -91,6 +154,9 @@ def main(argsIn):
                             help="Directory containing input images")
         parser.add_argument("--output-dir", "-o", required=True,
                             help="Directory containing output images")
+
+        parser.add_argument("--sensor", default="worldview",
+                            help="Type of image [worldview, sentinel1]")
 
         parser.add_argument("--fist-data-dir", "-f", required=True,
                             help="Directory containing input images")
@@ -116,7 +182,11 @@ def main(argsIn):
 
     except argparse.ArgumentError:
         print(usage)
-        return -1
+        return 1
+
+    if args.sensor not in ['sentinel1', 'worldview']:
+        print('Unrecognized sensor type: ' + args.sensor)
+        return 1
 
 
     PREFIX = 'IF_'
@@ -133,6 +203,8 @@ def main(argsIn):
             # Get a list of tiff files that must be processed
             if file.endswith('.tiff') or file.endswith('.tif'):
                 relative_folder = os.path.relpath(r, args.input_dir)
+                if relative_folder == '.': # Create subdirectories for input images in the same folder
+                    relative_folder = os.path.splitext(file)[0]
                 output_folder = os.path.join(args.output_dir, relative_folder)
                 target_paths.append((input_path, output_folder))
 
@@ -144,31 +216,16 @@ def main(argsIn):
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
+    LIMIT = 1#99999999
+    counter = 0
     for (input_path, output_folder) in target_paths:
 
         print('Starting processing for file: ' + input_path)
         print(output_folder)
-        allSucceeded = True
+        all_succeeded = True
 
-        # DELTA
-        fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
-        delta_output_folder = os.path.join(output_folder, 'delta')
-        delta_output_path = os.path.join(delta_output_folder, fname)
-        if os.path.exists(delta_output_path):
-            print('DELTA output already exists.')
-        else:
-            cmd = ['delta', 'classify', '--image', input_path,
-                   '--outdir', delta_output_folder, '--outprefix', PREFIX,
-                   '--prob', '--overlap', '32', args.delta_model]
-            if args.delta_config:
-                cmd += ['--config', args.delta_config]
-            print(' '.join(cmd))
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            #for line in result.stdout.decode('ascii').split(os.linesep):
-        if not is_valid_image(delta_output_path):
-            print('delta processing FAILED to generate file ' + delta_output_path)
-            allSucceeded = False
-
+        if not os.path.exists(output_folder):
+            os.mkdir(output_folder)
 
         # presoak
         presoak_output_folder = os.path.join(output_folder, 'presoak')
@@ -189,32 +246,68 @@ def main(argsIn):
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if not is_valid_image(presoak_output_path):
             print('presoak processing FAILED to generate file ' + presoak_output_path)
-            allSucceeded = False
+            all_succeeded = False
+
+        presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
+        presoak_output_pit_path = os.path.join(presoak_output_folder, 'input_pit.tif')
+
+        delta_input_image = input_path
+        if args.sensor == 'sentinel1':
+            if not all_succeeded:
+                 print('presoak failed, cannot continue to process this image')
+                 continue
+            # Add elevation as a channel to the input image
+            delta_input_image = os.path.join(output_folder, 'dem_merged_input_image.tif')
+            if not add_dem_channel(input_path, presoak_output_dem_path, delta_input_image):
+                print('Failed to add channel, cannot continue to process this image')
+                continue
+            #raise Exception('debug')
+
+        # DELTA
+        #TODO: Is prefix still needed?
+        fname_in = PREFIX + os.path.basename(delta_input_image).replace('.tif','.tiff')
+        fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
+        delta_output_folder = os.path.join(output_folder, 'delta')
+        delta_output_path_in = os.path.join(delta_output_folder, fname_in)
+        delta_output_path = os.path.join(delta_output_folder, fname)
+        if os.path.exists(delta_output_path):
+            print('DELTA output already exists.')
+        else:
+            cmd = ['delta', 'classify', '--image', delta_input_image,
+                   '--outdir', delta_output_folder, '--outprefix', PREFIX,
+                   '--prob', args.delta_model]
+            if args.delta_config:
+                cmd += ['--config', args.delta_config]
+            print(' '.join(cmd))
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            #for line in result.stdout.decode('ascii').split(os.linesep):
+            shutil.move(delta_output_path_in, delta_output_path)
+        if not is_valid_image(delta_output_path):
+            print('delta processing FAILED to generate file ' + delta_output_path)
+            all_succeeded = False
 
 
-        #HMTFIST
+        # HMTFIST
         hmtfist_work_folder = os.path.join(output_folder, 'hmtfist_work')
         hmtfist_output_folder = os.path.join(output_folder, 'hmtfist')
 
         hmtfist_output_path = os.path.join(hmtfist_output_folder, 'output_prediction.tif')
-        if is_valid_image(delta_output_path) and is_valid_image(presoak_output_path):
+        if all_succeeded:
 
             # Create the required roughness input
-            presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
-            presoak_output_pit_path = os.path.join(presoak_output_folder, 'input_pit.tif')
             roughness_path = os.path.join(presoak_output_folder, 'dem_roughness.tif')
             if not os.path.exists(roughness_path):
                 cmd = ['gdaldem', 'roughness', presoak_output_dem_path, roughness_path]
                 print(' '.join(cmd))
                 subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             if not is_valid_image(roughness_path):
-                allSucceeded = False
+                all_succeeded = False
 
             this_canopy_path = os.path.join(presoak_output_folder, 'canopy_portion.tif')
             if (not prepare_canopy_image(args.canopy_path, presoak_output_pit_path, this_canopy_path)):
-                allSucceeded = False
+                all_succeeded = False
 
-            if allSucceeded:
+            if all_succeeded:
                 this_folder = os.path.dirname(__file__)
                 cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
                        '--work-dir', hmtfist_work_folder, #'--delete-workdir',
@@ -231,14 +324,16 @@ def main(argsIn):
         # TODO: What output path is this tool writing?
         if not is_valid_image(hmtfist_output_path):
             print('hmtfist processing FAILED to generate file ' + hmtfist_output_path)
-            allSucceeded = False
+            all_succeeded = False
 
-        if allSucceeded:
+        if all_succeeded:
             print('Completed processing file: ' + input_path)
         else:
             print('Unable to complete processing for file: ' + input_path)
 
-        raise Exception('debug')
+        counter += 1
+        if counter == LIMIT:
+            raise Exception('debug')
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
