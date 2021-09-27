@@ -29,6 +29,23 @@ import argparse
 
 #------------------------------------------------------------------------------
 
+def get_presoak_part_count(presoak_dir):
+    '''Return the number of parts in a presoak output directory'''
+
+    max_index = 0
+    files = os.listdir(presoak_dir)
+    for f in files:
+        parts = f.split('_')
+        if len(parts) != 2:
+            continue
+        try:
+            index = int(parts[0])
+            max_index = max(index, max_index)
+        except:
+            continue
+    return max_index
+
+
 def check_required_data(args):
     '''Verify that all the specified input files exist on disk'''
 
@@ -37,7 +54,7 @@ def check_required_data(args):
                      args.parameter_path, args.roughness_path, args.pits_path, args.canopy_path]
 
     presoak_file_list = ['input_fel.tif', 'merged_bank.tif', 'merged_stream.tif',
-                         'merged_srcdir.tif']
+                         'merged_srcdir.tif', 'input_pits.tif']
     for ps in presoak_file_list:
         full_path = os.path.join(args.presoak_dir, ps)
         required_list.append(full_path)
@@ -49,58 +66,59 @@ def check_required_data(args):
 
     return have_all_data
 
-def assemble_workdir(args):
+
+def setup_parameter_file(source_path, index, output_path):
+    '''Make a copy of the source parameter file with the index updated'''
+    first_line = True
+    with open(source_path) as f_in:
+        with open(output_path) as f_out:
+            for line in f_in:
+                if first_line:
+                    f_out.write(str(index) + 'n')
+                    first_line = False
+                else:
+                    f_out.write(line)
+
+def assemble_workdir(args, index):
     '''Set up the working directory to run the tool and return the path to
        the config file'''
 
-#TODO: Run once per numbered version
-#numeric prefix on the parameter file
-#first line in the parameter file is the number
-#pad delta input with nodata to make it the same areas as presoak output
-#get Arpan's code update
+    i_p = str(index) + '_'
 
-    # Create a temporary working folder
     wd = args.work_dir
-    os.system('rm -rf ' + wd)
-    os.mkdir(wd)
 
     # Most of the input files are expected to be in the same input folder,
     # so create symlinks for wherever they are to the temporary working folder
-    new_srcdir_path = os.path.join(wd, 'srcdir.tif')
-    new_delta_path = os.path.join(wd, 'delta.tif')
-    new_bank_path = os.path.join(wd, 'bank.tif')
-    new_cost_path = os.path.join(wd, 'cost.tif')
-    new_pits_path = os.path.join(wd, 'pits.tif')
-    new_canopy_path = os.path.join(wd, 'canopy.tif')
-    new_roughness_path = os.path.join(wd, 'roughness.tif')
-    new_fel_path = os.path.join(wd, 'fel.tif')
-    new_stream_path = os.path.join(wd, 'stream.csv')
-    new_parameter_path = os.path.join(wd, 'parameters.csv')
+    new_srcdir_path    = os.path.join(wd, i_p+'srcdir.tif'    )
+    new_delta_path     = os.path.join(wd, i_p+'delta.tif'     )
+    new_bank_path      = os.path.join(wd, i_p+'bank.tif'      )
+    new_cost_path      = os.path.join(wd, i_p+'cost.tif'      )
+    new_pits_path      = os.path.join(wd, i_p+'pits.tif'      )
+    new_canopy_path    = os.path.join(wd, i_p+'canopy.tif'    )
+    new_roughness_path = os.path.join(wd, i_p+'roughness.tif' )
+    new_fel_path       = os.path.join(wd, i_p+'fel.tif'       )
+    new_stream_path    = os.path.join(wd, i_p+'stream.csv'    )
+    new_parameter_path = os.path.join(wd, i_p+'parameters.csv')
 
-    # This file is not always present
-    old_stream_path = os.path.join(args.presoak_dir, 'merged_stream.csv')
-    if not os.path.exists(old_stream_path):
-        old_stream_path = os.path.join(args.presoak_dir, '1_stream.csv')
-
-    os.symlink(os.path.join(args.presoak_dir, 'merged_srcdir.tif'), new_srcdir_path)
+    os.symlink(os.path.join(args.presoak_dir, i_p+'srcdir.tif'    ), new_srcdir_path)
+    os.symlink(os.path.join(args.presoak_dir, i_p+'bank.tif'      ), new_bank_path  )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'cost.tif'      ), new_cost_path  )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'stream.csv'    ), new_stream_path)
+    os.symlink(os.path.join(args.presoak_dir, i_p+'input_pits.tif'), new_pits_path  )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'input_fel.tif' ), new_fel_path   )
     os.symlink(args.delta_prediction_path, new_delta_path)
-    os.symlink(os.path.join(args.presoak_dir, 'merged_bank.tif'), new_bank_path)
-    os.symlink(os.path.join(args.presoak_dir, 'merged_cost.tif'), new_cost_path)
-    os.symlink(args.pits_path, new_pits_path)
-    os.symlink(args.canopy_path, new_canopy_path)
-    os.symlink(args.roughness_path, new_roughness_path)
-    os.symlink(os.path.join(args.presoak_dir, 'input_fel.tif'), new_fel_path)
-    os.symlink(old_stream_path, new_stream_path)
-    os.symlink(args.parameter_path, new_parameter_path)
+    os.symlink(args.canopy_path,           new_canopy_path)
+    os.symlink(args.roughness_path,        new_roughness_path)
+
+    setup_parameter_file(args.parameter_path, index, new_parameter_path)
 
     # Add a config file with all the names and paths
-    config_path = os.path.join(wd, 'config.csv')
+    config_path = os.path.join(wd, i_p + 'config.csv')
     with open(config_path, 'w') as f:
         f.write(wd + '/\n')
-        #f.write(new_srcdir_path +'/\n') # TODO source direction layer
-        #f.write(args.delta_prediction_path + '\n')
-        for n in [new_srcdir_path, new_delta_path, new_bank_path, new_cost_path, new_pits_path, new_canopy_path,
-                  new_roughness_path, new_fel_path, new_parameter_path, new_stream_path]:
+        for n in [new_srcdir_path, new_delta_path, new_bank_path, new_cost_path,
+                  new_pits_path, new_canopy_path, new_roughness_path, new_fel_path,
+                  new_parameter_path, new_stream_path]:
             f.write(os.path.basename(n) + '\n')
         f.write(args.output_dir + '/\n')
         f.write('output_prediction.tif\n')
@@ -133,9 +151,6 @@ def main(argsIn):
         parser.add_argument("--roughness-path", required=True,
                             help="Path to the roughness file")
 
-        parser.add_argument("--pits-path", required=True,
-                            help="Path to the pits file")
-
         parser.add_argument("--canopy-path", required=True,
                             help="Path to the tree canopy")
 
@@ -150,22 +165,30 @@ def main(argsIn):
 
     except argparse.ArgumentError:
         print(usage)
-        return -1
+        return 0
 
     # Make sure the required files are present
     if not check_required_data(args):
         return 1
+
+    presoak_count = check_presoak_count(args.presoak_dir)
+    if not presoak_count:
+        print('Failed to parse presoak directory: ' + args.presoak_dir)
+        return 0
 
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
     #TODO: Identify if output files are already present and skip running the tool
 
-    # Run the tool
-    config_path = assemble_workdir(args)
-    cmd = args.exe_path + ' ' + config_path
-    print(cmd)
-    os.system(cmd)
+    os.system('rm -rf ' + args.work_dir)
+    os.mkdir(args.work_dir)
+
+    for i in range(1, presoak_count):
+        config_path = assemble_workdir(args, i)
+        cmd = args.exe_path + ' ' + config_path
+        print(cmd)
+        os.system(cmd)
 
     # Clean up
     if args.delete_workdir:

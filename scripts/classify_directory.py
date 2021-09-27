@@ -95,9 +95,22 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
     #for line in result.stdout.decode('ascii').split(os.linesep):
     #    print(line)
 
-    # Check result
     return is_valid_image(output_canopy_path)
 
+def resize_delta_output(delta_path, source_path, output_path):
+    '''Generate a copy of the delta output image matched in size of the source image, padding with nodata as required'''
+
+    image_info = get_image_info(source_path)
+    if not image_info:
+        return False
+
+    cmd = ['gdal_translate', delta_path, output_path,
+           '-projwin',  image_info['minX'],  image_info['maxY'],  image_info['maxX'],  image_info['minY'],
+           '-tr', image_info['xres'],  image_info['yres']]
+    print(' '.join(cmd))
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    return is_valid_image(output_canopy_path)
 
 def add_dem_channel(source_path, dem_path, output_path):
     '''Resize the dem to match the source path and append it as a new channel to the source image'''
@@ -263,7 +276,6 @@ def main(argsIn):
             all_succeeded = False
 
         presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
-        presoak_output_pit_path = os.path.join(presoak_output_folder, 'input_pit.tif')
 
         delta_input_image = input_path
         if args.sensor == 'sentinel1':
@@ -321,13 +333,15 @@ def main(argsIn):
             if (not prepare_canopy_image(args.canopy_path, presoak_output_pit_path, this_canopy_path)):
                 all_succeeded = False
 
+            delta_resize_path = os.path.join(delta_output_folder, 'presok_size_match.tif')
+            resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path)
+
             if all_succeeded:
                 this_folder = os.path.dirname(__file__)
                 cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
                        '--work-dir', hmtfist_work_folder, #'--delete-workdir',
                        '--presoak-dir', presoak_output_folder,
-                       '--delta-prediction-path', delta_output_path,
-                       '--pits-path', presoak_output_pit_path,
+                       '--delta-prediction-path', resize_delta_output,
                        '--roughness-path', roughness_path,
                        '--canopy-path', this_canopy_path,
                        '--parameter-path', args.hmt_params,
