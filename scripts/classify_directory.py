@@ -32,6 +32,48 @@ def is_valid_image(image_path):
     print('Did not find size line!')
     return False
 
+
+def get_image_info(image_path):
+    REQUIRED_INFO = ['xres', 'yres', 'proj_str', 'minX', 'minY', 'maxX', 'maxY', 'height', 'width']
+
+    result = {}
+    cmd = ['gdalinfo', '-proj4', image_path]
+    process_output = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    for line in process_output.stdout.decode('ascii').split(os.linesep):
+        try:
+            if 'Pixel Size' in line:
+                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
+                result['xres'] = parts[3]
+                result['yres'] = parts[4]
+                continue
+            if '+proj' in line:
+                result['proj_str'] = line.replace("'", "")
+                continue
+            if 'Lower Left' in line:
+                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
+                result['minX'] = parts[2]
+                result['minY'] = parts[3]
+                continue
+            if 'Upper Right' in line:
+                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
+                result['maxX'] = parts[2]
+                result['maxY'] = parts[3]
+                continue
+            if 'Size is' in line:
+                parts = line.replace(',','').split()
+                result['width'] = parts[2]
+                result['height'] = parts[3]
+
+        except Exception as e:
+            print('Caught exception: ' + str(e))
+            return None
+    for i in REQUIRED_INFO:
+        if i not in result:
+            print('Did not find required item ' + i + ' in gdalinfo output!')
+            return None
+    return result
+
+
 # TODO: Put in the lower level script?
 def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path):
     '''Generate the cropped, reprojected copy of the canopy image that HMTFIST needs'''
@@ -40,36 +82,14 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
         return True
 
     # Collect needed information from the sample image
-    cmd = ['gdalinfo', '-proj4', sample_image_path]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    for line in result.stdout.decode('ascii').split(os.linesep):
-        try:
-            if 'Pixel Size' in line:
-                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
-                xres = parts[3]
-                yres = parts[4]
-                continue
-            if '+proj' in line:
-                proj_str = line.replace("'", "")
-                continue
-            if 'Lower Left' in line:
-                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
-                minX = parts[2]
-                minY = parts[3]
-                continue
-            if 'Upper Right' in line:
-                parts = line.replace(',', ' ').replace('(', ' ').replace(')', ' ').split()
-                maxX = parts[2]
-                maxY = parts[3]
-                continue
-
-        except Exception as e:
-           print('Caught exception: ' + str(e))
-           return False
-
+    image_info = get_image_info(sample_image_path)
+    if not image_info:
+        return False
+ 
     # Call gdalwarp to generate the output image
-    cmd = ['gdalwarp', main_canopy_path, '-overwrite', '-t_srs', proj_str, '-te_srs', proj_str, '-te', minX, minY, maxX, maxY,
-           '-tr', xres, yres, output_canopy_path]
+    cmd = ['gdalwarp', main_canopy_path, '-overwrite', '-t_srs',  image_info['proj_str'], '-te_srs',  image_info['proj_str'],
+           '-te',  image_info['minX'],  image_info['minY'],  image_info['maxX'],  image_info['maxY'],
+           '-tr', image_info['xres'],  image_info['yres'], output_canopy_path]
     print(' '.join(cmd))
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     #for line in result.stdout.decode('ascii').split(os.linesep):
@@ -86,29 +106,23 @@ def add_dem_channel(source_path, dem_path, output_path):
         return True
 
     # Collect needed information from the sample image
+    image_info = get_image_info(source_path)
+    if not image_info:
+        return False
 
     try:
-        cmd = ['gdalinfo', source_path]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        result.check_returncode()
-        #for line in result.stdout.decode('ascii').split(os.linesep):
-        #    print(line)
-        for line in result.stdout.decode('ascii').split(os.linesep):
-            if 'Size is' in line:
-                parts = line.replace(',','').split()
-                width = parts[2]
-                height = parts[3]
-                break
-
         temp_path1 = output_path + '_temp1.tif'
         temp_path2 = output_path + '_temp2.tif'
 
-        cmd = ['gdal_translate', dem_path, '-outsize', width, height, temp_path1]
+        cmd = ['gdal_translate', dem_path, '-outsize', image_info['width'], image_info['height'], 
+               '-projwin', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
+               temp_path1]
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        #result.check_returncode()
+        for line in result.stdout.decode('ascii').split(os.linesep):
+            print(line)
         result.check_returncode()
-        #for line in result.stdout.decode('ascii').split(os.linesep):
-        #    print(line)
 
         cmd = ['gdal_edit.py', '-unsetnodata', temp_path1]
         print(' '.join(cmd))

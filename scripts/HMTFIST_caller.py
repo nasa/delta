@@ -53,6 +53,12 @@ def assemble_workdir(args):
     '''Set up the working directory to run the tool and return the path to
        the config file'''
 
+#TODO: Run once per numbered version
+#numeric prefix on the parameter file
+#first line in the parameter file is the number
+#pad delta input with nodata to make it the same areas as presoak output
+#get Arpan's code update
+
     # Create a temporary working folder
     wd = args.work_dir
     os.system('rm -rf ' + wd)
