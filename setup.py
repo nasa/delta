@@ -30,7 +30,7 @@ for n in os.listdir('bin'):
 
 setuptools.setup(
     name="delta",
-    version="0.3.0",
+    version="0.4.0",
     author="NASA Ames",
     author_email="todo@todo",
     description="Deep learning for satellite imagery",
