@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 # This script classifies all tiff images in a directory, preserving the
 # directory structure. It also copies any .txt files in the input directory
 # to the output. Images that have already been classified are skipped.
@@ -10,8 +11,13 @@ import shutil
 import argparse
 
 
+# This needs to be set to True in order for HMTFist to be run
+ENABLE_HMTFIST = False
+
+
 def is_valid_image(image_path):
     '''Return True if the given path is a valid image on disk'''
+
     if (not os.path.exists(image_path)) or (os.path.getsize(image_path) == 0):
         return False
     cmd = ['gdalinfo', image_path]
@@ -34,6 +40,7 @@ def is_valid_image(image_path):
 
 
 def get_image_info(image_path):
+    '''Helper function to use gdalinfo to get iformation about a geotiff image on disk'''
     REQUIRED_INFO = ['xres', 'yres', 'proj_str', 'minX', 'minY', 'maxX', 'maxY', 'height', 'width']
 
     result = {}
@@ -74,7 +81,6 @@ def get_image_info(image_path):
     return result
 
 
-# TODO: Put in the lower level script?
 def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path):
     '''Generate the cropped, reprojected copy of the canopy image that HMTFIST needs'''
 
@@ -92,13 +98,12 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
            '-tr', image_info['xres'],  image_info['yres'], output_canopy_path]
     print(' '.join(cmd))
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    #for line in result.stdout.decode('ascii').split(os.linesep):
-    #    print(line)
 
     return is_valid_image(output_canopy_path)
 
 def resize_delta_output(delta_path, source_path, output_path):
-    '''Generate a copy of the delta output image matched in size of the source image, padding with nodata as required'''
+    '''Generate a copy of the delta output image matched in size of the source image, padding with nodata
+       as required.  This is needed for HMTFIst'''
 
     image_info = get_image_info(source_path)
     if not image_info:
@@ -110,10 +115,11 @@ def resize_delta_output(delta_path, source_path, output_path):
     print(' '.join(cmd))
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-    return is_valid_image(output_canopy_path)
+    return is_valid_image(output_path)
 
 def add_dem_channel(source_path, dem_path, output_path):
-    '''Resize the dem to match the source path and append it as a new channel to the source image'''
+    '''Resize the DEM to match the source path and append it as a new channel to the source image.
+       This is required for DELTA networks which utilize the DEM as an additional channel.'''
 
     if is_valid_image(output_path):
         return True
@@ -132,7 +138,6 @@ def add_dem_channel(source_path, dem_path, output_path):
                temp_path1]
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        #result.check_returncode()
         for line in result.stdout.decode('ascii').split(os.linesep):
             print(line)
         result.check_returncode()
@@ -141,22 +146,16 @@ def add_dem_channel(source_path, dem_path, output_path):
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         result.check_returncode()
-        #for line in result.stdout.decode('ascii').split(os.linesep):
-        #    print(line)
 
         cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.1*A)', '--outfile='+temp_path2]
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         result.check_returncode()
-        #for line in result.stdout.decode('ascii').split(os.linesep):
-        #    print(line)
 
         cmd = ['gdal_merge.py', '-a_nodata', 'nan', '-o', output_path, '-separate', source_path, temp_path2]
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         result.check_returncode()
-        #for line in result.stdout.decode('ascii').split(os.linesep):
-        #    print(line)
 
         os.remove(temp_path1)
         os.remove(temp_path2)
@@ -173,6 +172,7 @@ def add_dem_channel(source_path, dem_path, output_path):
 
 def main(argsIn):
 
+    # Parse input arguments
     try:
         usage  = "usage: classify_directory [options] <presoak arguments>"
         parser = argparse.ArgumentParser(usage=usage)
@@ -181,6 +181,9 @@ def main(argsIn):
                             help="Directory containing input images")
         parser.add_argument("--output-dir", "-o", required=True,
                             help="Directory containing output images")
+
+        parser.add_argument("--limit", "-l", type=int, default=None,
+                            help="Stop after processing this many input images")
 
         parser.add_argument("--sensor", default="worldview",
                             help="Type of image [worldview, sentinel1]")
@@ -215,8 +218,9 @@ def main(argsIn):
         print('Unrecognized sensor type: ' + args.sensor)
         return 1
 
+    print('Starting classification script')
 
-    PREFIX = 'IF_'
+    PREFIX = 'IF_' # TODO: Is this needed?
     target_paths = []
     for r, d, f in os.walk(args.input_dir):
         for file in f:
@@ -243,8 +247,7 @@ def main(argsIn):
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
-    LIMIT = 1#99999999
-    counter = 0
+    num_processed = 0
     for (input_path, output_folder) in target_paths:
 
         print('Starting processing for file: ' + input_path)
@@ -287,7 +290,6 @@ def main(argsIn):
             if not add_dem_channel(input_path, presoak_output_dem_path, delta_input_image):
                 print('Failed to add channel, cannot continue to process this image')
                 continue
-            #raise Exception('debug')
 
         # DELTA
         #TODO: Is prefix still needed?
@@ -306,7 +308,6 @@ def main(argsIn):
                 cmd += ['--config', args.delta_config]
             print(' '.join(cmd))
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            #for line in result.stdout.decode('ascii').split(os.linesep):
             shutil.move(delta_output_path_in, delta_output_path)
         if not is_valid_image(delta_output_path):
             print('delta processing FAILED to generate file ' + delta_output_path)
@@ -318,7 +319,7 @@ def main(argsIn):
         hmtfist_output_folder = os.path.join(output_folder, 'hmtfist')
 
         hmtfist_output_path = os.path.join(hmtfist_output_folder, 'output_prediction.tif')
-        if all_succeeded:
+        if all_succeeded and ENABLE_HMTFIST:
 
             # Create the required roughness input
             roughness_path = os.path.join(presoak_output_folder, 'dem_roughness.tif')
@@ -330,18 +331,19 @@ def main(argsIn):
                 all_succeeded = False
 
             this_canopy_path = os.path.join(presoak_output_folder, 'canopy_portion.tif')
-            if (not prepare_canopy_image(args.canopy_path, presoak_output_pit_path, this_canopy_path)):
+            if not prepare_canopy_image(args.canopy_path, presoak_output_dem_path, this_canopy_path):
                 all_succeeded = False
 
-            delta_resize_path = os.path.join(delta_output_folder, 'presok_size_match.tif')
-            resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path)
+            delta_resize_path = os.path.join(delta_output_folder, 'presoak_size_match.tif')
+            if not resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path):
+                all_succeeded = False
 
             if all_succeeded:
                 this_folder = os.path.dirname(__file__)
                 cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
                        '--work-dir', hmtfist_work_folder, #'--delete-workdir',
                        '--presoak-dir', presoak_output_folder,
-                       '--delta-prediction-path', resize_delta_output,
+                       '--delta-prediction-path', delta_resize_path,
                        '--roughness-path', roughness_path,
                        '--canopy-path', this_canopy_path,
                        '--parameter-path', args.hmt_params,
@@ -349,19 +351,22 @@ def main(argsIn):
                 print(' '.join(cmd))
                 subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-        # TODO: What output path is this tool writing?
-        if not is_valid_image(hmtfist_output_path):
-            print('hmtfist processing FAILED to generate file ' + hmtfist_output_path)
-            all_succeeded = False
+            # TODO: This output check needs to be worked out.  There may be multiple output files.
+            if not is_valid_image(hmtfist_output_path):
+                print('hmtfist processing FAILED to generate file ' + hmtfist_output_path)
+                all_succeeded = False
 
         if all_succeeded:
             print('Completed processing file: ' + input_path)
         else:
             print('Unable to complete processing for file: ' + input_path)
 
-        counter += 1
-        if counter == LIMIT:
-            raise Exception('debug')
+        num_processed += 1
+        if args.limit and (num_processed >= args.limit):
+            print('Hit limit of input images to process, stopping program.')
+            break
+
+    print('Classification script finished.')
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

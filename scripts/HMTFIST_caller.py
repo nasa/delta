@@ -51,10 +51,10 @@ def check_required_data(args):
 
     have_all_data = True
     required_list = [args.presoak_dir, args.delta_prediction_path,
-                     args.parameter_path, args.roughness_path, args.pits_path, args.canopy_path]
+                     args.parameter_path, args.roughness_path, args.canopy_path]
 
     presoak_file_list = ['input_fel.tif', 'merged_bank.tif', 'merged_stream.tif',
-                         'merged_srcdir.tif', 'input_pits.tif']
+                         'merged_srcdir.tif', 'input_pit.tif']
     for ps in presoak_file_list:
         full_path = os.path.join(args.presoak_dir, ps)
         required_list.append(full_path)
@@ -70,11 +70,11 @@ def check_required_data(args):
 def setup_parameter_file(source_path, index, output_path):
     '''Make a copy of the source parameter file with the index updated'''
     first_line = True
-    with open(source_path) as f_in:
-        with open(output_path) as f_out:
+    with open(source_path, 'r') as f_in:
+        with open(output_path, 'w') as f_out:
             for line in f_in:
                 if first_line:
-                    f_out.write(str(index) + 'n')
+                    f_out.write(str(index) + '\n')
                     first_line = False
                 else:
                     f_out.write(line)
@@ -104,8 +104,8 @@ def assemble_workdir(args, index):
     os.symlink(os.path.join(args.presoak_dir, i_p+'bank.tif'      ), new_bank_path  )
     os.symlink(os.path.join(args.presoak_dir, i_p+'cost.tif'      ), new_cost_path  )
     os.symlink(os.path.join(args.presoak_dir, i_p+'stream.csv'    ), new_stream_path)
-    os.symlink(os.path.join(args.presoak_dir, i_p+'input_pits.tif'), new_pits_path  )
-    os.symlink(os.path.join(args.presoak_dir, i_p+'input_fel.tif' ), new_fel_path   )
+    os.symlink(os.path.join(args.presoak_dir, 'input_pit.tif'     ), new_pits_path  )
+    os.symlink(os.path.join(args.presoak_dir, 'input_fel.tif'     ), new_fel_path   )
     os.symlink(args.delta_prediction_path, new_delta_path)
     os.symlink(args.canopy_path,           new_canopy_path)
     os.symlink(args.roughness_path,        new_roughness_path)
@@ -171,7 +171,7 @@ def main(argsIn):
     if not check_required_data(args):
         return 1
 
-    presoak_count = check_presoak_count(args.presoak_dir)
+    presoak_count = get_presoak_part_count(args.presoak_dir)
     if not presoak_count:
         print('Failed to parse presoak directory: ' + args.presoak_dir)
         return 0
