@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 
-# This script classifies all tiff images in a directory, preserving the
-# directory structure. It also copies any .txt files in the input directory
-# to the output. Images that have already been classified are skipped.
+# This tool classifies all of the images in an input directory, running presoak, DELTA,
+# and HMTFIST on each input image.
+# Requirements to run each tool:
+# - presoak: The presoak tool must be compiled and on the $PATH.  In addition, the FIST
+#            data directory (about 1TB) must be available.
+# - DELTA: Must be installed per the normal DELTA instructions.  Must have a trained model
+#          and a configuration file available.
+# - HMTFIST: The hmtfist tool must be compiled and on the $PATH.  Also requires the "canopy" dataset
+#            FS “Analytical” TCC from  https://data.fs.usda.gov/geodata/rastergateway/treecanopycover/
 
 import os
 import sys
@@ -11,9 +17,8 @@ import shutil
 import argparse
 
 
-# This needs to be set to True in order for HMTFist to be run
+# HMTFIST has not been fully tested yet, so this needs to be enabled for it to run.
 ENABLE_HMTFIST = False
-
 
 def is_valid_image(image_path):
     '''Return True if the given path is a valid image on disk'''
@@ -82,7 +87,8 @@ def get_image_info(image_path):
 
 
 def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path):
-    '''Generate the cropped, reprojected copy of the canopy image that HMTFIST needs'''
+    '''Generate the cropped, reprojected copy of the canopy image that matches the
+       projection/size/resolution of the sample image'''
 
     if is_valid_image(output_canopy_path):
         return True
@@ -101,11 +107,11 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
 
     return is_valid_image(output_canopy_path)
 
-def resize_delta_output(delta_path, source_path, output_path):
-    '''Generate a copy of the delta output image matched in size of the source image, padding with nodata
-       as required.  This is needed for HMTFIst'''
+def resize_delta_output(delta_path, sample_image_path, output_path):
+    '''Generate a copy of the delta output image matched in size to the sample image,
+       padding with nodata as required.'''
 
-    image_info = get_image_info(source_path)
+    image_info = get_image_info(sample_image_path)
     if not image_info:
         return False
 
@@ -168,8 +174,6 @@ def add_dem_channel(source_path, dem_path, output_path):
     return is_valid_image(output_path)
 
 
-
-
 def main(argsIn):
 
     # Parse input arguments
@@ -181,26 +185,27 @@ def main(argsIn):
                             help="Directory containing input images")
         parser.add_argument("--output-dir", "-o", required=True,
                             help="Directory containing output images")
-
-        parser.add_argument("--limit", "-l", type=int, default=None,
-                            help="Stop after processing this many input images")
-
         parser.add_argument("--sensor", default="worldview",
                             help="Type of image [worldview, sentinel1]")
+        parser.add_argument("--limit", "-l", type=int, default=None,
+                            help="Stop after processing this many input images")
 
         parser.add_argument("--fist-data-dir", "-f", required=True,
                             help="Directory containing input images")
         parser.add_argument("--canopy-path", "-c", required=True,
                             help="Path to the main canopy image file")
+        parser.add_argument("--unfilled-presoak-dem", "-u", required=True,
+                            help="Dem to be passed to presoak as --unfilled-elevation")
 
         parser.add_argument("--delta-model", "-m", required=True,
                             help="Model file for DELTA")
-
         parser.add_argument("--delta-config", "-g", default=None,
                             help="Config file for DELTA")
+        parser.add_argument("--s1-delta-elevation-augment", action="store_true", default=False,
+                            help="Set this if the DELTA model for Sentinel1 was trained with an extra elevation channel")
 
-        parser.add_argument("--unfilled-presoak-dem", "-u", required=True,
-                            help="Dem to be passed to presoak as --unfilled-elevation")
+        parser.add_argument("--force-presoak", action="store_true", default=False,
+                            help="Run presoak even if it is not needed for another tool")
 
         parser.add_argument("--hmt-params", "-p", required=True,
                             help="Path to HMTFIST parameter file")
@@ -258,30 +263,36 @@ def main(argsIn):
             os.mkdir(output_folder)
 
         # presoak
-        presoak_output_folder = os.path.join(output_folder, 'presoak')
-        if not os.path.exists(presoak_output_folder):
-            os.mkdir(presoak_output_folder)
-        presoak_output_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
-        if os.path.exists(presoak_output_path):
-            print('presoak output already exists')
+        do_delta_s1_dem_augment = (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment
+        if args.force_presoak or ENABLE_HMTFIST or do_delta_s1_dem_augment:
+            presoak_output_folder = os.path.join(output_folder, 'presoak')
+            if not os.path.exists(presoak_output_folder):
+                os.mkdir(presoak_output_folder)
+            presoak_output_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
+            if os.path.exists(presoak_output_path):
+                print('presoak output already exists')
+            else:
+                cmd = ['presoak', '--max_cost', '20',
+                    '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
+                    '--unfilled_elevation', args.unfilled_presoak_dem,
+                    '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
+                    '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
+                    '--image', input_path,  '--output_dir', presoak_output_folder]
+                cmd += unknown_args
+                print(' '.join(cmd))
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            if not is_valid_image(presoak_output_path):
+                print('presoak processing FAILED to generate file ' + presoak_output_path)
+                all_succeeded = False
+
+            presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
         else:
-            cmd = ['presoak', '--max_cost', '20',
-                   '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
-                   '--unfilled_elevation', args.unfilled_presoak_dem,
-                   '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
-                   '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
-                   '--image', input_path,  '--output_dir', presoak_output_folder]
-            cmd += unknown_args
-            print(' '.join(cmd))
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        if not is_valid_image(presoak_output_path):
-            print('presoak processing FAILED to generate file ' + presoak_output_path)
-            all_succeeded = False
+            print('presoak is not needed to run DELTA, skipping it')
 
-        presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
-
+        # DELTA
         delta_input_image = input_path
-        if args.sensor == 'sentinel1':
+        if do_delta_s1_dem_augment:
+            # Augment the input Sentinel1 image with an elevation channel before running DELTA
             if not all_succeeded:
                  print('presoak failed, cannot continue to process this image')
                  continue
@@ -291,7 +302,6 @@ def main(argsIn):
                 print('Failed to add channel, cannot continue to process this image')
                 continue
 
-        # DELTA
         #TODO: Is prefix still needed?
         fname_in = PREFIX + os.path.basename(delta_input_image).replace('.tif','.tiff')
         fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
@@ -341,13 +351,15 @@ def main(argsIn):
             if all_succeeded:
                 this_folder = os.path.dirname(__file__)
                 cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
-                       '--work-dir', hmtfist_work_folder, #'--delete-workdir',
+                       '--work-dir', hmtfist_work_folder,
                        '--presoak-dir', presoak_output_folder,
                        '--delta-prediction-path', delta_resize_path,
                        '--roughness-path', roughness_path,
                        '--canopy-path', this_canopy_path,
                        '--parameter-path', args.hmt_params,
                        '--output-dir', hmtfist_output_folder]
+                if not args.keep_workdir:
+                    cmd.append('--delete-workdir')
                 print(' '.join(cmd))
                 subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 

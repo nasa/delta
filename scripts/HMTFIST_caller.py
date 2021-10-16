@@ -83,12 +83,13 @@ def assemble_workdir(args, index):
     '''Set up the working directory to run the tool and return the path to
        the config file'''
 
-    i_p = str(index) + '_'
+    i_p = str(index) + '_' # Input prefix
 
     wd = args.work_dir
 
-    # Most of the input files are expected to be in the same input folder,
-    # so create symlinks for wherever they are to the temporary working folder
+    # Most of the HMTFIST input files are expected to be in the same input folder,
+    # so create symlinks from wherever they are actually located to a temporary working
+    # folder, then set up a config file that will use everything in the temporary folder.
     new_srcdir_path    = os.path.join(wd, i_p+'srcdir.tif'    )
     new_delta_path     = os.path.join(wd, i_p+'delta.tif'     )
     new_bank_path      = os.path.join(wd, i_p+'bank.tif'      )
@@ -100,12 +101,12 @@ def assemble_workdir(args, index):
     new_stream_path    = os.path.join(wd, i_p+'stream.csv'    )
     new_parameter_path = os.path.join(wd, i_p+'parameters.csv')
 
-    os.symlink(os.path.join(args.presoak_dir, i_p+'srcdir.tif'    ), new_srcdir_path)
-    os.symlink(os.path.join(args.presoak_dir, i_p+'bank.tif'      ), new_bank_path  )
-    os.symlink(os.path.join(args.presoak_dir, i_p+'cost.tif'      ), new_cost_path  )
-    os.symlink(os.path.join(args.presoak_dir, i_p+'stream.csv'    ), new_stream_path)
-    os.symlink(os.path.join(args.presoak_dir, 'input_pit.tif'     ), new_pits_path  )
-    os.symlink(os.path.join(args.presoak_dir, 'input_fel.tif'     ), new_fel_path   )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'srcdir.tif'), new_srcdir_path)
+    os.symlink(os.path.join(args.presoak_dir, i_p+'bank.tif'  ), new_bank_path  )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'cost.tif'  ), new_cost_path  )
+    os.symlink(os.path.join(args.presoak_dir, i_p+'stream.csv'), new_stream_path)
+    os.symlink(os.path.join(args.presoak_dir, 'input_pit.tif' ), new_pits_path  )
+    os.symlink(os.path.join(args.presoak_dir, 'input_fel.tif' ), new_fel_path   )
     os.symlink(args.delta_prediction_path, new_delta_path)
     os.symlink(args.canopy_path,           new_canopy_path)
     os.symlink(args.roughness_path,        new_roughness_path)
@@ -129,12 +130,11 @@ def assemble_workdir(args, index):
 def main(argsIn):
 
     try:
-
         usage  = "usage: HMTFIST_caller [options]"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--work-dir", required=True,
-                            help="Folder containing the input image files")
+                            help="Folder to use to store temporary files")
 
         parser.add_argument("--presoak-dir", required=True,
                             help="Folder containing the outputs from the presoak tool")
@@ -155,11 +155,10 @@ def main(argsIn):
                             help="Path to the tree canopy")
 
         parser.add_argument("--exe-path", default='hmtfist',
-                            help="Path to the executable")
+                            help="Path to the executable if not on $PATH")
 
         parser.add_argument("--delete-workdir", action="store_true", default=False,
-                            help="Delete the working directory after running")
-
+                            help="If set, delete the working directory after running")
 
         args = parser.parse_args(argsIn)
 

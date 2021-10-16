@@ -56,8 +56,6 @@ def main(argsIn):
         print(usage)
         return -1
 
-
-
     target_paths = []
     for r, d, f in os.walk(args.input_dir):
         for file in f:
@@ -76,11 +74,9 @@ def main(argsIn):
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
-
     for (input_path, output_folder) in target_paths:
 
         print('Starting processing for file: ' + input_path)
-        print(output_folder)
         os.makedirs(output_folder, exist_ok=True)
         allSucceeded = True
 
@@ -104,13 +100,11 @@ def main(argsIn):
         if not is_valid_image(presoak_output_path):
             print('presoak processing FAILED to generate file ' + presoak_output_path)
             allSucceeded = False
-        # To save space, delete all other outputs
-        all_outputs = os.listdir(presoak_output_folder)
-        for o in all_outputs:
-            if o != 'merged_cost.tif':
-                os.remove(os.path.join(presoak_output_folder, o))
-
-        #raise Exception('DEBUG!')
+        ## To save space, delete all other outputs
+        #all_outputs = os.listdir(presoak_output_folder)
+        #for o in all_outputs:
+        #    if o != 'merged_cost.tif':
+        #        os.remove(os.path.join(presoak_output_folder, o))
 
         if allSucceeded:
             print('Completed processing file: ' + input_path)
