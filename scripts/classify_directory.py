@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 
 # This tool classifies all of the images in an input directory, running presoak, DELTA,
-# and HMTFIST on each input image.
+# and HMTFIST on each input image.  The input directory structure will be mirrored in the
+# output folder.
+#
 # Requirements to run each tool:
-# - presoak: The presoak tool must be compiled and on the $PATH.  In addition, the FIST
+# - presoak: The presoak tool must be compiled and on the PATH.  In addition, the FIST
 #            data directory (about 1TB) must be available.
 # - DELTA: Must be installed per the normal DELTA instructions.  Must have a trained model
 #          and a configuration file available.
-# - HMTFIST: The hmtfist tool must be compiled and on the $PATH.  Also requires the "canopy" dataset
+# - HMTFIST: The hmtfist tool must be compiled and on the PATH.  Also requires the "canopy" dataset
 #            FS “Analytical” TCC from  https://data.fs.usda.gov/geodata/rastergateway/treecanopycover/
+# - The gdal command line tools must also be on the PATH
+#
+# HMTFIST always requires the output of DELTA and presoak on order to run.  If DELTA is run with the
+# "--s1-delta-elevation-augment" flag and a corresponding model file it also requires the presoak output.
+# If HMTFIST is not run and DELTA does not need presoak, presoak will only be run if "--force-presoak" is set.
+#
+#
 
 import os
 import sys
@@ -178,7 +187,7 @@ def main(argsIn):
 
     # Parse input arguments
     try:
-        usage  = "usage: classify_directory [options] <presoak arguments>"
+        usage  = "usage: classify_directory.py [options] <presoak arguments>"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--input-dir", "-i", required=True,
@@ -190,11 +199,11 @@ def main(argsIn):
         parser.add_argument("--limit", "-l", type=int, default=None,
                             help="Stop after processing this many input images")
 
-        parser.add_argument("--fist-data-dir", "-f", required=True,
+        parser.add_argument("--fist-data-dir", "-f", default=None,
                             help="Directory containing input images")
-        parser.add_argument("--canopy-path", "-c", required=True,
+        parser.add_argument("--canopy-path", "-c", default=None,
                             help="Path to the main canopy image file")
-        parser.add_argument("--unfilled-presoak-dem", "-u", required=True,
+        parser.add_argument("--unfilled-presoak-dem", "-u", default=None,
                             help="Dem to be passed to presoak as --unfilled-elevation")
 
         parser.add_argument("--delta-model", "-m", required=True,
@@ -207,12 +216,13 @@ def main(argsIn):
         parser.add_argument("--force-presoak", action="store_true", default=False,
                             help="Run presoak even if it is not needed for another tool")
 
-        parser.add_argument("--hmt-params", "-p", required=True,
+        parser.add_argument("--hmt-params", "-p", default=None,
                             help="Path to HMTFIST parameter file")
 
         parser.add_argument("--keep-workdir", action="store_true", default=False,
                             help="Don't delete the working directory after running")
 
+        # Any unrecognized arguments are passed to the presoak tool
         args, unknown_args = parser.parse_known_args(argsIn)
 
     except argparse.ArgumentError:
@@ -225,6 +235,18 @@ def main(argsIn):
 
     print('Starting classification script')
 
+    if ENABLE_HMTFIST:
+        if not args.hmt_params:
+            print('Missing required input argument --hmt-params to run HMTFIST!')
+            return 1
+        if not args.canopy_path:
+            print('Missing required input argument --canopy-path to run HMTFIST!')
+            return 1
+    else:
+        print('HMTFIST is disabled, set ENABLE_HMTFIST in this file to enable it.')
+
+    # Look through the input folder to find the files we should process and decide which
+    # output folder the results should go in
     PREFIX = 'IF_' # TODO: Is this needed?
     target_paths = []
     for r, d, f in os.walk(args.input_dir):
@@ -252,6 +274,7 @@ def main(argsIn):
     if not os.path.exists(args.output_dir):
         os.mkdir(args.output_dir)
 
+    # Loop through all input files...
     num_processed = 0
     for (input_path, output_folder) in target_paths:
 
@@ -263,8 +286,16 @@ def main(argsIn):
             os.mkdir(output_folder)
 
         # presoak
+        # - Only run presoak if another tool requires it or if --force-presoak was set
         do_delta_s1_dem_augment = (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment
         if args.force_presoak or ENABLE_HMTFIST or do_delta_s1_dem_augment:
+            if not args.fist_data_dir:
+                print('Missing required input argument --fist-data-dir to run presoak!')
+                return 1
+            if not args.unfilled_presoak_dem:
+                print('Missing required input argument --unfilled-presoak-dem to run presoak!')
+                return 1
+
             presoak_output_folder = os.path.join(output_folder, 'presoak')
             if not os.path.exists(presoak_output_folder):
                 os.mkdir(presoak_output_folder)
@@ -273,11 +304,11 @@ def main(argsIn):
                 print('presoak output already exists')
             else:
                 cmd = ['presoak', '--max_cost', '20',
-                    '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
-                    '--unfilled_elevation', args.unfilled_presoak_dem,
-                    '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
-                    '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
-                    '--image', input_path,  '--output_dir', presoak_output_folder]
+                       '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
+                       '--unfilled_elevation', args.unfilled_presoak_dem,
+                       '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
+                       '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
+                       '--image', input_path,  '--output_dir', presoak_output_folder]
                 cmd += unknown_args
                 print(' '.join(cmd))
                 result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -331,7 +362,7 @@ def main(argsIn):
         hmtfist_output_path = os.path.join(hmtfist_output_folder, 'output_prediction.tif')
         if all_succeeded and ENABLE_HMTFIST:
 
-            # Create the required roughness input
+            # We need to create a roughness version of the presoak DEM output file
             roughness_path = os.path.join(presoak_output_folder, 'dem_roughness.tif')
             if not os.path.exists(roughness_path):
                 cmd = ['gdaldem', 'roughness', presoak_output_dem_path, roughness_path]
@@ -340,16 +371,19 @@ def main(argsIn):
             if not is_valid_image(roughness_path):
                 all_succeeded = False
 
+            # We need to extract a matching portion of the canopy input image
             this_canopy_path = os.path.join(presoak_output_folder, 'canopy_portion.tif')
             if not prepare_canopy_image(args.canopy_path, presoak_output_dem_path, this_canopy_path):
                 all_succeeded = False
 
+            # We need to resize the DELTA output to match the presoak output size
             delta_resize_path = os.path.join(delta_output_folder, 'presoak_size_match.tif')
             if not resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path):
                 all_succeeded = False
 
             if all_succeeded:
                 this_folder = os.path.dirname(__file__)
+                # Another python sub-script handles the details of running this program
                 cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
                        '--work-dir', hmtfist_work_folder,
                        '--presoak-dir', presoak_output_folder,

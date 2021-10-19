@@ -20,7 +20,8 @@
 #pylint: disable=R0914
 
 """
-Provides a command line interface to the config file driven HMTFIST C++ tool
+Provides a convenient command line interface to the somewhat strict,
+config file driven HMTFIST C++ tool.
 """
 import os
 import sys
@@ -30,7 +31,7 @@ import argparse
 #------------------------------------------------------------------------------
 
 def get_presoak_part_count(presoak_dir):
-    '''Return the number of parts in a presoak output directory'''
+    '''Return the number of parts (image regions) in a presoak output directory'''
 
     max_index = 0
     files = os.listdir(presoak_dir)
@@ -68,7 +69,9 @@ def check_required_data(args):
 
 
 def setup_parameter_file(source_path, index, output_path):
-    '''Make a copy of the source parameter file with the index updated'''
+    '''Make a copy of the source parameter file with the index updated.
+       Each time we run HTMFIST it needs a parameter file with a different index
+       number at the top of the file.'''
     first_line = True
     with open(source_path, 'r') as f_in:
         with open(output_path, 'w') as f_out:
@@ -81,11 +84,11 @@ def setup_parameter_file(source_path, index, output_path):
 
 def assemble_workdir(args, index):
     '''Set up the working directory to run the tool and return the path to
-       the config file'''
+       the new config file.  Each "index" will get its own set of files in the
+       working directory.'''
 
+    wd  = args.work_dir
     i_p = str(index) + '_' # Input prefix
-
-    wd = args.work_dir
 
     # Most of the HMTFIST input files are expected to be in the same input folder,
     # so create symlinks from wherever they are actually located to a temporary working
@@ -170,6 +173,7 @@ def main(argsIn):
     if not check_required_data(args):
         return 1
 
+    # Figure out how many different image regions the presoak tool produced
     presoak_count = get_presoak_part_count(args.presoak_dir)
     if not presoak_count:
         print('Failed to parse presoak directory: ' + args.presoak_dir)
@@ -183,6 +187,7 @@ def main(argsIn):
     os.system('rm -rf ' + args.work_dir)
     os.mkdir(args.work_dir)
 
+    # For each presoak part, perform configuration and then run HMTFIST
     for i in range(1, presoak_count):
         config_path = assemble_workdir(args, i)
         cmd = args.exe_path + ' ' + config_path
@@ -193,6 +198,7 @@ def main(argsIn):
     if args.delete_workdir:
         os.system('rm -rf ' + args.work_dir)
 
+    # TODO: Correctly check all the output files
     output_prediction_path = os.path.join(args.output_dir, 'output_prediction.tif')
     return os.path.exists(output_prediction_path)
 
