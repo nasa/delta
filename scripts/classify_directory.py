@@ -441,6 +441,8 @@ def main(argsIn):
                 all_succeeded = False
         else:
             print('presoak is not needed to run DELTA, skipping it')
+            presoak_output_folder = None
+            presoak_output_dem_path = None
 
         # DELTA
         delta_succeeded, delta_output_folder, delta_output_path = call_delta(args, input_path,
