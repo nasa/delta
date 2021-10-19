@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+
+# Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This script classifies all tiff images in a directory, preserving the
 # directory structure. It also copies any .txt files in the input directory
 # to the output. Images that have already been classified are skipped.
@@ -6,7 +24,6 @@
 import os
 import sys
 import subprocess
-import shutil
 import argparse
 
 
@@ -15,7 +32,7 @@ def is_valid_image(image_path):
     if (not os.path.exists(image_path)) or (os.path.getsize(image_path) == 0):
         return False
     cmd = ['gdalinfo', image_path]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     for line in result.stdout.decode('ascii').split(os.linesep):
         if 'Size is' in line:
             parts = line.replace(',', ' ').split()
@@ -26,7 +43,7 @@ def is_valid_image(image_path):
                 i1 = int(parts[2])
                 i2 = int(parts[3])
                 return (i1 > 0) and (i2 > 0)
-            except Exception as e:
+            except Exception as e: #pylint: disable=W0703
                 print('Caught exception: ' + str(e))
                 return False
     print('Did not find size line!')
@@ -54,10 +71,10 @@ def main(argsIn):
 
     except argparse.ArgumentError:
         print(usage)
-        return -1
+        return 1
 
     target_paths = []
-    for r, d, f in os.walk(args.input_dir):
+    for r, _, f in os.walk(args.input_dir):
         for file in f:
             input_path = os.path.join(r, file)
             # Get a list of tiff files that must be processed
@@ -96,7 +113,7 @@ def main(argsIn):
                '--image', input_path,  '--output_dir', presoak_output_folder]
         cmd += unknown_args
         print(' '.join(cmd))
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
         if not is_valid_image(presoak_output_path):
             print('presoak processing FAILED to generate file ' + presoak_output_path)
             allSucceeded = False
@@ -110,6 +127,7 @@ def main(argsIn):
             print('Completed processing file: ' + input_path)
         else:
             print('Unable to complete processing for file: ' + input_path)
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

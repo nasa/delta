@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
 
+# Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # This tool classifies all of the images in an input directory, running presoak, DELTA,
 # and HMTFIST on each input image.  The input directory structure will be mirrored in the
 # output folder.
@@ -35,7 +52,7 @@ def is_valid_image(image_path):
     if (not os.path.exists(image_path)) or (os.path.getsize(image_path) == 0):
         return False
     cmd = ['gdalinfo', image_path]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     for line in result.stdout.decode('ascii').split(os.linesep):
         if 'Size is' in line:
             parts = line.replace(',', ' ').split()
@@ -46,7 +63,7 @@ def is_valid_image(image_path):
                 i1 = int(parts[2])
                 i2 = int(parts[3])
                 return (i1 > 0) and (i2 > 0)
-            except Exception as e:
+            except Exception as e: #pylint: disable=W0703
                 print('Caught exception: ' + str(e))
                 return False
     print('Did not find size line!')
@@ -59,7 +76,7 @@ def get_image_info(image_path):
 
     result = {}
     cmd = ['gdalinfo', '-proj4', image_path]
-    process_output = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process_output = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     for line in process_output.stdout.decode('ascii').split(os.linesep):
         try:
             if 'Pixel Size' in line:
@@ -85,7 +102,7 @@ def get_image_info(image_path):
                 result['width'] = parts[2]
                 result['height'] = parts[3]
 
-        except Exception as e:
+        except Exception as e: #pylint: disable=W0703
             print('Caught exception: ' + str(e))
             return None
     for i in REQUIRED_INFO:
@@ -106,13 +123,14 @@ def prepare_canopy_image(main_canopy_path, sample_image_path, output_canopy_path
     image_info = get_image_info(sample_image_path)
     if not image_info:
         return False
- 
+
     # Call gdalwarp to generate the output image
-    cmd = ['gdalwarp', main_canopy_path, '-overwrite', '-t_srs',  image_info['proj_str'], '-te_srs',  image_info['proj_str'],
+    cmd = ['gdalwarp', main_canopy_path, '-overwrite', '-t_srs',  image_info['proj_str'],
+           '-te_srs', image_info['proj_str'],
            '-te',  image_info['minX'],  image_info['minY'],  image_info['maxX'],  image_info['maxY'],
            '-tr', image_info['xres'],  image_info['yres'], output_canopy_path]
     print(' '.join(cmd))
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
 
     return is_valid_image(output_canopy_path)
 
@@ -128,7 +146,7 @@ def resize_delta_output(delta_path, sample_image_path, output_path):
            '-projwin',  image_info['minX'],  image_info['maxY'],  image_info['maxX'],  image_info['minY'],
            '-tr', image_info['xres'],  image_info['yres']]
     print(' '.join(cmd))
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
 
     return is_valid_image(output_path)
 
@@ -148,40 +166,185 @@ def add_dem_channel(source_path, dem_path, output_path):
         temp_path1 = output_path + '_temp1.tif'
         temp_path2 = output_path + '_temp2.tif'
 
-        cmd = ['gdal_translate', dem_path, '-outsize', image_info['width'], image_info['height'], 
+        cmd = ['gdal_translate', dem_path, '-outsize', image_info['width'], image_info['height'],
                '-projwin', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
                temp_path1]
         print(' '.join(cmd))
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        for line in result.stdout.decode('ascii').split(os.linesep):
-            print(line)
-        result.check_returncode()
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         cmd = ['gdal_edit.py', '-unsetnodata', temp_path1]
         print(' '.join(cmd))
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        result.check_returncode()
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
-        cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.1*A)', '--outfile='+temp_path2]
+        cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.1*A)',
+               '--outfile='+temp_path2]
         print(' '.join(cmd))
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        result.check_returncode()
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         cmd = ['gdal_merge.py', '-a_nodata', 'nan', '-o', output_path, '-separate', source_path, temp_path2]
         print(' '.join(cmd))
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        result.check_returncode()
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         os.remove(temp_path1)
         os.remove(temp_path2)
 
-    except Exception as e:
+    except Exception as e: #pylint: disable=W0703
         print('Caught exception: ' + str(e))
         return False
 
     # Check result
     return is_valid_image(output_path)
 
+
+def call_presoak(args, input_path, output_folder, unknown_args):
+    '''Call the presoak tool'''
+
+    if not args.fist_data_dir:
+        print('Missing required input argument --fist-data-dir to run presoak!')
+        return (False, None, None)
+    if not args.unfilled_presoak_dem:
+        print('Missing required input argument --unfilled-presoak-dem to run presoak!')
+        return (False, None, None)
+
+    presoak_output_folder = os.path.join(output_folder, 'presoak')
+    if not os.path.exists(presoak_output_folder):
+        os.mkdir(presoak_output_folder)
+    presoak_output_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
+    if os.path.exists(presoak_output_path):
+        print('presoak output already exists')
+    else:
+        cmd = ['presoak', '--max_cost', '20',
+                '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
+                '--unfilled_elevation', args.unfilled_presoak_dem,
+                '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
+                '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
+                '--image', input_path,  '--output_dir', presoak_output_folder]
+        cmd += unknown_args
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    if not is_valid_image(presoak_output_path):
+        print('presoak processing FAILED to generate file ' + presoak_output_path)
+        return (False, None, None)
+
+    presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
+    return (True, presoak_output_folder, presoak_output_dem_path)
+
+
+def call_delta(args, input_path, output_folder,
+               presoak_succeeded, presoak_output_dem_path):
+    '''Run the DELTA tool'''
+
+    PREFIX = 'IF_' # TODO: Is this needed?
+
+    delta_input_image = input_path
+    if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment:
+        # Augment the input Sentinel1 image with an elevation channel before running DELTA
+        if not presoak_succeeded:
+            print('presoak failed, cannot continue to process this image')
+            return (False, None, None)
+        # Add elevation as a channel to the input image
+        delta_input_image = os.path.join(output_folder, 'dem_merged_input_image.tif')
+        if not add_dem_channel(input_path, presoak_output_dem_path, delta_input_image):
+            print('Failed to add channel, cannot continue to process this image')
+            return (False, None, None)
+
+    #TODO: Is prefix still needed?
+    fname_in = PREFIX + os.path.basename(delta_input_image).replace('.tif','.tiff')
+    fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
+    delta_output_folder = os.path.join(output_folder, 'delta')
+    delta_output_path_in = os.path.join(delta_output_folder, fname_in)
+    delta_output_path = os.path.join(delta_output_folder, fname)
+    if os.path.exists(delta_output_path):
+        print('DELTA output already exists.')
+    else:
+        cmd = ['delta', 'classify', '--image', delta_input_image,
+                '--outdir', delta_output_folder, '--outprefix', PREFIX,
+                '--prob', args.delta_model]
+        if args.delta_config:
+            cmd += ['--config', args.delta_config]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        shutil.move(delta_output_path_in, delta_output_path)
+    if not is_valid_image(delta_output_path):
+        print('delta processing FAILED to generate file ' + delta_output_path)
+        return (False, None, None)
+    return (True, delta_output_folder, delta_output_path)
+
+
+def call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
+                 delta_output_folder, delta_output_path, output_folder):
+    '''Run the HMTFIST tool'''
+
+    hmtfist_work_folder = os.path.join(output_folder, 'hmtfist_work')
+    hmtfist_output_folder = os.path.join(output_folder, 'hmtfist')
+
+    hmtfist_output_path = os.path.join(hmtfist_output_folder, 'output_prediction.tif')
+
+    # We need to create a roughness version of the presoak DEM output file
+    roughness_path = os.path.join(presoak_output_folder, 'dem_roughness.tif')
+    if not os.path.exists(roughness_path):
+        cmd = ['gdaldem', 'roughness', presoak_output_dem_path, roughness_path]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    if not is_valid_image(roughness_path):
+        print('Failed to generate roughness image!')
+        return False
+
+    # We need to extract a matching portion of the canopy input image
+    this_canopy_path = os.path.join(presoak_output_folder, 'canopy_portion.tif')
+    if not prepare_canopy_image(args.canopy_path, presoak_output_dem_path, this_canopy_path):
+        print('Failed to generate canopy image!')
+        return False
+
+    # We need to resize the DELTA output to match the presoak output size
+    delta_resize_path = os.path.join(delta_output_folder, 'presoak_size_match.tif')
+    if not resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path):
+        print('Failed to resize DELTA output!')
+        return False
+
+    this_folder = os.path.dirname(__file__)
+    # Another python sub-script handles the details of running this program
+    cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
+            '--work-dir', hmtfist_work_folder,
+            '--presoak-dir', presoak_output_folder,
+            '--delta-prediction-path', delta_resize_path,
+            '--roughness-path', roughness_path,
+            '--canopy-path', this_canopy_path,
+            '--parameter-path', args.hmt_params,
+            '--output-dir', hmtfist_output_folder]
+    if not args.keep_workdir:
+        cmd.append('--delete-workdir')
+    print(' '.join(cmd))
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+
+    # TODO: This output check needs to be worked out.  There may be multiple output files.
+    if not is_valid_image(hmtfist_output_path):
+        print('hmtfist processing FAILED to generate file ' + hmtfist_output_path)
+        return False
+    return True
+
+
+def find_targets(args):
+    '''Find input files and choose output paths'''
+
+    target_paths = []
+    for r, _, f in os.walk(args.input_dir):
+        for file in f:
+            input_path = os.path.join(r, file)
+            # Copy text files to the output folder
+            if file.endswith('.txt'):
+                relative_path = os.path.relpath(os.path.join(r, file), args.input_dir)
+                output_path = os.path.join(args.output_dir, relative_path)
+                if not os.path.exists(output_path):
+                    shutil.copy(input_path, output_path)
+            # Get a list of tiff files that must be processed
+            if file.endswith('.tiff') or file.endswith('.tif'):
+                relative_folder = os.path.relpath(r, args.input_dir)
+                if relative_folder == '.': # Create subdirectories for input images in the same folder
+                    relative_folder = os.path.splitext(file)[0]
+                output_folder = os.path.join(args.output_dir, relative_folder)
+                target_paths.append((input_path, output_folder))
+    return target_paths
 
 def main(argsIn):
 
@@ -211,7 +374,7 @@ def main(argsIn):
         parser.add_argument("--delta-config", "-g", default=None,
                             help="Config file for DELTA")
         parser.add_argument("--s1-delta-elevation-augment", action="store_true", default=False,
-                            help="Set this if the DELTA model for Sentinel1 was trained with an extra elevation channel")
+            help="Set this if the DELTA model for Sentinel1 was trained with an extra elevation channel")
 
         parser.add_argument("--force-presoak", action="store_true", default=False,
                             help="Run presoak even if it is not needed for another tool")
@@ -247,25 +410,7 @@ def main(argsIn):
 
     # Look through the input folder to find the files we should process and decide which
     # output folder the results should go in
-    PREFIX = 'IF_' # TODO: Is this needed?
-    target_paths = []
-    for r, d, f in os.walk(args.input_dir):
-        for file in f:
-            input_path = os.path.join(r, file)
-            # Copy text files to the output folder
-            if file.endswith('.txt'):               
-                relative_path = os.path.relpath(os.path.join(r, file), args.input_dir)
-                output_path = os.path.join(args.output_dir, relative_path)
-                if not os.path.exists(output_path):
-                    shutil.copy(input_path, output_path)
-            # Get a list of tiff files that must be processed
-            if file.endswith('.tiff') or file.endswith('.tif'):
-                relative_folder = os.path.relpath(r, args.input_dir)
-                if relative_folder == '.': # Create subdirectories for input images in the same folder
-                    relative_folder = os.path.splitext(file)[0]
-                output_folder = os.path.join(args.output_dir, relative_folder)
-                target_paths.append((input_path, output_folder))
-
+    target_paths = find_targets(args)
     if not target_paths:
         print('No unprocessed input files detected.')
         return 0
@@ -279,7 +424,6 @@ def main(argsIn):
     for (input_path, output_folder) in target_paths:
 
         print('Starting processing for file: ' + input_path)
-        print(output_folder)
         all_succeeded = True
 
         if not os.path.exists(output_folder):
@@ -287,120 +431,29 @@ def main(argsIn):
 
         # presoak
         # - Only run presoak if another tool requires it or if --force-presoak was set
-        do_delta_s1_dem_augment = (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment
-        if args.force_presoak or ENABLE_HMTFIST or do_delta_s1_dem_augment:
-            if not args.fist_data_dir:
-                print('Missing required input argument --fist-data-dir to run presoak!')
-                return 1
-            if not args.unfilled_presoak_dem:
-                print('Missing required input argument --unfilled-presoak-dem to run presoak!')
-                return 1
+        if (args.force_presoak or ENABLE_HMTFIST or
+           ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment)):
 
-            presoak_output_folder = os.path.join(output_folder, 'presoak')
-            if not os.path.exists(presoak_output_folder):
-                os.mkdir(presoak_output_folder)
-            presoak_output_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
-            if os.path.exists(presoak_output_path):
-                print('presoak output already exists')
-            else:
-                cmd = ['presoak', '--max_cost', '20',
-                       '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
-                       '--unfilled_elevation', args.unfilled_presoak_dem,
-                       '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
-                       '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
-                       '--image', input_path,  '--output_dir', presoak_output_folder]
-                cmd += unknown_args
-                print(' '.join(cmd))
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            if not is_valid_image(presoak_output_path):
-                print('presoak processing FAILED to generate file ' + presoak_output_path)
+            presoak_succeeded, presoak_output_folder, presoak_output_dem_path = \
+                call_presoak(args, input_path, output_folder, unknown_args)
+            if not presoak_succeeded:
+                print('presoak processing unsuccessful')
                 all_succeeded = False
-
-            presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
         else:
             print('presoak is not needed to run DELTA, skipping it')
 
         # DELTA
-        delta_input_image = input_path
-        if do_delta_s1_dem_augment:
-            # Augment the input Sentinel1 image with an elevation channel before running DELTA
-            if not all_succeeded:
-                 print('presoak failed, cannot continue to process this image')
-                 continue
-            # Add elevation as a channel to the input image
-            delta_input_image = os.path.join(output_folder, 'dem_merged_input_image.tif')
-            if not add_dem_channel(input_path, presoak_output_dem_path, delta_input_image):
-                print('Failed to add channel, cannot continue to process this image')
-                continue
-
-        #TODO: Is prefix still needed?
-        fname_in = PREFIX + os.path.basename(delta_input_image).replace('.tif','.tiff')
-        fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
-        delta_output_folder = os.path.join(output_folder, 'delta')
-        delta_output_path_in = os.path.join(delta_output_folder, fname_in)
-        delta_output_path = os.path.join(delta_output_folder, fname)
-        if os.path.exists(delta_output_path):
-            print('DELTA output already exists.')
-        else:
-            cmd = ['delta', 'classify', '--image', delta_input_image,
-                   '--outdir', delta_output_folder, '--outprefix', PREFIX,
-                   '--prob', args.delta_model]
-            if args.delta_config:
-                cmd += ['--config', args.delta_config]
-            print(' '.join(cmd))
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            shutil.move(delta_output_path_in, delta_output_path)
-        if not is_valid_image(delta_output_path):
-            print('delta processing FAILED to generate file ' + delta_output_path)
+        delta_succeeded, delta_output_folder, delta_output_path = call_delta(args, input_path,
+                                                                             output_folder, all_succeeded,
+                                                                             presoak_output_dem_path)
+        if not delta_succeeded:
+            print('DELTA processing unsuccessful')
             all_succeeded = False
 
-
         # HMTFIST
-        hmtfist_work_folder = os.path.join(output_folder, 'hmtfist_work')
-        hmtfist_output_folder = os.path.join(output_folder, 'hmtfist')
-
-        hmtfist_output_path = os.path.join(hmtfist_output_folder, 'output_prediction.tif')
         if all_succeeded and ENABLE_HMTFIST:
-
-            # We need to create a roughness version of the presoak DEM output file
-            roughness_path = os.path.join(presoak_output_folder, 'dem_roughness.tif')
-            if not os.path.exists(roughness_path):
-                cmd = ['gdaldem', 'roughness', presoak_output_dem_path, roughness_path]
-                print(' '.join(cmd))
-                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            if not is_valid_image(roughness_path):
-                all_succeeded = False
-
-            # We need to extract a matching portion of the canopy input image
-            this_canopy_path = os.path.join(presoak_output_folder, 'canopy_portion.tif')
-            if not prepare_canopy_image(args.canopy_path, presoak_output_dem_path, this_canopy_path):
-                all_succeeded = False
-
-            # We need to resize the DELTA output to match the presoak output size
-            delta_resize_path = os.path.join(delta_output_folder, 'presoak_size_match.tif')
-            if not resize_delta_output(delta_output_path, presoak_output_dem_path, delta_resize_path):
-                all_succeeded = False
-
-            if all_succeeded:
-                this_folder = os.path.dirname(__file__)
-                # Another python sub-script handles the details of running this program
-                cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
-                       '--work-dir', hmtfist_work_folder,
-                       '--presoak-dir', presoak_output_folder,
-                       '--delta-prediction-path', delta_resize_path,
-                       '--roughness-path', roughness_path,
-                       '--canopy-path', this_canopy_path,
-                       '--parameter-path', args.hmt_params,
-                       '--output-dir', hmtfist_output_folder]
-                if not args.keep_workdir:
-                    cmd.append('--delete-workdir')
-                print(' '.join(cmd))
-                subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-            # TODO: This output check needs to be worked out.  There may be multiple output files.
-            if not is_valid_image(hmtfist_output_path):
-                print('hmtfist processing FAILED to generate file ' + hmtfist_output_path)
-                all_succeeded = False
+            all_succeeded = call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
+                                         delta_output_folder, delta_output_path, output_folder)
 
         if all_succeeded:
             print('Completed processing file: ' + input_path)
@@ -413,6 +466,7 @@ def main(argsIn):
             break
 
     print('Classification script finished.')
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

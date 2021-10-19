@@ -42,7 +42,9 @@ def get_presoak_part_count(presoak_dir):
         try:
             index = int(parts[0])
             max_index = max(index, max_index)
-        except:
+        except IndexError:
+            continue
+        except ValueError:
             continue
     return max_index
 
