@@ -34,10 +34,22 @@ from deeplab2.data import dataset
 
 from delta.config.extensions import register_layer
 
-class DeltaDeepLab(deeplab.DeepLab): #pylint: disable=too-many-ancestors
-    def __init__(self, proto_file):
-        self._config = proto_file
-        config = text_format.ParseLines(proto_file, config_pb2.ExperimentOptions())
+class DeepLab(deeplab.DeepLab): #pylint: disable=too-many-ancestors
+    def __init__(self, config_file):
+        """
+        Construct a DeepLab2 model.
+
+        Parameters
+        ----------
+        config_file: str
+            Path to a text protobuf config file, as used by deeplab.
+        """
+        if isinstance(config_file, str):
+            with tf.io.gfile.GFile(config_file, 'r') as proto_file:
+                self._config_text = proto_file.readlines()
+        else:
+            self._config_text = config_file['config_file']
+        self._config = text_format.ParseLines(self._config_text, config_pb2.ExperimentOptions())
         # not used except ignore_label
         ds = dataset.DatasetDescriptor(
             dataset_name=None,
@@ -51,27 +63,23 @@ class DeltaDeepLab(deeplab.DeepLab): #pylint: disable=too-many-ancestors
             is_depth_dataset=None,
             ignore_depth=None,
         )
-        super(DeltaDeepLab, self).__init__(config, ds)
+        super().__init__(self._config, ds)
+
     def call(self, input_tensor: tf.Tensor, training: bool = False):
-        result = super(DeltaDeepLab, self).call(input_tensor, training)
-        # we only care about the main result
-        return result['semantic_logits']
+        input_tensor = input_tensor * 2 - 1.0
+        _, input_h, input_w, _ = input_tensor.get_shape().as_list()
+        result_dict = self._decoder(
+            self._encoder(input_tensor, training=training), training=training)
+        result_dict = self._resize_predictions(
+            result_dict,
+            target_h=input_h,
+            target_w=input_w)
+        return result_dict['semantic_logits']
+
     def get_config(self):
-        base_config = super().get_config()
-        return {**base_config, 'config_pb' : self._config}
+        return {'config_file' : self._config_text}
+    @classmethod
+    def from_config(cls, config):
+        return cls(config)
 
-def DeepLab2(config_file):
-    """
-    Construct a DeepLab2 model.
-
-    Parameters
-    ----------
-    config_file: str
-        Path to a text protobuf config file, as used by deeplab.
-    """
-    with tf.io.gfile.GFile(config_file, 'r') as proto_file:
-        config = proto_file.readlines()
-    return DeltaDeepLab(config)
-
-register_layer('DeepLab2', DeepLab2)
-register_layer('DeltaDeepLab', DeltaDeepLab)
+register_layer('DeepLab', DeepLab)
