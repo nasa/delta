@@ -280,16 +280,14 @@ def compile_model(model_fn, training_spec, resume_path=None):
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        model = model_fn()
-        assert isinstance(model, tf.keras.models.Model), \
-                "Model is not a Tensorflow Keras model"
-
-        if resume_path is not None:
-            print('Loading existing model: ' + resume_path)
-            if resume_path.endswith('.h5'):
+        if resume_path is not None and not resume_path.endswith('.h5'):
+            model = load_model(resume_path)
+        else:
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model), \
+                    "Model is not a Tensorflow Keras model"
+            if resume_path is not None:
                 model.load_weights(resume_path)
-            else: # SavedModel format
-                model = load_model(resume_path)
 
         _compile_helper(model, training_spec)
 
