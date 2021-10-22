@@ -53,7 +53,7 @@ def is_valid_image(image_path):
         return False
     cmd = ['gdalinfo', image_path]
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-    for line in result.stdout.decode('ascii').split(os.linesep):
+    for line in result.stdout.decode('utf-8').split(os.linesep):
         if 'Size is' in line:
             parts = line.replace(',', ' ').split()
             if len(parts) < 4:
@@ -221,8 +221,10 @@ def call_presoak(args, input_path, output_folder, unknown_args):
                 '--image', input_path,  '--output_dir', presoak_output_folder]
         cmd += unknown_args
         print(' '.join(cmd))
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     if not is_valid_image(presoak_output_path):
+        for line in result.stdout.decode('ascii').split(os.linesep):
+            print(line)
         print('presoak processing FAILED to generate file ' + presoak_output_path)
         return (False, None, None)
 
@@ -249,11 +251,15 @@ def call_delta(args, input_path, output_folder,
             return (False, None, None)
 
     #TODO: Is prefix still needed?
-    fname_in = PREFIX + os.path.basename(delta_input_image).replace('.tif','.tiff')
-    fname = PREFIX + os.path.basename(input_path).replace('.tif','.tiff')
     delta_output_folder = os.path.join(output_folder, 'delta')
+    fname_in = PREFIX + os.path.basename(delta_input_image)
+    fname = PREFIX + os.path.basename(input_path)
     delta_output_path_in = os.path.join(delta_output_folder, fname_in)
     delta_output_path = os.path.join(delta_output_folder, fname)
+    if delta_output_path_in.endswith('.tif'): # DELTA writes with .tiff extension
+        delta_output_path_in = delta_output_path_in.replace('.tif', '.tiff')
+    if delta_output_path.endswith('.tif'):
+        delta_output_path = delta_output_path.replace('.tif', '.tiff')
     if os.path.exists(delta_output_path):
         print('DELTA output already exists.')
     else:
@@ -350,20 +356,20 @@ def main(argsIn):
 
     # Parse input arguments
     try:
-        usage  = "usage: classify_directory.py [options] <presoak arguments>"
+        usage  = "usage: classify_directory.py [options] <optional presoak arguments>"
         parser = argparse.ArgumentParser(usage=usage)
 
         parser.add_argument("--input-dir", "-i", required=True,
                             help="Directory containing input images")
         parser.add_argument("--output-dir", "-o", required=True,
-                            help="Directory containing output images")
+                            help="Directory to store output images")
         parser.add_argument("--sensor", default="worldview",
                             help="Type of image [worldview, sentinel1]")
         parser.add_argument("--limit", "-l", type=int, default=None,
                             help="Stop after processing this many input images")
 
         parser.add_argument("--fist-data-dir", "-f", default=None,
-                            help="Directory containing input images")
+                            help="Directory containing FIST required data")
         parser.add_argument("--canopy-path", "-c", default=None,
                             help="Path to the main canopy image file")
         parser.add_argument("--unfilled-presoak-dem", "-u", default=None,
@@ -377,7 +383,7 @@ def main(argsIn):
             help="Set this if the DELTA model for Sentinel1 was trained with an extra elevation channel")
 
         parser.add_argument("--force-presoak", action="store_true", default=False,
-                            help="Run presoak even if it is not needed for another tool")
+                            help="Run presoak even if it is not needed for DELTA or HMTFIST")
 
         parser.add_argument("--hmt-params", "-p", default=None,
                             help="Path to HMTFIST parameter file")
