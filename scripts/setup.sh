@@ -16,6 +16,7 @@ gdal-config --version
 
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade requests numpy six
+echo 'installing setuptools==57.5.0...'
 python3 -m pip install setuptools==57.5.0
 echo 'installing gdal...'
 python3 -m pip install --use-deprecated=legacy-resolver gdal==
