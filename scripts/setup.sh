@@ -15,10 +15,11 @@ echo 'gdal-config --version:'
 gdal-config --version
 
 python3 -m pip install --upgrade pip
-python3 -m pip install --upgrade setuptools requests numpy six
+python3 -m pip install --upgrade setuptools==58.0.2 requests numpy six
 echo 'installing gdal...'
 python3 -m pip install --use-deprecated=legacy-resolver gdal==
-python3 -m pip install GDAL==3.0.4 --global-option=build_ext --global-option="-I/usr/include/gdal/"
+#python3 -m pip install GDAL==3.0.4 --global-option=build_ext --global-option="-I/usr/include/gdal/"
+python3 -m pip install GDAL==`gdal-config --version` --global-option=build_ext --global-option="-I/usr/include/gdal/"
 
 $DIR/linter/install_linter.sh || { echo >&2 "ERROR. Failed to install linter."; exit 1; }
 
