@@ -8,7 +8,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 sudo apt update
 
 #sudo apt install -y python3-gdal || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
-sudo apt install -y python3-dev libgdal-dev || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
+sudo apt install -y python3-dev || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
+sudo apt install -y libgdal-dev || { echo >&2 "ERROR. Failed to install gdal-dev."; exit 1; }
+
+echo 'gdal-config --version:'
+gdal-config --version
 
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade setuptools requests numpy six
