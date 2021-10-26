@@ -14,9 +14,9 @@ sudo apt install -y libgdal-dev || { echo >&2 "ERROR. Failed to install gdal-dev
 echo 'gdal-config --version:'
 gdal-config --version
 
-python3 -m pip install setuptools==57.5.0
 python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade requests numpy six
+python3 -m pip install setuptools==57.5.0
 echo 'installing gdal...'
 python3 -m pip install --use-deprecated=legacy-resolver gdal==
 #python3 -m pip install GDAL==3.0.4 --global-option=build_ext --global-option="-I/usr/include/gdal/"
