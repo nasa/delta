@@ -236,8 +236,6 @@ def call_delta(args, input_path, output_folder,
                presoak_succeeded, presoak_output_dem_path):
     '''Run the DELTA tool'''
 
-    PREFIX = 'IF_' # TODO: Is this needed?
-
     delta_input_image = input_path
     if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment:
         # Augment the input Sentinel1 image with an elevation channel before running DELTA
@@ -250,10 +248,10 @@ def call_delta(args, input_path, output_folder,
             print('Failed to add channel, cannot continue to process this image')
             return (False, None, None)
 
-    #TODO: Is prefix still needed?
+    PREFIX = 'IF_' # This is required by DELTA, but we will remove on output
     delta_output_folder = os.path.join(output_folder, 'delta')
     fname_in = PREFIX + os.path.basename(delta_input_image)
-    fname = PREFIX + os.path.basename(input_path)
+    fname = os.path.basename(input_path)
     delta_output_path_in = os.path.join(delta_output_folder, fname_in)
     delta_output_path = os.path.join(delta_output_folder, fname)
     if delta_output_path_in.endswith('.tif'): # DELTA writes with .tiff extension
@@ -414,6 +412,9 @@ def main(argsIn):
     else:
         print('HMTFIST is disabled, set ENABLE_HMTFIST in this file to enable it.')
 
+    if not os.path.exists(args.output_dir):
+        os.mkdir(args.output_dir)
+
     # Look through the input folder to find the files we should process and decide which
     # output folder the results should go in
     target_paths = find_targets(args)
@@ -422,8 +423,6 @@ def main(argsIn):
         return 0
     print('Found ' + str(len(target_paths)) + ' input files to process.')
 
-    if not os.path.exists(args.output_dir):
-        os.mkdir(args.output_dir)
 
     # Loop through all input files...
     num_processed = 0
