@@ -237,16 +237,20 @@ def call_delta(args, input_path, output_folder,
     '''Run the DELTA tool'''
 
     delta_input_image = input_path
-    if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment:
+    model_to_use = args.delta_model
+    if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model:
         # Augment the input Sentinel1 image with an elevation channel before running DELTA
         if not presoak_succeeded:
-            print('presoak failed, cannot continue to process this image')
-            return (False, None, None)
-        # Add elevation as a channel to the input image
-        delta_input_image = os.path.join(output_folder, 'dem_merged_input_image.tif')
-        if not add_dem_channel(input_path, presoak_output_dem_path, delta_input_image):
-            print('Failed to add channel, cannot continue to process this image')
-            return (False, None, None)
+            print('presoak failed, unable to use augmented DELTA model')
+        else:
+            # Add elevation as a channel to the input image
+            merged_path = os.path.join(output_folder, 'dem_merged_input_image.tif')
+            if not add_dem_channel(input_path, presoak_output_dem_path, merged_path):
+                print('Failed to add channel, unable to use augmented DELTA model')
+            else:
+                print('Using elevation augmented model file: ' + args.s1_delta_elevation_augment_model)
+                model_to_use = args.s1_delta_elevation_augment_model
+                delta_input_image = merged_path
 
     PREFIX = 'IF_' # This is required by DELTA, but we will remove on output
     delta_output_folder = os.path.join(output_folder, 'delta')
@@ -263,7 +267,7 @@ def call_delta(args, input_path, output_folder,
     else:
         cmd = ['delta', 'classify', '--image', delta_input_image,
                 '--outdir', delta_output_folder, '--outprefix', PREFIX,
-                '--prob', args.delta_model]
+                '--prob', model_to_use]
         if args.delta_config:
             cmd += ['--config', args.delta_config]
         print(' '.join(cmd))
@@ -377,8 +381,8 @@ def main(argsIn):
                             help="Model file for DELTA")
         parser.add_argument("--delta-config", "-g", default=None,
                             help="Config file for DELTA")
-        parser.add_argument("--s1-delta-elevation-augment", action="store_true", default=False,
-            help="Set this if the DELTA model for Sentinel1 was trained with an extra elevation channel")
+        parser.add_argument("--s1-delta-elevation-augment-model", default=None,
+            help="If provided, try to use this model with presoak elevation output")
 
         parser.add_argument("--force-presoak", action="store_true", default=False,
                             help="Run presoak even if it is not needed for DELTA or HMTFIST")
@@ -399,6 +403,9 @@ def main(argsIn):
     if args.sensor not in ['sentinel1', 'worldview']:
         print('Unrecognized sensor type: ' + args.sensor)
         return 1
+
+    if args.s1_delta_elevation_augment_model and not args.fist_data_dir:
+        print('WARNING: S1 elevation augmented DELTA model cannot be used without FIST!')
 
     print('Starting classification script')
 
@@ -437,7 +444,7 @@ def main(argsIn):
         # presoak
         # - Only run presoak if another tool requires it or if --force-presoak was set
         if (args.force_presoak or ENABLE_HMTFIST or
-           ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment)):
+           ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model)):
 
             presoak_succeeded, presoak_output_folder, presoak_output_dem_path = \
                 call_presoak(args, input_path, output_folder, unknown_args)
