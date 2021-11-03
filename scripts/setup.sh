@@ -8,10 +8,13 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 sudo apt update
 
 #sudo apt install -y python3-gdal || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
-sudo apt install -y python3-dev libgdal-dev || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
+sudo apt install -y python3-dev || { echo >&2 "ERROR. Failed to install python3."; exit 1; }
+sudo apt install -y libgdal-dev || { echo >&2 "ERROR. Failed to install gdal-dev."; exit 1; }
 
 python3 -m pip install --upgrade pip
-python3 -m pip install --upgrade setuptools requests numpy six
+python3 -m pip install --upgrade requests numpy six
+python3 -m pip install setuptools==57.5.0
+python3 -m pip install --use-deprecated=legacy-resolver gdal==
 python3 -m pip install GDAL==`gdal-config --version` --global-option=build_ext --global-option="-I/usr/include/gdal/"
 
 $DIR/linter/install_linter.sh || { echo >&2 "ERROR. Failed to install linter."; exit 1; }
