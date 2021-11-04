@@ -2,8 +2,12 @@
 based on Tensorflow. DELTA classifies large satellite images with neural networks, automatically handling
 tiling large imagery.
 
-DELTA is currently under active development by the
-[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/).
+![DELTA example flowchart](delta/../docs/delta_flowchart.png)
+
+# TODO: Get okay from Brian that using this crop of image 1044 is okay
+
+DELTA is under active development by the
+[NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/) through the end of 2021.
 Initially, it is mapping floods for disaster response, in collaboration with the
 [U.S. Geological Survey](http://www.usgs.gov), [National Geospatial Intelligence Agency](https://www.nga.mil/),
 [National Center for Supercomputing Applications](http://www.ncsa.illinois.edu/), and
@@ -29,7 +33,7 @@ Installation
 
 DELTA is now installed and ready to use!
 
-#### Alternate install using a Conda environment 
+### Alternate install using a Conda environment
 1. Install [Miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 2. Checkout the delta repository and cd into the directory:
@@ -44,9 +48,9 @@ DELTA is now installed and ready to use!
     conda activate delta
     pip install . # This command should be run in the ./delta directory we made in step 2
     ```
+4. For GPU support in DELTA you'll need to install the [required NVIDIA software](https://www.tensorflow.org/install/gpu#software_requirements) before running the conda commands in step 3.
 
-
-#### Installing ESA SNAP ####
+### Installing ESA SNAP ####
 
 In order to process Sentinel-1 images you will need to instal the ESA SNAP tool.  You can download it here:
 ```https://step.esa.int/main/download/snap-download/```
@@ -56,15 +60,20 @@ Once it is installed, you will need to add SNAP's bin folder to your path like t
 
 Documentation
 =============
-DELTA can be used either as a command line tool or as a python library.
-See the python documentation for the master branch [here](https://nasa.github.io/delta/),
-or generate the documentation with `scripts/docs.sh`.
 
+- README Docs
+  - [DELTA Config README](delta/config/README.md) - details on how to configure DELTA from the command line using .yaml files.
+  - [DELTA built-in networks README](delta/config/networks/README.md) - details some of the available network architecture .yaml files already included with DELTA. 
+- [Python Documentation](https://nasa.github.io/delta/) - DELTA can be used either as a command line tool or as a python library. You can view the documentation at the linked URL or generate the documentation with [`scripts/docs.sh`](scripts/docs.sh).
+  - `delta.config.extensions` [documentation](https://nasa.github.io/delta/config/extensions.html) - details on extending DELTA for use with custom layers, image types, preprocessing, etc.
+  
 Example
 =======
 
+### Bash Script Example
+
 As a simple example, consider training a neural network to map clouds with Landsat-8 images.
-The script `scripts/example/l8_cloud.sh` trains such a network using DELTA from the
+The script [`scripts/example/l8_cloud.sh`](scripts/example/l8_cloud.sh) trains such a network using DELTA from the
 [USGS SPARCS dataset](https://www.usgs.gov/core-science-systems/nli/landsat/spatial-procedures-automated-removal-cloud-and-shadow-sparcs),
 and shows how DELTA can be used. The steps involved in this, and other, classification processes are:
 
@@ -95,6 +104,26 @@ and shows how DELTA can be used. The steps involved in this, and other, classifi
 The results could be improved--- with more training, more data, an improved network, or more--- but this
 example shows the basic usage of DETLA.
 
+### JupyterLab Example
+
+The [jupyter lab example](scripts/example/jupyterlab_version/l8_cloud_example.ipynb) is very similar to the bash script example above but has a more visual demonstration of the steps and imagery used. It is especially helpful if you are less experienced with the command line.
+
+You can view a read-only version at the above link. Or if you'd like to run the example yourself you'll need to install JupyterLab. To do that you can simply run 
+
+```pip install jupyterlab``` 
+
+after [installing DELTA using the above instructions.](#Installation) Then run 
+
+```jupyter-lab scripts/example/jupyterlab_version/l8_cloud_example.ipynb``` 
+
+from the same directory you installed DELTA in. Once jupyter loads, you can advance through the cells one by one using the "play" button 
+
+<img src="docs/jupyter_play.png" width="300"/>
+
+or run all the cells at once using the "fast-foward" button.
+
+<img src="docs/jupyter_fastforward.png" width="300"/>
+
 Configuration and Extensions
 ============================
 
@@ -104,7 +133,7 @@ YAML files. Some options can be overwritten with command line options (use
 options.
 
 DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
-and training callbacks. Learn about DELTA extensions in the `delta.config.extensions` documentation.
+and training callbacks. Learn about DELTA extensions in the `delta.config.extensions` [documentation](https://nasa.github.io/delta/config/extensions.html).
 
 Data Management
 =============
@@ -128,7 +157,7 @@ Data Preparation
 
 By default DELTA operates on compressed input images which are unpacked to a temporary cache before
 they are processed.  You can speed up processing by pre-unpacking your input data to a new folder
-using the tool scripts/fetch/unpack_inputs.py as in this example:
+using the tool [scripts/fetch/unpack_inputs.py](scripts/fetch/unpack_inputs.py) as in this example:
 
 ```
   python3 scripts/fetch/unpack_inputs.py --input-folder raw_images --output-folder unpacked_images \
@@ -150,7 +179,7 @@ Important notes for developers:
 
  * **Branching**: Active development occurs on `develop`. Releases are pushed to `master`.
 
- * **Code Style**: Code must pass our linter before merging. Run `scripts/linter/install_linter.sh` to install
+ * **Code Style**: Code must pass our linter before merging. Run [`scripts/linter/install_linter.sh`](scripts/linter/install_linter.sh) to install
    the linter as a git pre-commit hook.
 
  * **Unit Tests**: Code must pass unit tests before merging. Run `pytest` in the `tests` directory to run the tests.

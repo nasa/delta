@@ -1,5 +1,13 @@
 # Network Models
 
+DELTA includes some example neural network architectures you can use in your project. They're included as .yaml files you can reference in the config files you pass to DELTA.
+
+Excerpt from an example config file:
+
+![](../../../docs/train_network_yaml_file_example.png)
+
+The below table is an example of some of the architectures included with DELTA. You can find all of them in [delta/config/networks](./).
+
 | Filename | Model Description | Chunk Size Constraints |  
 |----------|-------------------|------------------------|
 | autoencoder_conv.yaml | Simple convolutional autoencoder. | Chunk sizes must be a multiple of 4|
