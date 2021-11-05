@@ -542,4 +542,4 @@ def test_missing_file():
 def test_dump():
     config_reset()
 
-    assert config.to_dict() == yaml.load(config.export())
+    assert config.to_dict() == yaml.load(config.export(), Loader=yaml.FullLoader)
