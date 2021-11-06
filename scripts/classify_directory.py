@@ -214,11 +214,11 @@ def call_presoak(args, input_path, output_folder, unknown_args):
         print('presoak output already exists')
     else:
         cmd = ['presoak', '--max_cost', '20',
-                '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
-                '--unfilled_elevation', args.unfilled_presoak_dem,
-                '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
-                '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
-                '--image', input_path,  '--output_dir', presoak_output_folder]
+               '--elevation', os.path.join(args.fist_data_dir, 'fel.vrtd/orig.vrt'),
+               '--unfilled_elevation', args.unfilled_presoak_dem,
+               '--flow', os.path.join(args.fist_data_dir, 'p.vrtd/arcgis.vrt'),
+               '--accumulation', os.path.join(args.fist_data_dir, 'ad8.vrtd/arcgis.vrt'),
+               '--image', input_path,  '--output_dir', presoak_output_folder]
         cmd += unknown_args
         print(' '.join(cmd))
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
@@ -266,8 +266,8 @@ def call_delta(args, input_path, output_folder,
         print('DELTA output already exists.')
     else:
         cmd = ['delta', 'classify', '--image', delta_input_image,
-                '--outdir', delta_output_folder, '--outprefix', PREFIX,
-                '--prob', model_to_use]
+               '--outdir', delta_output_folder, '--outprefix', PREFIX,
+               '--prob', model_to_use]
         if args.delta_config:
             cmd += ['--config', args.delta_config]
         print(' '.join(cmd))
@@ -313,13 +313,13 @@ def call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
     this_folder = os.path.dirname(__file__)
     # Another python sub-script handles the details of running this program
     cmd = [os.path.join(this_folder, 'HMTFIST_caller.py'),
-            '--work-dir', hmtfist_work_folder,
-            '--presoak-dir', presoak_output_folder,
-            '--delta-prediction-path', delta_resize_path,
-            '--roughness-path', roughness_path,
-            '--canopy-path', this_canopy_path,
-            '--parameter-path', args.hmt_params,
-            '--output-dir', hmtfist_output_folder]
+           '--work-dir', hmtfist_work_folder,
+           '--presoak-dir', presoak_output_folder,
+           '--delta-prediction-path', delta_resize_path,
+           '--roughness-path', roughness_path,
+           '--canopy-path', this_canopy_path,
+           '--parameter-path', args.hmt_params,
+           '--output-dir', hmtfist_output_folder]
     if not args.keep_workdir:
         cmd.append('--delete-workdir')
     print(' '.join(cmd))
@@ -382,7 +382,7 @@ def main(argsIn): #pylint: disable=R0912
         parser.add_argument("--delta-config", "-g", default=None,
                             help="Config file for DELTA")
         parser.add_argument("--s1-delta-elevation-augment-model", default=None,
-            help="If provided, try to use this model with presoak elevation output")
+                            help="If provided, try to use this model with presoak elevation output")
 
         parser.add_argument("--force-presoak", action="store_true", default=False,
                             help="Run presoak even if it is not needed for DELTA or HMTFIST")
