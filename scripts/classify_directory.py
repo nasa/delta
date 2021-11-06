@@ -354,7 +354,7 @@ def find_targets(args):
                 target_paths.append((input_path, output_folder))
     return target_paths
 
-def main(argsIn):
+def main(argsIn): #pylint: disable=R0912
 
     # Parse input arguments
     try:
