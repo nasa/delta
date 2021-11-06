@@ -444,7 +444,7 @@ def main(argsIn): #pylint: disable=R0912
         # presoak
         # - Only run presoak if another tool requires it or if --force-presoak was set
         if (args.force_presoak or ENABLE_HMTFIST or
-           ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model)):
+            ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model)):
 
             presoak_succeeded, presoak_output_folder, presoak_output_dem_path = \
                 call_presoak(args, input_path, output_folder, unknown_args)
