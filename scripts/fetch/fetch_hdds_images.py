@@ -31,10 +31,10 @@ import json
 #          must be modified so it uses the download URL:
 #          "https://hddsexplorer.usgs.gov/inventory/json/v/1.4.0"
 #          instead of what it normally uses (USGS_API)
+
 from usgs import api
 
 
-# TODO: Make sure this goes everywhere!
 if sys.version_info < (3, 0, 0):
     print('\nERROR: Must use Python version >= 3.0.')
     sys.exit(1)
@@ -66,7 +66,6 @@ def get_dataset_list(options):
 
         for ds in results['data']:
 
-            #print('Found match: ' + ds['datasetFullName'])
             full_name = ds['datasetFullName'].lower()
 
             bad = False
@@ -83,11 +82,9 @@ def get_dataset_list(options):
                     target = True
                     break
             if not target:
-                #print('Not a target!')
                 continue
 
             if not ds['supportDownload']:
-                #print('Downloads not supported!')
                 continue
 
             print(ds['datasetName'] + ',' + full_name)
@@ -113,7 +110,6 @@ def get_dataset_fields(dataset_list):
         # Get the available filters for this data set
         print('----->  For DS = ' + dataset)
         result = api.dataset_fields(dataset, CATALOG)
-        #print(result)
 
         if not result or ('data' not in result):
             print('Failed to get dataset fields for ' + dataset)
@@ -133,7 +129,6 @@ def get_dataset_fields(dataset_list):
         if found_count < len(DESIRED_FIELDS):
             print('Did not find all desired filter fields!')
 
-        #raise Exception('debug')
         continue
 
 def main(argsIn): #pylint: disable=R0914,R0912
@@ -191,23 +186,18 @@ def main(argsIn): #pylint: disable=R0914,R0912
                   save=True, catalogId=CATALOG) #pylint: disable=W0612
 
         print(api._get_api_key(None)) #pylint: disable=W0212
-        raise Exception('DEBUG')
 
     # Retrieve all of the available datasets
     dataset_list = get_dataset_list(options)
 
     print('Found ' + str(len(dataset_list)) + ' useable datasets.')
-    #raise Exception('debug')
 
     # Don't think we need to do this!
     #get_dataset_fields(dataset_list)
 
-    # TODO: Work through some errors.
     counter = 0
     for (dataset, full_name) in dataset_list:
         counter = counter + 1
-        #if counter == 1:
-        #    continue
 
         if options.event_name: # Only download images from the specified event
             if options.event_name.lower() not in full_name.lower():
@@ -365,14 +355,11 @@ def main(argsIn): #pylint: disable=R0914,R0912
             print(cmd)
             os.system(cmd)
 
-            #raise Exception('DEBUG')
-
         print('Finished processing dataset: ' + full_name)
         os.system('touch ' + done_flag_path) # Mark this dataset as finished
-        #raise Exception('DEBUG')
 
-        #if not os.path.exists(output_path):
-        #    raise Exception('Failed to download file ' + output_path)
+        if not os.path.exists(output_path):
+            print('ERROR: Failed to download file ' + output_path)
 
     print('Finished downloading HDDS! files.')
     # Can just let this time out
