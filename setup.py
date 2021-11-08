@@ -19,14 +19,19 @@ import os
 import os.path
 import setuptools
 
-with open("README.md", "r") as f:
-    long_description = f.read()
+# so we can list dependencies in docker
+if os.path.exists('README.md'):
+    with open("README.md", "r") as f:
+        long_description = f.read()
+else:
+    long_description = 'DELTA'
 
 scripts = []
-for n in os.listdir('bin'):
-    name = os.path.join('bin', n)
-    if os.path.isfile(name) and os.access(name, os.X_OK):
-        scripts.append(name)
+if os.path.exists('bin'):
+    for n in os.listdir('bin'):
+        name = os.path.join('bin', n)
+        if os.path.isfile(name) and os.access(name, os.X_OK):
+            scripts.append(name)
 
 setuptools.setup(
     name="delta",

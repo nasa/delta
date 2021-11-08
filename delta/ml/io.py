@@ -22,6 +22,7 @@ Functions for IO specific to ML.
 import os
 import h5py
 import numpy as np
+from packaging import version
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 import tensorflow
 
@@ -62,7 +63,19 @@ def load_model(filename):
     filename: str
         Input filename.
     """
-    model = tensorflow.keras.models.load_model(filename, compile=False, custom_objects=custom_objects())
+    cm = custom_objects()
+    if version.parse(tensorflow.__version__) < version.parse('2.2'): # need to load newer models
+        # renamed to Model from Functional in newer versions.
+        # Also added Conv2D groups parameter
+        class OldModel(tensorflow.keras.models.Model): # pylint: disable=too-many-ancestors
+            @classmethod
+            def from_config(cls, config, custom_objects=None): #pylint: disable=redefined-outer-name
+                for l in config['layers']:
+                    if l['class_name'] == 'Conv2D' and 'groups' in l['config']:
+                        del l['config']['groups']
+                return tensorflow.keras.models.Model.from_config(config, custom_objects)
+        cm.update({'Functional': OldModel})
+    model = tensorflow.keras.models.load_model(filename, compile=False, custom_objects=cm)
     return model
 
 
