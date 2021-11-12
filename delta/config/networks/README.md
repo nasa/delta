@@ -4,7 +4,14 @@ DELTA includes some example neural network architectures you can use in your pro
 
 Excerpt from an example config file:
 
-![](../../../docs/train_network_yaml_file_example.png)
+```yaml
+train:
+  network:
+    # Create your own custom architecture
+    yaml_file: path/to/your/custom/architecture/network_architecture.yaml
+    # Or use an existing architecture included with DELTA
+    yaml_file: path_to_delta_installation/delta/config/networks/segnet.yaml
+```
 
 The below table is an example of some of the architectures included with DELTA. You can find all of them in [delta/config/networks](./).
 

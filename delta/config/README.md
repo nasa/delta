@@ -110,7 +110,15 @@ These options are used in the `delta train` command.
 
  * `network`: The neural network to train. One of `yaml_file` or `layers` must be specified.
     * `yaml_file`: A path to a yaml file with only the params and layers fields. See [`delta/config/networks`](./networks)
-      for examples. ![](../../docs/train_network_yaml_file_example.png)
+      for examples. 
+      ```yaml
+      train:
+        network:
+          # Create your own custom architecture
+          yaml_file: path/to/your/custom/architecture/network_architecture.yaml
+          # Or use an existing architecture included with DELTA
+          yaml_file: path_to_delta_installation/delta/config/networks/segnet.yaml
+      ```
     * `params`: A dictionary of parameters to substitute in the `layers` field.
     * `layers`: A list of layers which compose the network. See the following section for details.
  * `stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 

@@ -1,7 +1,4 @@
 train:
-  loss: sparse_categorical_crossentropy
-  metrics:
-    - sparse_categorical_accuracy
   network:
     layers:
      - Input:
@@ -101,20 +98,3 @@ train:
          padding: same
      - Softmax:
          axis: 3
-  batch_size: 10
-#   epochs: 10
-  epochs: 5
-  validation:
-    from_training: false
-    images:
-      type: tiff
-      extension: _data.tif
-      directory: validate
-    labels:
-      extension: _mask.png
-      type: tiff
-      directory: labels
-
-mlflow:
-  experiment_name: Landsat8 Clouds Example
-

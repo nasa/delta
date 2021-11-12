@@ -32,6 +32,3 @@ dataset:
 
 io:
   tile_size: [512, 512] # is default size, DELTA has well chosen defaults for many of these parameters
-  
-mlflow:
-  experiment_name: Landsat8 Clouds Example

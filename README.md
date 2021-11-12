@@ -4,8 +4,6 @@ tiling large imagery.
 
 ![DELTA example flowchart](delta/../docs/delta_flowchart.png)
 
-# TODO: Get okay from Brian that using this crop of image 1044 is okay
-
 DELTA is under active development by the
 [NASA Ames Intelligent Robotics Group](https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/) through the end of 2021.
 Initially, it is mapping floods for disaster response, in collaboration with the
@@ -70,7 +68,7 @@ Documentation
 Example
 =======
 
-### Bash Script Example
+### Bash Script Example (Linux Only)
 
 As a simple example, consider training a neural network to map clouds with Landsat-8 images.
 The script [`scripts/example/l8_cloud.sh`](scripts/example/l8_cloud.sh) trains such a network using DELTA from the
@@ -104,9 +102,9 @@ and shows how DELTA can be used. The steps involved in this, and other, classifi
 The results could be improved--- with more training, more data, an improved network, or more--- but this
 example shows the basic usage of DETLA.
 
-### JupyterLab Example
+### JupyterLab Example (Linux/Mac)
 
-The [jupyter lab example](scripts/example/jupyterlab_version/l8_cloud_example.ipynb) is very similar to the bash script example above but has a more visual demonstration of the steps and imagery used. It is especially helpful if you are less experienced with the command line.
+The [jupyter lab example](scripts/example/l8_cloud_example.ipynb) is very similar to the bash script example above but has a more visual demonstration of the steps and imagery used. It is especially helpful if you are less experienced with the command line.
 
 You can view a read-only version at the above link. Or if you'd like to run the example yourself you'll need to install JupyterLab. To do that you can simply run 
 
@@ -114,9 +112,9 @@ You can view a read-only version at the above link. Or if you'd like to run the 
 
 after [installing DELTA using the above instructions.](#Installation) Then run 
 
-```jupyter-lab scripts/example/jupyterlab_version/l8_cloud_example.ipynb``` 
+```jupyter-lab path_to_delta_install/scripts/example/l8_cloud_example.ipynb``` 
 
-from the same directory you installed DELTA in. Once jupyter loads, you can advance through the cells one by one using the "play" button 
+Once jupyter loads, you can advance through the cells one by one using the "play" button 
 
 <img src="docs/jupyter_play.png" width="300"/>
 
