@@ -25,7 +25,7 @@ fi
 
 if [ ! -f l8_clouds.h5 ]; then
   cp $SCRIPTPATH/l8_cloud.yaml .
-  delta train --config l8_cloud.yaml l8_clouds.h5
+  delta train --config l8_cloud_dataset.yaml --config l8_cloud_train_network.yaml --config l8_cloud_train_parameters.yaml l8_clouds.h5
 fi
 
-delta classify --config l8_cloud.yaml --image-dir ./validate --overlap 32 l8_clouds.h5
+delta classify --config l8_cloud_dataset.yaml --image-dir ./validate --overlap 32 l8_clouds.h5
