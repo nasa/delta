@@ -44,7 +44,7 @@ def main(options):
 
     img = images.load(0)
     model = config_model(img.num_bands())
-    if options.resume is not None:
+    if options.resume is not None and not options.resume.endswith('.h5'):
         temp_model = load_model(options.resume)
     else:
         # this one is not built with proper scope, just used to get input and output shapes
