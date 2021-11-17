@@ -150,6 +150,8 @@ class Predictor(ABC):
         # supports variable input size, just toss everything in
         if net_input_shape[0] is None and net_input_shape[1] is None:
             result = np.squeeze(self._model.predict_on_batch(image))
+            if not result.flags['WRITEABLE']: # older tensorflow version
+                result = np.array(result)
             if image_nodata_value is not None:
                 x0 = (data.shape[1] - result.shape[1]) // 2
                 y0 = (data.shape[0] - result.shape[0]) // 2

@@ -259,7 +259,7 @@ class MappedLossSum(MappedLoss):
     """
     `MappedLoss` for sum of any loss functions.
     """
-    def __init__(self, mapping, name=None, losses=None, weights=None):
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO, losses=None, weights=None):
         """
         Parameters
         ----------

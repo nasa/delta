@@ -24,9 +24,11 @@ import copy
 import functools
 from typing import Callable, List, Union
 
+from packaging import version
 import tensorflow
 import tensorflow.keras.layers #pylint: disable=no-name-in-module
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils #pylint: disable=no-name-in-module
 import tensorflow.keras.models #pylint: disable=no-name-in-module
 
 from delta.config import config
@@ -243,6 +245,9 @@ def loss_from_dict(loss_spec: Union[dict, str]) -> tensorflow.keras.losses.Loss:
     if lc is None:
         raise ValueError('Unknown loss type %s.' % (name))
     if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
+        # older versions do not support AUTO. Not sure of exact version, needed for 2.1, works with 2.6
+        if version.parse(tensorflow.__version__) < version.parse("2.2"):
+            params['reduction'] = losses_utils.ReductionV2.SUM
         lc = lc(**params)
     return lc
 

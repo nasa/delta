@@ -126,9 +126,6 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
         dummy_result = api.login(options.user_ee, options.password_ee,
                                  save=True, catalogId=CATALOG)
 
-        #print(api._get_api_key(None))
-        #raise Exception('DEBUG')
-
     print('Submitting EarthExplorer query...')
     results = api.search(DATASET, CATALOG, where={},# start_date=date, end_date=date,
                          ll=dict([('longitude',ll_coord[0]),('latitude',ll_coord[1])]),
@@ -140,8 +137,6 @@ def fetch_images(ll_coord, ur_coord, output_folder, options):
     print('Found ' + str(len(results['data']['results'])) + ' matching files.')
 
     for scene in results['data']['results']:
-        #print('------------')
-        #print(scene)
         print('Found match: ' + scene['entityId'])
 
         #fname = scene['entityId'] + '.tar'
@@ -202,11 +197,6 @@ def main(argsIn):
                             dest="force_login", default=False,
                             help="Don't reuse the cached EE API key if present.")
 
-        #parser.add_argument("--download-files", action="store_true",
-        #                    dest="download_files", default=False,
-        #                    help="Download new DSWE files if they are not already there.")
-
-
         options = parser.parse_args(argsIn)
 
     except argparse.ArgumentError:
@@ -236,7 +226,7 @@ def main(argsIn):
     merge_path = options.output_path + '_merge.vrt'
 
     # Nodata note: If the default value of 255 is used we can't look at the images
-    #              using stereo_gui.  For now not using a nodata value!
+    #              using the ASP stereo_gui tool.  For now not using a nodata value!
 
     # TODO: This won't work well if all of the label files go in one folder!
     # Merge all of the label files into a single file
