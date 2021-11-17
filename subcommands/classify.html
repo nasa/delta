@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.subcommands.classify API documentation</title>
 <meta name="description" content="Classify input images given a model." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -49,15 +49,28 @@ Classify input images given a model.
 &#34;&#34;&#34;
 import os.path
 
+import sys
 import time
+import math
+import csv
+
+import shapely
+from shapely import wkt
+from osgeo import gdal
+
 import numpy as np
 import matplotlib
+from packaging import version
 import tensorflow as tf
+import tensorflow.keras.metrics #pylint: disable=no-name-in-module
 
 from delta.config import config
-from delta.config.extensions import custom_objects, image_writer
+from delta.config.extensions import image_writer
+from delta.imagery.rectangle import Rectangle
 from delta.ml import predict
-from delta.extensions.sources.tiff import write_tiff
+from delta.ml.io import load_model
+from delta.ml.config_parser import metric_from_dict
+
 
 matplotlib.use(&#39;Agg&#39;)
 import matplotlib.pyplot as plt #pylint: disable=wrong-import-order,wrong-import-position,ungrouped-imports
@@ -89,92 +102,310 @@ def ae_convert(data):
     r = np.clip((data[:, :, [4, 2, 1]]  * np.float32(100.0)), 0.0, 255.0).astype(np.uint8)
     return r
 
-def main(options):
+def print_classes(output_file, cm, metrics, comment):
 
-    # TODO: Share the way this is done with in ml/train.py
-    cpuOnly = (config.general.gpus()==0)
+    if output_file is not None:
+        file_handle = open(output_file, &#39;a&#39;)
 
-    if cpuOnly:
-        with tf.device(&#39;/cpu:0&#39;):
-            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
+    print(comment)
+    if output_file is not None:
+        file_handle.write(comment + &#39;\n&#39;)
+    for i in range(cm.shape[0]):
+        name = config.dataset.classes[i].name if \
+               len(config.dataset.classes) == cm.shape[0] else (&#39;Class %d&#39; % (i))
+        with np.errstate(invalid=&#39;ignore&#39;):
+            precision_percent = np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100) # Column = predictions
+            recall_percent = np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100) # Row = actual values
+            s = (&#39;%s--- Precision: %6.2f%%    Recall: %6.2f%%        Frequency: %6.2f%%&#39; %
+                 (name.ljust(20), precision_percent, recall_percent,
+                  float(np.sum(cm[i, :] / np.sum(cm)) * 100)))
+            print(s)
+            if output_file is not None:
+                file_handle.write(s + &#39;\n&#39;)
+    s = &#39;%6.2f%% Accuracy&#39; % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + &#39;\n&#39;)
+
+    s = &#39;&#39;
+    for m in metrics:
+        s += &#39;%s = %8.4f &#39; % (m.name, float(m.result()))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + &#39;\n&#39;)
+        file_handle.close()
+
+
+class LossToMetricWrapper(tensorflow.keras.metrics.Metric):
+    &#34;&#34;&#34;Wrap a Loss object to make it behave like a Metric object&#34;&#34;&#34;
+    def __init__(self, loss_object):
+        super().__init__(name=loss_object.name)
+        self._loss_object = loss_object
+        self._moving_average = 0.0
+        self._total_count = 0
+
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+        this_loss = self._loss_object.call(y_true, y_pred)
+        if isinstance(this_loss, tf.Tensor):
+            this_loss = this_loss.numpy()
+        elif not isinstance(this_loss, np.ndarray):
+            this_loss = np.ndarray(this_loss)
+        self._total_count += y_true.size
+        self._moving_average += (this_loss.mean() - self._moving_average) * (y_true.size / self._total_count)
+
+    def result(self):
+        return self._moving_average
+
+def get_metrics():
+    &#34;&#34;&#34;Returns a list of specified metrics, wrapping up losses as metrics&#34;&#34;&#34;
+    if config.classify.metrics() is None:
+        return []
+    metrics = [metric_from_dict(m) for m in config.classify.metrics()]
+    metrics = [LossToMetricWrapper(m) if issubclass(type(m), tf.keras.losses.Loss) else m for m in metrics]
+    return metrics
+
+def classify_image(model, image, label, path, net_name, options,
+                   shapes=None, persistent_metrics=None):
+    &#39;&#39;&#39;Classify an image and return the confusion matrix and metrics if labels were provided&#39;&#39;&#39;
+    out_path, base_name = os.path.split(path)
+    base_name = os.path.splitext(base_name)[0]
+    base_out = (options.outprefix if options.outprefix else net_name + &#39;_&#39;) + base_name + &#39;.tiff&#39;
+
+
+    # check if is subdirectory
+    if options.basedir and os.path.abspath(options.basedir) == \
+            os.path.commonpath([os.path.abspath(options.basedir), os.path.abspath(out_path)]):
+        out_path = os.path.relpath(out_path, options.basedir)
     else:
-        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
+        out_path = &#39;&#39;
+    if options.outdir:
+        out_path = os.path.join(options.outdir, out_path)
+    if out_path:
+        os.makedirs(out_path, exist_ok=True)
 
-    colors = list(map(lambda x: x.color, config.dataset.classes))
-    error_colors = np.array([[0x0, 0x0, 0x0],
-                             [0xFF, 0x00, 0x00]], dtype=np.uint8)
-    if options.noColormap:
-        colors=None # Forces raw one channel output
+    writer = image_writer(&#39;tiff&#39;)
+
+    error_image = None
+    if label:
+        assert image.size() == label.size(), &#39;Image and label do not match.&#39;
+        if options.error_abs:
+            error_image = writer(os.path.join(out_path, &#39;error_abs_&#39; + base_out))
+        elif options.error:
+            error_image = writer(os.path.join(out_path, &#39;error_&#39; + base_out))
+
+    prob_image = writer(os.path.join(out_path, base_out)) if config.classify.prob_image() else None
+    output_image = writer(os.path.join(out_path, base_out)) if not config.classify.prob_image() else None
+
+    ts = config.io.tile_size()
+    roi = get_roi_containing_shapes(shapes)
+
+    metrics = None
+    num_temp_metrics = 0
+    if options.autoencoder:
+        label = image
+        predictor = predict.ImagePredictor(model, ts, output_image, True, base_name,
+                                           None if options.noColormap else (ae_convert, np.uint8, 3))
+    else:
+        colors = list(map(lambda x: x.color, config.dataset.classes))
+        if options.noColormap:
+            colors=None # Forces raw one channel output
+        if label:
+            metrics = get_metrics() # For single images
+            num_temp_metrics = len(metrics)
+            if persistent_metrics is not None: # Persistent metrics over all images
+                metrics = metrics + persistent_metrics
+        predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
+                                           prob_image=prob_image, error_image=error_image, error_abs=options.error_abs,
+                                           metrics=metrics)
+
+    overlap = (config.classify.overlap(), config.classify.overlap())
+    try:
+        if config.general.gpus() == 0:
+            with tf.device(&#39;/cpu:0&#39;):
+                predictor.predict(image, label, overlap=overlap, input_bounds=roi, roi_shapes=shapes)
+        else:
+            predictor.predict(image, label, overlap=overlap, input_bounds=roi, roi_shapes=shapes)
+    except KeyboardInterrupt:
+        print(&#39;\nAborted.&#39;)
+        sys.exit(0)
+
+    #if options.autoencoder:
+    #    write_tiff(&#39;orig_&#39; + net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;,
+    #               image.read() if options.noColormap else ae_convert(image.read()),
+    #               metadata=image.metadata())
+
+    if label:
+        cm = predictor.confusion_matrix()
+        class_names = list(map(lambda x: x.name, config.dataset.classes))
+        if len(config.dataset.classes) != cm.shape[0]:
+            class_names = list(map(lambda x: &#39;Class %d&#39; % (x), range(cm.shape[0])))
+        if options.confusion and (not shapes):
+            save_confusion(cm, class_names,
+                           os.path.join(out_path, &#39;confusion_&#39; + os.path.splitext(base_out)[0] + &#39;.pdf&#39;))
+        metrics = predictor.metrics()
+        metrics, persistent_metrics = (metrics[0:num_temp_metrics], metrics[num_temp_metrics:])
+        return cm, metrics, persistent_metrics
+    return None, None, None
+
+def get_wkt_path(image_path, wkt_folder=None):
+    &#39;&#39;&#39;Return the path to where the WKT file for an image should be&#39;&#39;&#39;
+    WKT_EXTENSION = &#39;.wkt.csv&#39;
+    if wkt_folder:
+        p = os.path.join(wkt_folder, os.path.basename(image_path))
+        path = os.path.splitext(p)[0] + WKT_EXTENSION
+    else:
+        path = os.path.splitext(image_path)[0] + WKT_EXTENSION
+    return path
+
+def load_shapes_matching_tag(wkt_path, tag):
+    &#39;&#39;&#39;Returns a list of all the shapes defined for this tag in the WKT file.
+       If tag is None, return untagged regions&#39;&#39;&#39;
+    shapes = []
+    with open(wkt_path, &#39;r&#39;) as f:
+        reader = csv.reader(f, skipinitialspace=True)
+        for row in reader:
+            raw_line = &#39;, &#39;.join(row)
+            if (&#39;POLYGON&#39; not in raw_line) or (len(row) != 2):
+                continue
+            names = row[1].strip().split(&#39;,&#39;)
+            if not tag and (names == [&#39;&#39;]): # Match non-tagged regions
+                s = wkt.loads(row[0])
+                shapes.append(s)
+            else:
+                for n in names: # Check each tag of the region
+                    if tag == n.strip():
+                        s = wkt.loads(row[0])
+                        shapes.append(s)
+                        continue
+    return shapes
+
+# MOVE
+def get_roi_containing_shapes(shapes) -&gt; Rectangle:
+    &#39;&#39;&#39;Return a Rectangle containing all the shapes or None if none were passed in&#39;&#39;&#39;
+    if not shapes:
+        return None
+    roi = Rectangle(*shapes[0].bounds)
+    for i in range(1,len(shapes)):
+        new_roi = Rectangle(*shapes[i].bounds)
+        roi.expand_to_contain_rect(new_roi)
+    # Convert to integer values
+    return Rectangle(int(math.floor(roi.min_x)),
+                     int(math.floor(roi.min_y)),
+                     int(math.ceil(roi.max_x)),
+                     int(math.ceil(roi.max_y)))
+
+def shapes_to_pixel_coordinates(shapes, image_path):
+    &#39;&#39;&#39;Convert any shapes not in pixel coordinates to pixel coordinates.
+       Always returns a list of Polygon objects, even if the input list
+       contains MultiPolygon objects.&#39;&#39;&#39;
+    handle = gdal.Open(image_path)
+    transform = handle.GetGeoTransform()
+
+    def apply_transform(coord, transform):
+        return ((coord[0] - transform[0]) / transform[1],
+                (coord[1] - transform[3]) / transform[5])
+
+    output_shapes = []
+    for s in shapes:
+        if s.geom_type == &#39;Polygon&#39;:
+            coord_list = [apply_transform(c, transform) for c in s.exterior.coords]
+            interior_coord_lists = []
+            for i in s.interiors:
+                these_coords = [apply_transform(c, transform) for c in i.coords]
+                interior_coord_lists.append(these_coords)
+            output_shapes.append(shapely.geometry.Polygon(coord_list, interior_coord_lists))
+            continue
+        if s.geom_type == &#39;MultiPolygon&#39;:
+            for g in s.geoms:
+                coord_list = [apply_transform(c, transform) for c in g.exterior.coords]
+                interior_coord_lists = []
+                for i in g.interiors:
+                    these_coords = [apply_transform(c, transform) for c in i.coords]
+                    interior_coord_lists.append(these_coords)
+                output_shapes.append(shapely.geometry.Polygon(coord_list, interior_coord_lists))
+            continue
+        raise Exception(&#39;Unrecognized shape type: &#39; + s.geom_type)
+    return output_shapes
+
+def load_wkt_shapes(wkt_path, image_path, region_name):
+    &#39;&#39;&#39;Loads shapes (in image coordinates) from an image&#39;s WKT file&#39;&#39;&#39;
+
+    if os.path.isfile(wkt_path):
+        geo_shapes = load_shapes_matching_tag(wkt_path, region_name)
+        if geo_shapes:
+            return shapes_to_pixel_coordinates(geo_shapes, image_path)
+    return []
+
+def main(options): #pylint: disable=R0912
+    if version.parse(tf.__version__) &lt; version.parse(&#39;2.2&#39;): # eager execution not default
+        tf.config.experimental_run_functions_eagerly(True)
+
+    model = load_model(options.model)
 
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
     net_name = os.path.splitext(os.path.basename(options.model))[0]
 
-    full_cm = None
-    if options.autoencoder:
+    if len(images) == 0:
+        print(&#39;No images specified.&#39;)
+        return 0
+
+    result_file = net_name + &#39;_results.txt&#39;
+    if result_file and os.path.exists(result_file):
+        os.remove(result_file)
+
+    if options.autoencoder or not labels:
         labels = None
-    for (i, path) in enumerate(images):
-        image = images.load(i)
-        base_name = os.path.splitext(os.path.basename(path))[0]
-        writer = image_writer(&#39;tiff&#39;)
-        prob_image = writer(net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;) if options.prob else None
-        output_image = writer(net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;) if not options.prob else None
+        regions = [&#39;all&#39;] # Each whole image
+    else:
+        regions = [&#39;all&#39;, &#39;no_label&#39;] # Also individual regions without labels
+        specified_regions = config.classify.regions()
+        if specified_regions:
+            regions += specified_regions
 
-        error_image = None
-        label = None
-        if labels:
-            error_image = writer(&#39;errors_&#39; + base_name + &#39;.tiff&#39;)
-            label = labels.load(i)
-            assert image.size() == label.size(), &#39;Image and label do not match.&#39;
+    for region_name in regions:
+        # If there are multiple images we need to maintain separate metric objects
+        # to keep summary statistics over all the images
+        full_cm = None
+        full_metrics = get_metrics() if len(images) &gt; 1 else None
+        for (i, image_path) in enumerate(images):
+            this_image = images.load(i)
+            wkt_path = get_wkt_path(image_path, config.classify.wkt_dir())
+            shapes = None
 
-        ts = config.io.tile_size()
-        if options.autoencoder:
-            label = image
-            predictor = predict.ImagePredictor(model, ts, output_image, True,
-                                               None if options.noColormap else (ae_convert, np.uint8, 3))
-        else:
-            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
-                                               prob_image=prob_image, error_image=error_image,
-                                               error_colors=error_colors)
+            if region_name == &#39;no_label&#39;:
+                # Individually compute untagged regions
+                shapes = load_wkt_shapes(wkt_path, image_path, None)
+                for s in shapes:
+                    cm, metrics, full_metrics = classify_image(model, this_image, labels.load(i),
+                                                               image_path, net_name, options,
+                                                               shapes=[s], persistent_metrics=None)
+                    print_classes(result_file, cm, metrics, &#39;For image &#39; + image_path + &#39;,  shape: &#39; + str(s))
+                continue
 
-        overlap = (options.overlap, options.overlap)
-        try:
-            if cpuOnly:
-                with tf.device(&#39;/cpu:0&#39;):
-                    predictor.predict(image, label, overlap=overlap)
-            else:
-                predictor.predict(image, label, overlap=overlap)
-        except KeyboardInterrupt:
-            print(&#39;\nAborted.&#39;)
-            return 0
+            # Load shapes from file if they are specified for this image/region pair
+            if region_name != &#39;all&#39;:
+                shapes = load_wkt_shapes(wkt_path, image_path, region_name)
+                if not shapes:
+                    continue # This region name not specified for this image
 
-        if labels:
-            cm = predictor.confusion_matrix()
-            if full_cm is None:
-                full_cm = np.copy(cm).astype(np.int64)
-            else:
-                full_cm += cm
-            for j in range(cm.shape[0]):
-                print(&#39;%s--- Precision: %.2f%%    Recall: %.2f%%      Pixels: %d / %d&#39; % \
-                      (config.dataset.classes[j].name,
-                       100 * cm[j,j] / np.sum(cm[:, j]),
-                       100 * cm[j,j] / np.sum(cm[j, :]),
-                       int(np.sum(cm[j, :])), int(np.sum(cm))))
-            print(&#39;%.2f%% Correct: %s&#39; % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
-            save_confusion(cm, map(lambda x: x.name, config.dataset.classes), &#39;confusion_&#39; + base_name + &#39;.pdf&#39;)
-
-        if options.autoencoder:
-            write_tiff(&#39;orig_&#39; + base_name + &#39;.tiff&#39;, image.read() if options.noColormap else ae_convert(image.read()),
-                       metadata=image.metadata())
+            cm, metrics, full_metrics = classify_image(model, this_image,
+                                                       labels.load(i) if labels else None,
+                                                       image_path, net_name, options,
+                                                       shapes, persistent_metrics=full_metrics)
+            if cm is not None:
+                if (region_name == &#39;all&#39;) and (len(images) &gt; 1):
+                    print_classes(result_file, cm, metrics, &#39;Image: %s&#39; % (image_path))
+                if full_cm is None:
+                    full_cm = np.copy(cm).astype(np.int64)
+                else:
+                    full_cm += cm
+                if len(images) == 1: # So the statistics are printed properly outside the loop
+                    full_metrics = metrics
+        if labels and (full_cm is not None):
+            print_classes(result_file, full_cm, full_metrics, &#39;Overall:&#39; if region_name == &#39;all&#39; else region_name + &#39;:&#39;)
     stop_time = time.time()
-    if labels:
-        for i in range(full_cm.shape[0]):
-            print(&#39;%s--- Precision: %.2f%%    Recall: %.2f%%        Pixels: %d / %d&#39; % \
-                    (config.dataset.classes[i].name,
-                     100 * full_cm[i,i] / np.sum(full_cm[:, i]),
-                     100 * full_cm[i,i] / np.sum(full_cm[i, :]),
-                     int(np.sum(cm[j, :])), int(np.sum(cm))))
     print(&#39;Elapsed time = &#39;, stop_time - start_time)
     return 0</code></pre>
 </details>
@@ -200,6 +431,213 @@ def main(options):
     return r</code></pre>
 </details>
 </dd>
+<dt id="delta.subcommands.classify.classify_image"><code class="name flex">
+<span>def <span class="ident">classify_image</span></span>(<span>model, image, label, path, net_name, options, shapes=None, persistent_metrics=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Classify an image and return the confusion matrix and metrics if labels were provided</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def classify_image(model, image, label, path, net_name, options,
+                   shapes=None, persistent_metrics=None):
+    &#39;&#39;&#39;Classify an image and return the confusion matrix and metrics if labels were provided&#39;&#39;&#39;
+    out_path, base_name = os.path.split(path)
+    base_name = os.path.splitext(base_name)[0]
+    base_out = (options.outprefix if options.outprefix else net_name + &#39;_&#39;) + base_name + &#39;.tiff&#39;
+
+
+    # check if is subdirectory
+    if options.basedir and os.path.abspath(options.basedir) == \
+            os.path.commonpath([os.path.abspath(options.basedir), os.path.abspath(out_path)]):
+        out_path = os.path.relpath(out_path, options.basedir)
+    else:
+        out_path = &#39;&#39;
+    if options.outdir:
+        out_path = os.path.join(options.outdir, out_path)
+    if out_path:
+        os.makedirs(out_path, exist_ok=True)
+
+    writer = image_writer(&#39;tiff&#39;)
+
+    error_image = None
+    if label:
+        assert image.size() == label.size(), &#39;Image and label do not match.&#39;
+        if options.error_abs:
+            error_image = writer(os.path.join(out_path, &#39;error_abs_&#39; + base_out))
+        elif options.error:
+            error_image = writer(os.path.join(out_path, &#39;error_&#39; + base_out))
+
+    prob_image = writer(os.path.join(out_path, base_out)) if config.classify.prob_image() else None
+    output_image = writer(os.path.join(out_path, base_out)) if not config.classify.prob_image() else None
+
+    ts = config.io.tile_size()
+    roi = get_roi_containing_shapes(shapes)
+
+    metrics = None
+    num_temp_metrics = 0
+    if options.autoencoder:
+        label = image
+        predictor = predict.ImagePredictor(model, ts, output_image, True, base_name,
+                                           None if options.noColormap else (ae_convert, np.uint8, 3))
+    else:
+        colors = list(map(lambda x: x.color, config.dataset.classes))
+        if options.noColormap:
+            colors=None # Forces raw one channel output
+        if label:
+            metrics = get_metrics() # For single images
+            num_temp_metrics = len(metrics)
+            if persistent_metrics is not None: # Persistent metrics over all images
+                metrics = metrics + persistent_metrics
+        predictor = predict.LabelPredictor(model, ts, output_image, True, base_name, colormap=colors,
+                                           prob_image=prob_image, error_image=error_image, error_abs=options.error_abs,
+                                           metrics=metrics)
+
+    overlap = (config.classify.overlap(), config.classify.overlap())
+    try:
+        if config.general.gpus() == 0:
+            with tf.device(&#39;/cpu:0&#39;):
+                predictor.predict(image, label, overlap=overlap, input_bounds=roi, roi_shapes=shapes)
+        else:
+            predictor.predict(image, label, overlap=overlap, input_bounds=roi, roi_shapes=shapes)
+    except KeyboardInterrupt:
+        print(&#39;\nAborted.&#39;)
+        sys.exit(0)
+
+    #if options.autoencoder:
+    #    write_tiff(&#39;orig_&#39; + net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;,
+    #               image.read() if options.noColormap else ae_convert(image.read()),
+    #               metadata=image.metadata())
+
+    if label:
+        cm = predictor.confusion_matrix()
+        class_names = list(map(lambda x: x.name, config.dataset.classes))
+        if len(config.dataset.classes) != cm.shape[0]:
+            class_names = list(map(lambda x: &#39;Class %d&#39; % (x), range(cm.shape[0])))
+        if options.confusion and (not shapes):
+            save_confusion(cm, class_names,
+                           os.path.join(out_path, &#39;confusion_&#39; + os.path.splitext(base_out)[0] + &#39;.pdf&#39;))
+        metrics = predictor.metrics()
+        metrics, persistent_metrics = (metrics[0:num_temp_metrics], metrics[num_temp_metrics:])
+        return cm, metrics, persistent_metrics
+    return None, None, None</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.get_metrics"><code class="name flex">
+<span>def <span class="ident">get_metrics</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a list of specified metrics, wrapping up losses as metrics</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_metrics():
+    &#34;&#34;&#34;Returns a list of specified metrics, wrapping up losses as metrics&#34;&#34;&#34;
+    if config.classify.metrics() is None:
+        return []
+    metrics = [metric_from_dict(m) for m in config.classify.metrics()]
+    metrics = [LossToMetricWrapper(m) if issubclass(type(m), tf.keras.losses.Loss) else m for m in metrics]
+    return metrics</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.get_roi_containing_shapes"><code class="name flex">
+<span>def <span class="ident">get_roi_containing_shapes</span></span>(<span>shapes) ‑> <a title="delta.imagery.rectangle.Rectangle" href="../imagery/rectangle.html#delta.imagery.rectangle.Rectangle">Rectangle</a></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a Rectangle containing all the shapes or None if none were passed in</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_roi_containing_shapes(shapes) -&gt; Rectangle:
+    &#39;&#39;&#39;Return a Rectangle containing all the shapes or None if none were passed in&#39;&#39;&#39;
+    if not shapes:
+        return None
+    roi = Rectangle(*shapes[0].bounds)
+    for i in range(1,len(shapes)):
+        new_roi = Rectangle(*shapes[i].bounds)
+        roi.expand_to_contain_rect(new_roi)
+    # Convert to integer values
+    return Rectangle(int(math.floor(roi.min_x)),
+                     int(math.floor(roi.min_y)),
+                     int(math.ceil(roi.max_x)),
+                     int(math.ceil(roi.max_y)))</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.get_wkt_path"><code class="name flex">
+<span>def <span class="ident">get_wkt_path</span></span>(<span>image_path, wkt_folder=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the path to where the WKT file for an image should be</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_wkt_path(image_path, wkt_folder=None):
+    &#39;&#39;&#39;Return the path to where the WKT file for an image should be&#39;&#39;&#39;
+    WKT_EXTENSION = &#39;.wkt.csv&#39;
+    if wkt_folder:
+        p = os.path.join(wkt_folder, os.path.basename(image_path))
+        path = os.path.splitext(p)[0] + WKT_EXTENSION
+    else:
+        path = os.path.splitext(image_path)[0] + WKT_EXTENSION
+    return path</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.load_shapes_matching_tag"><code class="name flex">
+<span>def <span class="ident">load_shapes_matching_tag</span></span>(<span>wkt_path, tag)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a list of all the shapes defined for this tag in the WKT file.
+If tag is None, return untagged regions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_shapes_matching_tag(wkt_path, tag):
+    &#39;&#39;&#39;Returns a list of all the shapes defined for this tag in the WKT file.
+       If tag is None, return untagged regions&#39;&#39;&#39;
+    shapes = []
+    with open(wkt_path, &#39;r&#39;) as f:
+        reader = csv.reader(f, skipinitialspace=True)
+        for row in reader:
+            raw_line = &#39;, &#39;.join(row)
+            if (&#39;POLYGON&#39; not in raw_line) or (len(row) != 2):
+                continue
+            names = row[1].strip().split(&#39;,&#39;)
+            if not tag and (names == [&#39;&#39;]): # Match non-tagged regions
+                s = wkt.loads(row[0])
+                shapes.append(s)
+            else:
+                for n in names: # Check each tag of the region
+                    if tag == n.strip():
+                        s = wkt.loads(row[0])
+                        shapes.append(s)
+                        continue
+    return shapes</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.load_wkt_shapes"><code class="name flex">
+<span>def <span class="ident">load_wkt_shapes</span></span>(<span>wkt_path, image_path, region_name)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Loads shapes (in image coordinates) from an image's WKT file</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_wkt_shapes(wkt_path, image_path, region_name):
+    &#39;&#39;&#39;Loads shapes (in image coordinates) from an image&#39;s WKT file&#39;&#39;&#39;
+
+    if os.path.isfile(wkt_path):
+        geo_shapes = load_shapes_matching_tag(wkt_path, region_name)
+        if geo_shapes:
+            return shapes_to_pixel_coordinates(geo_shapes, image_path)
+    return []</code></pre>
+</details>
+</dd>
 <dt id="delta.subcommands.classify.main"><code class="name flex">
 <span>def <span class="ident">main</span></span>(<span>options)</span>
 </code></dt>
@@ -209,94 +647,121 @@ def main(options):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def main(options):
+<pre><code class="python">def main(options): #pylint: disable=R0912
+    if version.parse(tf.__version__) &lt; version.parse(&#39;2.2&#39;): # eager execution not default
+        tf.config.experimental_run_functions_eagerly(True)
 
-    # TODO: Share the way this is done with in ml/train.py
-    cpuOnly = (config.general.gpus()==0)
-
-    if cpuOnly:
-        with tf.device(&#39;/cpu:0&#39;):
-            model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
-    else:
-        model = tf.keras.models.load_model(options.model, custom_objects=custom_objects(), compile=False)
-
-    colors = list(map(lambda x: x.color, config.dataset.classes))
-    error_colors = np.array([[0x0, 0x0, 0x0],
-                             [0xFF, 0x00, 0x00]], dtype=np.uint8)
-    if options.noColormap:
-        colors=None # Forces raw one channel output
+    model = load_model(options.model)
 
     start_time = time.time()
     images = config.dataset.images()
     labels = config.dataset.labels()
     net_name = os.path.splitext(os.path.basename(options.model))[0]
 
-    full_cm = None
-    if options.autoencoder:
+    if len(images) == 0:
+        print(&#39;No images specified.&#39;)
+        return 0
+
+    result_file = net_name + &#39;_results.txt&#39;
+    if result_file and os.path.exists(result_file):
+        os.remove(result_file)
+
+    if options.autoencoder or not labels:
         labels = None
-    for (i, path) in enumerate(images):
-        image = images.load(i)
-        base_name = os.path.splitext(os.path.basename(path))[0]
-        writer = image_writer(&#39;tiff&#39;)
-        prob_image = writer(net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;) if options.prob else None
-        output_image = writer(net_name + &#39;_&#39; + base_name + &#39;.tiff&#39;) if not options.prob else None
+        regions = [&#39;all&#39;] # Each whole image
+    else:
+        regions = [&#39;all&#39;, &#39;no_label&#39;] # Also individual regions without labels
+        specified_regions = config.classify.regions()
+        if specified_regions:
+            regions += specified_regions
 
-        error_image = None
-        label = None
-        if labels:
-            error_image = writer(&#39;errors_&#39; + base_name + &#39;.tiff&#39;)
-            label = labels.load(i)
-            assert image.size() == label.size(), &#39;Image and label do not match.&#39;
+    for region_name in regions:
+        # If there are multiple images we need to maintain separate metric objects
+        # to keep summary statistics over all the images
+        full_cm = None
+        full_metrics = get_metrics() if len(images) &gt; 1 else None
+        for (i, image_path) in enumerate(images):
+            this_image = images.load(i)
+            wkt_path = get_wkt_path(image_path, config.classify.wkt_dir())
+            shapes = None
 
-        ts = config.io.tile_size()
-        if options.autoencoder:
-            label = image
-            predictor = predict.ImagePredictor(model, ts, output_image, True,
-                                               None if options.noColormap else (ae_convert, np.uint8, 3))
-        else:
-            predictor = predict.LabelPredictor(model, ts, output_image, True, colormap=colors,
-                                               prob_image=prob_image, error_image=error_image,
-                                               error_colors=error_colors)
+            if region_name == &#39;no_label&#39;:
+                # Individually compute untagged regions
+                shapes = load_wkt_shapes(wkt_path, image_path, None)
+                for s in shapes:
+                    cm, metrics, full_metrics = classify_image(model, this_image, labels.load(i),
+                                                               image_path, net_name, options,
+                                                               shapes=[s], persistent_metrics=None)
+                    print_classes(result_file, cm, metrics, &#39;For image &#39; + image_path + &#39;,  shape: &#39; + str(s))
+                continue
 
-        overlap = (options.overlap, options.overlap)
-        try:
-            if cpuOnly:
-                with tf.device(&#39;/cpu:0&#39;):
-                    predictor.predict(image, label, overlap=overlap)
-            else:
-                predictor.predict(image, label, overlap=overlap)
-        except KeyboardInterrupt:
-            print(&#39;\nAborted.&#39;)
-            return 0
+            # Load shapes from file if they are specified for this image/region pair
+            if region_name != &#39;all&#39;:
+                shapes = load_wkt_shapes(wkt_path, image_path, region_name)
+                if not shapes:
+                    continue # This region name not specified for this image
 
-        if labels:
-            cm = predictor.confusion_matrix()
-            if full_cm is None:
-                full_cm = np.copy(cm).astype(np.int64)
-            else:
-                full_cm += cm
-            for j in range(cm.shape[0]):
-                print(&#39;%s--- Precision: %.2f%%    Recall: %.2f%%      Pixels: %d / %d&#39; % \
-                      (config.dataset.classes[j].name,
-                       100 * cm[j,j] / np.sum(cm[:, j]),
-                       100 * cm[j,j] / np.sum(cm[j, :]),
-                       int(np.sum(cm[j, :])), int(np.sum(cm))))
-            print(&#39;%.2f%% Correct: %s&#39; % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100), path))
-            save_confusion(cm, map(lambda x: x.name, config.dataset.classes), &#39;confusion_&#39; + base_name + &#39;.pdf&#39;)
-
-        if options.autoencoder:
-            write_tiff(&#39;orig_&#39; + base_name + &#39;.tiff&#39;, image.read() if options.noColormap else ae_convert(image.read()),
-                       metadata=image.metadata())
+            cm, metrics, full_metrics = classify_image(model, this_image,
+                                                       labels.load(i) if labels else None,
+                                                       image_path, net_name, options,
+                                                       shapes, persistent_metrics=full_metrics)
+            if cm is not None:
+                if (region_name == &#39;all&#39;) and (len(images) &gt; 1):
+                    print_classes(result_file, cm, metrics, &#39;Image: %s&#39; % (image_path))
+                if full_cm is None:
+                    full_cm = np.copy(cm).astype(np.int64)
+                else:
+                    full_cm += cm
+                if len(images) == 1: # So the statistics are printed properly outside the loop
+                    full_metrics = metrics
+        if labels and (full_cm is not None):
+            print_classes(result_file, full_cm, full_metrics, &#39;Overall:&#39; if region_name == &#39;all&#39; else region_name + &#39;:&#39;)
     stop_time = time.time()
-    if labels:
-        for i in range(full_cm.shape[0]):
-            print(&#39;%s--- Precision: %.2f%%    Recall: %.2f%%        Pixels: %d / %d&#39; % \
-                    (config.dataset.classes[i].name,
-                     100 * full_cm[i,i] / np.sum(full_cm[:, i]),
-                     100 * full_cm[i,i] / np.sum(full_cm[i, :]),
-                     int(np.sum(cm[j, :])), int(np.sum(cm))))
     print(&#39;Elapsed time = &#39;, stop_time - start_time)
     return 0</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.print_classes"><code class="name flex">
+<span>def <span class="ident">print_classes</span></span>(<span>output_file, cm, metrics, comment)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def print_classes(output_file, cm, metrics, comment):
+
+    if output_file is not None:
+        file_handle = open(output_file, &#39;a&#39;)
+
+    print(comment)
+    if output_file is not None:
+        file_handle.write(comment + &#39;\n&#39;)
+    for i in range(cm.shape[0]):
+        name = config.dataset.classes[i].name if \
+               len(config.dataset.classes) == cm.shape[0] else (&#39;Class %d&#39; % (i))
+        with np.errstate(invalid=&#39;ignore&#39;):
+            precision_percent = np.nan_to_num(cm[i,i] / np.sum(cm[:, i]) * 100) # Column = predictions
+            recall_percent = np.nan_to_num(cm[i,i] / np.sum(cm[i, :]) * 100) # Row = actual values
+            s = (&#39;%s--- Precision: %6.2f%%    Recall: %6.2f%%        Frequency: %6.2f%%&#39; %
+                 (name.ljust(20), precision_percent, recall_percent,
+                  float(np.sum(cm[i, :] / np.sum(cm)) * 100)))
+            print(s)
+            if output_file is not None:
+                file_handle.write(s + &#39;\n&#39;)
+    s = &#39;%6.2f%% Accuracy&#39; % (float(np.sum(np.diag(cm)) / np.sum(cm) * 100))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + &#39;\n&#39;)
+
+    s = &#39;&#39;
+    for m in metrics:
+        s += &#39;%s = %8.4f &#39; % (m.name, float(m.result()))
+    print(s)
+    if output_file is not None:
+        file_handle.write(s + &#39;\n&#39;)
+        file_handle.close()</code></pre>
 </details>
 </dd>
 <dt id="delta.subcommands.classify.save_confusion"><code class="name flex">
@@ -332,9 +797,149 @@ def main(options):
     f.savefig(filename)</code></pre>
 </details>
 </dd>
+<dt id="delta.subcommands.classify.shapes_to_pixel_coordinates"><code class="name flex">
+<span>def <span class="ident">shapes_to_pixel_coordinates</span></span>(<span>shapes, image_path)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Convert any shapes not in pixel coordinates to pixel coordinates.
+Always returns a list of Polygon objects, even if the input list
+contains MultiPolygon objects.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def shapes_to_pixel_coordinates(shapes, image_path):
+    &#39;&#39;&#39;Convert any shapes not in pixel coordinates to pixel coordinates.
+       Always returns a list of Polygon objects, even if the input list
+       contains MultiPolygon objects.&#39;&#39;&#39;
+    handle = gdal.Open(image_path)
+    transform = handle.GetGeoTransform()
+
+    def apply_transform(coord, transform):
+        return ((coord[0] - transform[0]) / transform[1],
+                (coord[1] - transform[3]) / transform[5])
+
+    output_shapes = []
+    for s in shapes:
+        if s.geom_type == &#39;Polygon&#39;:
+            coord_list = [apply_transform(c, transform) for c in s.exterior.coords]
+            interior_coord_lists = []
+            for i in s.interiors:
+                these_coords = [apply_transform(c, transform) for c in i.coords]
+                interior_coord_lists.append(these_coords)
+            output_shapes.append(shapely.geometry.Polygon(coord_list, interior_coord_lists))
+            continue
+        if s.geom_type == &#39;MultiPolygon&#39;:
+            for g in s.geoms:
+                coord_list = [apply_transform(c, transform) for c in g.exterior.coords]
+                interior_coord_lists = []
+                for i in g.interiors:
+                    these_coords = [apply_transform(c, transform) for c in i.coords]
+                    interior_coord_lists.append(these_coords)
+                output_shapes.append(shapely.geometry.Polygon(coord_list, interior_coord_lists))
+            continue
+        raise Exception(&#39;Unrecognized shape type: &#39; + s.geom_type)
+    return output_shapes</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.subcommands.classify.LossToMetricWrapper"><code class="flex name class">
+<span>class <span class="ident">LossToMetricWrapper</span></span>
+<span>(</span><span>loss_object)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Wrap a Loss object to make it behave like a Metric object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class LossToMetricWrapper(tensorflow.keras.metrics.Metric):
+    &#34;&#34;&#34;Wrap a Loss object to make it behave like a Metric object&#34;&#34;&#34;
+    def __init__(self, loss_object):
+        super().__init__(name=loss_object.name)
+        self._loss_object = loss_object
+        self._moving_average = 0.0
+        self._total_count = 0
+
+    def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+        this_loss = self._loss_object.call(y_true, y_pred)
+        if isinstance(this_loss, tf.Tensor):
+            this_loss = this_loss.numpy()
+        elif not isinstance(this_loss, np.ndarray):
+            this_loss = np.ndarray(this_loss)
+        self._total_count += y_true.size
+        self._moving_average += (this_loss.mean() - self._moving_average) * (y_true.size / self._total_count)
+
+    def result(self):
+        return self._moving_average</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>keras.metrics.Metric</li>
+<li>keras.engine.base_layer.Layer</li>
+<li>tensorflow.python.module.module.Module</li>
+<li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
+<li>tensorflow.python.training.tracking.base.Trackable</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.subcommands.classify.LossToMetricWrapper.result"><code class="name flex">
+<span>def <span class="ident">result</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Computes and returns the metric value tensor.</p>
+<p>Result computation is an idempotent operation that simply calculates the
+metric value using the state variables.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def result(self):
+    return self._moving_average</code></pre>
+</details>
+</dd>
+<dt id="delta.subcommands.classify.LossToMetricWrapper.update_state"><code class="name flex">
+<span>def <span class="ident">update_state</span></span>(<span>self, y_true, y_pred, sample_weight=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Accumulates statistics for the metric.</p>
+<p>Note: This function is executed as a graph function in graph mode.
+This means:
+a) Operations on the same resource are executed in textual order.
+This should make it easier to do things like add the updated
+value of a variable to another, for example.
+b) You don't need to worry about collecting the update ops to execute.
+All update ops added to the graph by this function will be executed.
+As a result, code should generally work the same way with graph or
+eager execution.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt>*args:</dt>
+<dt><strong><code>**kwargs</code></strong></dt>
+<dd>A mini-batch of inputs to the Metric.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
+    this_loss = self._loss_object.call(y_true, y_pred)
+    if isinstance(this_loss, tf.Tensor):
+        this_loss = this_loss.numpy()
+    elif not isinstance(this_loss, np.ndarray):
+        this_loss = np.ndarray(this_loss)
+    self._total_count += y_true.size
+    self._moving_average += (this_loss.mean() - self._moving_average) * (y_true.size / self._total_count)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -351,15 +956,34 @@ def main(options):
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="delta.subcommands.classify.ae_convert" href="#delta.subcommands.classify.ae_convert">ae_convert</a></code></li>
+<li><code><a title="delta.subcommands.classify.classify_image" href="#delta.subcommands.classify.classify_image">classify_image</a></code></li>
+<li><code><a title="delta.subcommands.classify.get_metrics" href="#delta.subcommands.classify.get_metrics">get_metrics</a></code></li>
+<li><code><a title="delta.subcommands.classify.get_roi_containing_shapes" href="#delta.subcommands.classify.get_roi_containing_shapes">get_roi_containing_shapes</a></code></li>
+<li><code><a title="delta.subcommands.classify.get_wkt_path" href="#delta.subcommands.classify.get_wkt_path">get_wkt_path</a></code></li>
+<li><code><a title="delta.subcommands.classify.load_shapes_matching_tag" href="#delta.subcommands.classify.load_shapes_matching_tag">load_shapes_matching_tag</a></code></li>
+<li><code><a title="delta.subcommands.classify.load_wkt_shapes" href="#delta.subcommands.classify.load_wkt_shapes">load_wkt_shapes</a></code></li>
 <li><code><a title="delta.subcommands.classify.main" href="#delta.subcommands.classify.main">main</a></code></li>
+<li><code><a title="delta.subcommands.classify.print_classes" href="#delta.subcommands.classify.print_classes">print_classes</a></code></li>
 <li><code><a title="delta.subcommands.classify.save_confusion" href="#delta.subcommands.classify.save_confusion">save_confusion</a></code></li>
+<li><code><a title="delta.subcommands.classify.shapes_to_pixel_coordinates" href="#delta.subcommands.classify.shapes_to_pixel_coordinates">shapes_to_pixel_coordinates</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.subcommands.classify.LossToMetricWrapper" href="#delta.subcommands.classify.LossToMetricWrapper">LossToMetricWrapper</a></code></h4>
+<ul class="">
+<li><code><a title="delta.subcommands.classify.LossToMetricWrapper.result" href="#delta.subcommands.classify.LossToMetricWrapper.result">result</a></code></li>
+<li><code><a title="delta.subcommands.classify.LossToMetricWrapper.update_state" href="#delta.subcommands.classify.LossToMetricWrapper.update_state">update_state</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

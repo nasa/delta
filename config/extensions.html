@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.config.extensions API documentation</title>
 <meta name="description" content="Manage extensions to DELTA …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -64,6 +64,9 @@ All extensions can take keyword arguments that can be specified in the config fi
 #pylint:disable=global-statement
 
 import importlib
+from typing import Dict
+from delta.imagery.delta_image import DeltaImage
+from delta.imagery.delta_image import DeltaImageWriter
 
 __extensions_to_load = set()
 __layers = {}
@@ -73,6 +76,7 @@ __losses = {}
 __metrics = {}
 __callbacks = {}
 __prep_funcs = {}
+__augmentations = {}
 
 def __initialize():
     &#34;&#34;&#34;
@@ -195,6 +199,8 @@ def register_preprocess(function_name : str, prep_function):
     &#34;&#34;&#34;
     Register a preprocessing function for use in delta.
 
+    Preprocessing functions are called on numpy arrays when the data is read from disk.
+
     Parameters
     ----------
     function_name: str
@@ -207,7 +213,24 @@ def register_preprocess(function_name : str, prep_function):
     global __prep_funcs
     __prep_funcs[function_name] = prep_function
 
-def layer(layer_type : str):
+def register_augmentation(function_name : str, aug_function):
+    &#34;&#34;&#34;
+    Register an augmentation for use in delta.
+
+    Augmentations are called on tensors before the data is used for training.
+    Both the image and the label are passed to an augmentation function.
+
+    Parameters
+    ----------
+    function_name: str
+        Name of the augmentation function.
+    aug_function:
+        A function of the form aug(image, label), where image and labels are both tensors.
+    &#34;&#34;&#34;
+    global __augmentations
+    __augmentations[function_name] = aug_function
+
+def layer(layer_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom layer by name.
 
@@ -224,7 +247,7 @@ def layer(layer_type : str):
     __initialize()
     return __layers.get(layer_type)
 
-def loss(loss_type : str):
+def loss(loss_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom loss by name.
 
@@ -241,7 +264,7 @@ def loss(loss_type : str):
     __initialize()
     return __losses.get(loss_type)
 
-def metric(metric_type : str):
+def metric(metric_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom metric by name.
 
@@ -258,7 +281,7 @@ def metric(metric_type : str):
     __initialize()
     return __metrics.get(metric_type)
 
-def callback(cb_type : str):
+def callback(cb_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom callback by name.
 
@@ -275,7 +298,7 @@ def callback(cb_type : str):
     __initialize()
     return __callbacks.get(cb_type)
 
-def preprocess_function(prep_type : str):
+def preprocess_function(prep_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom preprocessing function by name.
 
@@ -292,7 +315,24 @@ def preprocess_function(prep_type : str):
     __initialize()
     return __prep_funcs.get(prep_type)
 
-def image_reader(reader_type : str):
+def augmentation(aug_type : str) -&gt; str:
+    &#34;&#34;&#34;
+    Retrieve a custom augmentation by name.
+
+    Parameters
+    ----------
+    aug_type: str
+        Name of the augmentation.
+
+    Returns
+    -------
+    Augmentation Function
+        The previously registered augmentation function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __augmentations.get(aug_type)
+
+def image_reader(reader_type : str) -&gt; DeltaImage:
     &#34;&#34;&#34;
     Get the reader of the given type.
 
@@ -309,7 +349,7 @@ def image_reader(reader_type : str):
     __initialize()
     return __readers.get(reader_type)
 
-def image_writer(writer_type : str):
+def image_writer(writer_type : str) -&gt; DeltaImageWriter:
     &#34;&#34;&#34;
     Get the writer of the given type.
 
@@ -326,7 +366,7 @@ def image_writer(writer_type : str):
     __initialize()
     return __writers.get(writer_type)
 
-def custom_objects():
+def custom_objects() -&gt; Dict:
     &#34;&#34;&#34;
     Returns a dictionary of all supported custom objects for use
     by tensorflow. Passed as an argument to load_model.
@@ -339,6 +379,7 @@ def custom_objects():
     __initialize()
     d = __layers.copy()
     d.update(__losses.copy())
+    d.update(__metrics.copy())
     return d</code></pre>
 </details>
 </section>
@@ -349,8 +390,45 @@ def custom_objects():
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="delta.config.extensions.augmentation"><code class="name flex">
+<span>def <span class="ident">augmentation</span></span>(<span>aug_type: str) ‑> str</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Retrieve a custom augmentation by name.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>aug_type</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the augmentation.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Augmentation Function</code></dt>
+<dd>The previously registered augmentation function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def augmentation(aug_type : str) -&gt; str:
+    &#34;&#34;&#34;
+    Retrieve a custom augmentation by name.
+
+    Parameters
+    ----------
+    aug_type: str
+        Name of the augmentation.
+
+    Returns
+    -------
+    Augmentation Function
+        The previously registered augmentation function.
+    &#34;&#34;&#34;
+    __initialize()
+    return __augmentations.get(aug_type)</code></pre>
+</details>
+</dd>
 <dt id="delta.config.extensions.callback"><code class="name flex">
-<span>def <span class="ident">callback</span></span>(<span>cb_type: str)</span>
+<span>def <span class="ident">callback</span></span>(<span>cb_type: str) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieve a custom callback by name.</p>
@@ -368,7 +446,7 @@ def custom_objects():
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def callback(cb_type : str):
+<pre><code class="python">def callback(cb_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom callback by name.
 
@@ -387,7 +465,7 @@ def custom_objects():
 </details>
 </dd>
 <dt id="delta.config.extensions.custom_objects"><code class="name flex">
-<span>def <span class="ident">custom_objects</span></span>(<span>)</span>
+<span>def <span class="ident">custom_objects</span></span>(<span>) ‑> Dict[~KT, ~VT]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a dictionary of all supported custom objects for use
@@ -401,7 +479,7 @@ by tensorflow. Passed as an argument to load_model.</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def custom_objects():
+<pre><code class="python">def custom_objects() -&gt; Dict:
     &#34;&#34;&#34;
     Returns a dictionary of all supported custom objects for use
     by tensorflow. Passed as an argument to load_model.
@@ -414,11 +492,12 @@ by tensorflow. Passed as an argument to load_model.</p>
     __initialize()
     d = __layers.copy()
     d.update(__losses.copy())
+    d.update(__metrics.copy())
     return d</code></pre>
 </details>
 </dd>
 <dt id="delta.config.extensions.image_reader"><code class="name flex">
-<span>def <span class="ident">image_reader</span></span>(<span>reader_type: str)</span>
+<span>def <span class="ident">image_reader</span></span>(<span>reader_type: str) ‑> <a title="delta.imagery.delta_image.DeltaImage" href="../imagery/delta_image.html#delta.imagery.delta_image.DeltaImage">DeltaImage</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Get the reader of the given type.</p>
@@ -434,7 +513,7 @@ The previously registered image reader.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def image_reader(reader_type : str):
+<pre><code class="python">def image_reader(reader_type : str) -&gt; DeltaImage:
     &#34;&#34;&#34;
     Get the reader of the given type.
 
@@ -453,7 +532,7 @@ The previously registered image reader.</p></div>
 </details>
 </dd>
 <dt id="delta.config.extensions.image_writer"><code class="name flex">
-<span>def <span class="ident">image_writer</span></span>(<span>writer_type: str)</span>
+<span>def <span class="ident">image_writer</span></span>(<span>writer_type: str) ‑> <a title="delta.imagery.delta_image.DeltaImageWriter" href="../imagery/delta_image.html#delta.imagery.delta_image.DeltaImageWriter">DeltaImageWriter</a></span>
 </code></dt>
 <dd>
 <div class="desc"><p>Get the writer of the given type.</p>
@@ -469,7 +548,7 @@ The previously registered image writer.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def image_writer(writer_type : str):
+<pre><code class="python">def image_writer(writer_type : str) -&gt; DeltaImageWriter:
     &#34;&#34;&#34;
     Get the writer of the given type.
 
@@ -488,7 +567,7 @@ The previously registered image writer.</p></div>
 </details>
 </dd>
 <dt id="delta.config.extensions.layer"><code class="name flex">
-<span>def <span class="ident">layer</span></span>(<span>layer_type: str)</span>
+<span>def <span class="ident">layer</span></span>(<span>layer_type: str) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieve a custom layer by name.</p>
@@ -506,7 +585,7 @@ The previously registered image writer.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def layer(layer_type : str):
+<pre><code class="python">def layer(layer_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom layer by name.
 
@@ -525,7 +604,7 @@ The previously registered image writer.</p></div>
 </details>
 </dd>
 <dt id="delta.config.extensions.loss"><code class="name flex">
-<span>def <span class="ident">loss</span></span>(<span>loss_type: str)</span>
+<span>def <span class="ident">loss</span></span>(<span>loss_type: str) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieve a custom loss by name.</p>
@@ -543,7 +622,7 @@ The previously registered image writer.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def loss(loss_type : str):
+<pre><code class="python">def loss(loss_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom loss by name.
 
@@ -562,7 +641,7 @@ The previously registered image writer.</p></div>
 </details>
 </dd>
 <dt id="delta.config.extensions.metric"><code class="name flex">
-<span>def <span class="ident">metric</span></span>(<span>metric_type: str)</span>
+<span>def <span class="ident">metric</span></span>(<span>metric_type: str) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieve a custom metric by name.</p>
@@ -580,7 +659,7 @@ The previously registered image writer.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def metric(metric_type : str):
+<pre><code class="python">def metric(metric_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom metric by name.
 
@@ -599,7 +678,7 @@ The previously registered image writer.</p></div>
 </details>
 </dd>
 <dt id="delta.config.extensions.preprocess_function"><code class="name flex">
-<span>def <span class="ident">preprocess_function</span></span>(<span>prep_type: str)</span>
+<span>def <span class="ident">preprocess_function</span></span>(<span>prep_type: str) ‑> str</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Retrieve a custom preprocessing function by name.</p>
@@ -617,7 +696,7 @@ The previously registered image writer.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def preprocess_function(prep_type : str):
+<pre><code class="python">def preprocess_function(prep_type : str) -&gt; str:
     &#34;&#34;&#34;
     Retrieve a custom preprocessing function by name.
 
@@ -633,6 +712,42 @@ The previously registered image writer.</p></div>
     &#34;&#34;&#34;
     __initialize()
     return __prep_funcs.get(prep_type)</code></pre>
+</details>
+</dd>
+<dt id="delta.config.extensions.register_augmentation"><code class="name flex">
+<span>def <span class="ident">register_augmentation</span></span>(<span>function_name: str, aug_function)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Register an augmentation for use in delta.</p>
+<p>Augmentations are called on tensors before the data is used for training.
+Both the image and the label are passed to an augmentation function.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>function_name</code></strong> :&ensp;<code>str</code></dt>
+<dd>Name of the augmentation function.</dd>
+</dl>
+<p>aug_function:
+A function of the form aug(image, label), where image and labels are both tensors.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def register_augmentation(function_name : str, aug_function):
+    &#34;&#34;&#34;
+    Register an augmentation for use in delta.
+
+    Augmentations are called on tensors before the data is used for training.
+    Both the image and the label are passed to an augmentation function.
+
+    Parameters
+    ----------
+    function_name: str
+        Name of the augmentation function.
+    aug_function:
+        A function of the form aug(image, label), where image and labels are both tensors.
+    &#34;&#34;&#34;
+    global __augmentations
+    __augmentations[function_name] = aug_function</code></pre>
 </details>
 </dd>
 <dt id="delta.config.extensions.register_callback"><code class="name flex">
@@ -875,6 +990,7 @@ function of the form loss(y_true, y_pred) which returns a tensor of the loss.</p
 </code></dt>
 <dd>
 <div class="desc"><p>Register a preprocessing function for use in delta.</p>
+<p>Preprocessing functions are called on numpy arrays when the data is read from disk.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>function_name</code></strong> :&ensp;<code>str</code></dt>
@@ -891,6 +1007,8 @@ and bands_list is an integer list of bands loaded. The function must return a nu
 <pre><code class="python">def register_preprocess(function_name : str, prep_function):
     &#34;&#34;&#34;
     Register a preprocessing function for use in delta.
+
+    Preprocessing functions are called on numpy arrays when the data is read from disk.
 
     Parameters
     ----------
@@ -923,6 +1041,7 @@ and bands_list is an integer list of bands loaded. The function must return a nu
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="delta.config.extensions.augmentation" href="#delta.config.extensions.augmentation">augmentation</a></code></li>
 <li><code><a title="delta.config.extensions.callback" href="#delta.config.extensions.callback">callback</a></code></li>
 <li><code><a title="delta.config.extensions.custom_objects" href="#delta.config.extensions.custom_objects">custom_objects</a></code></li>
 <li><code><a title="delta.config.extensions.image_reader" href="#delta.config.extensions.image_reader">image_reader</a></code></li>
@@ -931,6 +1050,7 @@ and bands_list is an integer list of bands loaded. The function must return a nu
 <li><code><a title="delta.config.extensions.loss" href="#delta.config.extensions.loss">loss</a></code></li>
 <li><code><a title="delta.config.extensions.metric" href="#delta.config.extensions.metric">metric</a></code></li>
 <li><code><a title="delta.config.extensions.preprocess_function" href="#delta.config.extensions.preprocess_function">preprocess_function</a></code></li>
+<li><code><a title="delta.config.extensions.register_augmentation" href="#delta.config.extensions.register_augmentation">register_augmentation</a></code></li>
 <li><code><a title="delta.config.extensions.register_callback" href="#delta.config.extensions.register_callback">register_callback</a></code></li>
 <li><code><a title="delta.config.extensions.register_extension" href="#delta.config.extensions.register_extension">register_extension</a></code></li>
 <li><code><a title="delta.config.extensions.register_image_reader" href="#delta.config.extensions.register_image_reader">register_image_reader</a></code></li>
@@ -945,7 +1065,7 @@ and bands_list is an integer list of bands loaded. The function must return a nu
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

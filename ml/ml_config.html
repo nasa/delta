@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.ml.ml_config API documentation</title>
 <meta name="description" content="Configuration options specific to machine learning." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -89,7 +89,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     &#34;&#34;&#34;
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 stride=None, optimizer=&#39;Adam&#39;):
+                 stride=None, optimizer=&#39;Adam&#39;, max_tile_offset=None):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
@@ -98,6 +98,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.metrics = metrics
         self.stride = stride
         self.optimizer = optimizer
+        self.max_tile_offset = max_tile_offset
 
 class NetworkConfig(config.DeltaConfigComponent):
     &#34;&#34;&#34;
@@ -201,6 +202,8 @@ class TrainingConfig(config.DeltaConfigComponent):
                             &#39;Number of times to repeat training on the dataset.&#39;)
         self.register_field(&#39;batch_size&#39;, int, None, config.validate_positive,
                             &#39;Features to group into each training batch.&#39;)
+        self.register_field(&#39;max_tile_offset&#39;, int, None, None,
+                            &#39;Choose random tile offset each epoch within this range.&#39;)
         self.register_field(&#39;loss&#39;, (str, dict), None, None, &#39;Keras loss function.&#39;)
         self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
         self.register_field(&#39;steps&#39;, int, None, config.validate_non_negative, &#39;Batches to train per epoch.&#39;)
@@ -209,10 +212,7 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
         self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
         self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
-        self.register_field(&#39;log_folder&#39;, str, &#39;log_folder&#39;, config.validate_path,
-                            &#39;Directory where dataset progress is recorded.&#39;)
-        self.register_field(&#39;resume_cutoff&#39;, int, &#39;resume_cutoff&#39;, None,
-                            &#39;When resuming a dataset, skip images where we have read this many tiles.&#39;)
+        self.register_field(&#39;augmentations&#39;, list, None, None, None)
         self.register_component(ValidationConfig(), &#39;validation&#39;)
         self.register_component(NetworkConfig(), &#39;network&#39;)
         self.__training = None
@@ -235,8 +235,12 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            validation=validation,
                                            steps=self._config_dict[&#39;steps&#39;],
                                            stride=self._config_dict[&#39;stride&#39;],
-                                           optimizer=self._config_dict[&#39;optimizer&#39;])
+                                           optimizer=self._config_dict[&#39;optimizer&#39;],
+                                           max_tile_offset=self._config_dict[&#39;max_tile_offset&#39;])
         return self.__training
+
+    def augmentations(self):
+        return self._config_dict[&#39;augmentations&#39;]
 
     def _load_dict(self, d : dict, base_dir):
         self.__training = None
@@ -297,6 +301,39 @@ class TensorboardConfig(config.DeltaConfigComponent):
             tbd = os.path.join(appdirs.AppDirs(&#39;delta&#39;, &#39;nasa&#39;).user_data_dir, &#39;tensorboard&#39;)
         return tbd
 
+class ClassifyConfig(config.DeltaConfigComponent):
+    &#34;&#34;&#34;
+    Configure classification options.
+    &#34;&#34;&#34;
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;prob_image&#39;, bool, &#39;prob_image&#39;, None, &#39;Set true to save a probability image.&#39;)
+        self.register_field(&#39;overlap&#39;, int, &#39;overlap&#39;, None, &#39;Amount to overlap processed tiles.&#39;)
+        self.register_field(&#39;regions&#39;, list, None, None,
+                            &#39;List of region tags to compute statistics over, default is all tags.&#39;)
+        self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
+        self.register_field(&#39;wkt_dir&#39;, str, None, None,
+                            &#39;Look for WKT files in this folder, default is look in the input image folder.&#39;)
+
+        self.register_arg(&#39;prob_image&#39;, &#39;--prob&#39;, action=&#39;store_const&#39;, const=True, type=None)
+        self.register_arg(&#39;prob_image&#39;, &#39;--noprob&#39;, action=&#39;store_const&#39;, const=False, type=None)
+        self.register_arg(&#39;overlap&#39;, &#39;--overlap&#39;)
+
+    def regions(self):
+        if &#39;regions&#39; in self._config_dict:
+            return self._config_dict[&#39;regions&#39;]
+        return None
+
+    def wkt_dir(self):
+        if &#39;wkt_dir&#39; in self._config_dict:
+            return self._config_dict[&#39;wkt_dir&#39;]
+        return None
+
+    def metrics(self):
+        if &#39;metrics&#39; in self._config_dict:
+            return self._config_dict[&#39;metrics&#39;]
+        return []
+
 def register():
     &#34;&#34;&#34;
     Registers machine learning config options with the global config manager.
@@ -308,7 +345,8 @@ def register():
 
     config.config.register_component(TrainingConfig(), &#39;train&#39;)
     config.config.register_component(MLFlowConfig(), &#39;mlflow&#39;)
-    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)</code></pre>
+    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)
+    config.config.register_component(ClassifyConfig(), &#39;classify&#39;)</code></pre>
 </details>
 </section>
 <section>
@@ -339,7 +377,8 @@ def register():
 
     config.config.register_component(TrainingConfig(), &#39;train&#39;)
     config.config.register_component(MLFlowConfig(), &#39;mlflow&#39;)
-    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)</code></pre>
+    config.config.register_component(TensorboardConfig(), &#39;tensorboard&#39;)
+    config.config.register_component(ClassifyConfig(), &#39;classify&#39;)</code></pre>
 </details>
 </dd>
 <dt id="delta.ml.ml_config.validate_size"><code class="name flex">
@@ -368,6 +407,121 @@ def register():
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="delta.ml.ml_config.ClassifyConfig"><code class="flex name class">
+<span>class <span class="ident">ClassifyConfig</span></span>
+</code></dt>
+<dd>
+<div class="desc"><p>Configure classification options.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>section_header</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>The title of the section for command line arguments in the help.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class ClassifyConfig(config.DeltaConfigComponent):
+    &#34;&#34;&#34;
+    Configure classification options.
+    &#34;&#34;&#34;
+    def __init__(self):
+        super().__init__()
+        self.register_field(&#39;prob_image&#39;, bool, &#39;prob_image&#39;, None, &#39;Set true to save a probability image.&#39;)
+        self.register_field(&#39;overlap&#39;, int, &#39;overlap&#39;, None, &#39;Amount to overlap processed tiles.&#39;)
+        self.register_field(&#39;regions&#39;, list, None, None,
+                            &#39;List of region tags to compute statistics over, default is all tags.&#39;)
+        self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
+        self.register_field(&#39;wkt_dir&#39;, str, None, None,
+                            &#39;Look for WKT files in this folder, default is look in the input image folder.&#39;)
+
+        self.register_arg(&#39;prob_image&#39;, &#39;--prob&#39;, action=&#39;store_const&#39;, const=True, type=None)
+        self.register_arg(&#39;prob_image&#39;, &#39;--noprob&#39;, action=&#39;store_const&#39;, const=False, type=None)
+        self.register_arg(&#39;overlap&#39;, &#39;--overlap&#39;)
+
+    def regions(self):
+        if &#39;regions&#39; in self._config_dict:
+            return self._config_dict[&#39;regions&#39;]
+        return None
+
+    def wkt_dir(self):
+        if &#39;wkt_dir&#39; in self._config_dict:
+            return self._config_dict[&#39;wkt_dir&#39;]
+        return None
+
+    def metrics(self):
+        if &#39;metrics&#39; in self._config_dict:
+            return self._config_dict[&#39;metrics&#39;]
+        return []</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.ml.ml_config.ClassifyConfig.metrics"><code class="name flex">
+<span>def <span class="ident">metrics</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def metrics(self):
+    if &#39;metrics&#39; in self._config_dict:
+        return self._config_dict[&#39;metrics&#39;]
+    return []</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.ml_config.ClassifyConfig.regions"><code class="name flex">
+<span>def <span class="ident">regions</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def regions(self):
+    if &#39;regions&#39; in self._config_dict:
+        return self._config_dict[&#39;regions&#39;]
+    return None</code></pre>
+</details>
+</dd>
+<dt id="delta.ml.ml_config.ClassifyConfig.wkt_dir"><code class="name flex">
+<span>def <span class="ident">wkt_dir</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def wkt_dir(self):
+    if &#39;wkt_dir&#39; in self._config_dict:
+        return self._config_dict[&#39;wkt_dir&#39;]
+    return None</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.config.config.DeltaConfigComponent" href="../config/config.html#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.config.config.DeltaConfigComponent.export" href="../config/config.html#delta.config.config.DeltaConfigComponent.export">export</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.parse_args" href="../config/config.html#delta.config.config.DeltaConfigComponent.parse_args">parse_args</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_arg" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_arg">register_arg</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_component" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_component">register_component</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.register_field" href="../config/config.html#delta.config.config.DeltaConfigComponent.register_field">register_field</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.reset" href="../config/config.html#delta.config.config.DeltaConfigComponent.reset">reset</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.setup_arg_parser" href="../config/config.html#delta.config.config.DeltaConfigComponent.setup_arg_parser">setup_arg_parser</a></code></li>
+<li><code><a title="delta.config.config.DeltaConfigComponent.to_dict" href="../config/config.html#delta.config.config.DeltaConfigComponent.to_dict">to_dict</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
 <dt id="delta.ml.ml_config.MLFlowCheckpointsConfig"><code class="flex name class">
 <span>class <span class="ident">MLFlowCheckpointsConfig</span></span>
 </code></dt>
@@ -657,6 +811,8 @@ def register():
                             &#39;Number of times to repeat training on the dataset.&#39;)
         self.register_field(&#39;batch_size&#39;, int, None, config.validate_positive,
                             &#39;Features to group into each training batch.&#39;)
+        self.register_field(&#39;max_tile_offset&#39;, int, None, None,
+                            &#39;Choose random tile offset each epoch within this range.&#39;)
         self.register_field(&#39;loss&#39;, (str, dict), None, None, &#39;Keras loss function.&#39;)
         self.register_field(&#39;metrics&#39;, list, None, None, &#39;List of metrics to apply.&#39;)
         self.register_field(&#39;steps&#39;, int, None, config.validate_non_negative, &#39;Batches to train per epoch.&#39;)
@@ -665,10 +821,7 @@ def register():
         self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
         self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
         self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
-        self.register_field(&#39;log_folder&#39;, str, &#39;log_folder&#39;, config.validate_path,
-                            &#39;Directory where dataset progress is recorded.&#39;)
-        self.register_field(&#39;resume_cutoff&#39;, int, &#39;resume_cutoff&#39;, None,
-                            &#39;When resuming a dataset, skip images where we have read this many tiles.&#39;)
+        self.register_field(&#39;augmentations&#39;, list, None, None, None)
         self.register_component(ValidationConfig(), &#39;validation&#39;)
         self.register_component(NetworkConfig(), &#39;network&#39;)
         self.__training = None
@@ -691,8 +844,12 @@ def register():
                                            validation=validation,
                                            steps=self._config_dict[&#39;steps&#39;],
                                            stride=self._config_dict[&#39;stride&#39;],
-                                           optimizer=self._config_dict[&#39;optimizer&#39;])
+                                           optimizer=self._config_dict[&#39;optimizer&#39;],
+                                           max_tile_offset=self._config_dict[&#39;max_tile_offset&#39;])
         return self.__training
+
+    def augmentations(self):
+        return self._config_dict[&#39;augmentations&#39;]
 
     def _load_dict(self, d : dict, base_dir):
         self.__training = None
@@ -704,6 +861,19 @@ def register():
 </ul>
 <h3>Methods</h3>
 <dl>
+<dt id="delta.ml.ml_config.TrainingConfig.augmentations"><code class="name flex">
+<span>def <span class="ident">augmentations</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def augmentations(self):
+    return self._config_dict[&#39;augmentations&#39;]</code></pre>
+</details>
+</dd>
 <dt id="delta.ml.ml_config.TrainingConfig.spec"><code class="name flex">
 <span>def <span class="ident">spec</span></span>(<span>self) ‑> <a title="delta.ml.ml_config.TrainingSpec" href="#delta.ml.ml_config.TrainingSpec">TrainingSpec</a></span>
 </code></dt>
@@ -731,7 +901,8 @@ def register():
                                        validation=validation,
                                        steps=self._config_dict[&#39;steps&#39;],
                                        stride=self._config_dict[&#39;stride&#39;],
-                                       optimizer=self._config_dict[&#39;optimizer&#39;])
+                                       optimizer=self._config_dict[&#39;optimizer&#39;],
+                                       max_tile_offset=self._config_dict[&#39;max_tile_offset&#39;])
     return self.__training</code></pre>
 </details>
 </dd>
@@ -754,7 +925,7 @@ def register():
 </dd>
 <dt id="delta.ml.ml_config.TrainingSpec"><code class="flex name class">
 <span>class <span class="ident">TrainingSpec</span></span>
-<span>(</span><span>batch_size, epochs, loss, metrics, validation=None, steps=None, stride=None, optimizer='Adam')</span>
+<span>(</span><span>batch_size, epochs, loss, metrics, validation=None, steps=None, stride=None, optimizer='Adam', max_tile_offset=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Options used in training by <code><a title="delta.ml.train.train" href="train.html#delta.ml.train.train">train()</a></code>.</p></div>
@@ -767,7 +938,7 @@ def register():
     Options used in training by `delta.ml.train.train`.
     &#34;&#34;&#34;
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 stride=None, optimizer=&#39;Adam&#39;):
+                 stride=None, optimizer=&#39;Adam&#39;, max_tile_offset=None):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
@@ -775,7 +946,8 @@ def register():
         self.steps = steps
         self.metrics = metrics
         self.stride = stride
-        self.optimizer = optimizer</code></pre>
+        self.optimizer = optimizer
+        self.max_tile_offset = max_tile_offset</code></pre>
 </details>
 </dd>
 <dt id="delta.ml.ml_config.ValidationConfig"><code class="flex name class">
@@ -897,7 +1069,7 @@ def register():
 </dd>
 <dt id="delta.ml.ml_config.ValidationSet"><code class="flex name class">
 <span>class <span class="ident">ValidationSet</span></span>
-<span>(</span><span>images: Union[<a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a>, NoneType] = None, labels: Union[<a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a>, NoneType] = None, from_training: bool = False, steps: int = 1000)</span>
+<span>(</span><span>images: Optional[<a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a>] = None, labels: Optional[<a title="delta.imagery.imagery_config.ImageSet" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSet">ImageSet</a>] = None, from_training: bool = False, steps: int = 1000)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Specifies the images and labels in a validation set.</p>
@@ -965,6 +1137,14 @@ The validation data will not be used for training.</dd>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
+<h4><code><a title="delta.ml.ml_config.ClassifyConfig" href="#delta.ml.ml_config.ClassifyConfig">ClassifyConfig</a></code></h4>
+<ul class="">
+<li><code><a title="delta.ml.ml_config.ClassifyConfig.metrics" href="#delta.ml.ml_config.ClassifyConfig.metrics">metrics</a></code></li>
+<li><code><a title="delta.ml.ml_config.ClassifyConfig.regions" href="#delta.ml.ml_config.ClassifyConfig.regions">regions</a></code></li>
+<li><code><a title="delta.ml.ml_config.ClassifyConfig.wkt_dir" href="#delta.ml.ml_config.ClassifyConfig.wkt_dir">wkt_dir</a></code></li>
+</ul>
+</li>
+<li>
 <h4><code><a title="delta.ml.ml_config.MLFlowCheckpointsConfig" href="#delta.ml.ml_config.MLFlowCheckpointsConfig">MLFlowCheckpointsConfig</a></code></h4>
 </li>
 <li>
@@ -985,6 +1165,7 @@ The validation data will not be used for training.</dd>
 <li>
 <h4><code><a title="delta.ml.ml_config.TrainingConfig" href="#delta.ml.ml_config.TrainingConfig">TrainingConfig</a></code></h4>
 <ul class="">
+<li><code><a title="delta.ml.ml_config.TrainingConfig.augmentations" href="#delta.ml.ml_config.TrainingConfig.augmentations">augmentations</a></code></li>
 <li><code><a title="delta.ml.ml_config.TrainingConfig.spec" href="#delta.ml.ml_config.TrainingConfig.spec">spec</a></code></li>
 </ul>
 </li>
@@ -1007,7 +1188,7 @@ The validation data will not be used for training.</dd>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.config API documentation</title>
 <meta name="description" content="Configuration via YAML files and command line options …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -42,8 +42,7 @@ all options, showing all parameters DELTA and their default values, see <a href=
 <p>with training parameters given in <code>train.yaml</code>:</p>
 <pre><code class="language-yaml">train:
   network:
-    model:
-      yaml_file: networks/convpool.yaml
+    yaml_file: networks/convpool.yaml
   epochs: 10
 </code></pre>
 <p>Parameters can be overriden globally for all runs of <code><a title="delta" href="../index.html">delta</a></code> as well, by placing options in
@@ -77,7 +76,7 @@ Preprocessing commands are registered with <code><a title="delta.config.extensio
 A full list of defaults (and examples of how to create new ones) can be found in <code><a title="delta.extensions.preprocess" href="../extensions/preprocess.html">delta.extensions.preprocess</a></code>.</li>
 </ul>
 </li>
-<li><code>nodata_value</code>: A pixel value to ignore in the images.</li>
+<li><code>nodata_value</code>: A pixel value to ignore in the images. Will try to determine from the file if this is not specified.</li>
 <li><code>classes</code>: Either an integer number of classes or a list of individual classes. If individual classes are specified,
 each list item should be the pixel value of the class in the label images, and a dictionary with the
 following potential attributes (see example below):<ul>
@@ -120,9 +119,16 @@ images should contain 0 for nodata, 1 for cloud pixels, and 2 for non-cloud pixe
 <h2 id="train">Train</h2>
 <p>These options are used in the <code><a title="delta" href="../index.html">delta</a> train</code> command.</p>
 <ul>
-<li><code>network</code>: The nueral network to train. One of <code>yaml_file</code> or <code>layers</code> must be specified.<ul>
-<li><code>yaml_file</code>: A path to a yaml file with only the params and layers fields. See <code>delta/config/networks</code>
-for examples.</li>
+<li><code>network</code>: The neural network to train. One of <code>yaml_file</code> or <code>layers</code> must be specified.<ul>
+<li><code>yaml_file</code>: A path to a yaml file with only the params and layers fields. See <a href="./networks"><code>delta/config/networks</code></a>
+for examples.
+<code>yaml
+train:
+network:
+# Create your own custom architecture
+yaml_file: path/to/your/custom/architecture/network_architecture.yaml
+# Or use an existing architecture included with DELTA
+yaml_file: path_to_delta_installation/delta/config/networks/segnet.yaml</code></li>
 <li><code>params</code>: A dictionary of parameters to substitute in the <code>layers</code> field.</li>
 <li><code>layers</code>: A list of layers which compose the network. See the following section for details.</li>
 </ul>
@@ -131,6 +137,9 @@ for examples.</li>
 default of ~ or 1 to use all available training data. Not used for fully convolutional networks.</li>
 <li><code>batch_size</code>: The number of patches to train on at a time. If running out of memory, reducing
 batch size may be helpful.</li>
+<li><code>max_tile_offset</code>: If given, each epoch, offset all tiles by a random x and y value in the range
+(-<code>max_tile_offset</code>, <code>max_tile_offset</code>). Useful for getting different tiles when training. Currently,
+this feature is only supported if <code>steps</code> is set as well.</li>
 <li><code>steps</code>: If specified, stop training for each epoch after the given number of batches.</li>
 <li><code>epochs</code>: the number of times to iterate through all training data during training.</li>
 <li><code>loss</code>: <a href="https://keras.io/losses/">Keras loss function</a>. For integer classes, use
@@ -148,23 +157,58 @@ either a string or as a dictionary with constructor parameters. Custom callbacks
 <li><code>validation</code>: Specify validation data. The validation data is tested after each epoch to evaluate the
 classifier performance. Always use separate training and validation data!</li>
 <li><code>from_training</code> and <code>steps</code>: If <code>from_training</code> is true, take the <code>steps</code> training batches
-and do not use it for training but for validation instead.</li>
+and do not use it for training but for validation instead. If <code>from_training</code> is false, <code>steps</code> is ignored.</li>
 <li><code>images</code> and <code>labels</code>: Specified using the same format as the input data. Use this imagery as testing data
 if <code>from_training</code> is false.</li>
-<li><code>log_folder</code> and <code>resume_cutoff</code>: If log_folder is specified, store read records of how much of each image
-has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
-training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
-on very large training sets (thousands of large images).</li>
 </ul>
-<h3 id="network">Network</h3>
-<p>For the <code>layers</code> attribute, any <a href="https://keras.io/api/layers/">Keras Layer</a> can
-be used, including custom layers registered with <code><a title="delta.config.extensions.register_layer" href="extensions.html#delta.config.extensions.register_layer">register_layer()</a></code>.
-</p>
-<p>Sub-fields of the layer are argument names and values which are passed to the layer's constructor.
-</p>
-<p>A special sub-field, <code>inputs</code>, is a list of the names of layers to pass as inputs to this layer.
-If <code>inputs</code> is not specified, the previous layer is used by default. Layer names can be specified <code>name</code>.</p>
-<pre><code class="language-yaml">layers:
+<h2 id="classify">Classify</h2>
+<p>These options are used in the <code><a title="delta" href="../index.html">delta</a> classify</code> command.</p>
+<ul>
+<li><code>prob_image</code>: If true, save an image with the network outputs as probabilities. Otherwise, map to the most likely class.</li>
+<li><code>overlap</code>: If set, apply an overlap to the tiles during classification.</li>
+<li><code>regions</code>: A list of region names to look for in WKT files associated with images.</li>
+<li><code>wkt_dir</code>: Directory to look for WKT files in.
+If not specified they are expected to be in the same folders as input images.</li>
+<li><code>metrics</code>: Include either losses or metrics here as specified in the Train section.</li>
+</ul>
+<p>```Sample config entries:
+classify:
+regions:
+- sample_region_name
+- another_region
+wkt_dir: /alternate/wkt/location/
+metrics: # 2D metrics such as msssim are not supported
+- SparseRecall:
+label: No Water
+name: sparse_recall
+binary: true # Sparse metrics are only supported with binary = true
+- MappedDice:
+mapping:
+Water: 1.0
+No Water: 0.0
+Maybe Water: 0.5
+Cloud: 0.0
+name: dice </p>
+<pre><code>
+By default when classify is run with labels available for the input image, it will compute some statistics
+across all of the images and also on a per-image basis. You can also provide a WKT formatted shape file for
+each input image containing one or more polygons/multipolygons, each with one or more region names. For each
+region name specified in the config file, all regions including this name will have their statistics jointly
+computed. In addition, all regions without a name will have their statistics individually computed. WKT files
+should have the same names as their associated image files but with the extension &quot;.wkt.csv&quot;.  There is a sample WKT file, along with a picture of the described regions, [here](../../docs/sample.wkt.csv)
+
+### Network
+
+For the &lt;code&gt;layers&lt;/code&gt; attribute, any [Keras Layer](https://keras.io/api/layers/) can
+be used, including custom layers registered with &lt;code&gt;&lt;a title=&quot;delta.config.extensions.register_layer&quot; href=&quot;extensions.html#delta.config.extensions.register_layer&quot;&gt;register\_layer()&lt;/a&gt;&lt;/code&gt;.  
+
+Sub-fields of the layer are argument names and values which are passed to the layer's constructor.  
+
+A special sub-field, &lt;code&gt;inputs&lt;/code&gt;, is a list of the names of layers to pass as inputs to this layer.
+If &lt;code&gt;inputs&lt;/code&gt; is not specified, the previous layer is used by default. Layer names can be specified &lt;code&gt;name&lt;/code&gt;.
+
+```yaml
+layers:
   Input:
     shape: [~, ~, num_bands]
     name: input
@@ -193,7 +237,7 @@ documentation for details.</li>
 use too much disk space.</li>
 <li><code>checkpoints</code>: Configure saving of checkpoint networks to mlflow, in case something goes wrong or to compare
 networks from different stages of training.</li>
-<li><code>frequency</code>: Frequency in batches to save a checkpoint. Networks can require a fair amount of disk space,
+<li><code>frequency</code>: Frequency in epochs to save a checkpoint. Networks can require a fair amount of disk space,
 so don't save too often.</li>
 <li><code>only_save_latest</code>: If true, only keep the network file from the most recent checkpoint.</li>
 </ul>
@@ -215,9 +259,8 @@ delta starts.</li>
 <li><code>threads</code>: The number of threads to use for loading images into tensorflow.</li>
 <li><code>tile_size</code>: The size of a tile to load into memory at a time. For fully convolutional networks, the
 entire tile will be processed at a time, for others it will be chunked.</li>
-<li><code>interleave_images</code>: The number of images to interleave between. If this value is three, three images will
-be opened at a time. Chunks / tiles will be interleaved from the first three tiles until one is completed, then
-a new image will be opened. Larger interleaves can aid training (but comes at a cost in memory).</li>
+<li><code>interleave_blocks</code>: When training, interleave tiles from this number of blocks at a time. Generally
+higher is better, but limited by memory.</li>
 <li><code>cache</code>: Options for a cache, which is used by a few image types (currently worldview and landsat).<ul>
 <li><code>dir</code>: Directory to store the cache. <code>default</code> gives a reasonable OS-specific default.</li>
 <li><code>limit</code>: Maximum number of items to store in the cache before deleting old entries.
@@ -296,10 +339,8 @@ from .config import config, DeltaConfigComponent, validate_path, validate_positi
 <ul>
 <li><a href="#delta-configuration-files">DELTA Configuration Files</a><ul>
 <li><a href="#dataset">Dataset</a></li>
-<li><a href="#train">Train</a><ul>
-<li><a href="#network">Network</a></li>
-</ul>
-</li>
+<li><a href="#train">Train</a></li>
+<li><a href="#classify">Classify</a></li>
 <li><a href="#mlflow">MLFlow</a></li>
 <li><a href="#tensorboard">TensorBoard</a></li>
 <li><a href="#general">General</a></li>
@@ -325,7 +366,7 @@ from .config import config, DeltaConfigComponent, validate_path, validate_positi
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

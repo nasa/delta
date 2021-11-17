@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.ml.train API documentation</title>
 <meta name="description" content="Train neural networks." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -56,14 +56,15 @@ import shutil
 import mlflow
 import numpy as np
 import tensorflow as tf
-import tensorflow.keras.backend as K
-from tensorflow.keras.layers import Layer
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.keras.layers import Layer #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.imagery.imagery_dataset import ImageryDataset
 from delta.imagery.imagery_dataset import AutoencoderDataset
-from .io import save_model, print_network
-from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, optimizer_from_dict
+from .io import save_model, load_model, print_network
+from .config_parser import config_callbacks, loss_from_dict, metric_from_dict, \
+                           optimizer_from_dict, config_augmentation
 
 class DeltaLayer(Layer):
     &#34;&#34;&#34;
@@ -112,7 +113,10 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc):
-    ds = ids.dataset(config.dataset.classes.weights())
+    if tc.max_tile_offset:
+        # with filtering nodata, number of tiles changes
+        assert tc.steps, &#39;max_tile_offset only supported with steps set.&#39;
+    ds = ids.dataset(config.dataset.classes.weights(), config_augmentation())
 
     validation=None
     if tc.validation:
@@ -133,17 +137,12 @@ def _prep_datasets(ids, tc):
                     vimagery = AutoencoderDataset(vimg, ids.chunk_shape(), tile_shape=ids.tile_shape(),
                                                   stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
-                if tc.validation.steps:
-                    validation = validation.take(tc.validation.steps)
         if validation:
-            validation = validation.batch(tc.batch_size, drop_remainder=True).prefetch(1)
+            validation = validation.batch(tc.batch_size, drop_remainder=True)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size, drop_remainder=True)
-    ds = ds.prefetch(1)
-    if tc.steps:
-        ds = ds.take(tc.steps)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -167,31 +166,16 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param(&#39;Model - Shape - Input&#39;,   dataset.input_shape())
     #mlflow.log_param(&#39;Status&#39;, &#39;Running&#39;) Illegal to change the value!
 
-class _EpochResetCallback(tf.keras.callbacks.Callback):
-    &#34;&#34;&#34;
-    Reset imagery_dataset file counts on epoch end
-    &#34;&#34;&#34;
-    def __init__(self, ids, stop_epoch):
-        super().__init__()
-        self.ids = ids
-        self.last_epoch = stop_epoch - 1
-
-    def on_epoch_end(self, epoch, _=None):
-        if config.general.verbose():
-            print(&#39;Finished epoch &#39; + str(epoch))
-        # Leave the counts from the last epoch just as a record
-        if epoch != self.last_epoch:
-            self.ids.reset_access_counts()
-
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     &#34;&#34;&#34;
     Callback to log everything for MLFlow.
     &#34;&#34;&#34;
-    def __init__(self, temp_dir):
+    def __init__(self, temp_dir, model_extension):
         super().__init__()
         self.epoch = 0
         self.batch = 0
         self.temp_dir = temp_dir
+        self.model_extension = model_extension
 
     def on_epoch_end(self, epoch, logs=None):
         self.epoch = epoch
@@ -200,25 +184,28 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 mlflow.log_metric(&#39;Validation &#39; + k[4:], logs[k], epoch)
             else:
                 mlflow.log_metric(&#39;Epoch &#39; + k, logs[k], epoch)
+        if config.mlflow.checkpoints.frequency() and epoch &gt; 0 and epoch % config.mlflow.checkpoints.frequency() == 0:
+            filename = os.path.join(self.temp_dir, &#39;%d%s&#39; % (epoch, self.model_extension))
+            save_model(self.model, filename)
+            if config.mlflow.checkpoints.only_save_latest():
+                old = filename
+                filename = os.path.join(self.temp_dir, &#39;latest&#39; + self.model_extension)
+                os.rename(old, filename)
+            mlflow.log_artifact(filename, &#39;checkpoints&#39;)
+            if os.path.isdir(filename):
+                shutil.rmtree(filename)
+            else:
+                os.remove(filename)
 
     def on_train_batch_end(self, batch, logs=None):
         self.batch = batch
-        if batch % config.mlflow.frequency() == 0:
+        if batch &gt; 0 and batch % config.mlflow.frequency() == 0:
             for k in logs.keys():
                 if k in (&#39;batch&#39;, &#39;size&#39;):
                     continue
                 mlflow.log_metric(k, logs[k], step=batch)
-        if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
-            filename = os.path.join(self.temp_dir, &#39;%d.h5&#39; % (batch))
-            save_model(self.model, filename)
-            if config.mlflow.checkpoints.only_save_latest():
-                old = filename
-                filename = os.path.join(self.temp_dir, &#39;latest.h5&#39;)
-                os.rename(old, filename)
-            mlflow.log_artifact(filename, &#39;checkpoints&#39;)
-            os.remove(filename)
 
-def _mlflow_train_setup(model, dataset, training_spec):
+def _mlflow_train_setup(model, dataset, training_spec, model_extension):
     mlflow.set_tracking_uri(config.mlflow.uri())
     mlflow.set_experiment(config.mlflow.experiment())
     mlflow.start_run()
@@ -231,9 +218,9 @@ def _mlflow_train_setup(model, dataset, training_spec):
     mlflow.log_artifact(fname)
     os.remove(fname)
 
-    return _MLFlowCallback(temp_dir)
+    return _MLFlowCallback(temp_dir, model_extension)
 
-def _build_callbacks(model, dataset, training_spec):
+def _build_callbacks(model, dataset, training_spec, model_extension):
     &#34;&#34;&#34;
     Create callbacks needed based on configuration.
 
@@ -249,7 +236,7 @@ def _build_callbacks(model, dataset, training_spec):
 
     mcb = None
     if config.mlflow.enabled():
-        mcb = _mlflow_train_setup(model, dataset, training_spec)
+        mcb = _mlflow_train_setup(model, dataset, training_spec, model_extension)
         callbacks.append(mcb)
         if config.general.verbose():
             print(&#39;Using mlflow folder: &#39; + mlflow.get_artifact_uri())
@@ -267,8 +254,6 @@ def _build_callbacks(model, dataset, training_spec):
                                              write_images=True,
                                              embeddings_freq=1)
         callbacks.append(tcb)
-
-    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     callbacks.extend(config_callbacks())
 
@@ -324,13 +309,14 @@ def compile_model(model_fn, training_spec, resume_path=None):
     if not hasattr(training_spec, &#39;strategy&#39;):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        model = model_fn()
-        assert isinstance(model, tf.keras.models.Model), \
-                &#34;Model is not a Tensorflow Keras model&#34;
-
-        if resume_path is not None:
-            print(&#39;Loading existing model: &#39; + resume_path)
-            model.load_weights(resume_path)
+        if resume_path is not None and not resume_path.endswith(&#39;.h5&#39;):
+            model = load_model(resume_path)
+        else:
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model), \
+                    &#34;Model is not a Tensorflow Keras model&#34;
+            if resume_path is not None:
+                model.load_weights(resume_path)
 
         _compile_helper(model, training_spec)
 
@@ -350,7 +336,7 @@ def compile_model(model_fn, training_spec, resume_path=None):
 
     return model
 
-def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
+def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, internal_model_extension=&#39;.h5&#39;):
     &#34;&#34;&#34;
     Trains the specified model on a dataset according to a training
     specification.
@@ -380,16 +366,13 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 
-    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
+    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec, internal_model_extension)
 
     try:
 
-        # Mark that we need to check the dataset counts the
-        # first time we try to read the images.
-        # This won&#39;t do anything unless we are resuming training.
-        dataset.reset_access_counts(set_need_check=True)
-
         if (training_spec.steps is None) or (training_spec.steps &gt; 0):
+            if training_spec.steps is not None:
+                ds = ds.repeat() # repeat for ever, use steps and epochs to stop
             done = False
             epochs = training_spec.epochs
             initial_epoch = 0
@@ -401,7 +384,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
-                                        steps_per_epoch=None,
+                                        steps_per_epoch=training_spec.steps,
                                         verbose=1) # Set to 2 when logging
                     done = True
                 except ContinueTrainingException as cte:
@@ -417,11 +400,15 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
                                      callbacks=callbacks, verbose=1)
 
         if config.mlflow.enabled():
-            model_path = os.path.join(mcb.temp_dir, &#39;final_model.h5&#39;)
-            print(&#39;\nFinished, saving model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/final_model.h5&#39;))
+            model_path = os.path.join(mcb.temp_dir, &#39;final_model&#39; + internal_model_extension)
+            print(&#39;\nFinished, saving model to %s.&#39;
+                  % (mlflow.get_artifact_uri() + &#39;/final_model&#39; + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
-            os.remove(model_path)
+            if os.path.isdir(model_path):
+                shutil.rmtree(model_path)
+            else:
+                os.remove(model_path)
             mlflow.log_param(&#39;Status&#39;, &#39;Completed&#39;)
     except:
         if config.mlflow.enabled():
@@ -429,19 +416,21 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
             mlflow.log_param(&#39;Epoch&#39;, mcb.epoch)
             mlflow.log_param(&#39;Batch&#39;, mcb.batch)
             mlflow.end_run(&#39;FAILED&#39;)
-            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model.h5&#39;)
-            print(&#39;\nAborting, saving current model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/aborted_model.h5&#39;))
+            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model&#39; + internal_model_extension)
+            print(&#39;\nAborting, saving current model to %s.&#39;
+                  % (mlflow.get_artifact_uri() + &#39;/aborted_model&#39; + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
-            os.remove(model_path)
+            if os.path.isdir(model_path):
+                shutil.rmtree(model_path)
+            else:
+                os.remove(model_path)
         raise
     finally:
         if config.mlflow.enabled():
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
-
-    if config.mlflow.enabled():
-        mlflow.end_run()
+            mlflow.end_run()
 
     return model, history</code></pre>
 </details>
@@ -497,13 +486,14 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
     if not hasattr(training_spec, &#39;strategy&#39;):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        model = model_fn()
-        assert isinstance(model, tf.keras.models.Model), \
-                &#34;Model is not a Tensorflow Keras model&#34;
-
-        if resume_path is not None:
-            print(&#39;Loading existing model: &#39; + resume_path)
-            model.load_weights(resume_path)
+        if resume_path is not None and not resume_path.endswith(&#39;.h5&#39;):
+            model = load_model(resume_path)
+        else:
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model), \
+                    &#34;Model is not a Tensorflow Keras model&#34;
+            if resume_path is not None:
+                model.load_weights(resume_path)
 
         _compile_helper(model, training_spec)
 
@@ -525,7 +515,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
 </details>
 </dd>
 <dt id="delta.ml.train.train"><code class="name flex">
-<span>def <span class="ident">train</span></span>(<span>model_fn, dataset: <a title="delta.imagery.imagery_dataset.ImageryDataset" href="../imagery/imagery_dataset.html#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a>, training_spec, resume_path=None)</span>
+<span>def <span class="ident">train</span></span>(<span>model_fn, dataset: <a title="delta.imagery.imagery_dataset.ImageryDataset" href="../imagery/imagery_dataset.html#delta.imagery.imagery_dataset.ImageryDataset">ImageryDataset</a>, training_spec, resume_path=None, internal_model_extension='.h5')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Trains the specified model on a dataset according to a training
@@ -548,7 +538,7 @@ The trained model and the training history.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None):
+<pre><code class="python">def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, internal_model_extension=&#39;.h5&#39;):
     &#34;&#34;&#34;
     Trains the specified model on a dataset according to a training
     specification.
@@ -578,16 +568,13 @@ The trained model and the training history.</p></div>
 
     (ds, validation) = _prep_datasets(dataset, training_spec)
 
-    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec)
+    (callbacks, mcb) = _build_callbacks(model, dataset, training_spec, internal_model_extension)
 
     try:
 
-        # Mark that we need to check the dataset counts the
-        # first time we try to read the images.
-        # This won&#39;t do anything unless we are resuming training.
-        dataset.reset_access_counts(set_need_check=True)
-
         if (training_spec.steps is None) or (training_spec.steps &gt; 0):
+            if training_spec.steps is not None:
+                ds = ds.repeat() # repeat for ever, use steps and epochs to stop
             done = False
             epochs = training_spec.epochs
             initial_epoch = 0
@@ -599,7 +586,7 @@ The trained model and the training history.</p></div>
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
-                                        steps_per_epoch=None,
+                                        steps_per_epoch=training_spec.steps,
                                         verbose=1) # Set to 2 when logging
                     done = True
                 except ContinueTrainingException as cte:
@@ -615,11 +602,15 @@ The trained model and the training history.</p></div>
                                      callbacks=callbacks, verbose=1)
 
         if config.mlflow.enabled():
-            model_path = os.path.join(mcb.temp_dir, &#39;final_model.h5&#39;)
-            print(&#39;\nFinished, saving model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/final_model.h5&#39;))
+            model_path = os.path.join(mcb.temp_dir, &#39;final_model&#39; + internal_model_extension)
+            print(&#39;\nFinished, saving model to %s.&#39;
+                  % (mlflow.get_artifact_uri() + &#39;/final_model&#39; + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
-            os.remove(model_path)
+            if os.path.isdir(model_path):
+                shutil.rmtree(model_path)
+            else:
+                os.remove(model_path)
             mlflow.log_param(&#39;Status&#39;, &#39;Completed&#39;)
     except:
         if config.mlflow.enabled():
@@ -627,19 +618,21 @@ The trained model and the training history.</p></div>
             mlflow.log_param(&#39;Epoch&#39;, mcb.epoch)
             mlflow.log_param(&#39;Batch&#39;, mcb.batch)
             mlflow.end_run(&#39;FAILED&#39;)
-            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model.h5&#39;)
-            print(&#39;\nAborting, saving current model to %s.&#39; % (mlflow.get_artifact_uri() + &#39;/aborted_model.h5&#39;))
+            model_path = os.path.join(mcb.temp_dir, &#39;aborted_model&#39; + internal_model_extension)
+            print(&#39;\nAborting, saving current model to %s.&#39;
+                  % (mlflow.get_artifact_uri() + &#39;/aborted_model&#39; + internal_model_extension))
             save_model(model, model_path)
             mlflow.log_artifact(model_path)
-            os.remove(model_path)
+            if os.path.isdir(model_path):
+                shutil.rmtree(model_path)
+            else:
+                os.remove(model_path)
         raise
     finally:
         if config.mlflow.enabled():
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
-
-    if config.mlflow.enabled():
-        mlflow.end_run()
+            mlflow.end_run()
 
     return model, history</code></pre>
 </details>
@@ -732,11 +725,11 @@ continue training.</p>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Subclasses</h3>
 <ul class="hlist">
@@ -811,7 +804,7 @@ a training callback.</p>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

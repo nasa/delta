@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta API documentation</title>
 <meta name="description" content="**DELTA** (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
 based on Tensorflow. DELTA classifies …" />
@@ -26,8 +26,9 @@ based on Tensorflow. DELTA classifies …" />
 <p><strong>DELTA</strong> (Deep Earth Learning, Tools, and Analysis) is a framework for deep learning on satellite imagery,
 based on Tensorflow. DELTA classifies large satellite images with neural networks, automatically handling
 tiling large imagery.</p>
-<p>DELTA is currently under active development by the
-<a href="https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/">NASA Ames Intelligent Robotics Group</a>.
+<p><img alt="DELTA example flowchart" src="delta/../docs/delta_flowchart.png"></p>
+<p>DELTA is under active development by the
+<a href="https://ti.arc.nasa.gov/tech/asr/groups/intelligent-robotics/">NASA Ames Intelligent Robotics Group</a> through the end of 2021.
 Initially, it is mapping floods for disaster response, in collaboration with the
 <a href="http://www.usgs.gov">U.S. Geological Survey</a>, <a href="https://www.nga.mil/">National Geospatial Intelligence Agency</a>,
 <a href="http://www.ncsa.illinois.edu/">National Center for Supercomputing Applications</a>, and
@@ -46,19 +47,49 @@ GPU support in DELTA (highly recommended) follow the directions in the
 </li>
 <li>
 <p>Checkout the delta repository and install with pip:</p>
+<p><code>bash
+git clone &lt;http://github.com/nasa/delta&gt;
+python3 -m pip install delta</code></p>
 </li>
 </ol>
-<pre><code class="language-bash">git clone http://github.com/nasa/delta
-python3 -m pip install delta
-</code></pre>
 <p>DELTA is now installed and ready to use!</p>
+<h3 id="alternate-install-using-a-conda-environment">Alternate install using a Conda environment</h3>
+<ol>
+<li>
+<p>Install <a href="https://docs.conda.io/en/latest/miniconda.html">Miniconda</a>.</p>
+</li>
+<li>
+<p>Checkout the delta repository and cd into the directory:
+<code>git clone &lt;http://github.com/nasa/delta&gt;
+cd ./delta</code></p>
+</li>
+<li>
+<p>Run the following commands to create a conda environment, install dependences, and install delta:
+<code>bash
+conda create --name delta --yes python gdal
+conda activate delta
+pip install . # This command should be run in the ./delta directory we made in step 2</code></p>
+</li>
+<li>For GPU support in DELTA you'll need to install the <a href="https://www.tensorflow.org/install/gpu#software_requirements">required NVIDIA software</a> before running the conda commands in step 3.</li>
+</ol>
+<h3 id="installing-esa-snap">Installing ESA SNAP</h3>
+<p>In order to process Sentinel-1 images you will need to instal the ESA SNAP tool.
+You can download it here:
+<code>https://step.esa.int/main/download/snap-download/</code></p>
+<p>Once it is installed, you will need to add SNAP's bin folder to your path like this:
+<code>export PATH=$PATH:/where/you/installed/snap/bin</code></p>
 <h1 id="documentation">Documentation</h1>
-<p>DELTA can be used either as a command line tool or as a python library.
-See the python documentation for the master branch <a href="https://nasa.github.io/delta/">here</a>,
-or generate the documentation with <code>scripts/docs.sh</code>.</p>
+<ul>
+<li>README Docs</li>
+<li><a href="delta/config/README.md">DELTA Config README</a> - details on how to configure DELTA from the command line using .yaml files.</li>
+<li><a href="delta/config/networks/README.md">DELTA built-in networks README</a> - details some of the available network architecture .yaml files already included with DELTA. </li>
+<li><a href="https://nasa.github.io/delta/">Python Documentation</a> - DELTA can be used either as a command line tool or as a python library. You can view the documentation at the linked URL or generate the documentation with <a href="scripts/docs.sh"><code>scripts/docs.sh</code></a>.</li>
+<li><code>delta.config.extensions</code> <a href="https://nasa.github.io/delta/config/extensions.html">documentation</a> - details on extending DELTA for use with custom layers, image types, preprocessing, etc.</li>
+</ul>
 <h1 id="example">Example</h1>
+<h3 id="bash-script-example-linux-only">Bash Script Example (Linux Only)</h3>
 <p>As a simple example, consider training a neural network to map clouds with Landsat-8 images.
-The script <code>scripts/example/l8_cloud.sh</code> trains such a network using DELTA from the
+The script <a href="scripts/example/l8_cloud.sh"><code>scripts/example/l8_cloud.sh</code></a> trains such a network using DELTA from the
 <a href="https://www.usgs.gov/core-science-systems/nli/landsat/spatial-procedures-automated-removal-cloud-and-shadow-sparcs">USGS SPARCS dataset</a>,
 and shows how DELTA can be used. The steps involved in this, and other, classification processes are:</p>
 <ol>
@@ -85,13 +116,23 @@ image. The command outputs a predicted image and confusion matrix.</p>
 </ol>
 <p>The results could be improved&mdash; with more training, more data, an improved network, or more&mdash; but this
 example shows the basic usage of DETLA.</p>
+<h3 id="jupyterlab-example-linuxmac">JupyterLab Example (Linux/Mac)</h3>
+<p>The <a href="scripts/example/l8_cloud_example.ipynb">jupyter lab example</a> is very similar to the bash script example above but has a more visual demonstration of the steps and imagery used. It is especially helpful if you are less experienced with the command line.</p>
+<p>You can view a read-only version at the above link. Or if you'd like to run the example yourself you'll need to install JupyterLab. To do that you can simply run </p>
+<p><code>pip install jupyterlab</code> </p>
+<p>after <a href="#Installation">installing DELTA using the above instructions.</a> Then run </p>
+<p><code>jupyter-lab path_to_delta_install/scripts/example/l8_cloud_example.ipynb</code> </p>
+<p>Once jupyter loads, you can advance through the cells one by one using the "play" button </p>
+<p><img src="docs/jupyter_play.png" width="300"/></p>
+<p>or run all the cells at once using the "fast-foward" button.</p>
+<p><img src="docs/jupyter_fastforward.png" width="300"/></p>
 <h1 id="configuration-and-extensions">Configuration and Extensions</h1>
 <p>DELTA provides many options for customizing data inputs and training. All options are configured via
 YAML files. Some options can be overwritten with command line options (use
-<code>delta --help</code> to see which). See the <code><a title="delta.config" href="config/index.html">delta.config</a></code> README to learn about available configuration
+<code>delta --help</code> to see which). See the <a href="delta/config/README.md"><code>delta.config</code> README</a> to learn about available configuration
 options.</p>
 <p>DELTA can be extended to support custom neural network layers, image types, preprocessing operations, metrics, losses,
-and training callbacks. Learn about DELTA extensions in the <code><a title="delta.config.extensions" href="config/extensions.html">delta.config.extensions</a></code> documentation.</p>
+and training callbacks. Learn about DELTA extensions in the <code>delta.config.extensions</code> <a href="https://nasa.github.io/delta/config/extensions.html">documentation</a>.</p>
 <h1 id="data-management">Data Management</h1>
 <p>DELTA integrates with <a href="http://mlflow.org">MLFlow</a> to track training. MLFlow options can
 be specified in the corresponding area of the configuration file. By default, training and
@@ -102,6 +143,17 @@ network is saved to a file when the training program is interrupted or completes
 </code></pre>
 <p>and navigating to the printed URL in a browser. This makes it easier to keep track when running
 experiments and adjusting parameters.</p>
+<h1 id="data-preparation">Data Preparation</h1>
+<p>By default DELTA operates on compressed input images which are unpacked to a temporary cache before
+they are processed.
+You can speed up processing by pre-unpacking your input data to a new folder
+using the tool <a href="scripts/fetch/unpack_inputs.py">scripts/fetch/unpack_inputs.py</a> as in this example:</p>
+<pre><code>  python3 scripts/fetch/unpack_inputs.py --input-folder raw_images --output-folder unpacked_images \
+  --image-type worldview --image-ext .zip
+</code></pre>
+<p>The images will be unpacked in the output folder, ready for training or classification. To train or
+classify with unpacked data, the image type specified in the configuration file remains the same but
+the extension should match the new extension in the unpacked folders (.tif for worldview, .vrt for Sentinel1).</p>
 <h1 id="contributors">Contributors</h1>
 <p>We welcome pull requests to contribute to DELTA. However, due to NASA legal restrictions, we must require
 that all contributors sign and submit a
@@ -113,7 +165,7 @@ You can scan the document and submit via email. Thank you for your understanding
 <p><strong>Branching</strong>: Active development occurs on <code>develop</code>. Releases are pushed to <code>master</code>.</p>
 </li>
 <li>
-<p><strong>Code Style</strong>: Code must pass our linter before merging. Run <code>scripts/linter/install_linter.sh</code> to install
+<p><strong>Code Style</strong>: Code must pass our linter before merging. Run <a href="scripts/linter/install_linter.sh"><code>scripts/linter/install_linter.sh</code></a> to install
 the linter as a git pre-commit hook.</p>
 </li>
 <li>
@@ -153,11 +205,10 @@ run <code><a title="delta" href="#delta">delta</a></code> and it will use your l
 .. include:: ../README.md
 &#39;&#39;&#39;
 
-import re
 import sys
 
-if sys.version_info &lt; (3, 0, 0):
-    raise ImportError(&#39;DELTA code requires Python version &gt;= 3.0.  Installed is %s&#39; % (sys.version_info,))</code></pre>
+if sys.version_info &lt; (3, 6, 0):
+    raise ImportError(f&#39;DELTA code requires Python version &gt;= 3.6.  Installed is {sys.version_info}&#39;)</code></pre>
 </details>
 </section>
 <section>
@@ -196,11 +247,20 @@ if sys.version_info &lt; (3, 0, 0):
 <h1>Index</h1>
 <div class="toc">
 <ul>
-<li><a href="#installation">Installation</a></li>
+<li><a href="#installation">Installation</a><ul>
+<li><a href="#alternate-install-using-a-conda-environment">Alternate install using a Conda environment</a></li>
+<li><a href="#installing-esa-snap">Installing ESA SNAP</a></li>
+</ul>
+</li>
 <li><a href="#documentation">Documentation</a></li>
-<li><a href="#example">Example</a></li>
+<li><a href="#example">Example</a><ul>
+<li><a href="#bash-script-example-linux-only">Bash Script Example (Linux Only)</a></li>
+<li><a href="#jupyterlab-example-linuxmac">JupyterLab Example (Linux/Mac)</a></li>
+</ul>
+</li>
 <li><a href="#configuration-and-extensions">Configuration and Extensions</a></li>
 <li><a href="#data-management">Data Management</a></li>
+<li><a href="#data-preparation">Data Preparation</a></li>
 <li><a href="#contributors">Contributors</a></li>
 <li><a href="#licensing">Licensing</a></li>
 </ul>
@@ -219,7 +279,7 @@ if sys.version_info &lt; (3, 0, 0):
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

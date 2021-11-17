@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.ml.config_parser API documentation</title>
 <meta name="description" content="Functions to support loading custom ML-related objects from dictionaries specified
 in yaml files. Includes constructing custom neural networks and more." />
@@ -55,10 +55,12 @@ import copy
 import functools
 from typing import Callable, List, Union
 
+from packaging import version
 import tensorflow
-import tensorflow.keras.layers
-import tensorflow.keras.losses
-import tensorflow.keras.models
+import tensorflow.keras.layers #pylint: disable=no-name-in-module
+import tensorflow.keras.losses #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils #pylint: disable=no-name-in-module
+import tensorflow.keras.models #pylint: disable=no-name-in-module
 
 from delta.config import config
 import delta.config.extensions as extensions
@@ -274,6 +276,9 @@ def loss_from_dict(loss_spec: Union[dict, str]) -&gt; tensorflow.keras.losses.Lo
     if lc is None:
         raise ValueError(&#39;Unknown loss type %s.&#39; % (name))
     if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
+        # older versions do not support AUTO. Not sure of exact version, needed for 2.1, works with 2.6
+        if version.parse(tensorflow.__version__) &lt; version.parse(&#34;2.2&#34;):
+            params[&#39;reduction&#39;] = losses_utils.ReductionV2.SUM
         lc = lc(**params)
     return lc
 
@@ -298,11 +303,36 @@ def metric_from_dict(metric_spec: Union[dict, str]) -&gt; tensorflow.keras.metri
     if mc is None:
         try:
             mc = loss_from_dict(metric_spec)
-        except:
-            raise ValueError(&#39;Unknown metric %s.&#39; % (name)) #pylint:disable=raise-missing-from
+        except ValueError as v:
+            raise ValueError(&#39;Unknown metric %s.&#39; % (name)) from v
     if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
         mc = mc(**params)
     return mc
+
+def learning_rate_from_dict(spec: Union[dict, float]) -&gt; \
+        Union[tensorflow.keras.optimizers.schedules.LearningRateSchedule, float]:
+    &#34;&#34;&#34;
+    Construct a learning rate schedule from a dictionary or float.
+
+    Parameters
+    ----------
+    spec: Union[dict, float]
+        Config dictionary  or float defining a learning rate.
+
+    Returns
+    -------
+    Union[tensorflow.keras.schedules.LearingRateSchedule, float]
+        The learning rate schedule or constant learning rate
+    &#34;&#34;&#34;
+    if isinstance(spec, float):
+        return spec
+    assert isinstance(spec, dict), &#39;Only dict or float supported for learning rate.&#39;
+    assert len(spec.keys()) == 1, &#39;Only one learning rate may be specified.&#39;
+    name = list(spec.keys())[0]
+    lc = getattr(tensorflow.keras.optimizers.schedules, name, None)
+    if lc is None:
+        raise ValueError(&#39;Unknown learning rate scheduler %s.&#39; % (name))
+    return lc(**spec[name])
 
 def optimizer_from_dict(spec: Union[dict, str]) -&gt; tensorflow.keras.optimizers.Optimizer:
     &#34;&#34;&#34;
@@ -319,6 +349,8 @@ def optimizer_from_dict(spec: Union[dict, str]) -&gt; tensorflow.keras.optimizer
         The optimizer object.
     &#34;&#34;&#34;
     (name, params) = _parse_str_or_dict(spec, &#39;optimizer&#39;)
+    if &#39;learning_rate&#39; in params:
+        params[&#39;learning_rate&#39;] = learning_rate_from_dict(params[&#39;learning_rate&#39;])
     mc = getattr(tensorflow.keras.optimizers, name, None)
     if mc is None:
         raise ValueError(&#39;Unknown optimizer %s.&#39; % (name))
@@ -350,6 +382,34 @@ def callback_from_dict(callback_dict: Union[dict, str]) -&gt; tensorflow.keras.c
         raise ValueError(&#39;Unknown callback %s.&#39; % (cb_type))
     return callback_class(**callback_dict[cb_type])
 
+def augmentation_from_dict(aug_dict: Union[dict, str]):
+    &#34;&#34;&#34;
+    Construct an augmenation function from a dictionary.
+
+    Parameters
+    ----------
+    aug_dict: Union[dict, str]
+        Config dictionary defining an augmentation.
+
+    Returns
+    -------
+    Callable
+        The augmentation function.
+    &#34;&#34;&#34;
+    if isinstance(aug_dict, str):
+        aug_type = aug_dict
+        params = {}
+    else:
+        assert len(aug_dict.keys()) == 1, f&#39;Error: augmentation has more than one type {aug_dict.keys()}&#39;
+        aug_type = next(iter(aug_dict.keys()))
+        params = aug_dict[aug_type]
+        if params is None:
+            params = {}
+    aug_class = extensions.augmentation(aug_type)
+    if aug_class is None:
+        raise ValueError(&#39;Unknown augmentation %s.&#39; % (aug_type))
+    return aug_class(**params)
+
 def config_callbacks() -&gt; List[tensorflow.keras.callbacks.Callback]:
     &#34;&#34;&#34;
     Returns
@@ -371,7 +431,24 @@ def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Mode
     params_exposed = {&#39;num_classes&#39; : len(config.dataset.classes),
                       &#39;num_bands&#39; : num_bands}
 
-    return model_from_dict(config.train.network.to_dict(), params_exposed)</code></pre>
+    return model_from_dict(config.train.network.to_dict(), params_exposed)
+
+def config_augmentation():
+    &#34;&#34;&#34;
+    Returns
+    -------
+    Callable
+        Augmentation function that applies all augmentations in configuration.
+    &#34;&#34;&#34;
+    augs = config.train.augmentations()
+    if augs is None:
+        return None
+    assert isinstance(augs, list), &#39;Augmentations must be a list.&#39;
+    func = None
+    for a in augs:
+        f = augmentation_from_dict(a)
+        func = f if func is None else (lambda f1, f2: lambda x, y: f1(*f2(x, y)))(f, func)
+    return func</code></pre>
 </details>
 </section>
 <section>
@@ -381,8 +458,56 @@ def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Mode
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="delta.ml.config_parser.augmentation_from_dict"><code class="name flex">
+<span>def <span class="ident">augmentation_from_dict</span></span>(<span>aug_dict: Union[dict, str])</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Construct an augmenation function from a dictionary.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>aug_dict</code></strong> :&ensp;<code>Union[dict, str]</code></dt>
+<dd>Config dictionary defining an augmentation.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Callable</code></dt>
+<dd>The augmentation function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def augmentation_from_dict(aug_dict: Union[dict, str]):
+    &#34;&#34;&#34;
+    Construct an augmenation function from a dictionary.
+
+    Parameters
+    ----------
+    aug_dict: Union[dict, str]
+        Config dictionary defining an augmentation.
+
+    Returns
+    -------
+    Callable
+        The augmentation function.
+    &#34;&#34;&#34;
+    if isinstance(aug_dict, str):
+        aug_type = aug_dict
+        params = {}
+    else:
+        assert len(aug_dict.keys()) == 1, f&#39;Error: augmentation has more than one type {aug_dict.keys()}&#39;
+        aug_type = next(iter(aug_dict.keys()))
+        params = aug_dict[aug_type]
+        if params is None:
+            params = {}
+    aug_class = extensions.augmentation(aug_type)
+    if aug_class is None:
+        raise ValueError(&#39;Unknown augmentation %s.&#39; % (aug_type))
+    return aug_class(**params)</code></pre>
+</details>
+</dd>
 <dt id="delta.ml.config_parser.callback_from_dict"><code class="name flex">
-<span>def <span class="ident">callback_from_dict</span></span>(<span>callback_dict: Union[dict, str]) ‑> tensorflow.python.keras.callbacks.Callback</span>
+<span>def <span class="ident">callback_from_dict</span></span>(<span>callback_dict: Union[dict, str]) ‑> keras.callbacks.Callback</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a callback from a dictionary.</p>
@@ -427,8 +552,39 @@ def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Mode
     return callback_class(**callback_dict[cb_type])</code></pre>
 </details>
 </dd>
+<dt id="delta.ml.config_parser.config_augmentation"><code class="name flex">
+<span>def <span class="ident">config_augmentation</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Callable</code></dt>
+<dd>Augmentation function that applies all augmentations in configuration.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def config_augmentation():
+    &#34;&#34;&#34;
+    Returns
+    -------
+    Callable
+        Augmentation function that applies all augmentations in configuration.
+    &#34;&#34;&#34;
+    augs = config.train.augmentations()
+    if augs is None:
+        return None
+    assert isinstance(augs, list), &#39;Augmentations must be a list.&#39;
+    func = None
+    for a in augs:
+        f = augmentation_from_dict(a)
+        func = f if func is None else (lambda f1, f2: lambda x, y: f1(*f2(x, y)))(f, func)
+    return func</code></pre>
+</details>
+</dd>
 <dt id="delta.ml.config_parser.config_callbacks"><code class="name flex">
-<span>def <span class="ident">config_callbacks</span></span>(<span>) ‑> List[tensorflow.python.keras.callbacks.Callback]</span>
+<span>def <span class="ident">config_callbacks</span></span>(<span>) ‑> List[keras.callbacks.Callback]</span>
 </code></dt>
 <dd>
 <div class="desc"><h2 id="returns">Returns</h2>
@@ -453,7 +609,7 @@ def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Mode
 </details>
 </dd>
 <dt id="delta.ml.config_parser.config_model"><code class="name flex">
-<span>def <span class="ident">config_model</span></span>(<span>num_bands: int) ‑> Callable[[], tensorflow.python.keras.engine.training.Model]</span>
+<span>def <span class="ident">config_model</span></span>(<span>num_bands: int) ‑> Callable[[], keras.engine.training.Model]</span>
 </code></dt>
 <dd>
 <div class="desc"><h2 id="returns">Returns</h2>
@@ -478,8 +634,54 @@ def config_model(num_bands: int) -&gt; Callable[[], tensorflow.keras.models.Mode
     return model_from_dict(config.train.network.to_dict(), params_exposed)</code></pre>
 </details>
 </dd>
+<dt id="delta.ml.config_parser.learning_rate_from_dict"><code class="name flex">
+<span>def <span class="ident">learning_rate_from_dict</span></span>(<span>spec: Union[dict, float]) ‑> Union[keras.optimizer_v2.learning_rate_schedule.LearningRateSchedule, float]</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Construct a learning rate schedule from a dictionary or float.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>spec</code></strong> :&ensp;<code>Union[dict, float]</code></dt>
+<dd>Config dictionary
+or float defining a learning rate.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>Union[tensorflow.keras.schedules.LearingRateSchedule, float]</code></dt>
+<dd>The learning rate schedule or constant learning rate</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def learning_rate_from_dict(spec: Union[dict, float]) -&gt; \
+        Union[tensorflow.keras.optimizers.schedules.LearningRateSchedule, float]:
+    &#34;&#34;&#34;
+    Construct a learning rate schedule from a dictionary or float.
+
+    Parameters
+    ----------
+    spec: Union[dict, float]
+        Config dictionary  or float defining a learning rate.
+
+    Returns
+    -------
+    Union[tensorflow.keras.schedules.LearingRateSchedule, float]
+        The learning rate schedule or constant learning rate
+    &#34;&#34;&#34;
+    if isinstance(spec, float):
+        return spec
+    assert isinstance(spec, dict), &#39;Only dict or float supported for learning rate.&#39;
+    assert len(spec.keys()) == 1, &#39;Only one learning rate may be specified.&#39;
+    name = list(spec.keys())[0]
+    lc = getattr(tensorflow.keras.optimizers.schedules, name, None)
+    if lc is None:
+        raise ValueError(&#39;Unknown learning rate scheduler %s.&#39; % (name))
+    return lc(**spec[name])</code></pre>
+</details>
+</dd>
 <dt id="delta.ml.config_parser.loss_from_dict"><code class="name flex">
-<span>def <span class="ident">loss_from_dict</span></span>(<span>loss_spec: Union[dict, str]) ‑> tensorflow.python.keras.losses.Loss</span>
+<span>def <span class="ident">loss_from_dict</span></span>(<span>loss_spec: Union[dict, str]) ‑> keras.losses.Loss</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a loss function.</p>
@@ -523,12 +725,15 @@ of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</d
     if lc is None:
         raise ValueError(&#39;Unknown loss type %s.&#39; % (name))
     if isinstance(lc, type) and issubclass(lc, tensorflow.keras.losses.Loss):
+        # older versions do not support AUTO. Not sure of exact version, needed for 2.1, works with 2.6
+        if version.parse(tensorflow.__version__) &lt; version.parse(&#34;2.2&#34;):
+            params[&#39;reduction&#39;] = losses_utils.ReductionV2.SUM
         lc = lc(**params)
     return lc</code></pre>
 </details>
 </dd>
 <dt id="delta.ml.config_parser.metric_from_dict"><code class="name flex">
-<span>def <span class="ident">metric_from_dict</span></span>(<span>metric_spec: Union[dict, str]) ‑> tensorflow.python.keras.metrics.Metric</span>
+<span>def <span class="ident">metric_from_dict</span></span>(<span>metric_spec: Union[dict, str]) ‑> keras.metrics.Metric</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a metric.</p>
@@ -567,15 +772,15 @@ of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</d
     if mc is None:
         try:
             mc = loss_from_dict(metric_spec)
-        except:
-            raise ValueError(&#39;Unknown metric %s.&#39; % (name)) #pylint:disable=raise-missing-from
+        except ValueError as v:
+            raise ValueError(&#39;Unknown metric %s.&#39; % (name)) from v
     if isinstance(mc, type) and issubclass(mc, tensorflow.keras.metrics.Metric):
         mc = mc(**params)
     return mc</code></pre>
 </details>
 </dd>
 <dt id="delta.ml.config_parser.model_from_dict"><code class="name flex">
-<span>def <span class="ident">model_from_dict</span></span>(<span>model_dict: dict, exposed_params: dict) ‑> Callable[[], tensorflow.python.keras.engine.training.Model]</span>
+<span>def <span class="ident">model_from_dict</span></span>(<span>model_dict: dict, exposed_params: dict) ‑> Callable[[], keras.engine.training.Model]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a model.</p>
@@ -616,7 +821,7 @@ of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</d
 </details>
 </dd>
 <dt id="delta.ml.config_parser.optimizer_from_dict"><code class="name flex">
-<span>def <span class="ident">optimizer_from_dict</span></span>(<span>spec: Union[dict, str]) ‑> tensorflow.python.keras.optimizer_v2.optimizer_v2.OptimizerV2</span>
+<span>def <span class="ident">optimizer_from_dict</span></span>(<span>spec: Union[dict, str]) ‑> keras.optimizer_v2.optimizer_v2.OptimizerV2</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct an optimizer from a dictionary or string.</p>
@@ -650,6 +855,8 @@ or string defining an optimizer</dd>
         The optimizer object.
     &#34;&#34;&#34;
     (name, params) = _parse_str_or_dict(spec, &#39;optimizer&#39;)
+    if &#39;learning_rate&#39; in params:
+        params[&#39;learning_rate&#39;] = learning_rate_from_dict(params[&#39;learning_rate&#39;])
     mc = getattr(tensorflow.keras.optimizers, name, None)
     if mc is None:
         raise ValueError(&#39;Unknown optimizer %s.&#39; % (name))
@@ -673,10 +880,13 @@ or string defining an optimizer</dd>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="two-column">
+<ul class="">
+<li><code><a title="delta.ml.config_parser.augmentation_from_dict" href="#delta.ml.config_parser.augmentation_from_dict">augmentation_from_dict</a></code></li>
 <li><code><a title="delta.ml.config_parser.callback_from_dict" href="#delta.ml.config_parser.callback_from_dict">callback_from_dict</a></code></li>
+<li><code><a title="delta.ml.config_parser.config_augmentation" href="#delta.ml.config_parser.config_augmentation">config_augmentation</a></code></li>
 <li><code><a title="delta.ml.config_parser.config_callbacks" href="#delta.ml.config_parser.config_callbacks">config_callbacks</a></code></li>
 <li><code><a title="delta.ml.config_parser.config_model" href="#delta.ml.config_parser.config_model">config_model</a></code></li>
+<li><code><a title="delta.ml.config_parser.learning_rate_from_dict" href="#delta.ml.config_parser.learning_rate_from_dict">learning_rate_from_dict</a></code></li>
 <li><code><a title="delta.ml.config_parser.loss_from_dict" href="#delta.ml.config_parser.loss_from_dict">loss_from_dict</a></code></li>
 <li><code><a title="delta.ml.config_parser.metric_from_dict" href="#delta.ml.config_parser.metric_from_dict">metric_from_dict</a></code></li>
 <li><code><a title="delta.ml.config_parser.model_from_dict" href="#delta.ml.config_parser.model_from_dict">model_from_dict</a></code></li>
@@ -687,7 +897,7 @@ or string defining an optimizer</dd>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

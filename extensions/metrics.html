@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.extensions.metrics API documentation</title>
 <meta name="description" content="Various helpful loss functions." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -49,7 +49,7 @@ Various helpful loss functions.
 &#34;&#34;&#34;
 
 import tensorflow as tf
-import tensorflow.keras.metrics
+import tensorflow.keras.metrics #pylint: disable=no-name-in-module
 
 from delta.config import config
 from delta.config.extensions import register_metric
@@ -59,7 +59,7 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
     An abstract class for metrics applied to integer class labels,
     with networks that output one-hot encoding.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, label_id: int=None, **kwargs):
         &#34;&#34;&#34;
         Parameters
         ----------
@@ -69,29 +69,38 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
         class_id: Optional[int]
             For multi-class one-hot outputs, used if the output class ID is different than the
             one in the label image.
+        label_id: Optional[int]
+            Internal use only, for reconstructing this class from a .savedmodel format
         name: str
             Metric name.
         binary: bool
-            Use binary threshold (0.5) or argmax on one-hot encoding.
+            Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).
         &#34;&#34;&#34;
-        super().__init__(name=name)
+        super().__init__(name=name, **kwargs)
         self._binary = binary
-        self._label_id = config.dataset.classes.class_id(label)
+        self._label_id = config.dataset.classes.class_id(label) if label_id is None else label_id
         self._class_id = class_id if class_id is not None else self._label_id
 
     def reset_state(self):
         for s in self.variables:
             s.assign(tf.zeros(shape=s.shape))
 
+    def get_config(self):
+        cfg = super().get_config()
+        cfg.update({&#39;binary&#39;: self._binary, &#39;class_id&#39;: self._class_id, &#39;label_id&#39;: self._label_id})
+        return cfg
+
 class SparseRecall(SparseMetric): # pragma: no cover
     &#34;&#34;&#34;
     Recall.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._total_class = self.add_weight(&#39;total_class&#39;, initializer=&#39;zeros&#39;)
         self._true_positives = self.add_weight(&#39;true_positives&#39;, initializer=&#39;zeros&#39;)
 
+    # sample_weight is unused but required by tensorflow
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         right_class = tf.math.equal(y_true, self._label_id)
@@ -114,8 +123,10 @@ class SparsePrecision(SparseMetric): # pragma: no cover
     &#34;&#34;&#34;
     Precision.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
+        self._nodata_id = config.dataset.classes.class_id(&#39;nodata&#39;)
         self._total_class = self.add_weight(&#39;total_class&#39;, initializer=&#39;zeros&#39;)
         self._true_positives = self.add_weight(&#39;true_positives&#39;, initializer=&#39;zeros&#39;)
 
@@ -128,6 +139,10 @@ class SparsePrecision(SparseMetric): # pragma: no cover
         else:
             y_pred = tf.math.argmax(y_pred, axis=-1)
             right_class_pred = tf.math.equal(y_pred, self._class_id)
+
+        if self._nodata_id:
+            valid = tf.math.not_equal(y_true, self._nodata_id)
+            right_class_pred = tf.math.logical_and(right_class_pred, valid)
 
         total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
         self._total_class.assign_add(total_class)
@@ -142,22 +157,27 @@ class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
     &#34;&#34;&#34;
     Accuracy.
     &#34;&#34;&#34;
-    def __init__(self, label, name: str=None):
-        super().__init__(label, label, name, False)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._nodata_id = config.dataset.classes.class_id(&#39;nodata&#39;)
         self._total = self.add_weight(&#39;total&#39;, initializer=&#39;zeros&#39;)
         self._correct = self.add_weight(&#39;correct&#39;, initializer=&#39;zeros&#39;)
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
-        y_pred = tf.squeeze(y_pred)
-
         right_class = tf.math.equal(y_true, self._label_id)
-        right_class_pred = y_pred &gt;= 0.5
+        if self._binary:
+            y_pred = y_pred &gt;= 0.5
+            right_class_pred = tf.squeeze(y_pred)
+        else:
+            y_pred = tf.math.argmax(y_pred, axis=-1)
+            right_class_pred = tf.math.equal(y_pred, self._class_id)
+
         true_positives = tf.math.logical_and(right_class, right_class_pred)
         false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
         if self._nodata_id:
             valid = tf.math.not_equal(y_true, self._nodata_id)
+            true_positives = tf.math.logical_and(true_positives, valid)
             false_negatives = tf.math.logical_and(false_negatives, valid)
             total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
         else:
@@ -187,7 +207,7 @@ register_metric(&#39;SparseBinaryAccuracy&#39;, SparseBinaryAccuracy)</code></pr
 <dl>
 <dt id="delta.extensions.metrics.SparseBinaryAccuracy"><code class="flex name class">
 <span>class <span class="ident">SparseBinaryAccuracy</span></span>
-<span>(</span><span>label, name: str = None)</span>
+<span>(</span><span>label=None, class_id: int = None, name: str = None, binary: int = False, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Accuracy.</p>
@@ -199,10 +219,12 @@ Compared to valuse in the label image.</dd>
 <dt><strong><code>class_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
 <dd>For multi-class one-hot outputs, used if the output class ID is different than the
 one in the label image.</dd>
+<dt><strong><code>label_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
+<dd>Internal use only, for reconstructing this class from a .savedmodel format</dd>
 <dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
 <dd>Metric name.</dd>
 <dt><strong><code>binary</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Use binary threshold (0.5) or argmax on one-hot encoding.</dd>
+<dd>Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -212,22 +234,27 @@ one in the label image.</dd>
     &#34;&#34;&#34;
     Accuracy.
     &#34;&#34;&#34;
-    def __init__(self, label, name: str=None):
-        super().__init__(label, label, name, False)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._nodata_id = config.dataset.classes.class_id(&#39;nodata&#39;)
         self._total = self.add_weight(&#39;total&#39;, initializer=&#39;zeros&#39;)
         self._correct = self.add_weight(&#39;correct&#39;, initializer=&#39;zeros&#39;)
 
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
-        y_pred = tf.squeeze(y_pred)
-
         right_class = tf.math.equal(y_true, self._label_id)
-        right_class_pred = y_pred &gt;= 0.5
+        if self._binary:
+            y_pred = y_pred &gt;= 0.5
+            right_class_pred = tf.squeeze(y_pred)
+        else:
+            y_pred = tf.math.argmax(y_pred, axis=-1)
+            right_class_pred = tf.math.equal(y_pred, self._class_id)
+
         true_positives = tf.math.logical_and(right_class, right_class_pred)
         false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
         if self._nodata_id:
             valid = tf.math.not_equal(y_true, self._nodata_id)
+            true_positives = tf.math.logical_and(true_positives, valid)
             false_negatives = tf.math.logical_and(false_negatives, valid)
             total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
         else:
@@ -244,12 +271,12 @@ one in the label image.</dd>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></li>
-<li>tensorflow.python.keras.metrics.Metric</li>
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.metrics.Metric</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -294,14 +321,19 @@ eager execution.</p>
 </summary>
 <pre><code class="python">def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
     y_true = tf.squeeze(y_true)
-    y_pred = tf.squeeze(y_pred)
-
     right_class = tf.math.equal(y_true, self._label_id)
-    right_class_pred = y_pred &gt;= 0.5
+    if self._binary:
+        y_pred = y_pred &gt;= 0.5
+        right_class_pred = tf.squeeze(y_pred)
+    else:
+        y_pred = tf.math.argmax(y_pred, axis=-1)
+        right_class_pred = tf.math.equal(y_pred, self._class_id)
+
     true_positives = tf.math.logical_and(right_class, right_class_pred)
     false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
     if self._nodata_id:
         valid = tf.math.not_equal(y_true, self._nodata_id)
+        true_positives = tf.math.logical_and(true_positives, valid)
         false_negatives = tf.math.logical_and(false_negatives, valid)
         total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
     else:
@@ -314,10 +346,19 @@ eager execution.</p>
 </details>
 </dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.metrics.SparseMetric.get_config" href="#delta.extensions.metrics.SparseMetric.get_config">get_config</a></code></li>
+<li><code><a title="delta.extensions.metrics.SparseMetric.reset_state" href="#delta.extensions.metrics.SparseMetric.reset_state">reset_state</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="delta.extensions.metrics.SparseMetric"><code class="flex name class">
 <span>class <span class="ident">SparseMetric</span></span>
-<span>(</span><span>label, class_id: int = None, name: str = None, binary: int = False)</span>
+<span>(</span><span>label=None, class_id: int = None, name: str = None, binary: int = False, label_id: int = None, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>An abstract class for metrics applied to integer class labels,
@@ -330,10 +371,12 @@ Compared to valuse in the label image.</dd>
 <dt><strong><code>class_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
 <dd>For multi-class one-hot outputs, used if the output class ID is different than the
 one in the label image.</dd>
+<dt><strong><code>label_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
+<dd>Internal use only, for reconstructing this class from a .savedmodel format</dd>
 <dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
 <dd>Metric name.</dd>
 <dt><strong><code>binary</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Use binary threshold (0.5) or argmax on one-hot encoding.</dd>
+<dd>Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -344,7 +387,7 @@ one in the label image.</dd>
     An abstract class for metrics applied to integer class labels,
     with networks that output one-hot encoding.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, label_id: int=None, **kwargs):
         &#34;&#34;&#34;
         Parameters
         ----------
@@ -354,28 +397,35 @@ one in the label image.</dd>
         class_id: Optional[int]
             For multi-class one-hot outputs, used if the output class ID is different than the
             one in the label image.
+        label_id: Optional[int]
+            Internal use only, for reconstructing this class from a .savedmodel format
         name: str
             Metric name.
         binary: bool
-            Use binary threshold (0.5) or argmax on one-hot encoding.
+            Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).
         &#34;&#34;&#34;
-        super().__init__(name=name)
+        super().__init__(name=name, **kwargs)
         self._binary = binary
-        self._label_id = config.dataset.classes.class_id(label)
+        self._label_id = config.dataset.classes.class_id(label) if label_id is None else label_id
         self._class_id = class_id if class_id is not None else self._label_id
 
     def reset_state(self):
         for s in self.variables:
-            s.assign(tf.zeros(shape=s.shape))</code></pre>
+            s.assign(tf.zeros(shape=s.shape))
+
+    def get_config(self):
+        cfg = super().get_config()
+        cfg.update({&#39;binary&#39;: self._binary, &#39;class_id&#39;: self._class_id, &#39;label_id&#39;: self._label_id})
+        return cfg</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
-<li>tensorflow.python.keras.metrics.Metric</li>
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.metrics.Metric</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Subclasses</h3>
 <ul class="hlist">
@@ -385,11 +435,28 @@ one in the label image.</dd>
 </ul>
 <h3>Methods</h3>
 <dl>
+<dt id="delta.extensions.metrics.SparseMetric.get_config"><code class="name flex">
+<span>def <span class="ident">get_config</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the serializable config of the metric.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_config(self):
+    cfg = super().get_config()
+    cfg.update({&#39;binary&#39;: self._binary, &#39;class_id&#39;: self._class_id, &#39;label_id&#39;: self._label_id})
+    return cfg</code></pre>
+</details>
+</dd>
 <dt id="delta.extensions.metrics.SparseMetric.reset_state"><code class="name flex">
 <span>def <span class="ident">reset_state</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Resets all of the metric state variables.</p>
+<p>This function is called between epochs/steps,
+when a metric is evaluated during training.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -403,7 +470,7 @@ one in the label image.</dd>
 </dd>
 <dt id="delta.extensions.metrics.SparsePrecision"><code class="flex name class">
 <span>class <span class="ident">SparsePrecision</span></span>
-<span>(</span><span>label, class_id: int = None, name: str = None, binary: int = False)</span>
+<span>(</span><span>label=None, class_id: int = None, name: str = None, binary: int = False, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Precision.</p>
@@ -415,10 +482,12 @@ Compared to valuse in the label image.</dd>
 <dt><strong><code>class_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
 <dd>For multi-class one-hot outputs, used if the output class ID is different than the
 one in the label image.</dd>
+<dt><strong><code>label_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
+<dd>Internal use only, for reconstructing this class from a .savedmodel format</dd>
 <dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
 <dd>Metric name.</dd>
 <dt><strong><code>binary</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Use binary threshold (0.5) or argmax on one-hot encoding.</dd>
+<dd>Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -428,8 +497,10 @@ one in the label image.</dd>
     &#34;&#34;&#34;
     Precision.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
+        self._nodata_id = config.dataset.classes.class_id(&#39;nodata&#39;)
         self._total_class = self.add_weight(&#39;total_class&#39;, initializer=&#39;zeros&#39;)
         self._true_positives = self.add_weight(&#39;true_positives&#39;, initializer=&#39;zeros&#39;)
 
@@ -443,6 +514,10 @@ one in the label image.</dd>
             y_pred = tf.math.argmax(y_pred, axis=-1)
             right_class_pred = tf.math.equal(y_pred, self._class_id)
 
+        if self._nodata_id:
+            valid = tf.math.not_equal(y_true, self._nodata_id)
+            right_class_pred = tf.math.logical_and(right_class_pred, valid)
+
         total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
         self._total_class.assign_add(total_class)
         true_positives = tf.math.logical_and(right_class, right_class_pred)
@@ -455,12 +530,12 @@ one in the label image.</dd>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></li>
-<li>tensorflow.python.keras.metrics.Metric</li>
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.metrics.Metric</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -513,6 +588,10 @@ eager execution.</p>
         y_pred = tf.math.argmax(y_pred, axis=-1)
         right_class_pred = tf.math.equal(y_pred, self._class_id)
 
+    if self._nodata_id:
+        valid = tf.math.not_equal(y_true, self._nodata_id)
+        right_class_pred = tf.math.logical_and(right_class_pred, valid)
+
     total_class = tf.math.reduce_sum(tf.cast(right_class_pred, tf.float32))
     self._total_class.assign_add(total_class)
     true_positives = tf.math.logical_and(right_class, right_class_pred)
@@ -521,10 +600,19 @@ eager execution.</p>
 </details>
 </dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.metrics.SparseMetric.get_config" href="#delta.extensions.metrics.SparseMetric.get_config">get_config</a></code></li>
+<li><code><a title="delta.extensions.metrics.SparseMetric.reset_state" href="#delta.extensions.metrics.SparseMetric.reset_state">reset_state</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="delta.extensions.metrics.SparseRecall"><code class="flex name class">
 <span>class <span class="ident">SparseRecall</span></span>
-<span>(</span><span>label, class_id: int = None, name: str = None, binary: int = False)</span>
+<span>(</span><span>label=None, class_id: int = None, name: str = None, binary: int = False, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Recall.</p>
@@ -536,10 +624,12 @@ Compared to valuse in the label image.</dd>
 <dt><strong><code>class_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
 <dd>For multi-class one-hot outputs, used if the output class ID is different than the
 one in the label image.</dd>
+<dt><strong><code>label_id</code></strong> :&ensp;<code>Optional[int]</code></dt>
+<dd>Internal use only, for reconstructing this class from a .savedmodel format</dd>
 <dt><strong><code>name</code></strong> :&ensp;<code>str</code></dt>
 <dd>Metric name.</dd>
 <dt><strong><code>binary</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Use binary threshold (0.5) or argmax on one-hot encoding.</dd>
+<dd>Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -549,11 +639,13 @@ one in the label image.</dd>
     &#34;&#34;&#34;
     Recall.
     &#34;&#34;&#34;
-    def __init__(self, label, class_id: int=None, name: str=None, binary: int=False):
-        super().__init__(label, class_id, name, binary)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._total_class = self.add_weight(&#39;total_class&#39;, initializer=&#39;zeros&#39;)
         self._true_positives = self.add_weight(&#39;true_positives&#39;, initializer=&#39;zeros&#39;)
 
+    # sample_weight is unused but required by tensorflow
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         right_class = tf.math.equal(y_true, self._label_id)
@@ -575,12 +667,12 @@ one in the label image.</dd>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></li>
-<li>tensorflow.python.keras.metrics.Metric</li>
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.metrics.Metric</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -640,6 +732,15 @@ eager execution.</p>
 </details>
 </dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.metrics.SparseMetric.get_config" href="#delta.extensions.metrics.SparseMetric.get_config">get_config</a></code></li>
+<li><code><a title="delta.extensions.metrics.SparseMetric.reset_state" href="#delta.extensions.metrics.SparseMetric.reset_state">reset_state</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -667,6 +768,7 @@ eager execution.</p>
 <li>
 <h4><code><a title="delta.extensions.metrics.SparseMetric" href="#delta.extensions.metrics.SparseMetric">SparseMetric</a></code></h4>
 <ul class="">
+<li><code><a title="delta.extensions.metrics.SparseMetric.get_config" href="#delta.extensions.metrics.SparseMetric.get_config">get_config</a></code></li>
 <li><code><a title="delta.extensions.metrics.SparseMetric.reset_state" href="#delta.extensions.metrics.SparseMetric.reset_state">reset_state</a></code></li>
 </ul>
 </li>
@@ -690,7 +792,7 @@ eager execution.</p>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

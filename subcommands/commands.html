@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.subcommands.commands API documentation</title>
 <meta name="description" content="Lists all avaiable commands." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -68,16 +68,29 @@ def main_validate(options):
     from .import validate
     validate.main(options)
 
+def main_visualize(options):
+    from .import visualize
+    visualize.main(options)
+
 def setup_classify(subparsers):
     sub = subparsers.add_parser(&#39;classify&#39;, help=&#39;Classify images given a model.&#39;)
-    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;])
+    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;, &#39;classify&#39;])
 
-    sub.add_argument(&#39;--prob&#39;, dest=&#39;prob&#39;, action=&#39;store_true&#39;, help=&#39;Save image of class probabilities.&#39;)
     sub.add_argument(&#39;--autoencoder&#39;, dest=&#39;autoencoder&#39;, action=&#39;store_true&#39;, help=&#39;Classify with the autoencoder.&#39;)
     sub.add_argument(&#39;--no-colormap&#39;, dest=&#39;noColormap&#39;, action=&#39;store_true&#39;,
                      help=&#39;Save raw classification values instead of colormapped values.&#39;)
-    sub.add_argument(&#39;--overlap&#39;, dest=&#39;overlap&#39;, type=int, default=0, help=&#39;Classify with the autoencoder.&#39;)
     sub.add_argument(&#39;--validation&#39;, dest=&#39;validation&#39;, help=&#39;Classify validation images instead.&#39;)
+    sub.add_argument(&#39;--outdir&#39;, dest=&#39;outdir&#39;, type=str, help=&#39;Directory to save output to.&#39;)
+    sub.add_argument(&#39;--basedir&#39;, dest=&#39;basedir&#39;, type=str, help=&#39;Preserve paths of files relative to this directory.&#39;)
+    sub.add_argument(&#39;--outprefix&#39;, dest=&#39;outprefix&#39;, type=str, help=&#39;Prefix to output filenames.&#39;)
+    sub.add_argument(&#39;--confusion&#39;, dest=&#39;confusion&#39;, action=&#39;store_true&#39;, help=&#39;Save confusion matrix.&#39;)
+    sub.add_argument(&#39;--error&#39;, dest=&#39;error&#39;, action=&#39;store_true&#39;,
+                     help=&#39;Save image of model errors. Values will be difference between predicted probability and &#39;
+                          &#39;the binary labels.&#39;)
+    sub.add_argument(&#39;--error-abs&#39;, dest=&#39;error_abs&#39;, action=&#39;store_true&#39;,
+                     help=&#39;Save image of absolute value of model errors. Values will be the absolute value of the &#39;
+                          &#39;difference between predicted probability and binary label. If both --error and --error-abs &#39;
+                          &#39;are provided, --error-abs will take precidence.&#39;)
     sub.add_argument(&#39;model&#39;, help=&#39;File to save the network to.&#39;)
 
     sub.set_defaults(function=main_classify)
@@ -103,7 +116,14 @@ def setup_validate(subparsers):
 
     sub.set_defaults(function=main_validate)
 
-SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]</code></pre>
+def setup_visualize(subparsers):
+    sub = subparsers.add_parser(&#39;visualize&#39;, help=&#39;Visualize input dataset.&#39;)
+    sub.add_argument(&#39;--autoencoder&#39;, dest=&#39;autoencoder&#39;, action=&#39;store_true&#39;, help=&#39;Visualize for the autoencoder.&#39;)
+    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;, &#39;train&#39;])
+
+    sub.set_defaults(function=main_visualize)
+
+SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate, setup_visualize]</code></pre>
 </details>
 </section>
 <section>
@@ -169,6 +189,20 @@ SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]<
     validate.main(options)</code></pre>
 </details>
 </dd>
+<dt id="delta.subcommands.commands.main_visualize"><code class="name flex">
+<span>def <span class="ident">main_visualize</span></span>(<span>options)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def main_visualize(options):
+    from .import visualize
+    visualize.main(options)</code></pre>
+</details>
+</dd>
 <dt id="delta.subcommands.commands.setup_classify"><code class="name flex">
 <span>def <span class="ident">setup_classify</span></span>(<span>subparsers)</span>
 </code></dt>
@@ -180,14 +214,23 @@ SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]<
 </summary>
 <pre><code class="python">def setup_classify(subparsers):
     sub = subparsers.add_parser(&#39;classify&#39;, help=&#39;Classify images given a model.&#39;)
-    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;])
+    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;, &#39;classify&#39;])
 
-    sub.add_argument(&#39;--prob&#39;, dest=&#39;prob&#39;, action=&#39;store_true&#39;, help=&#39;Save image of class probabilities.&#39;)
     sub.add_argument(&#39;--autoencoder&#39;, dest=&#39;autoencoder&#39;, action=&#39;store_true&#39;, help=&#39;Classify with the autoencoder.&#39;)
     sub.add_argument(&#39;--no-colormap&#39;, dest=&#39;noColormap&#39;, action=&#39;store_true&#39;,
                      help=&#39;Save raw classification values instead of colormapped values.&#39;)
-    sub.add_argument(&#39;--overlap&#39;, dest=&#39;overlap&#39;, type=int, default=0, help=&#39;Classify with the autoencoder.&#39;)
     sub.add_argument(&#39;--validation&#39;, dest=&#39;validation&#39;, help=&#39;Classify validation images instead.&#39;)
+    sub.add_argument(&#39;--outdir&#39;, dest=&#39;outdir&#39;, type=str, help=&#39;Directory to save output to.&#39;)
+    sub.add_argument(&#39;--basedir&#39;, dest=&#39;basedir&#39;, type=str, help=&#39;Preserve paths of files relative to this directory.&#39;)
+    sub.add_argument(&#39;--outprefix&#39;, dest=&#39;outprefix&#39;, type=str, help=&#39;Prefix to output filenames.&#39;)
+    sub.add_argument(&#39;--confusion&#39;, dest=&#39;confusion&#39;, action=&#39;store_true&#39;, help=&#39;Save confusion matrix.&#39;)
+    sub.add_argument(&#39;--error&#39;, dest=&#39;error&#39;, action=&#39;store_true&#39;,
+                     help=&#39;Save image of model errors. Values will be difference between predicted probability and &#39;
+                          &#39;the binary labels.&#39;)
+    sub.add_argument(&#39;--error-abs&#39;, dest=&#39;error_abs&#39;, action=&#39;store_true&#39;,
+                     help=&#39;Save image of absolute value of model errors. Values will be the absolute value of the &#39;
+                          &#39;difference between predicted probability and binary label. If both --error and --error-abs &#39;
+                          &#39;are provided, --error-abs will take precidence.&#39;)
     sub.add_argument(&#39;model&#39;, help=&#39;File to save the network to.&#39;)
 
     sub.set_defaults(function=main_classify)</code></pre>
@@ -244,6 +287,23 @@ SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]<
     sub.set_defaults(function=main_validate)</code></pre>
 </details>
 </dd>
+<dt id="delta.subcommands.commands.setup_visualize"><code class="name flex">
+<span>def <span class="ident">setup_visualize</span></span>(<span>subparsers)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def setup_visualize(subparsers):
+    sub = subparsers.add_parser(&#39;visualize&#39;, help=&#39;Visualize input dataset.&#39;)
+    sub.add_argument(&#39;--autoencoder&#39;, dest=&#39;autoencoder&#39;, action=&#39;store_true&#39;, help=&#39;Visualize for the autoencoder.&#39;)
+    config.setup_arg_parser(sub, [&#39;general&#39;, &#39;io&#39;, &#39;dataset&#39;, &#39;train&#39;])
+
+    sub.set_defaults(function=main_visualize)</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -266,17 +326,19 @@ SETUP_COMMANDS = [setup_train, setup_classify, setup_mlflow_ui, setup_validate]<
 <li><code><a title="delta.subcommands.commands.main_mlflow_ui" href="#delta.subcommands.commands.main_mlflow_ui">main_mlflow_ui</a></code></li>
 <li><code><a title="delta.subcommands.commands.main_train" href="#delta.subcommands.commands.main_train">main_train</a></code></li>
 <li><code><a title="delta.subcommands.commands.main_validate" href="#delta.subcommands.commands.main_validate">main_validate</a></code></li>
+<li><code><a title="delta.subcommands.commands.main_visualize" href="#delta.subcommands.commands.main_visualize">main_visualize</a></code></li>
 <li><code><a title="delta.subcommands.commands.setup_classify" href="#delta.subcommands.commands.setup_classify">setup_classify</a></code></li>
 <li><code><a title="delta.subcommands.commands.setup_mlflow_ui" href="#delta.subcommands.commands.setup_mlflow_ui">setup_mlflow_ui</a></code></li>
 <li><code><a title="delta.subcommands.commands.setup_train" href="#delta.subcommands.commands.setup_train">setup_train</a></code></li>
 <li><code><a title="delta.subcommands.commands.setup_validate" href="#delta.subcommands.commands.setup_validate">setup_validate</a></code></li>
+<li><code><a title="delta.subcommands.commands.setup_visualize" href="#delta.subcommands.commands.setup_visualize">setup_visualize</a></code></li>
 </ul>
 </li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

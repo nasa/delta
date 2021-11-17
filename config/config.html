@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.config.config API documentation</title>
 <meta name="description" content="Loading configuration from command line arguments and yaml files …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -100,7 +100,7 @@ def validate_positive(num: Union[int, float], _: str) -&gt; Union[int, float]:
         If number is not positive.
     &#34;&#34;&#34;
     if num &lt;= 0:
-        raise ValueError(&#39;%d is not positive&#39; % (num))
+        raise ValueError(f&#39;{num} is not positive&#39;)
     return num
 
 def validate_non_negative(num: Union[int, float], _: str) -&gt; Union[int, float]:
@@ -120,7 +120,7 @@ def validate_non_negative(num: Union[int, float], _: str) -&gt; Union[int, float
         If number is negative.
     &#34;&#34;&#34;
     if num &lt; 0:
-        raise ValueError(&#39;%d is negative&#39; % (num))
+        raise ValueError(f&#39;{num} is negative&#39;)
     return num
 
 class _NotSpecified: #pylint:disable=too-few-public-methods
@@ -229,7 +229,7 @@ class DeltaConfigComponent:
             If `help` and `type` are not specified, will use the values from field registration.
             If `default` is not specified, will use the value from the config files.
         &#34;&#34;&#34;
-        assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+        assert field in self._fields, f&#39;Field {field} not registered.&#39;
         if &#39;help&#39; not in kwargs:
             kwargs[&#39;help&#39;] = self._descs[field]
         if &#39;type&#39; not in kwargs:
@@ -259,14 +259,14 @@ class DeltaConfigComponent:
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
-            raise ValueError(&#39;Unexpected field %s in config file.&#39; % (name))
+            raise ValueError(f&#39;Unexpected field {name} in config file.&#39;)
         if value is not None and not isinstance(value, self._types[name]):
-            raise TypeError(&#39;%s must be of type %s, is %s.&#39; % (name, self._types[name], value))
+            raise TypeError(f&#39;{name} must be of type {self._types[name]}, is {value}.&#39;)
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
             except Exception as e:
-                raise AssertionError(&#39;Value %s for %s is invalid.&#39; % (value, name)) from e
+                raise AssertionError(f&#39;Value {value} for {name} is invalid.&#39;) from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
@@ -346,7 +346,7 @@ class DeltaConfig(DeltaConfigComponent):
         base_path = None
         if yaml_file:
             if not os.path.exists(yaml_file):
-                raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
+                raise FileNotFoundError(f&#39;Config file does not exist: {yaml_file}&#39;)
             with open(yaml_file, &#39;r&#39;) as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -449,7 +449,7 @@ config = DeltaConfig()
         If number is negative.
     &#34;&#34;&#34;
     if num &lt; 0:
-        raise ValueError(&#39;%d is negative&#39; % (num))
+        raise ValueError(f&#39;{num} is negative&#39;)
     return num</code></pre>
 </details>
 </dd>
@@ -537,7 +537,7 @@ config = DeltaConfig()
         If number is not positive.
     &#34;&#34;&#34;
     if num &lt;= 0:
-        raise ValueError(&#39;%d is not positive&#39; % (num))
+        raise ValueError(f&#39;{num} is not positive&#39;)
     return num</code></pre>
 </details>
 </dd>
@@ -548,7 +548,7 @@ config = DeltaConfig()
 <dl>
 <dt id="delta.config.config.DeltaConfig"><code class="flex name class">
 <span>class <span class="ident">DeltaConfig</span></span>
-<span>(</span><span>section_header: Union[str, NoneType] = None)</span>
+<span>(</span><span>section_header: Optional[str] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>DELTA configuration manager. Access and control all configuration parameters.</p>
@@ -581,7 +581,7 @@ config = DeltaConfig()
         base_path = None
         if yaml_file:
             if not os.path.exists(yaml_file):
-                raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
+                raise FileNotFoundError(f&#39;Config file does not exist: {yaml_file}&#39;)
             with open(yaml_file, &#39;r&#39;) as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -635,7 +635,7 @@ config = DeltaConfig()
 <h3>Methods</h3>
 <dl>
 <dt id="delta.config.config.DeltaConfig.initialize"><code class="name flex">
-<span>def <span class="ident">initialize</span></span>(<span>self, options: argparse.Namespace, config_files: Union[List[str], NoneType] = None)</span>
+<span>def <span class="ident">initialize</span></span>(<span>self, options: argparse.Namespace, config_files: Optional[List[str]] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Loads all config files, then parses all command line arguments.
@@ -679,7 +679,7 @@ files.</dd>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfig.load"><code class="name flex">
-<span>def <span class="ident">load</span></span>(<span>self, yaml_file: Union[str, NoneType] = None, yaml_str: Union[str, NoneType] = None)</span>
+<span>def <span class="ident">load</span></span>(<span>self, yaml_file: Optional[str] = None, yaml_str: Optional[str] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Loads a config file, then updates the default configuration
@@ -712,7 +712,7 @@ must be specified.</dd>
     base_path = None
     if yaml_file:
         if not os.path.exists(yaml_file):
-            raise FileNotFoundError(&#39;Config file does not exist: &#39; + yaml_file)
+            raise FileNotFoundError(f&#39;Config file does not exist: {yaml_file}&#39;)
         with open(yaml_file, &#39;r&#39;) as f:
             config_data = yaml.safe_load(f)
         base_path = os.path.normpath(os.path.dirname(yaml_file))
@@ -740,7 +740,7 @@ must be specified.</dd>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent"><code class="flex name class">
 <span>class <span class="ident">DeltaConfigComponent</span></span>
-<span>(</span><span>section_header: Union[str, NoneType] = None)</span>
+<span>(</span><span>section_header: Optional[str] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>DELTA configuration component.</p>
@@ -860,7 +860,7 @@ command line options.</p>
             If `help` and `type` are not specified, will use the values from field registration.
             If `default` is not specified, will use the value from the config files.
         &#34;&#34;&#34;
-        assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+        assert field in self._fields, f&#39;Field {field} not registered.&#39;
         if &#39;help&#39; not in kwargs:
             kwargs[&#39;help&#39;] = self._descs[field]
         if &#39;type&#39; not in kwargs:
@@ -890,14 +890,14 @@ command line options.</p>
 
     def _set_field(self, name : str, value : str, base_dir : str):
         if name not in self._fields:
-            raise ValueError(&#39;Unexpected field %s in config file.&#39; % (name))
+            raise ValueError(f&#39;Unexpected field {name} in config file.&#39;)
         if value is not None and not isinstance(value, self._types[name]):
-            raise TypeError(&#39;%s must be of type %s, is %s.&#39; % (name, self._types[name], value))
+            raise TypeError(f&#39;{name} must be of type {self._types[name]}, is {value}.&#39;)
         if self._validate[name] and value is not None:
             try:
                 value = self._validate[name](value, base_dir)
             except Exception as e:
-                raise AssertionError(&#39;Value %s for %s is invalid.&#39; % (value, name)) from e
+                raise AssertionError(f&#39;Value {value} for {name} is invalid.&#39;) from e
         self._config_dict[name] = value
 
     def _load_dict(self, d : dict, base_dir):
@@ -967,6 +967,7 @@ command line options.</p>
 <li><a title="delta.imagery.imagery_config.IOConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.IOConfig">IOConfig</a></li>
 <li><a title="delta.imagery.imagery_config.ImagePreprocessConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImagePreprocessConfig">ImagePreprocessConfig</a></li>
 <li><a title="delta.imagery.imagery_config.ImageSetConfig" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ImageSetConfig">ImageSetConfig</a></li>
+<li><a title="delta.ml.ml_config.ClassifyConfig" href="../ml/ml_config.html#delta.ml.ml_config.ClassifyConfig">ClassifyConfig</a></li>
 <li><a title="delta.ml.ml_config.MLFlowCheckpointsConfig" href="../ml/ml_config.html#delta.ml.ml_config.MLFlowCheckpointsConfig">MLFlowCheckpointsConfig</a></li>
 <li><a title="delta.ml.ml_config.MLFlowConfig" href="../ml/ml_config.html#delta.ml.ml_config.MLFlowConfig">MLFlowConfig</a></li>
 <li><a title="delta.ml.ml_config.NetworkConfig" href="../ml/ml_config.html#delta.ml.ml_config.NetworkConfig">NetworkConfig</a></li>
@@ -1035,7 +1036,7 @@ setup_arg_parser.</dd>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.register_arg"><code class="name flex">
-<span>def <span class="ident">register_arg</span></span>(<span>self, field: str, argname: str, options_name: Union[str, NoneType] = None, **kwargs)</span>
+<span>def <span class="ident">register_arg</span></span>(<span>self, field: str, argname: str, options_name: Optional[str] = None, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Registers a command line argument in this component. Command line arguments override the
@@ -1079,7 +1080,7 @@ If <code>default</code> is not specified, will use the value from the config fil
         If `help` and `type` are not specified, will use the values from field registration.
         If `default` is not specified, will use the value from the config files.
     &#34;&#34;&#34;
-    assert field in self._fields, &#39;Field %s not registered.&#39; % (field)
+    assert field in self._fields, f&#39;Field {field} not registered.&#39;
     if &#39;help&#39; not in kwargs:
         kwargs[&#39;help&#39;] = self._descs[field]
     if &#39;type&#39; not in kwargs:
@@ -1092,7 +1093,7 @@ If <code>default</code> is not specified, will use the value from the config fil
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.register_component"><code class="name flex">
-<span>def <span class="ident">register_component</span></span>(<span>self, component: <a title="delta.config.config.DeltaConfigComponent" href="#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a>, name: str, attr_name: Union[str, NoneType] = None)</span>
+<span>def <span class="ident">register_component</span></span>(<span>self, component: <a title="delta.config.config.DeltaConfigComponent" href="#delta.config.config.DeltaConfigComponent">DeltaConfigComponent</a>, name: str, attr_name: Optional[str] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Register a subcomponent.</p>
@@ -1130,7 +1131,7 @@ If <code>default</code> is not specified, will use the value from the config fil
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.register_field"><code class="name flex">
-<span>def <span class="ident">register_field</span></span>(<span>self, name: str, types: Union[type, Tuple[type, ...]], accessor: Union[str, NoneType] = None, validate_fn: Union[Callable[[Any, str], Any], NoneType] = None, desc=None)</span>
+<span>def <span class="ident">register_field</span></span>(<span>self, name: str, types: Union[type, Tuple[type, ...]], accessor: Optional[str] = None, validate_fn: Optional[Callable[[Any, str], Any]] = None, desc=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Register a field in this component of the configuration.</p>
@@ -1204,7 +1205,7 @@ if the input is invalid.</dd>
 </details>
 </dd>
 <dt id="delta.config.config.DeltaConfigComponent.setup_arg_parser"><code class="name flex">
-<span>def <span class="ident">setup_arg_parser</span></span>(<span>self, parser: argparse.ArgumentParser, components: Union[List[str], NoneType] = None)</span>
+<span>def <span class="ident">setup_arg_parser</span></span>(<span>self, parser: argparse.ArgumentParser, components: Optional[List[str]] = None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Adds arguments to the parser. May be overridden by child classes.</p>
@@ -1318,7 +1319,7 @@ if the input is invalid.</dd>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

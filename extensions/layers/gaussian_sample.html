@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.extensions.layers.gaussian_sample API documentation</title>
 <meta name="description" content="Gaussian sampling layer, used in variational autoencoders." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -48,8 +48,8 @@
 Gaussian sampling layer, used in variational autoencoders.
 &#34;&#34;&#34;
 
-import tensorflow.keras.backend as K
-from tensorflow.keras.callbacks import Callback
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.keras.callbacks import Callback #pylint: disable=no-name-in-module
 
 from delta.config.extensions import register_layer
 from delta.ml.train import DeltaLayer
@@ -85,7 +85,7 @@ class GaussianSample(DeltaLayer):
                     K.set_value(kl_enabled, 1.0)
         return GaussianSampleCallback()
 
-    def call(self, inputs, **_):
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument, arguments-differ
         mean, log_var = inputs
         batch = K.shape(mean)[0]
         dim = K.int_shape(mean)[1:]
@@ -169,7 +169,7 @@ according to the provided mean and variance.</p>
                     K.set_value(kl_enabled, 1.0)
         return GaussianSampleCallback()
 
-    def call(self, inputs, **_):
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument, arguments-differ
         mean, log_var = inputs
         batch = K.shape(mean)[0]
         dim = K.int_shape(mean)[1:]
@@ -195,16 +195,16 @@ according to the provided mean and variance.</p>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="delta.ml.train.DeltaLayer" href="../../ml/train.html#delta.ml.train.DeltaLayer">DeltaLayer</a></li>
-<li>tensorflow.python.keras.engine.base_layer.Layer</li>
+<li>keras.engine.base_layer.Layer</li>
 <li>tensorflow.python.module.module.Module</li>
 <li>tensorflow.python.training.tracking.tracking.AutoTrackable</li>
 <li>tensorflow.python.training.tracking.base.Trackable</li>
-<li>tensorflow.python.keras.utils.version_utils.LayerVersionSelector</li>
+<li>keras.utils.version_utils.LayerVersionSelector</li>
 </ul>
 <h3>Methods</h3>
 <dl>
 <dt id="delta.extensions.layers.gaussian_sample.GaussianSample.call"><code class="name flex">
-<span>def <span class="ident">call</span></span>(<span>self, inputs, **_)</span>
+<span>def <span class="ident">call</span></span>(<span>self, inputs, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>This is where the layer's logic lives.</p>
@@ -212,16 +212,48 @@ according to the provided mean and variance.</p>
 from <code>keras</code> API. In <code>keras</code> API, you can pass support masking for
 layers as additional arguments. Whereas <code>tf.keras</code> has <code>compute_mask()</code>
 method to support masking.</p>
-<h2 id="arguments">Arguments</h2>
-<p>inputs: Input tensor, or list/tuple of input tensors.
-**kwargs: Additional keyword arguments. Currently unused.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>inputs</code></strong></dt>
+<dd>Input tensor, or dict/list/tuple of input tensors.
+The first positional <code>inputs</code> argument is subject to special rules:
+- <code>inputs</code> must be explicitly passed. A layer cannot have zero
+arguments, and <code>inputs</code> cannot be provided via the default value
+of a keyword argument.
+- NumPy array or Python scalar values in <code>inputs</code> get cast as tensors.
+- Keras mask metadata is only collected from <code>inputs</code>.
+- Layers are built (<code>build(input_shape)</code> method)
+using shape info from <code>inputs</code> only.
+- <code>input_spec</code> compatibility is only checked against <code>inputs</code>.
+- Mixed precision input casting is only applied to <code>inputs</code>.
+If a layer has tensor arguments in <code>*args</code> or <code>**kwargs</code>, their
+casting behavior in mixed precision should be handled manually.
+- The SavedModel input specification is generated using <code>inputs</code> only.
+- Integration with various ecosystem packages like TFMOT, TFLite,
+TF.js, etc is only supported for <code>inputs</code> and not for tensors in
+positional and keyword arguments.</dd>
+<dt><strong><code>*args</code></strong></dt>
+<dd>Additional positional arguments. May contain tensors, although
+this is not recommended, for the reasons above.</dd>
+<dt><strong><code>**kwargs</code></strong></dt>
+<dd>Additional keyword arguments. May contain tensors, although
+this is not recommended, for the reasons above.
+The following optional keyword arguments are reserved:
+- <code>training</code>: Boolean scalar tensor of Python boolean indicating
+whether the <code>call</code> is meant for training or inference.
+- <code>mask</code>: Boolean input mask. If the layer's <code>call()</code> method takes a
+<code>mask</code> argument, its default value will be set to the mask generated
+for <code>inputs</code> by the previous layer (if <code>input</code> did come from a layer
+that generated a corresponding mask, i.e. if it came from a Keras
+layer with masking support).</dd>
+</dl>
 <h2 id="returns">Returns</h2>
 <p>A tensor or list/tuple of tensors.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def call(self, inputs, **_):
+<pre><code class="python">def call(self, inputs, **kwargs): #pylint: disable=unused-argument, arguments-differ
     mean, log_var = inputs
     batch = K.shape(mean)[0]
     dim = K.int_shape(mean)[1:]
@@ -257,6 +289,9 @@ The same layer can be reinstantiated later
 <p>The config of a layer does not include connectivity
 information, nor the layer class name. These are handled
 by <code>Network</code> (one layer of abstraction above).</p>
+<p>Note that <code>get_config()</code> does not guarantee to return a fresh copy of dict
+every time it is called. The callers should make a copy of the returned dict
+if they want to modify it.</p>
 <h2 id="returns">Returns</h2>
 <p>Python dictionary.</p></div>
 <details class="source">
@@ -308,7 +343,7 @@ by <code>Network</code> (one layer of abstraction above).</p>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

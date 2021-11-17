@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.ml.io API documentation</title>
 <meta name="description" content="Functions for IO specific to ML." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -48,11 +48,15 @@
 Functions for IO specific to ML.
 &#34;&#34;&#34;
 
+import os
 import h5py
 import numpy as np
-import tensorflow.keras.backend as K
+from packaging import version
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+import tensorflow
 
 from delta.config import config
+from delta.config.extensions import custom_objects
 
 def save_model(model, filename):
     &#34;&#34;&#34;
@@ -65,9 +69,44 @@ def save_model(model, filename):
     filename: str
         Output filename.
     &#34;&#34;&#34;
-    model.save(filename, save_format=&#39;h5&#39;)
-    with h5py.File(filename, &#39;r+&#39;) as f:
-        f.attrs[&#39;delta&#39;] = config.export()
+    if str(filename).endswith(&#39;.h5&#39;):
+        model.save(filename, save_format=&#39;h5&#39;)
+        with h5py.File(filename, &#39;r+&#39;) as f:
+            f.attrs[&#39;delta&#39;] = config.export()
+    else: # SavedModel format
+        model.save(filename)
+        # Record the config values into a subfolder of the savedmodel output folder
+        config_copy_folder = os.path.join(filename, &#39;assets.extra&#39;)
+        config_copy_path   = os.path.join(config_copy_folder, &#39;delta_config.yaml&#39;)
+        if not os.path.exists(config_copy_folder):
+            os.mkdir(config_copy_folder)
+        with open(config_copy_path, &#39;w&#39;) as f:
+            f.write(config.export())
+
+def load_model(filename):
+    &#34;&#34;&#34;
+    Load a model.
+
+    Parameters
+    ----------
+    filename: str
+        Input filename.
+    &#34;&#34;&#34;
+    cm = custom_objects()
+    if version.parse(tensorflow.__version__) &lt; version.parse(&#39;2.2&#39;): # need to load newer models
+        # renamed to Model from Functional in newer versions.
+        # Also added Conv2D groups parameter
+        class OldModel(tensorflow.keras.models.Model): # pylint: disable=too-many-ancestors
+            @classmethod
+            def from_config(cls, config, custom_objects=None): #pylint: disable=redefined-outer-name
+                for l in config[&#39;layers&#39;]:
+                    if l[&#39;class_name&#39;] == &#39;Conv2D&#39; and &#39;groups&#39; in l[&#39;config&#39;]:
+                        del l[&#39;config&#39;][&#39;groups&#39;]
+                return tensorflow.keras.models.Model.from_config(config, custom_objects)
+        cm.update({&#39;Functional&#39;: OldModel})
+    model = tensorflow.keras.models.load_model(filename, compile=False, custom_objects=cm)
+    return model
+
 
 def print_layer(l):
     &#34;&#34;&#34;
@@ -76,13 +115,12 @@ def print_layer(l):
     l: tensorflow.keras.layers.Layer
         The layer to print.
     &#34;&#34;&#34;
-    s = &#34;{:&lt;25}&#34;.format(l.name) + &#39; &#39; + &#39;{:&lt;20}&#39;.format(str(l.input_shape)) + \
-        &#39; -&gt; &#39; + &#39;{:&lt;20}&#39;.format(str(l.output_shape))
+    s = f&#34;{l.name:&lt;25} {str(l.input_shape):&lt;20} -&gt; {str(l.output_shape):20}&#34;
     c = l.get_config()
     if &#39;strides&#39; in c:
-        s += &#39; s: &#39; + &#39;{:&lt;10}&#39;.format(str(c[&#39;strides&#39;]))
+        s += f&#34; s: {str(c[&#39;strides&#39;])}&#34;
     if &#39;kernel_size&#39; in c:
-        s += &#39; ks: &#39; + str(c[&#39;kernel_size&#39;])
+        s += f&#34; ks: {str(c[&#39;kernel_size&#39;])}&#34;
     print(s)
 
 def print_network(a, tile_shape=None):
@@ -103,7 +141,7 @@ def print_network(a, tile_shape=None):
     print(&#39;Size: &#39; + str(in_shape[1:]) + &#39; --&gt; &#39; + str(out_shape[1:]))
     if out_shape[1] is not None and out_shape[2] is not None:
         print(&#39;Compression Rate - &#39;, out_shape[1] * out_shape[2] * out_shape[3] /
-                                     (in_shape[1] * in_shape[2] * in_shape[3]))
+              (in_shape[1] * in_shape[2] * in_shape[3]))
     print(&#39;Layers - &#39;, len(a.layers))
     print(&#39;Trainable Parameters - &#39;, np.sum([K.count_params(w) for w in a.trainable_weights]))</code></pre>
 </details>
@@ -115,6 +153,45 @@ def print_network(a, tile_shape=None):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="delta.ml.io.load_model"><code class="name flex">
+<span>def <span class="ident">load_model</span></span>(<span>filename)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Load a model.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>filename</code></strong> :&ensp;<code>str</code></dt>
+<dd>Input filename.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def load_model(filename):
+    &#34;&#34;&#34;
+    Load a model.
+
+    Parameters
+    ----------
+    filename: str
+        Input filename.
+    &#34;&#34;&#34;
+    cm = custom_objects()
+    if version.parse(tensorflow.__version__) &lt; version.parse(&#39;2.2&#39;): # need to load newer models
+        # renamed to Model from Functional in newer versions.
+        # Also added Conv2D groups parameter
+        class OldModel(tensorflow.keras.models.Model): # pylint: disable=too-many-ancestors
+            @classmethod
+            def from_config(cls, config, custom_objects=None): #pylint: disable=redefined-outer-name
+                for l in config[&#39;layers&#39;]:
+                    if l[&#39;class_name&#39;] == &#39;Conv2D&#39; and &#39;groups&#39; in l[&#39;config&#39;]:
+                        del l[&#39;config&#39;][&#39;groups&#39;]
+                return tensorflow.keras.models.Model.from_config(config, custom_objects)
+        cm.update({&#39;Functional&#39;: OldModel})
+    model = tensorflow.keras.models.load_model(filename, compile=False, custom_objects=cm)
+    return model</code></pre>
+</details>
+</dd>
 <dt id="delta.ml.io.print_layer"><code class="name flex">
 <span>def <span class="ident">print_layer</span></span>(<span>l)</span>
 </code></dt>
@@ -133,13 +210,12 @@ The layer to print.</p></div>
     l: tensorflow.keras.layers.Layer
         The layer to print.
     &#34;&#34;&#34;
-    s = &#34;{:&lt;25}&#34;.format(l.name) + &#39; &#39; + &#39;{:&lt;20}&#39;.format(str(l.input_shape)) + \
-        &#39; -&gt; &#39; + &#39;{:&lt;20}&#39;.format(str(l.output_shape))
+    s = f&#34;{l.name:&lt;25} {str(l.input_shape):&lt;20} -&gt; {str(l.output_shape):20}&#34;
     c = l.get_config()
     if &#39;strides&#39; in c:
-        s += &#39; s: &#39; + &#39;{:&lt;10}&#39;.format(str(c[&#39;strides&#39;]))
+        s += f&#34; s: {str(c[&#39;strides&#39;])}&#34;
     if &#39;kernel_size&#39; in c:
-        s += &#39; ks: &#39; + str(c[&#39;kernel_size&#39;])
+        s += f&#34; ks: {str(c[&#39;kernel_size&#39;])}&#34;
     print(s)</code></pre>
 </details>
 </dd>
@@ -174,7 +250,7 @@ If specified, print layer output sizes (necessary for FCN only).</p></div>
     print(&#39;Size: &#39; + str(in_shape[1:]) + &#39; --&gt; &#39; + str(out_shape[1:]))
     if out_shape[1] is not None and out_shape[2] is not None:
         print(&#39;Compression Rate - &#39;, out_shape[1] * out_shape[2] * out_shape[3] /
-                                     (in_shape[1] * in_shape[2] * in_shape[3]))
+              (in_shape[1] * in_shape[2] * in_shape[3]))
     print(&#39;Layers - &#39;, len(a.layers))
     print(&#39;Trainable Parameters - &#39;, np.sum([K.count_params(w) for w in a.trainable_weights]))</code></pre>
 </details>
@@ -206,9 +282,19 @@ If specified, print layer output sizes (necessary for FCN only).</p></div>
     filename: str
         Output filename.
     &#34;&#34;&#34;
-    model.save(filename, save_format=&#39;h5&#39;)
-    with h5py.File(filename, &#39;r+&#39;) as f:
-        f.attrs[&#39;delta&#39;] = config.export()</code></pre>
+    if str(filename).endswith(&#39;.h5&#39;):
+        model.save(filename, save_format=&#39;h5&#39;)
+        with h5py.File(filename, &#39;r+&#39;) as f:
+            f.attrs[&#39;delta&#39;] = config.export()
+    else: # SavedModel format
+        model.save(filename)
+        # Record the config values into a subfolder of the savedmodel output folder
+        config_copy_folder = os.path.join(filename, &#39;assets.extra&#39;)
+        config_copy_path   = os.path.join(config_copy_folder, &#39;delta_config.yaml&#39;)
+        if not os.path.exists(config_copy_folder):
+            os.mkdir(config_copy_folder)
+        with open(config_copy_path, &#39;w&#39;) as f:
+            f.write(config.export())</code></pre>
 </details>
 </dd>
 </dl>
@@ -229,6 +315,7 @@ If specified, print layer output sizes (necessary for FCN only).</p></div>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="delta.ml.io.load_model" href="#delta.ml.io.load_model">load_model</a></code></li>
 <li><code><a title="delta.ml.io.print_layer" href="#delta.ml.io.print_layer">print_layer</a></code></li>
 <li><code><a title="delta.ml.io.print_network" href="#delta.ml.io.print_network">print_network</a></code></li>
 <li><code><a title="delta.ml.io.save_model" href="#delta.ml.io.save_model">save_model</a></code></li>
@@ -238,7 +325,7 @@ If specified, print layer output sizes (necessary for FCN only).</p></div>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

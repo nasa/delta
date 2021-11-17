@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>delta.imagery.imagery_dataset API documentation</title>
 <meta name="description" content="Tools for loading input images into the TensorFlow Dataset class." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -48,23 +48,22 @@
 Tools for loading input images into the TensorFlow Dataset class.
 &#34;&#34;&#34;
 from concurrent.futures import ThreadPoolExecutor
-import copy
 import functools
 import random
-import os
-import portalocker
-import numpy as np
+import threading
 import tensorflow as tf
+import numpy as np
 
+from delta.imagery import rectangle
 from delta.config import config
 
-class ImageryDataset: # pylint: disable=too-many-instance-attributes
+class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-arguments
     &#34;&#34;&#34;
     A dataset for tiling very large imagery for training with tensorflow.
     &#34;&#34;&#34;
 
     def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
-                 tile_shape=(256, 256), tile_overlap=None):
+                 tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None):
         &#34;&#34;&#34;
         Parameters
         ----------
@@ -82,11 +81,12 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
             Size of tiles to load from the images at a time.
         tile_overlap: (int, int)
             If specified, overlap tiles by this amount.
+        max_rand_offset: int
+            If specified, in each epoch, offset all tiles by a random amount in x and y
+            in the range(-max_rand_offset, max_rand_offset).
         &#34;&#34;&#34;
 
-        self._resume_mode = False
-        self._log_folder  = None
-        self._iopool = ThreadPoolExecutor(1)
+        self._iopool = ThreadPoolExecutor(config.io.threads())
 
         # Record some of the config values
         self.set_chunk_output_shapes(chunk_shape, output_shape)
@@ -101,125 +101,17 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
+        self._max_rand_offset = max_rand_offset if max_rand_offset else 0
 
         if labels:
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
-        self._access_counts = [np.zeros(0, np.uint8), np.zeros(0, np.uint8)]
+        self._epoch = [0, 0] # track images and labels separately for simplicity
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
-
-    # TODO: I am skeptical that this works with multiple epochs.
-    # It is also less important now that training is so much faster.
-    # I think we should probably get rid of it at some point.
-    def set_resume_mode(self, resume_mode, log_folder):
-        &#34;&#34;&#34;
-        Enable / disable resume mode and configure it.
-
-        Parameters
-        ----------
-        resume_mode: bool
-            If true, log and check access counts for if imagery can be skipped
-            this epoch.
-        log_folder: str
-            Folder to log access counts to
-        &#34;&#34;&#34;
-        self._resume_mode = resume_mode
-        self._log_folder = log_folder
-        if self._log_folder and not os.path.exists(self._log_folder):
-            os.mkdir(self._log_folder)
-
-    def _resume_log_path(self, image_id):
-        &#34;&#34;&#34;
-        Parameters
-        ----------
-        image_id: int
-
-        Returns
-        -------
-        str:
-            the path to the read log for an input image
-        &#34;&#34;&#34;
-        if not self._log_folder:
-            return None
-        image_path = self._images[image_id]
-        image_name = os.path.basename(image_path)
-        file_name  = os.path.splitext(image_name)[0] + &#39;_read.log&#39;
-        log_path   = os.path.join(self._log_folder, file_name)
-        return log_path
-
-    def resume_log_read(self, image_id): #pylint: disable=R0201
-        &#34;&#34;&#34;
-        Reads an access count file containing a boolean and a count.
-
-        Parameters
-        ----------
-        image_id: int
-            Image id to check logs for
-
-        Returns
-        -------
-        (bool, int):
-            need_to_check, access count
-            The boolean is set to true if we need to check the count.
-        &#34;&#34;&#34;
-        path = self._resume_log_path(image_id)
-        try:
-            with portalocker.Lock(path, &#39;r&#39;, timeout=300) as f:
-                line = f.readline()
-                parts = line.split()
-                if len(parts) == 1: # Legacy files
-                    return (True, int(parts[0]))
-                needToCheck = (parts[0] == &#39;1&#39;)
-                return (needToCheck, int(parts[1]))
-        except OSError as e:
-            if e.errno == 122: # Disk quota exceeded
-                raise
-            return (False, 0)
-        except Exception: #pylint: disable=W0703
-            # If there is a problem reading the count just treat as zero
-            return (False, 0)
-
-    def resume_log_update(self, image_id, count=None, need_check=False):  #pylint: disable=R0201
-        &#34;&#34;&#34;
-        Update logs of when images are read. Should only be needed internally.
-
-        Parameters
-        ----------
-        image_id: int
-            The image to update
-        count: int
-            Number of tiles that have been read
-        need_check: bool
-            Set flag for if a check is needed
-        &#34;&#34;&#34;
-        log_path  = self._resume_log_path(image_id)
-        if not log_path:
-            return
-        if count is None:
-            (_, count) = self.resume_log_read(image_id)
-            count += 1
-        with portalocker.Lock(log_path, &#39;w&#39;, timeout=300) as f:
-            f.write(&#39;%d %d&#39; % (int(need_check), count))
-
-    def reset_access_counts(self, set_need_check=False):
-        &#34;&#34;&#34;
-        Go through all the access files and reset the counts. Should be done at the end of each epoch.
-
-        Parameters
-        ----------
-        set_need_check: bool
-            if true, keep the count and mark that it needs to be checked. (should be
-            set at the start of training)
-        &#34;&#34;&#34;
-        if not self._log_folder:
-            return
-        if config.general.verbose():
-            print(&#39;Resetting access counts in folder: &#39; + self._log_folder)
-        for i in range(len(self._images)):
-            self.resume_log_update(i, count=0, need_check=set_need_check)
+        self._random_seed = random.randint(0, 1 &lt;&lt; 16)
 
     def _list_tiles(self, i): # pragma: no cover
         &#34;&#34;&#34;
@@ -233,51 +125,29 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         List[Rectangle]:
             List of tiles to read from the given image
         &#34;&#34;&#34;
-        # If we need to skip this file because of the read count, no need to look up tiles.
-        if self._resume_mode:
-            file_path = self._images[i]
-            log_path  = self._resume_log_path(i)
-            if log_path:
-                if config.general.verbose():
-                    print(&#39;get_image_tile_list for index &#39; + str(i) + &#39; -&gt; &#39; + file_path)
-                (need_to_check, count) = self.resume_log_read(i)
-                if need_to_check and (count &gt; config.train.resume_cutoff()):
-                    if config.general.verbose():
-                        print(&#39;Skipping index &#39; + str(i) + &#39; tile gen with count &#39;
-                              + str(count) + &#39; -&gt; &#39; + file_path)
-                    return []
-                if config.general.verbose():
-                    print(&#39;Computing tile list for index &#39; + str(i) + &#39; with count &#39;
-                          + str(count) + &#39; -&gt; &#39; + file_path)
-            else:
-                if config.general.verbose():
-                    print(&#39;No read log file for index &#39; + str(i))
-
         img = self._images.load(i)
 
         if self._labels: # If we have labels make sure they are the same size as the input images
             label = self._labels.load(i)
             if label.size() != img.size():
                 raise AssertionError(&#39;Label file &#39; + self._labels[i] + &#39; with size &#39; + str(label.size())
-                                     + &#39; does not match input image size of &#39; + str(img.size()))
+                                     + &#39; does not match input image &#39; + self._images[i] + &#39; size of &#39; + str(img.size()))
         tile_shape = self._tile_shape
         if self._chunk_shape:
             assert tile_shape[0] &gt;= self._chunk_shape[0] and \
                    tile_shape[1] &gt;= self._chunk_shape[1], &#39;Tile too small.&#39;
             return img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
-                             overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
+                             overlap_shape=self._tile_overlap,
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
                          overlap_shape=self._tile_overlap, by_block=True)
 
-    def _tile_generator(self, i, is_labels): # pragma: no cover
+    def _tile_generator(self, is_labels): # pragma: no cover
         &#34;&#34;&#34;
-        A generator that yields image tiles from the given image.
+        A generator that yields image tiles over all images.
 
         Parameters
         ----------
-        i: int
-            Image id
         is_labels: bool
             Load the label if true, image if false
 
@@ -286,43 +156,100 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         Iterator[numpy.ndarray]:
             Iterator over iamge tiles.
         &#34;&#34;&#34;
-        i = int(i)
-        tiles = self._list_tiles(i)
         # track epoch (must be same for label and non-label)
-        epoch = self._access_counts[1 if is_labels else 0][i]
-        self._access_counts[1 if is_labels else 0][i] += 1
-        if not tiles:
-            return
+        epoch = self._epoch[1 if is_labels else 0]
+        self._epoch[1 if is_labels else 0] += 1
+        images = [(self._labels if is_labels else self._images).load(i) for i in range(len(self._images))]
+        # create lock and get preprocessing function for each image
+        image_locks = {}
+        image_preprocesses = {}
+        for img in images:
+            image_locks[img] = threading.Lock()
+            image_preprocesses[img] = img.get_preprocess()
+            img.set_preprocess(None) # parallelize preprocessing outside lock
 
-        # different order each epoch
-        random.Random(epoch * i * 11617).shuffle(tiles)
+        # use same seed for labels and not labels, differ by epoch times big prime number
+        rand = random.Random(self._random_seed + epoch * 11617)
 
-        image = (self._labels if is_labels else self._images).load(i)
-        preprocess = image.get_preprocess()
-        image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
-        bands = range(image.num_bands())
+        # generator that creates tiles in a random order, but consistent between images and labels
+        # returns generator of (img, tile_list) tuples
+        def tile_gen():
+            image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
+            # shuffle tiles within each image
+            for (img, tiles) in image_tiles:
+                rand.shuffle(tiles)
+            # create iterator
+            image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
+            while image_tiles:
+                index = rand.randrange(len(image_tiles))
+                (img, it) = image_tiles[index]
+                try:
+                    yield (img, next(it))
+                except StopIteration:
+                    del image_tiles[index]
 
-        # read one row ahead of what we process now
-        next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
-        for (c, (rect, sub_tiles)) in enumerate(tiles):
-            cur_buf = next_buf
-            if c + 1 &lt; len(tiles):
-                # extra lambda to bind c in closure
-                next_buf = self._iopool.submit((lambda x: (lambda: image.read(tiles[x + 1][0])))(c))
-            if cur_buf is None:
-                continue
-            buf = cur_buf.result()
-            (rect, sub_tiles) = tiles[c]
-            for s in sub_tiles:
-                if preprocess:
-                    t = copy.copy(s)
-                    t.shift(rect.min_x, rect.min_y)
-                    yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
-                else:
-                    yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+        if self._max_rand_offset:
+            rand_offset = (rand.randint(-self._max_rand_offset, self._max_rand_offset),
+                           rand.randint(-self._max_rand_offset, self._max_rand_offset))
+        else:
+            rand_offset = (0, 0)
+        # lock an image and read it. Necessary because gdal doesn&#39;t do multi-threading.
+        def read_image(img, rect):
+            lock = image_locks[img]
+            preprocess = image_preprocesses[img]
+            buf = np.zeros(shape=(img.num_bands(), rect.height(), rect.width()), dtype=img.dtype())
 
-            if not is_labels: # update access count per row
-                self.resume_log_update(i, need_check=False)
+            mod_r = rectangle.Rectangle(min_x=rect.min_x, min_y=rect.min_y, max_x=rect.max_x, max_y=rect.max_y)
+            mod_r.shift(rand_offset[0], rand_offset[1])
+            request_r = mod_r.get_intersection(rectangle.Rectangle(min_x=0, min_y=0, width=img.width(),
+                                                                   height=img.height()))
+
+            lock.acquire()
+            partial_buf = buf[:, request_r.min_y - mod_r.min_y:mod_r.height() + request_r.max_y - mod_r.max_y,
+                              request_r.min_x - mod_r.min_x:mod_r.width() + request_r.max_x - mod_r.max_x]
+            img.read(request_r, buf=partial_buf)
+            lock.release()
+            # preprocess outside of lock for concurrency
+            buf = np.transpose(buf, [1, 2, 0])
+            if preprocess:
+                buf = preprocess(buf, rect, None)
+            return buf
+
+        # add a buffer to read to the multiprocessing queue
+        def add_to_queue(buf_queue, item):
+            (img, (rect, sub_tiles)) = item
+            buf = self._iopool.submit(lambda: read_image(img, rect))
+            buf_queue.append((rect, sub_tiles, buf))
+
+        gen = tile_gen()
+        buf_queue = []
+        for _ in range(config.io.threads() * 2): # add a bit ahead
+            try:
+                next_item = next(gen)
+            except StopIteration:
+                break
+            add_to_queue(buf_queue, next_item)
+        # process buffers and yield sub tiles. For efficiency, we just
+        # return an entire buffer&#39;s sub tiles at once, so not fully random
+        cur_bufs = []
+        while buf_queue or cur_bufs:
+            while len(cur_bufs) &lt; config.io.interleave_blocks() and buf_queue:
+                (_, sub_tiles, buf) = buf_queue.pop(0)
+                cur_bufs.append((sub_tiles, buf.result()))
+                try:
+                    add_to_queue(buf_queue, next(gen))
+                except StopIteration:
+                    pass
+            while True:
+                buf_index = rand.randrange(len(cur_bufs))
+                (sub_tiles, buf) = cur_bufs[buf_index]
+                if not sub_tiles:
+                    del cur_bufs[buf_index]
+                    break
+                sub_index = rand.randrange(len(sub_tiles))
+                s = sub_tiles[sub_index]
+                del sub_tiles[sub_index]
+                yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
 
     def _load_images(self, is_labels, data_type):
         &#34;&#34;&#34;
@@ -340,16 +267,11 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         Dataset:
             Dataset of image tiles
         &#34;&#34;&#34;
-        r = tf.data.Dataset.range(len(self._images))
-        r = r.shuffle(1000, seed=0, reshuffle_each_iteration=True) # shuffle same way for labels and non-labels
-        self._access_counts[1 if is_labels else 0] = np.zeros(len(self._images), np.uint8) # count epochs for random
-        # different seed for each image, use ge
-        gen_func = lambda x: tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
-                                                                              is_labels=is_labels),
-                                                            output_types=data_type,
-                                                            output_shapes=tf.TensorShape((None, None, None)), args=(x,))
-        return r.interleave(gen_func, cycle_length=config.io.interleave_images(),
-                            num_parallel_calls=config.io.threads())
+        self._epoch[1 if is_labels else 0] = 0 # count epochs for random
+        return tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
+                                                                is_labels=is_labels),
+                                              output_types=data_type,
+                                              output_shapes=tf.TensorShape((None, None, None)))
 
     def _chunk_image(self, image): # pragma: no cover
         &#34;&#34;&#34;Split up a tensor image into tensor chunks&#34;&#34;&#34;
@@ -367,13 +289,13 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
     def _reshape_labels(self, labels): # pragma: no cover
         &#34;&#34;&#34;Reshape the labels to account for the chunking process.&#34;&#34;&#34;
         if self._chunk_shape:
-            w = (self._chunk_shape[0] - self._output_shape[0]) // 2
-            h = (self._chunk_shape[1] - self._output_shape[1]) // 2
+            h = (self._chunk_shape[0] - self._output_shape[0]) // 2
+            w = (self._chunk_shape[1] - self._output_shape[1]) // 2
         else:
-            w = (tf.shape(labels)[0] - self._output_shape[0]) // 2
-            h = (tf.shape(labels)[1] - self._output_shape[1]) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
-                                               tf.shape(labels)[1] - 2 * h)
+            h = (tf.shape(labels)[0] - self._output_shape[0]) // 2
+            w = (tf.shape(labels)[1] - self._output_shape[1]) // 2
+        labels = tf.image.crop_to_bounding_box(labels, h, w, tf.shape(labels)[0] - 2 * h,
+                                               tf.shape(labels)[1] - 2 * w)
         if not self._chunk_shape:
             return labels
 
@@ -382,7 +304,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding=&#39;VALID&#39;)
-        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1]])
+        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1], 1])
         return result
 
     def data(self):
@@ -412,7 +334,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
                 return label_set.unbatch()
         return label_set
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         &#34;&#34;&#34;
         Returns a tensorflow dataset as configured by the class.
 
@@ -420,6 +342,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         ----------
         class_weights: list
             list of weights for the classes.
+        augment_function: Callable[[Tensor, Tensor], (Tensor, Tensor)]
+            Function to be applied to the image and label before use.
 
         Returns
         -------
@@ -430,8 +354,12 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
+        # cannot do with max_rand_offset since would have different number of tiles which
+        # breaks keras fit
         if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
+        if augment_function is not None:
+            ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         if class_weights is not None:
             class_weights.append(0.0)
             lookup = tf.constant(class_weights)
@@ -562,16 +490,17 @@ class AutoencoderDataset(ImageryDataset):
     Instead of specifying labels, the inputs are used as labels.
     &#34;&#34;&#34;
 
-    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None):
+    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None,
+                 max_rand_offset=None):
         super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
-                         stride=stride, tile_overlap=tile_overlap)
+                         stride=stride, tile_overlap=tile_overlap, max_rand_offset=max_rand_offset)
         self._labels = self._images
         self._output_dims = self.num_bands()
 
     def labels(self):
         return self.data()
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         return self.data().map(lambda x: (x, x))</code></pre>
 </details>
 </section>
@@ -586,7 +515,7 @@ class AutoencoderDataset(ImageryDataset):
 <dl>
 <dt id="delta.imagery.imagery_dataset.AutoencoderDataset"><code class="flex name class">
 <span>class <span class="ident">AutoencoderDataset</span></span>
-<span>(</span><span>images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None)</span>
+<span>(</span><span>images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Slightly modified dataset class for the autoencoder.</p>
@@ -607,6 +536,9 @@ class AutoencoderDataset(ImageryDataset):
 <dd>Size of tiles to load from the images at a time.</dd>
 <dt><strong><code>tile_overlap</code></strong> :&ensp;<code>(int, int)</code></dt>
 <dd>If specified, overlap tiles by this amount.</dd>
+<dt><strong><code>max_rand_offset</code></strong> :&ensp;<code>int</code></dt>
+<dd>If specified, in each epoch, offset all tiles by a random amount in x and y
+in the range(-max_rand_offset, max_rand_offset).</dd>
 </dl></div>
 <details class="source">
 <summary>
@@ -619,16 +551,17 @@ class AutoencoderDataset(ImageryDataset):
     Instead of specifying labels, the inputs are used as labels.
     &#34;&#34;&#34;
 
-    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None):
+    def __init__(self, images, chunk_shape, stride=(1, 1), tile_shape=(256, 256), tile_overlap=None,
+                 max_rand_offset=None):
         super().__init__(images, None, chunk_shape, chunk_shape, tile_shape=tile_shape,
-                         stride=stride, tile_overlap=tile_overlap)
+                         stride=stride, tile_overlap=tile_overlap, max_rand_offset=max_rand_offset)
         self._labels = self._images
         self._output_dims = self.num_bands()
 
     def labels(self):
         return self.data()
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         return self.data().map(lambda x: (x, x))</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -648,11 +581,7 @@ class AutoencoderDataset(ImageryDataset):
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.labels" href="#delta.imagery.imagery_dataset.ImageryDataset.labels">labels</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.num_bands" href="#delta.imagery.imagery_dataset.ImageryDataset.num_bands">num_bands</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.output_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.output_shape">output_shape</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.reset_access_counts" href="#delta.imagery.imagery_dataset.ImageryDataset.reset_access_counts">reset_access_counts</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.resume_log_read" href="#delta.imagery.imagery_dataset.ImageryDataset.resume_log_read">resume_log_read</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.resume_log_update" href="#delta.imagery.imagery_dataset.ImageryDataset.resume_log_update">resume_log_update</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_chunk_output_shapes" href="#delta.imagery.imagery_dataset.ImageryDataset.set_chunk_output_shapes">set_chunk_output_shapes</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_resume_mode" href="#delta.imagery.imagery_dataset.ImageryDataset.set_resume_mode">set_resume_mode</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_tile_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.set_tile_shape">set_tile_shape</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.stride" href="#delta.imagery.imagery_dataset.ImageryDataset.stride">stride</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.tile_overlap" href="#delta.imagery.imagery_dataset.ImageryDataset.tile_overlap">tile_overlap</a></code></li>
@@ -663,7 +592,7 @@ class AutoencoderDataset(ImageryDataset):
 </dd>
 <dt id="delta.imagery.imagery_dataset.ImageryDataset"><code class="flex name class">
 <span>class <span class="ident">ImageryDataset</span></span>
-<span>(</span><span>images, labels, output_shape, chunk_shape, stride=None, tile_shape=(256, 256), tile_overlap=None)</span>
+<span>(</span><span>images, labels, output_shape, chunk_shape, stride=None, tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>A dataset for tiling very large imagery for training with tensorflow.</p>
@@ -683,18 +612,21 @@ class AutoencoderDataset(ImageryDataset):
 <dd>Size of tiles to load from the images at a time.</dd>
 <dt><strong><code>tile_overlap</code></strong> :&ensp;<code>(int, int)</code></dt>
 <dd>If specified, overlap tiles by this amount.</dd>
+<dt><strong><code>max_rand_offset</code></strong> :&ensp;<code>int</code></dt>
+<dd>If specified, in each epoch, offset all tiles by a random amount in x and y
+in the range(-max_rand_offset, max_rand_offset).</dd>
 </dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">class ImageryDataset: # pylint: disable=too-many-instance-attributes
+<pre><code class="python">class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-arguments
     &#34;&#34;&#34;
     A dataset for tiling very large imagery for training with tensorflow.
     &#34;&#34;&#34;
 
     def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
-                 tile_shape=(256, 256), tile_overlap=None):
+                 tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None):
         &#34;&#34;&#34;
         Parameters
         ----------
@@ -712,11 +644,12 @@ class AutoencoderDataset(ImageryDataset):
             Size of tiles to load from the images at a time.
         tile_overlap: (int, int)
             If specified, overlap tiles by this amount.
+        max_rand_offset: int
+            If specified, in each epoch, offset all tiles by a random amount in x and y
+            in the range(-max_rand_offset, max_rand_offset).
         &#34;&#34;&#34;
 
-        self._resume_mode = False
-        self._log_folder  = None
-        self._iopool = ThreadPoolExecutor(1)
+        self._iopool = ThreadPoolExecutor(config.io.threads())
 
         # Record some of the config values
         self.set_chunk_output_shapes(chunk_shape, output_shape)
@@ -731,125 +664,17 @@ class AutoencoderDataset(ImageryDataset):
         if tile_overlap is None:
             tile_overlap = (0, 0)
         self._tile_overlap = tile_overlap
+        self._max_rand_offset = max_rand_offset if max_rand_offset else 0
 
         if labels:
             assert len(images) == len(labels)
         self._images = images
         self._labels = labels
-        self._access_counts = [np.zeros(0, np.uint8), np.zeros(0, np.uint8)]
+        self._epoch = [0, 0] # track images and labels separately for simplicity
 
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
-
-    # TODO: I am skeptical that this works with multiple epochs.
-    # It is also less important now that training is so much faster.
-    # I think we should probably get rid of it at some point.
-    def set_resume_mode(self, resume_mode, log_folder):
-        &#34;&#34;&#34;
-        Enable / disable resume mode and configure it.
-
-        Parameters
-        ----------
-        resume_mode: bool
-            If true, log and check access counts for if imagery can be skipped
-            this epoch.
-        log_folder: str
-            Folder to log access counts to
-        &#34;&#34;&#34;
-        self._resume_mode = resume_mode
-        self._log_folder = log_folder
-        if self._log_folder and not os.path.exists(self._log_folder):
-            os.mkdir(self._log_folder)
-
-    def _resume_log_path(self, image_id):
-        &#34;&#34;&#34;
-        Parameters
-        ----------
-        image_id: int
-
-        Returns
-        -------
-        str:
-            the path to the read log for an input image
-        &#34;&#34;&#34;
-        if not self._log_folder:
-            return None
-        image_path = self._images[image_id]
-        image_name = os.path.basename(image_path)
-        file_name  = os.path.splitext(image_name)[0] + &#39;_read.log&#39;
-        log_path   = os.path.join(self._log_folder, file_name)
-        return log_path
-
-    def resume_log_read(self, image_id): #pylint: disable=R0201
-        &#34;&#34;&#34;
-        Reads an access count file containing a boolean and a count.
-
-        Parameters
-        ----------
-        image_id: int
-            Image id to check logs for
-
-        Returns
-        -------
-        (bool, int):
-            need_to_check, access count
-            The boolean is set to true if we need to check the count.
-        &#34;&#34;&#34;
-        path = self._resume_log_path(image_id)
-        try:
-            with portalocker.Lock(path, &#39;r&#39;, timeout=300) as f:
-                line = f.readline()
-                parts = line.split()
-                if len(parts) == 1: # Legacy files
-                    return (True, int(parts[0]))
-                needToCheck = (parts[0] == &#39;1&#39;)
-                return (needToCheck, int(parts[1]))
-        except OSError as e:
-            if e.errno == 122: # Disk quota exceeded
-                raise
-            return (False, 0)
-        except Exception: #pylint: disable=W0703
-            # If there is a problem reading the count just treat as zero
-            return (False, 0)
-
-    def resume_log_update(self, image_id, count=None, need_check=False):  #pylint: disable=R0201
-        &#34;&#34;&#34;
-        Update logs of when images are read. Should only be needed internally.
-
-        Parameters
-        ----------
-        image_id: int
-            The image to update
-        count: int
-            Number of tiles that have been read
-        need_check: bool
-            Set flag for if a check is needed
-        &#34;&#34;&#34;
-        log_path  = self._resume_log_path(image_id)
-        if not log_path:
-            return
-        if count is None:
-            (_, count) = self.resume_log_read(image_id)
-            count += 1
-        with portalocker.Lock(log_path, &#39;w&#39;, timeout=300) as f:
-            f.write(&#39;%d %d&#39; % (int(need_check), count))
-
-    def reset_access_counts(self, set_need_check=False):
-        &#34;&#34;&#34;
-        Go through all the access files and reset the counts. Should be done at the end of each epoch.
-
-        Parameters
-        ----------
-        set_need_check: bool
-            if true, keep the count and mark that it needs to be checked. (should be
-            set at the start of training)
-        &#34;&#34;&#34;
-        if not self._log_folder:
-            return
-        if config.general.verbose():
-            print(&#39;Resetting access counts in folder: &#39; + self._log_folder)
-        for i in range(len(self._images)):
-            self.resume_log_update(i, count=0, need_check=set_need_check)
+        self._random_seed = random.randint(0, 1 &lt;&lt; 16)
 
     def _list_tiles(self, i): # pragma: no cover
         &#34;&#34;&#34;
@@ -863,51 +688,29 @@ class AutoencoderDataset(ImageryDataset):
         List[Rectangle]:
             List of tiles to read from the given image
         &#34;&#34;&#34;
-        # If we need to skip this file because of the read count, no need to look up tiles.
-        if self._resume_mode:
-            file_path = self._images[i]
-            log_path  = self._resume_log_path(i)
-            if log_path:
-                if config.general.verbose():
-                    print(&#39;get_image_tile_list for index &#39; + str(i) + &#39; -&gt; &#39; + file_path)
-                (need_to_check, count) = self.resume_log_read(i)
-                if need_to_check and (count &gt; config.train.resume_cutoff()):
-                    if config.general.verbose():
-                        print(&#39;Skipping index &#39; + str(i) + &#39; tile gen with count &#39;
-                              + str(count) + &#39; -&gt; &#39; + file_path)
-                    return []
-                if config.general.verbose():
-                    print(&#39;Computing tile list for index &#39; + str(i) + &#39; with count &#39;
-                          + str(count) + &#39; -&gt; &#39; + file_path)
-            else:
-                if config.general.verbose():
-                    print(&#39;No read log file for index &#39; + str(i))
-
         img = self._images.load(i)
 
         if self._labels: # If we have labels make sure they are the same size as the input images
             label = self._labels.load(i)
             if label.size() != img.size():
                 raise AssertionError(&#39;Label file &#39; + self._labels[i] + &#39; with size &#39; + str(label.size())
-                                     + &#39; does not match input image size of &#39; + str(img.size()))
+                                     + &#39; does not match input image &#39; + self._images[i] + &#39; size of &#39; + str(img.size()))
         tile_shape = self._tile_shape
         if self._chunk_shape:
             assert tile_shape[0] &gt;= self._chunk_shape[0] and \
                    tile_shape[1] &gt;= self._chunk_shape[1], &#39;Tile too small.&#39;
             return img.tiles((tile_shape[0], tile_shape[1]), min_shape=self._chunk_shape,
-                             overlap_shape=(self._chunk_shape[0] - 1, self._chunk_shape[1] - 1),
+                             overlap_shape=self._tile_overlap,
                              by_block=True)
         return img.tiles((tile_shape[0], tile_shape[1]), partials=False, partials_overlap=True,
                          overlap_shape=self._tile_overlap, by_block=True)
 
-    def _tile_generator(self, i, is_labels): # pragma: no cover
+    def _tile_generator(self, is_labels): # pragma: no cover
         &#34;&#34;&#34;
-        A generator that yields image tiles from the given image.
+        A generator that yields image tiles over all images.
 
         Parameters
         ----------
-        i: int
-            Image id
         is_labels: bool
             Load the label if true, image if false
 
@@ -916,43 +719,100 @@ class AutoencoderDataset(ImageryDataset):
         Iterator[numpy.ndarray]:
             Iterator over iamge tiles.
         &#34;&#34;&#34;
-        i = int(i)
-        tiles = self._list_tiles(i)
         # track epoch (must be same for label and non-label)
-        epoch = self._access_counts[1 if is_labels else 0][i]
-        self._access_counts[1 if is_labels else 0][i] += 1
-        if not tiles:
-            return
+        epoch = self._epoch[1 if is_labels else 0]
+        self._epoch[1 if is_labels else 0] += 1
+        images = [(self._labels if is_labels else self._images).load(i) for i in range(len(self._images))]
+        # create lock and get preprocessing function for each image
+        image_locks = {}
+        image_preprocesses = {}
+        for img in images:
+            image_locks[img] = threading.Lock()
+            image_preprocesses[img] = img.get_preprocess()
+            img.set_preprocess(None) # parallelize preprocessing outside lock
 
-        # different order each epoch
-        random.Random(epoch * i * 11617).shuffle(tiles)
+        # use same seed for labels and not labels, differ by epoch times big prime number
+        rand = random.Random(self._random_seed + epoch * 11617)
 
-        image = (self._labels if is_labels else self._images).load(i)
-        preprocess = image.get_preprocess()
-        image.set_preprocess(None) # parallelize the preprocessing, not in disk i/o threadpool
-        bands = range(image.num_bands())
+        # generator that creates tiles in a random order, but consistent between images and labels
+        # returns generator of (img, tile_list) tuples
+        def tile_gen():
+            image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
+            # shuffle tiles within each image
+            for (img, tiles) in image_tiles:
+                rand.shuffle(tiles)
+            # create iterator
+            image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
+            while image_tiles:
+                index = rand.randrange(len(image_tiles))
+                (img, it) = image_tiles[index]
+                try:
+                    yield (img, next(it))
+                except StopIteration:
+                    del image_tiles[index]
 
-        # read one row ahead of what we process now
-        next_buf = self._iopool.submit(lambda: image.read(tiles[0][0]))
-        for (c, (rect, sub_tiles)) in enumerate(tiles):
-            cur_buf = next_buf
-            if c + 1 &lt; len(tiles):
-                # extra lambda to bind c in closure
-                next_buf = self._iopool.submit((lambda x: (lambda: image.read(tiles[x + 1][0])))(c))
-            if cur_buf is None:
-                continue
-            buf = cur_buf.result()
-            (rect, sub_tiles) = tiles[c]
-            for s in sub_tiles:
-                if preprocess:
-                    t = copy.copy(s)
-                    t.shift(rect.min_x, rect.min_y)
-                    yield preprocess(buf[s.min_x:s.max_x, s.min_y:s.max_y, :], t, bands)
-                else:
-                    yield buf[s.min_x:s.max_x, s.min_y:s.max_y, :]
+        if self._max_rand_offset:
+            rand_offset = (rand.randint(-self._max_rand_offset, self._max_rand_offset),
+                           rand.randint(-self._max_rand_offset, self._max_rand_offset))
+        else:
+            rand_offset = (0, 0)
+        # lock an image and read it. Necessary because gdal doesn&#39;t do multi-threading.
+        def read_image(img, rect):
+            lock = image_locks[img]
+            preprocess = image_preprocesses[img]
+            buf = np.zeros(shape=(img.num_bands(), rect.height(), rect.width()), dtype=img.dtype())
 
-            if not is_labels: # update access count per row
-                self.resume_log_update(i, need_check=False)
+            mod_r = rectangle.Rectangle(min_x=rect.min_x, min_y=rect.min_y, max_x=rect.max_x, max_y=rect.max_y)
+            mod_r.shift(rand_offset[0], rand_offset[1])
+            request_r = mod_r.get_intersection(rectangle.Rectangle(min_x=0, min_y=0, width=img.width(),
+                                                                   height=img.height()))
+
+            lock.acquire()
+            partial_buf = buf[:, request_r.min_y - mod_r.min_y:mod_r.height() + request_r.max_y - mod_r.max_y,
+                              request_r.min_x - mod_r.min_x:mod_r.width() + request_r.max_x - mod_r.max_x]
+            img.read(request_r, buf=partial_buf)
+            lock.release()
+            # preprocess outside of lock for concurrency
+            buf = np.transpose(buf, [1, 2, 0])
+            if preprocess:
+                buf = preprocess(buf, rect, None)
+            return buf
+
+        # add a buffer to read to the multiprocessing queue
+        def add_to_queue(buf_queue, item):
+            (img, (rect, sub_tiles)) = item
+            buf = self._iopool.submit(lambda: read_image(img, rect))
+            buf_queue.append((rect, sub_tiles, buf))
+
+        gen = tile_gen()
+        buf_queue = []
+        for _ in range(config.io.threads() * 2): # add a bit ahead
+            try:
+                next_item = next(gen)
+            except StopIteration:
+                break
+            add_to_queue(buf_queue, next_item)
+        # process buffers and yield sub tiles. For efficiency, we just
+        # return an entire buffer&#39;s sub tiles at once, so not fully random
+        cur_bufs = []
+        while buf_queue or cur_bufs:
+            while len(cur_bufs) &lt; config.io.interleave_blocks() and buf_queue:
+                (_, sub_tiles, buf) = buf_queue.pop(0)
+                cur_bufs.append((sub_tiles, buf.result()))
+                try:
+                    add_to_queue(buf_queue, next(gen))
+                except StopIteration:
+                    pass
+            while True:
+                buf_index = rand.randrange(len(cur_bufs))
+                (sub_tiles, buf) = cur_bufs[buf_index]
+                if not sub_tiles:
+                    del cur_bufs[buf_index]
+                    break
+                sub_index = rand.randrange(len(sub_tiles))
+                s = sub_tiles[sub_index]
+                del sub_tiles[sub_index]
+                yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
 
     def _load_images(self, is_labels, data_type):
         &#34;&#34;&#34;
@@ -970,16 +830,11 @@ class AutoencoderDataset(ImageryDataset):
         Dataset:
             Dataset of image tiles
         &#34;&#34;&#34;
-        r = tf.data.Dataset.range(len(self._images))
-        r = r.shuffle(1000, seed=0, reshuffle_each_iteration=True) # shuffle same way for labels and non-labels
-        self._access_counts[1 if is_labels else 0] = np.zeros(len(self._images), np.uint8) # count epochs for random
-        # different seed for each image, use ge
-        gen_func = lambda x: tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
-                                                                              is_labels=is_labels),
-                                                            output_types=data_type,
-                                                            output_shapes=tf.TensorShape((None, None, None)), args=(x,))
-        return r.interleave(gen_func, cycle_length=config.io.interleave_images(),
-                            num_parallel_calls=config.io.threads())
+        self._epoch[1 if is_labels else 0] = 0 # count epochs for random
+        return tf.data.Dataset.from_generator(functools.partial(self._tile_generator,
+                                                                is_labels=is_labels),
+                                              output_types=data_type,
+                                              output_shapes=tf.TensorShape((None, None, None)))
 
     def _chunk_image(self, image): # pragma: no cover
         &#34;&#34;&#34;Split up a tensor image into tensor chunks&#34;&#34;&#34;
@@ -997,13 +852,13 @@ class AutoencoderDataset(ImageryDataset):
     def _reshape_labels(self, labels): # pragma: no cover
         &#34;&#34;&#34;Reshape the labels to account for the chunking process.&#34;&#34;&#34;
         if self._chunk_shape:
-            w = (self._chunk_shape[0] - self._output_shape[0]) // 2
-            h = (self._chunk_shape[1] - self._output_shape[1]) // 2
+            h = (self._chunk_shape[0] - self._output_shape[0]) // 2
+            w = (self._chunk_shape[1] - self._output_shape[1]) // 2
         else:
-            w = (tf.shape(labels)[0] - self._output_shape[0]) // 2
-            h = (tf.shape(labels)[1] - self._output_shape[1]) // 2
-        labels = tf.image.crop_to_bounding_box(labels, w, h, tf.shape(labels)[0] - 2 * w,
-                                               tf.shape(labels)[1] - 2 * h)
+            h = (tf.shape(labels)[0] - self._output_shape[0]) // 2
+            w = (tf.shape(labels)[1] - self._output_shape[1]) // 2
+        labels = tf.image.crop_to_bounding_box(labels, h, w, tf.shape(labels)[0] - 2 * h,
+                                               tf.shape(labels)[1] - 2 * w)
         if not self._chunk_shape:
             return labels
 
@@ -1012,7 +867,7 @@ class AutoencoderDataset(ImageryDataset):
         rates   = [1, 1, 1, 1]
         labels = tf.image.extract_patches(tf.expand_dims(labels, 0), ksizes, strides, rates,
                                           padding=&#39;VALID&#39;)
-        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1]])
+        result = tf.reshape(labels, [-1, self._output_shape[0], self._output_shape[1], 1])
         return result
 
     def data(self):
@@ -1042,7 +897,7 @@ class AutoencoderDataset(ImageryDataset):
                 return label_set.unbatch()
         return label_set
 
-    def dataset(self, class_weights=None):
+    def dataset(self, class_weights=None, augment_function=None):
         &#34;&#34;&#34;
         Returns a tensorflow dataset as configured by the class.
 
@@ -1050,6 +905,8 @@ class AutoencoderDataset(ImageryDataset):
         ----------
         class_weights: list
             list of weights for the classes.
+        augment_function: Callable[[Tensor, Tensor], (Tensor, Tensor)]
+            Function to be applied to the image and label before use.
 
         Returns
         -------
@@ -1060,8 +917,12 @@ class AutoencoderDataset(ImageryDataset):
         # Pair the data and labels in our dataset
         ds = tf.data.Dataset.zip((self.data(), self.labels()))
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
+        # cannot do with max_rand_offset since would have different number of tiles which
+        # breaks keras fit
         if self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
+        if augment_function is not None:
+            ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         if class_weights is not None:
             class_weights.append(0.0)
             lookup = tf.constant(class_weights)
@@ -1238,7 +1099,7 @@ Size of chunks used for inputs.</p></div>
 </details>
 </dd>
 <dt id="delta.imagery.imagery_dataset.ImageryDataset.dataset"><code class="name flex">
-<span>def <span class="ident">dataset</span></span>(<span>self, class_weights=None)</span>
+<span>def <span class="ident">dataset</span></span>(<span>self, class_weights=None, augment_function=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Returns a tensorflow dataset as configured by the class.</p>
@@ -1246,6 +1107,8 @@ Size of chunks used for inputs.</p></div>
 <dl>
 <dt><strong><code>class_weights</code></strong> :&ensp;<code>list</code></dt>
 <dd>list of weights for the classes.</dd>
+<dt><strong><code>augment_function</code></strong> :&ensp;<code>Callable[[Tensor, Tensor], (Tensor, Tensor)]</code></dt>
+<dd>Function to be applied to the image and label before use.</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -1256,7 +1119,7 @@ Size of chunks used for inputs.</p></div>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def dataset(self, class_weights=None):
+<pre><code class="python">def dataset(self, class_weights=None, augment_function=None):
     &#34;&#34;&#34;
     Returns a tensorflow dataset as configured by the class.
 
@@ -1264,6 +1127,8 @@ Size of chunks used for inputs.</p></div>
     ----------
     class_weights: list
         list of weights for the classes.
+    augment_function: Callable[[Tensor, Tensor], (Tensor, Tensor)]
+        Function to be applied to the image and label before use.
 
     Returns
     -------
@@ -1274,8 +1139,12 @@ Size of chunks used for inputs.</p></div>
     # Pair the data and labels in our dataset
     ds = tf.data.Dataset.zip((self.data(), self.labels()))
     # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
+    # cannot do with max_rand_offset since would have different number of tiles which
+    # breaks keras fit
     if self._labels.nodata_value() is not None:
         ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
+    if augment_function is not None:
+        ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     if class_weights is not None:
         class_weights.append(0.0)
         lookup = tf.constant(class_weights)
@@ -1425,131 +1294,6 @@ Size of chunks used for inputs.</p></div>
     return (None, None, self._output_dims)</code></pre>
 </details>
 </dd>
-<dt id="delta.imagery.imagery_dataset.ImageryDataset.reset_access_counts"><code class="name flex">
-<span>def <span class="ident">reset_access_counts</span></span>(<span>self, set_need_check=False)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Go through all the access files and reset the counts. Should be done at the end of each epoch.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>set_need_check</code></strong> :&ensp;<code>bool</code></dt>
-<dd>if true, keep the count and mark that it needs to be checked. (should be
-set at the start of training)</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def reset_access_counts(self, set_need_check=False):
-    &#34;&#34;&#34;
-    Go through all the access files and reset the counts. Should be done at the end of each epoch.
-
-    Parameters
-    ----------
-    set_need_check: bool
-        if true, keep the count and mark that it needs to be checked. (should be
-        set at the start of training)
-    &#34;&#34;&#34;
-    if not self._log_folder:
-        return
-    if config.general.verbose():
-        print(&#39;Resetting access counts in folder: &#39; + self._log_folder)
-    for i in range(len(self._images)):
-        self.resume_log_update(i, count=0, need_check=set_need_check)</code></pre>
-</details>
-</dd>
-<dt id="delta.imagery.imagery_dataset.ImageryDataset.resume_log_read"><code class="name flex">
-<span>def <span class="ident">resume_log_read</span></span>(<span>self, image_id)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Reads an access count file containing a boolean and a count.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>image_id</code></strong> :&ensp;<code>int</code></dt>
-<dd>Image id to check logs for</dd>
-</dl>
-<h2 id="returns">Returns</h2>
-<p>(bool, int):
-need_to_check, access count
-The boolean is set to true if we need to check the count.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def resume_log_read(self, image_id): #pylint: disable=R0201
-    &#34;&#34;&#34;
-    Reads an access count file containing a boolean and a count.
-
-    Parameters
-    ----------
-    image_id: int
-        Image id to check logs for
-
-    Returns
-    -------
-    (bool, int):
-        need_to_check, access count
-        The boolean is set to true if we need to check the count.
-    &#34;&#34;&#34;
-    path = self._resume_log_path(image_id)
-    try:
-        with portalocker.Lock(path, &#39;r&#39;, timeout=300) as f:
-            line = f.readline()
-            parts = line.split()
-            if len(parts) == 1: # Legacy files
-                return (True, int(parts[0]))
-            needToCheck = (parts[0] == &#39;1&#39;)
-            return (needToCheck, int(parts[1]))
-    except OSError as e:
-        if e.errno == 122: # Disk quota exceeded
-            raise
-        return (False, 0)
-    except Exception: #pylint: disable=W0703
-        # If there is a problem reading the count just treat as zero
-        return (False, 0)</code></pre>
-</details>
-</dd>
-<dt id="delta.imagery.imagery_dataset.ImageryDataset.resume_log_update"><code class="name flex">
-<span>def <span class="ident">resume_log_update</span></span>(<span>self, image_id, count=None, need_check=False)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Update logs of when images are read. Should only be needed internally.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>image_id</code></strong> :&ensp;<code>int</code></dt>
-<dd>The image to update</dd>
-<dt><strong><code>count</code></strong> :&ensp;<code>int</code></dt>
-<dd>Number of tiles that have been read</dd>
-<dt><strong><code>need_check</code></strong> :&ensp;<code>bool</code></dt>
-<dd>Set flag for if a check is needed</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def resume_log_update(self, image_id, count=None, need_check=False):  #pylint: disable=R0201
-    &#34;&#34;&#34;
-    Update logs of when images are read. Should only be needed internally.
-
-    Parameters
-    ----------
-    image_id: int
-        The image to update
-    count: int
-        Number of tiles that have been read
-    need_check: bool
-        Set flag for if a check is needed
-    &#34;&#34;&#34;
-    log_path  = self._resume_log_path(image_id)
-    if not log_path:
-        return
-    if count is None:
-        (_, count) = self.resume_log_read(image_id)
-        count += 1
-    with portalocker.Lock(log_path, &#39;w&#39;, timeout=300) as f:
-        f.write(&#39;%d %d&#39; % (int(need_check), count))</code></pre>
-</details>
-</dd>
 <dt id="delta.imagery.imagery_dataset.ImageryDataset.set_chunk_output_shapes"><code class="name flex">
 <span>def <span class="ident">set_chunk_output_shapes</span></span>(<span>self, chunk_shape, output_shape)</span>
 </code></dt>
@@ -1588,41 +1332,6 @@ use on a per tile basis (i.e., for FCNs).</dd>
             output_shape = output_shape[0:2]
     self._chunk_shape = chunk_shape
     self._output_shape = output_shape</code></pre>
-</details>
-</dd>
-<dt id="delta.imagery.imagery_dataset.ImageryDataset.set_resume_mode"><code class="name flex">
-<span>def <span class="ident">set_resume_mode</span></span>(<span>self, resume_mode, log_folder)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Enable / disable resume mode and configure it.</p>
-<h2 id="parameters">Parameters</h2>
-<dl>
-<dt><strong><code>resume_mode</code></strong> :&ensp;<code>bool</code></dt>
-<dd>If true, log and check access counts for if imagery can be skipped
-this epoch.</dd>
-<dt><strong><code>log_folder</code></strong> :&ensp;<code>str</code></dt>
-<dd>Folder to log access counts to</dd>
-</dl></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def set_resume_mode(self, resume_mode, log_folder):
-    &#34;&#34;&#34;
-    Enable / disable resume mode and configure it.
-
-    Parameters
-    ----------
-    resume_mode: bool
-        If true, log and check access counts for if imagery can be skipped
-        this epoch.
-    log_folder: str
-        Folder to log access counts to
-    &#34;&#34;&#34;
-    self._resume_mode = resume_mode
-    self._log_folder = log_folder
-    if self._log_folder and not os.path.exists(self._log_folder):
-        os.mkdir(self._log_folder)</code></pre>
 </details>
 </dd>
 <dt id="delta.imagery.imagery_dataset.ImageryDataset.set_tile_shape"><code class="name flex">
@@ -1752,11 +1461,7 @@ this epoch.</dd>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.labels" href="#delta.imagery.imagery_dataset.ImageryDataset.labels">labels</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.num_bands" href="#delta.imagery.imagery_dataset.ImageryDataset.num_bands">num_bands</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.output_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.output_shape">output_shape</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.reset_access_counts" href="#delta.imagery.imagery_dataset.ImageryDataset.reset_access_counts">reset_access_counts</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.resume_log_read" href="#delta.imagery.imagery_dataset.ImageryDataset.resume_log_read">resume_log_read</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.resume_log_update" href="#delta.imagery.imagery_dataset.ImageryDataset.resume_log_update">resume_log_update</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_chunk_output_shapes" href="#delta.imagery.imagery_dataset.ImageryDataset.set_chunk_output_shapes">set_chunk_output_shapes</a></code></li>
-<li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_resume_mode" href="#delta.imagery.imagery_dataset.ImageryDataset.set_resume_mode">set_resume_mode</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.set_tile_shape" href="#delta.imagery.imagery_dataset.ImageryDataset.set_tile_shape">set_tile_shape</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.stride" href="#delta.imagery.imagery_dataset.ImageryDataset.stride">stride</a></code></li>
 <li><code><a title="delta.imagery.imagery_dataset.ImageryDataset.tile_overlap" href="#delta.imagery.imagery_dataset.ImageryDataset.tile_overlap">tile_overlap</a></code></li>
@@ -1769,7 +1474,7 @@ this epoch.</dd>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
