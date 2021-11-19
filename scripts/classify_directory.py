@@ -41,10 +41,17 @@ import sys
 import subprocess
 import shutil
 import argparse
-
+import yaml
 
 # HMTFIST has not been fully tested yet, so this needs to be enabled for it to run.
 ENABLE_HMTFIST = False
+
+def tif_to_tiff(name):
+    '''Convert a .tif name into a .tiff name'''
+    if name.endswith('.tif'):
+        return name + 'f'
+    return name
+
 
 def is_valid_image(image_path):
     '''Return True if the given path is a valid image on disk'''
@@ -232,10 +239,40 @@ def call_presoak(args, input_path, output_folder, unknown_args):
     return (True, presoak_output_folder, presoak_output_dem_path)
 
 
+def delete_from_dict(d, name):
+
+    remove = None
+    if isinstance(d, dict):
+        for k, v in d.items():
+            if k == name:
+                remove = name
+                continue
+            #print(k)
+            if isinstance(v, dict) or isinstance(v, list):
+                delete_from_dict(v, name)
+            #else:
+            #    print('-> ' + str(v))
+    else:
+        for i, v in enumerate(d):
+             if v == name:
+                 remove = i
+                 continue
+             if isinstance(v, dict) or isinstance(v, list):
+                  delete_from_dict(v, name)
+             #else:
+             #     print('-> ' + str(v))
+    if remove is not None:
+        d.pop(remove) 
+
+
 def call_delta(args, input_path, output_folder,
                presoak_succeeded, presoak_output_dem_path):
     '''Run the DELTA tool'''
 
+    delta_output_folder = os.path.join(output_folder, 'delta')
+    delta_config_to_use = args.delta_config
+
+    no_preprocess_config = None
     delta_input_image = input_path
     model_to_use = args.delta_model
     if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model:
@@ -243,39 +280,58 @@ def call_delta(args, input_path, output_folder,
         if not presoak_succeeded:
             print('presoak failed, unable to use augmented DELTA model')
         else:
+            # Apply preprocessing to the input image before we merge with the DEM
+            preprocessed_input = os.path.join(delta_output_folder, tif_to_tiff(os.path.basename(input_path)))
+            this_folder = os.path.dirname(__file__)
+            cmd = [os.path.join(this_folder, 'convert/save_tiffs.py'), '--image', input_path,
+                   '--image-type', 'sentinel1', '--config', args.delta_config, delta_output_folder]
+            print(' '.join(cmd))
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+            if not is_valid_image(preprocessed_input):
+                raise Exception('Failed to run preprocessing on image: ' + input_path)
+
             # Add elevation as a channel to the input image
-            merged_path = os.path.join(output_folder, 'dem_merged_input_image.tif')
-            if not add_dem_channel(input_path, presoak_output_dem_path, merged_path):
+            merged_path = os.path.join(delta_output_folder, 'dem_merged_input_image.tif')
+            if not add_dem_channel(preprocessed_input, presoak_output_dem_path, merged_path):
                 print('Failed to add channel, unable to use augmented DELTA model')
             else:
                 print('Using elevation augmented model file: ' + args.s1_delta_elevation_augment_model)
                 model_to_use = args.s1_delta_elevation_augment_model
                 delta_input_image = merged_path
+                os.remove(preprocessed_input)
+
+                # Generate version of config file with preprocess steps stripped out
+                no_preprocess_config = os.path.join(delta_output_folder, 'delta_no_preprocess_config.yaml')
+                delta_config_to_use = no_preprocess_config
+                with open(args.delta_config) as f:
+                    config_yaml = yaml.safe_load(f)
+                delete_from_dict(config_yaml, 'preprocess')
+                with open(no_preprocess_config, 'w') as f:
+                    yaml.dump(config_yaml, f)
+
 
     PREFIX = 'IF_' # This is required by DELTA, but we will remove on output
-    delta_output_folder = os.path.join(output_folder, 'delta')
     fname_in = PREFIX + os.path.basename(delta_input_image)
     fname = os.path.basename(input_path)
     delta_output_path_in = os.path.join(delta_output_folder, fname_in)
     delta_output_path = os.path.join(delta_output_folder, fname)
-    if delta_output_path_in.endswith('.tif'): # DELTA writes with .tiff extension
-        delta_output_path_in = delta_output_path_in.replace('.tif', '.tiff')
-    if delta_output_path.endswith('.tif'):
-        delta_output_path = delta_output_path.replace('.tif', '.tiff')
+    delta_output_path_in = tif_to_tiff(delta_output_path_in) # DELTA writes with .tiff extension
+    delta_output_path = tif_to_tiff(delta_output_path)
     if os.path.exists(delta_output_path):
         print('DELTA output already exists.')
     else:
         cmd = ['delta', 'classify', '--image', delta_input_image,
                '--outdir', delta_output_folder, '--outprefix', PREFIX,
-               '--prob', model_to_use]
-        if args.delta_config:
-            cmd += ['--config', args.delta_config]
+               '--prob', model_to_use, '--config', delta_config_to_use]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
         shutil.move(delta_output_path_in, delta_output_path)
+        if no_preprocess_config:
+            os.remove(no_preprocess_config)
     if not is_valid_image(delta_output_path):
         print('delta processing FAILED to generate file ' + delta_output_path)
         return (False, None, None)
+    #raise Exception('DEBUG')
     return (True, delta_output_folder, delta_output_path)
 
 
@@ -379,7 +435,7 @@ def main(argsIn): #pylint: disable=R0912
 
         parser.add_argument("--delta-model", "-m", required=True,
                             help="Model file for DELTA")
-        parser.add_argument("--delta-config", "-g", default=None,
+        parser.add_argument("--delta-config", "-g", required=True,
                             help="Config file for DELTA")
         parser.add_argument("--s1-delta-elevation-augment-model", default=None,
                             help="If provided, try to use this model with presoak elevation output")
