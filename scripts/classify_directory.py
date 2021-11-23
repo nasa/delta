@@ -31,7 +31,7 @@
 # - The gdal command line tools must also be on the PATH
 #
 # HMTFIST always requires the output of DELTA and presoak on order to run.  If DELTA is run with the
-# "--s1-delta-elevation-augment" flag and a corresponding model file it also requires the presoak output.
+# "--s1-delta-presoak-augment" flag and a corresponding model file it also requires the presoak output.
 # If HMTFIST is not run and DELTA does not need presoak, presoak will only be run if "--force-presoak" is set.
 #
 #
@@ -203,6 +203,66 @@ def add_dem_channel(source_path, dem_path, output_path):
     return is_valid_image(output_path)
 
 
+def add_fist_cost_channel(source_path, cost_path, output_path):
+    '''Resize the FIST cost image to match the source path and append it as a new channel to the source image.
+       This is required for DELTA networks which utilize the FIST cost as an additional channel.
+       The source image must have any DELTA preprocessing applied *before* this function is called.'''
+
+    if is_valid_image(output_path):
+        return True
+
+    # Collect needed information from the sample image
+    image_info = get_image_info(source_path)
+    if not image_info:
+        return False
+
+    try:
+        temp_path1 = output_path + '_temp1.tif'
+        temp_path2 = output_path + '_temp2.tif'
+        temp_path3 = output_path + '_temp3.tif'
+        temp_path4 = output_path + '_temp4.tif'
+
+        # Crop cost image to the source image extents
+        cmd = ['gdal_translate', cost_path, '-outsize', image_info['width'], image_info['height'],
+               '-projwin', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
+               temp_path1]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+
+        cmd = ['gdal_edit.py', '-unsetnodata', temp_path1]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+
+        # Scale the presoak value (0-20 range) and apply nodata cutoff
+        cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.05*A)', '--outfile='+temp_path2]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+
+        # Apply nodata cutoff
+        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=1', '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path3]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=2', '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path4]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+
+        # Pack into a three channel image
+        cmd = ['gdal_merge.py', '-a_nodata', '-0.5',  '-o', output_path, '-separate', temp_path2, temp_path3, temp_path4]
+        print(' '.join(cmd))
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+
+        os.remove(temp_path1)
+        os.remove(temp_path2)
+        os.remove(temp_path3)
+        os.remove(temp_path4)
+
+    except Exception as e: #pylint: disable=W0703
+        print('Caught exception: ' + str(e))
+        return False
+
+    # Check result
+    return is_valid_image(output_path)
+
 def call_presoak(args, input_path, output_folder, unknown_args):
     '''Call the presoak tool'''
 
@@ -235,8 +295,8 @@ def call_presoak(args, input_path, output_folder, unknown_args):
         print('presoak processing FAILED to generate file ' + presoak_output_path)
         return (False, None, None)
 
-    presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
-    return (True, presoak_output_folder, presoak_output_dem_path)
+    presoak_output_cost_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
+    return (True, presoak_output_folder, presoak_output_cost_path)
 
 
 def delete_from_dict(d, name):
@@ -247,11 +307,8 @@ def delete_from_dict(d, name):
             if k == name:
                 remove = name
                 continue
-            #print(k)
             if isinstance(v, dict) or isinstance(v, list):
                 delete_from_dict(v, name)
-            #else:
-            #    print('-> ' + str(v))
     else:
         for i, v in enumerate(d):
              if v == name:
@@ -259,14 +316,12 @@ def delete_from_dict(d, name):
                  continue
              if isinstance(v, dict) or isinstance(v, list):
                   delete_from_dict(v, name)
-             #else:
-             #     print('-> ' + str(v))
     if remove is not None:
         d.pop(remove) 
 
 
 def call_delta(args, input_path, output_folder,
-               presoak_succeeded, presoak_output_dem_path):
+               presoak_succeeded, presoak_output_cost_path):
     '''Run the DELTA tool'''
 
     delta_output_folder = os.path.join(output_folder, 'delta')
@@ -276,11 +331,11 @@ def call_delta(args, input_path, output_folder,
     delta_input_image = input_path
     model_to_use = args.delta_model
     if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model:
-        # Augment the input Sentinel1 image with an elevation channel before running DELTA
+        # Augment the input Sentinel1 image with a presoak cost channel before running DELTA
         if not presoak_succeeded:
             print('presoak failed, unable to use augmented DELTA model')
         else:
-            # Apply preprocessing to the input image before we merge with the DEM
+            # Apply preprocessing to the input image before we merge with the presoak cost
             preprocessed_input = os.path.join(delta_output_folder, tif_to_tiff(os.path.basename(input_path)))
             this_folder = os.path.dirname(__file__)
             cmd = [os.path.join(this_folder, 'convert/save_tiffs.py'), '--image', input_path,
@@ -290,9 +345,9 @@ def call_delta(args, input_path, output_folder,
             if not is_valid_image(preprocessed_input):
                 raise Exception('Failed to run preprocessing on image: ' + input_path)
 
-            # Add elevation as a channel to the input image
-            merged_path = os.path.join(delta_output_folder, 'dem_merged_input_image.tif')
-            if not add_dem_channel(preprocessed_input, presoak_output_dem_path, merged_path):
+            # Add FIST cost as a channel to the input image
+            merged_path = os.path.join(delta_output_folder, 'presoak_merged_input_image.tif')
+            if not add_fist_cost_channel(preprocessed_input, presoak_output_cost_path, merged_path):
                 print('Failed to add channel, unable to use augmented DELTA model')
             else:
                 print('Using elevation augmented model file: ' + args.s1_delta_elevation_augment_model)
@@ -437,8 +492,8 @@ def main(argsIn): #pylint: disable=R0912
                             help="Model file for DELTA")
         parser.add_argument("--delta-config", "-g", required=True,
                             help="Config file for DELTA")
-        parser.add_argument("--s1-delta-elevation-augment-model", default=None,
-                            help="If provided, try to use this model with presoak elevation output")
+        parser.add_argument("--s1-delta-presoak-augment-model", default=None,
+                            help="If provided, try to use this model with presoak cost output")
 
         parser.add_argument("--force-presoak", action="store_true", default=False,
                             help="Run presoak even if it is not needed for DELTA or HMTFIST")
@@ -460,8 +515,8 @@ def main(argsIn): #pylint: disable=R0912
         print('Unrecognized sensor type: ' + args.sensor)
         return 1
 
-    if args.s1_delta_elevation_augment_model and not args.fist_data_dir:
-        print('WARNING: S1 elevation augmented DELTA model cannot be used without FIST!')
+    if args.s1_delta_presoak_augment_model and not args.fist_data_dir:
+        print('WARNING: S1 presoak cost augmented DELTA model cannot be used without FIST!')
 
     print('Starting classification script')
 
@@ -500,9 +555,9 @@ def main(argsIn): #pylint: disable=R0912
         # presoak
         # - Only run presoak if another tool requires it or if --force-presoak was set
         if (args.force_presoak or ENABLE_HMTFIST or
-                ((args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model)):
+                ((args.sensor == 'sentinel1') and args.s1_delta_presoak_augment_model)):
 
-            presoak_succeeded, presoak_output_folder, presoak_output_dem_path = \
+            presoak_succeeded, presoak_output_folder, presoak_output_cost_path = \
                 call_presoak(args, input_path, output_folder, unknown_args)
             if not presoak_succeeded:
                 print('presoak processing unsuccessful')
@@ -510,12 +565,12 @@ def main(argsIn): #pylint: disable=R0912
         else:
             print('presoak is not needed to run DELTA, skipping it')
             presoak_output_folder = None
-            presoak_output_dem_path = None
+            presoak_output_cost_path = None
 
         # DELTA
         delta_succeeded, delta_output_folder, delta_output_path = call_delta(args, input_path,
                                                                              output_folder, all_succeeded,
-                                                                             presoak_output_dem_path)
+                                                                             presoak_output_cost_path)
         if not delta_succeeded:
             print('DELTA processing unsuccessful')
             all_succeeded = False
