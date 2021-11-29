@@ -26,6 +26,9 @@ import time
 #logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 
 import tensorflow as tf
+#~~~~~
+# from tensorflow.keras import mixed_precision
+#~~~~~
 
 from delta.config import config
 from delta.imagery import imagery_dataset
@@ -36,6 +39,13 @@ from delta.ml.io import save_model, load_model
 #tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
 
 def main(options):
+    # pylint: disable=line-too-long
+    # TODO: add some checking if mixed precision can run based on hardware/software setup? Print warning if it can't with details on  how to enable? Also print recommendations for improved performance if mixed precision IS used
+    # TODO: re-read section on if outputs need to be float32 as well. may require user to configure some things. Can I test for this or just instructions for this? See summary section  https://www.tensorflow.org/guide/mixed_precision#summary
+    # TODO: now need to run  on pleiades without improvement and with improvement to test speed improvement
+    # TODO: add config options to enable/disable or  set the policy as a string?
+
+    # mixed_precision.set_global_policy('mixed_float16')
 
     images = config.dataset.images()
     if not images:
