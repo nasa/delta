@@ -22,13 +22,11 @@ Train a neural network.
 import sys
 import time
 
-#import logging
-#logging.getLogger("tensorflow").setLevel(logging.DEBUG)
+# import logging
+# logging.getLogger("tensorflow").setLevel(logging.DEBUG)
 
 import tensorflow as tf
-#~~~~~
-# from tensorflow.keras import mixed_precision
-#~~~~~
+from tensorflow.keras import mixed_precision
 
 from delta.config import config
 from delta.imagery import imagery_dataset
@@ -36,16 +34,42 @@ from delta.ml.train import train
 from delta.ml.config_parser import config_model
 from delta.ml.io import save_model, load_model
 
-#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
+def mixed_policy_device_compatible():
+
+    # gpu check logic taken from https://github.com/keras-team/keras/blob/70d7d07bd186b929d81f7a8ceafff5d78d8bd701/keras/mixed_precision/device_compatibility_check.py # pylint: disable=line-too-long
+    gpus = tf.config.list_physical_devices('GPU')
+    gpu_details_list = [tf.config.experimental.get_device_details(g) for g in gpus]
+
+    supported_device_strs = []
+    unsupported_device_strs = []
+    for details in gpu_details_list:
+        name = details.get('device_name', 'Unknown GPU')
+        cc = details.get('compute_capability')
+        if cc:
+            device_str = '%s, compute capability %s.%s' % (name, cc[0], cc[1])
+            if cc >= (7, 0):
+                supported_device_strs.append(device_str)
+            else:
+                unsupported_device_strs.append(device_str)
+        else:
+            unsupported_device_strs.append(
+                name + ', no compute capability (probably not an Nvidia GPU)')
+
+    if unsupported_device_strs or not supported_device_strs:
+        return False
+    # else mixed policy is compatible
+    return True
+
 
 def main(options):
-    # pylint: disable=line-too-long
-    # TODO: add some checking if mixed precision can run based on hardware/software setup? Print warning if it can't with details on  how to enable? Also print recommendations for improved performance if mixed precision IS used
-    # TODO: re-read section on if outputs need to be float32 as well. may require user to configure some things. Can I test for this or just instructions for this? See summary section  https://www.tensorflow.org/guide/mixed_precision#summary
-    # TODO: now need to run  on pleiades without improvement and with improvement to test speed improvement
-    # TODO: add config options to enable/disable or  set the policy as a string?
-
-    # mixed_precision.set_global_policy('mixed_float16')
+    if mixed_policy_device_compatible() and not config.train.disable_mixed_precision():
+        mixed_precision.set_global_policy('mixed_float16')
+        print('Tensorflow Mixed Precision is enabled. This improves training performance on compatible GPUs. '
+              'However certain precautions should be taken and several additional changes can be made to improve '
+              'performance further. Details: https://www.tensorflow.org/guide/mixed_precision#summary')
 
     images = config.dataset.images()
     if not images:
