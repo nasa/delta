@@ -27,8 +27,7 @@ with training parameters given in `train.yaml`:
 ```yaml
 train:
   network:
-    model:
-      yaml_file: networks/convpool.yaml
+    yaml_file: networks/convpool.yaml
   epochs: 10
 ```
 
@@ -63,7 +62,7 @@ same underlying options.
     * `clip` with `bounds` argument: clip all pixels to bounds.
    Preprocessing commands are registered with `delta.config.extensions.register_preprocess`.
    A full list of defaults (and examples of how to create new ones) can be found in `delta.extensions.preprocess`.
- * `nodata_value`: A pixel value to ignore in the images.
+ * `nodata_value`: A pixel value to ignore in the images. Will try to determine from the file if this is not specified.
  * `classes`: Either an integer number of classes or a list of individual classes. If individual classes are specified,
    each list item should be the pixel value of the class in the label images, and a dictionary with the
    following potential attributes (see example below):
@@ -109,15 +108,26 @@ Train
 -----
 These options are used in the `delta train` command.
 
- * `network`: The nueral network to train. One of `yaml_file` or `layers` must be specified.
-    * `yaml_file`: A path to a yaml file with only the params and layers fields. See `delta/config/networks`
-      for examples.
+ * `network`: The neural network to train. One of `yaml_file` or `layers` must be specified.
+    * `yaml_file`: A path to a yaml file with only the params and layers fields. See [`delta/config/networks`](./networks)
+      for examples. 
+      ```yaml
+      train:
+        network:
+          # Create your own custom architecture
+          yaml_file: path/to/your/custom/architecture/network_architecture.yaml
+          # Or use an existing architecture included with DELTA
+          yaml_file: path_to_delta_installation/delta/config/networks/segnet.yaml
+      ```
     * `params`: A dictionary of parameters to substitute in the `layers` field.
     * `layers`: A list of layers which compose the network. See the following section for details.
  * `stride`: When collecting training samples, skip every `n` pixels between adjacent blocks. Keep the 
    default of ~ or 1 to use all available training data. Not used for fully convolutional networks.
  * `batch_size`: The number of patches to train on at a time. If running out of memory, reducing
    batch size may be helpful.
+ * `max_tile_offset`: If given, each epoch, offset all tiles by a random x and y value in the range
+   (-`max_tile_offset`, `max_tile_offset`). Useful for getting different tiles when training. Currently,
+   this feature is only supported if `steps` is set as well.
  * `steps`: If specified, stop training for each epoch after the given number of batches.
  * `epochs`: the number of times to iterate through all training data during training.
  * `loss`: [Keras loss function](https://keras.io/losses/). For integer classes, use
@@ -135,13 +145,46 @@ These options are used in the `delta train` command.
  * `validation`: Specify validation data. The validation data is tested after each epoch to evaluate the
    classifier performance. Always use separate training and validation data!
    * `from_training` and `steps`: If `from_training` is true, take the `steps` training batches
-     and do not use it for training but for validation instead.
+     and do not use it for training but for validation instead. If `from_training` is false, `steps` is ignored.
    * `images` and `labels`: Specified using the same format as the input data. Use this imagery as testing data
      if `from_training` is false.
- * `log_folder` and `resume_cutoff`: If log_folder is specified, store read records of how much of each image
-   has been trained on in this folder. If the number of reads exceeds resume_cutoff, skip the tile when resuming
-   training. This allows resuming training skipping part of an epoch. You should generally not bother using this except
-   on very large training sets (thousands of large images).
+
+Classify
+-----
+These options are used in the `delta classify` command.
+
+ * `prob_image`: If true, save an image with the network outputs as probabilities. Otherwise, map to the most likely class.
+ * `overlap`: If set, apply an overlap to the tiles during classification.
+ * `regions`: A list of region names to look for in WKT files associated with images.
+ * `wkt_dir`: Directory to look for WKT files in.  If not specified they are expected to be in the same folders as input images.
+ * `metrics`: Include either losses or metrics here as specified in the Train section.
+
+```Sample config entries:
+classify:
+  regions:
+   - sample_region_name
+   - another_region
+  wkt_dir: /alternate/wkt/location/
+  metrics: # 2D metrics such as msssim are not supported
+    - SparseRecall:
+        label: No Water
+        name: sparse_recall
+        binary: true # Sparse metrics are only supported with binary = true
+    - MappedDice:
+        mapping:
+          Water: 1.0
+          No Water: 0.0
+          Maybe Water: 0.5
+          Cloud: 0.0
+        name: dice 
+```
+
+By default when classify is run with labels available for the input image, it will compute some statistics
+across all of the images and also on a per-image basis. You can also provide a WKT formatted shape file for
+each input image containing one or more polygons/multipolygons, each with one or more region names. For each
+region name specified in the config file, all regions including this name will have their statistics jointly
+computed. In addition, all regions without a name will have their statistics individually computed. WKT files
+should have the same names as their associated image files but with the extension ".wkt.csv".  There is a sample WKT file, along with a picture of the described regions, [here](../../docs/sample.wkt.csv)
 
 ### Network
 
@@ -186,7 +229,7 @@ Used in the `delta train` and `delta mlflow_ui` commands to keep track of traini
    use too much disk space.
  * `checkpoints`: Configure saving of checkpoint networks to mlflow, in case something goes wrong or to compare
    networks from different stages of training.
-   * `frequency`: Frequency in batches to save a checkpoint. Networks can require a fair amount of disk space,
+   * `frequency`: Frequency in epochs to save a checkpoint. Networks can require a fair amount of disk space,
      so don't save too often.
    * `only_save_latest`: If true, only keep the network file from the most recent checkpoint.
 
@@ -210,9 +253,8 @@ I/O
  * `threads`: The number of threads to use for loading images into tensorflow.
  * `tile_size`: The size of a tile to load into memory at a time. For fully convolutional networks, the
    entire tile will be processed at a time, for others it will be chunked.
- * `interleave_images`: The number of images to interleave between. If this value is three, three images will
-   be opened at a time. Chunks / tiles will be interleaved from the first three tiles until one is completed, then
-   a new image will be opened. Larger interleaves can aid training (but comes at a cost in memory).
+ * `interleave_blocks`: When training, interleave tiles from this number of blocks at a time. Generally
+   higher is better, but limited by memory.
  * `cache`: Options for a cache, which is used by a few image types (currently worldview and landsat).
     * `dir`: Directory to store the cache. `default` gives a reasonable OS-specific default.
     * `limit`: Maximum number of items to store in the cache before deleting old entries.

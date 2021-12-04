@@ -1,0 +1,44 @@
+dataset:
+  images:
+    type: tiff
+    extension: _data.tif
+    directory: train
+  labels:
+    extension: _mask.png
+    type: tiff
+    directory: labels
+    preprocess:
+      - substitute:
+          mapping:
+            - 0
+            - 0
+            - 2
+            - 0
+            - 0
+            - 0
+            - 0
+  classes:
+    - 0:
+        name: Shadow
+        color: 0x000000
+    - 1:
+        name: Shadow over Water
+        color: 0x000080
+    - 2:
+        name: Water
+        color: 0x0000FF
+    - 3:
+        name: Snow
+        color: 0x00FFFF
+    - 4:
+        name: Land
+        color: 0x808080
+    - 5:
+        name: Cloud
+        color: 0xFFFFFF
+    - 6:
+        name: Flooded
+        color: 0x808000
+
+io:
+  tile_size: [512, 512]

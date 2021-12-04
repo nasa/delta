@@ -45,7 +45,7 @@ class SparseMetric(tensorflow.keras.metrics.Metric): # pylint:disable=abstract-m
         name: str
             Metric name.
         binary: bool
-            Use binary threshold (0.5) or argmax on one-hot encoding.
+            Use binary threshold (0.5) (one input, two classes) or argmax on one-hot encoding (one input per class).
         """
         super().__init__(name=name, **kwargs)
         self._binary = binary
@@ -71,6 +71,7 @@ class SparseRecall(SparseMetric): # pragma: no cover
         self._total_class = self.add_weight('total_class', initializer='zeros')
         self._true_positives = self.add_weight('true_positives', initializer='zeros')
 
+    # sample_weight is unused but required by tensorflow
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
         right_class = tf.math.equal(y_true, self._label_id)
@@ -127,27 +128,27 @@ class SparseBinaryAccuracy(SparseMetric): # pragma: no cover
     """
     Accuracy.
     """
-    def __init__(self, label=None, name: str=None, **kwargs):
-        if 'binary' in kwargs: # Strip these out so they are not used twice
-            del kwargs['binary']
-        if 'class_id' in kwargs:
-            del kwargs['class_id']
-        super().__init__(label, label, name, binary=False, **kwargs)
+    def __init__(self, label=None, class_id: int=None, name: str=None, binary: int=False, **kwargs):
+        super().__init__(label, class_id, name, binary, **kwargs)
         self._nodata_id = config.dataset.classes.class_id('nodata')
         self._total = self.add_weight('total', initializer='zeros')
         self._correct = self.add_weight('correct', initializer='zeros')
 
-
     def update_state(self, y_true, y_pred, sample_weight=None): #pylint: disable=unused-argument, arguments-differ
         y_true = tf.squeeze(y_true)
-        y_pred = tf.squeeze(y_pred)
-
         right_class = tf.math.equal(y_true, self._label_id)
-        right_class_pred = y_pred >= 0.5
+        if self._binary:
+            y_pred = y_pred >= 0.5
+            right_class_pred = tf.squeeze(y_pred)
+        else:
+            y_pred = tf.math.argmax(y_pred, axis=-1)
+            right_class_pred = tf.math.equal(y_pred, self._class_id)
+
         true_positives = tf.math.logical_and(right_class, right_class_pred)
         false_negatives = tf.math.logical_and(tf.math.logical_not(right_class), tf.math.logical_not(right_class_pred))
         if self._nodata_id:
             valid = tf.math.not_equal(y_true, self._nodata_id)
+            true_positives = tf.math.logical_and(true_positives, valid)
             false_negatives = tf.math.logical_and(false_negatives, valid)
             total = tf.math.reduce_sum(tf.cast(valid, tf.float32))
         else:

@@ -33,7 +33,7 @@ def check_landsat_tiff(filename):
     assert input_reader.size() == (37, 37)
     assert input_reader.num_bands() == 8
     assert input_reader.dtype() == np.float32
-    assert input_reader.block_size() == (37, 6)
+    assert input_reader.block_size() == (6, 37)
 
     meta = input_reader.metadata()
     geo = meta['geotransform']
@@ -48,7 +48,7 @@ def check_landsat_tiff(filename):
     assert 'projection' in meta
     assert 'metadata' in meta
 
-    r = rectangle.Rectangle(0, 0, width=input_reader.size()[0],
+    r = rectangle.Rectangle(0, 0, width=input_reader.size()[1],
                             height=input_reader.size()[0])
     d1 = input_reader.read(roi=r)
     assert d1.shape == (input_reader.height(), input_reader.width(), input_reader.num_bands())
@@ -91,6 +91,7 @@ def test_geotiff_save(tmpdir):
     Tests writing a landsat geotiff.
     '''
     file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
+
     image = TiffImage(file_path)
     new_tiff = str(tmpdir / 'test.tiff')
 
@@ -103,7 +104,9 @@ def test_geotiff_write(tmpdir):
     Tests writing a landsat geotiff.
     '''
 
-    numpy_image = np.zeros((3, 5), dtype=np.uint8)
+    HEIGHT = 3
+    WIDTH = 5
+    numpy_image = np.zeros((HEIGHT, WIDTH), dtype=np.uint8)
     numpy_image[0, 0] = 0
     numpy_image[0, 1] = 1
     numpy_image[0, 2] = 2
@@ -125,7 +128,7 @@ def test_geotiff_write(tmpdir):
     assert np.allclose(numpy_image, data)
 
     writer = TiffWriter(filename)
-    writer.initialize((3, 5, 1), numpy_image.dtype)
+    writer.initialize((HEIGHT, WIDTH, 1), numpy_image.dtype)
     writer.write(numpy_image, 0, 0)
     writer.close()
 

@@ -24,15 +24,56 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils
+import tensorflow_addons as tfa
+from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
 from delta.config.extensions import register_loss
+from delta.ml.config_parser import loss_from_dict
+
+
+def suggest_filter_size(image1, image2, power_factors, filter_size):
+    '''Figure out if we need to shrink the filter to accomodate a smaller
+       input image'''
+
+    cap = 2**(len(power_factors)-1)
+    if not(image1.shape[0]/cap >= filter_size and
+           image1.shape[1]/cap >= filter_size and
+           image1.shape[0]/cap >= filter_size and
+           image2.shape[1]/cap >= filter_size):
+        H = tf.math.reduce_min((image1.shape, image2.shape))
+        suggested_filter_size = int(H/(2**(len(power_factors)-1)))
+    else:
+        suggested_filter_size = filter_size
+    return suggested_filter_size
 
 def ms_ssim(y_true, y_pred):
     """
-    `tf.image.ssim_multiscale` as a loss function.
+    `tf.image.ssim_multiscale` as a loss function. This loss function requires two
+    dimensional inputs.
     """
-    return 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0)
+
+    # This logic supports [h, w] inputs a well as [h, w, b] and [h, w, b, m] inputs by
+    # padding the dimensions up to three if needed.
+    def expand_ytrue():
+        with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
+            return tf.expand_dims(y_true, -1)
+    def expand_ypred():
+        with tf.control_dependencies([tf.expand_dims(y_pred, -1)]):
+            return tf.expand_dims(y_pred, -1)
+    y_true = tf.cond(tf.math.less(tf.rank(y_true), 3),
+                     expand_ytrue,
+                     lambda: y_true)
+    y_pred = tf.cond(tf.math.less(tf.rank(y_pred), 3),
+                     expand_ypred,
+                     lambda: y_pred)
+
+    filter_size = 11 # Default size
+    power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
+    new_filter_size = suggest_filter_size(y_true, y_pred, power_factors, filter_size)
+    result = 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0, filter_size=new_filter_size)
+    return result
 
 def ms_ssim_mse(y_true, y_pred):
     """
@@ -48,7 +89,8 @@ def dice_coef(y_true, y_pred, smooth=1):
     ref: https://arxiv.org/pdf/1606.04797v1.pdf
     """
     intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
-    return (2. * intersection + smooth) / (K.sum(K.square(y_true),-1) + K.sum(K.square(y_pred),-1) + smooth)
+    return (2. * intersection + smooth) / (
+                K.sum(K.square(y_true), -1) + K.sum(K.square(y_pred), -1) + smooth + K.epsilon())
 
 def dice_loss(y_true, y_pred):
     """
@@ -56,8 +98,35 @@ def dice_loss(y_true, y_pred):
     """
     return 1 - dice_coef(y_true, y_pred)
 
+# # Simple script which includes functions for calculating surface loss in keras
+# ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
+def _calc_dist_map(seg):
+    res = np.zeros_like(seg)
+    posmask = seg.astype(np.bool)
+
+    if posmask.any():
+        negmask = ~posmask
+        res = distance(negmask) * negmask - (distance(posmask) - 1) * posmask
+
+    return res
+
+def _calc_dist_map_batch(y_true):
+    y_true_numpy = y_true.numpy()
+    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy == 0, y_true_numpy == 1]],
+                      axis=-1).astype(np.float32)
+    return result
+
+def surface_loss(y_true, y_pred):
+    # currently only works for binary classification of two classes
+    y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
+                                     inp=[y_true],
+                                     Tout=tf.float32)
+    y_true_dist_map.set_shape((y_true.shape[0], y_true.shape[1], y_true.shape[2], y_true.shape[3], 2))
+    multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
+    return tf.squeeze(multipled, -1)
+
 class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
-    def __init__(self, mapping, name=None):
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
         """
         This is a base class for losses when the labels of the input images do not match the labels
         output by the network. For example, if one class in the labels should be ignored, or two
@@ -78,7 +147,8 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         name: Optional[str]
             Optional name for the loss function.
         """
-        super().__init__(name=name)
+        super().__init__(name=name, reduction=reduction)
+        self._mapping = mapping
         self._nodata_classes = []
         if isinstance(mapping, list):
             map_list = mapping
@@ -134,6 +204,10 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
         true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
         return (true_convert, y_pred)
 
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, 'mapping' : self._mapping}
+
 class MappedCategoricalCrossentropy(MappedLoss):
     """
     `MappedLoss` for categorical_crossentropy.
@@ -181,12 +255,48 @@ class MappedDiceBceMsssim(MappedLoss):
 
         return dice + bce + msssim
 
+class MappedLossSum(MappedLoss):
+    """
+    `MappedLoss` for sum of any loss functions.
+    """
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO, losses=None, weights=None):
+        """
+        Parameters
+        ----------
+        losses: List[Union[str, dict]]
+            List of loss functions to add.
+        weights: Union[List[float], None]
+            Optional list of weights for the corresponding loss functions.
+        """
+        super().__init__(mapping, name=name)
+        self._losses = list(map(loss_from_dict, losses))
+        if weights is None:
+            weights = [1] * len(losses)
+        self._weights = weights
+
+    def _get_loss(self, i, y_true, y_pred):
+        l = self._losses[i](y_true, y_pred)
+        while len(l.shape) < 3:
+            l = tf.expand_dims(l, -1)
+        return self._weights[i] * l
+
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        total = self._get_loss(0, y_true, y_pred)
+        for i in range(1, len(self._losses)):
+            total += self._get_loss(i, y_true, y_pred)
+
+        return total
 
 register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('dice', dice_loss)
+register_loss('surface', surface_loss)
+register_loss('focal', tfa.losses.SigmoidFocalCrossEntropy)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
 register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)
 register_loss('MappedMsssim', MappedMsssim)
 register_loss('MappedDiceBceMsssim', MappedDiceBceMsssim)
+register_loss('MappedLossSum', MappedLossSum)

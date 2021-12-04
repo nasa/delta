@@ -88,24 +88,29 @@ def test_sparse_recall():
     '''
     config.load(yaml_str=test_str)
 
-    m0 = ext.metric('SparseRecall')(0)
-    m1 = ext.metric('SparseRecall')(1)
+    r0 = ext.metric('SparseRecall')(0)
+    r1 = ext.metric('SparseRecall')(1)
+    p0 = ext.metric('SparseRecall')(0)
+    p1 = ext.metric('SparseRecall')(1)
     z = tf.zeros((3, 3, 3, 3), dtype=tf.int32)
     o = tf.ones((3, 3, 3, 3), dtype=tf.int32)
+    metrics = [r0, r1, p0, p1]
 
-    m0.reset_state()
-    m1.reset_state()
-    m0.update_state(z, z)
-    m1.update_state(z, z)
-    assert m0.result() == 1.0
-    assert m1.result() == 0.0
+    for m in metrics:
+        m.reset_state()
+        m.update_state(z, z, None)
+    assert r0.result() == 1.0
+    assert r1.result() == 0.0
+    assert p0.result() == 1.0
+    assert p1.result() == 0.0
 
-    m0.reset_state()
-    m1.reset_state()
-    m0.update_state(o, z)
-    m1.update_state(o, z)
-    assert m0.result() == 0.0
-    assert m1.result() == 0.0
+    for m in metrics:
+        m.reset_state()
+        m.update_state(o, z, None)
+    assert r0.result() == 0.0
+    assert r1.result() == 0.0
+    assert p0.result() == 0.0
+    assert p1.result() == 0.0
 
 def test_callbacks():
     inputs = tf.keras.layers.Input((10, 10, 1))

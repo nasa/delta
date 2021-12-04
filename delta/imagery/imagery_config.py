@@ -576,8 +576,8 @@ class IOConfig(DeltaConfigComponent):
         self.register_field('threads', int, None, None, 'Number of threads to use.')
         self.register_field('tile_size', list, 'tile_size', _validate_tile_size,
                             'Size of an image tile to load in memory at once.')
-        self.register_field('interleave_images', int, 'interleave_images', validate_positive,
-                            'Number of images to interleave at a time when training.')
+        self.register_field('interleave_blocks', int, 'interleave_blocks', None,
+                            'Number of blocks to interleave at a time.')
 
         self.register_arg('threads', '--threads')
 

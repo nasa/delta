@@ -84,6 +84,9 @@ def _strategy(devices):
     return strategy
 
 def _prep_datasets(ids, tc):
+    if tc.max_tile_offset:
+        # with filtering nodata, number of tiles changes
+        assert tc.steps, 'max_tile_offset only supported with steps set.'
     ds = ids.dataset(config.dataset.classes.weights(), config_augmentation())
 
     validation=None
@@ -105,17 +108,12 @@ def _prep_datasets(ids, tc):
                     vimagery = AutoencoderDataset(vimg, ids.chunk_shape(), tile_shape=ids.tile_shape(),
                                                   stride=ids.stride(), tile_overlap=ids.tile_overlap())
                 validation = vimagery.dataset(config.dataset.classes.weights())
-                if tc.validation.steps:
-                    validation = validation.take(tc.validation.steps)
         if validation:
-            validation = validation.batch(tc.batch_size, drop_remainder=True).prefetch(1)
+            validation = validation.batch(tc.batch_size, drop_remainder=True)
     else:
         validation = None
 
     ds = ds.batch(tc.batch_size, drop_remainder=True)
-    ds = ds.prefetch(1)
-    if tc.steps:
-        ds = ds.take(tc.steps)
     return (ds, validation)
 
 def _log_mlflow_params(model, dataset, training_spec):
@@ -139,22 +137,6 @@ def _log_mlflow_params(model, dataset, training_spec):
     mlflow.log_param('Model - Shape - Input',   dataset.input_shape())
     #mlflow.log_param('Status', 'Running') Illegal to change the value!
 
-class _EpochResetCallback(tf.keras.callbacks.Callback):
-    """
-    Reset imagery_dataset file counts on epoch end
-    """
-    def __init__(self, ids, stop_epoch):
-        super().__init__()
-        self.ids = ids
-        self.last_epoch = stop_epoch - 1
-
-    def on_epoch_end(self, epoch, _=None):
-        if config.general.verbose():
-            print('Finished epoch ' + str(epoch))
-        # Leave the counts from the last epoch just as a record
-        if epoch != self.last_epoch:
-            self.ids.reset_access_counts()
-
 class _MLFlowCallback(tf.keras.callbacks.Callback):
     """
     Callback to log everything for MLFlow.
@@ -173,16 +155,8 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 mlflow.log_metric('Validation ' + k[4:], logs[k], epoch)
             else:
                 mlflow.log_metric('Epoch ' + k, logs[k], epoch)
-
-    def on_train_batch_end(self, batch, logs=None):
-        self.batch = batch
-        if batch % config.mlflow.frequency() == 0:
-            for k in logs.keys():
-                if k in ('batch', 'size'):
-                    continue
-                mlflow.log_metric(k, logs[k], step=batch)
-        if config.mlflow.checkpoints.frequency() and batch % config.mlflow.checkpoints.frequency() == 0:
-            filename = os.path.join(self.temp_dir, '%d%s' % (batch, self.model_extension))
+        if config.mlflow.checkpoints.frequency() and epoch > 0 and epoch % config.mlflow.checkpoints.frequency() == 0:
+            filename = os.path.join(self.temp_dir, '%d%s' % (epoch, self.model_extension))
             save_model(self.model, filename)
             if config.mlflow.checkpoints.only_save_latest():
                 old = filename
@@ -193,6 +167,14 @@ class _MLFlowCallback(tf.keras.callbacks.Callback):
                 shutil.rmtree(filename)
             else:
                 os.remove(filename)
+
+    def on_train_batch_end(self, batch, logs=None):
+        self.batch = batch
+        if batch > 0 and batch % config.mlflow.frequency() == 0:
+            for k in logs.keys():
+                if k in ('batch', 'size'):
+                    continue
+                mlflow.log_metric(k, logs[k], step=batch)
 
 def _mlflow_train_setup(model, dataset, training_spec, model_extension):
     mlflow.set_tracking_uri(config.mlflow.uri())
@@ -243,8 +225,6 @@ def _build_callbacks(model, dataset, training_spec, model_extension):
                                              write_images=True,
                                              embeddings_freq=1)
         callbacks.append(tcb)
-
-    callbacks.append(_EpochResetCallback(dataset, training_spec.epochs))
 
     callbacks.extend(config_callbacks())
 
@@ -300,16 +280,14 @@ def compile_model(model_fn, training_spec, resume_path=None):
     if not hasattr(training_spec, 'strategy'):
         training_spec.strategy = _strategy(_devices(config.general.gpus()))
     with training_spec.strategy.scope():
-        model = model_fn()
-        assert isinstance(model, tf.keras.models.Model), \
-                "Model is not a Tensorflow Keras model"
-
-        if resume_path is not None:
-            print('Loading existing model: ' + resume_path)
-            if resume_path.endswith('.h5'):
+        if resume_path is not None and not resume_path.endswith('.h5'):
+            model = load_model(resume_path)
+        else:
+            model = model_fn()
+            assert isinstance(model, tf.keras.models.Model), \
+                    "Model is not a Tensorflow Keras model"
+            if resume_path is not None:
                 model.load_weights(resume_path)
-            else: # SavedModel format
-                model = load_model(resume_path)
 
         _compile_helper(model, training_spec)
 
@@ -363,12 +341,9 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
 
     try:
 
-        # Mark that we need to check the dataset counts the
-        # first time we try to read the images.
-        # This won't do anything unless we are resuming training.
-        dataset.reset_access_counts(set_need_check=True)
-
         if (training_spec.steps is None) or (training_spec.steps > 0):
+            if training_spec.steps is not None:
+                ds = ds.repeat() # repeat for ever, use steps and epochs to stop
             done = False
             epochs = training_spec.epochs
             initial_epoch = 0
@@ -380,7 +355,7 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
                                         callbacks=callbacks,
                                         validation_data=validation,
                                         validation_steps=None, # Steps are controlled in the dataset setup
-                                        steps_per_epoch=None,
+                                        steps_per_epoch=training_spec.steps,
                                         verbose=1) # Set to 2 when logging
                     done = True
                 except ContinueTrainingException as cte:
@@ -426,8 +401,6 @@ def train(model_fn, dataset : ImageryDataset, training_spec, resume_path=None, i
         if config.mlflow.enabled():
             if mcb and mcb.temp_dir:
                 shutil.rmtree(mcb.temp_dir)
-
-    if config.mlflow.enabled():
-        mlflow.end_run()
+            mlflow.end_run()
 
     return model, history

@@ -60,7 +60,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
     Options used in training by `delta.ml.train.train`.
     """
     def __init__(self, batch_size, epochs, loss, metrics, validation=None, steps=None,
-                 stride=None, optimizer='Adam'):
+                 stride=None, optimizer='Adam', max_tile_offset=None):
         self.batch_size = batch_size
         self.epochs = epochs
         self.loss = loss
@@ -69,6 +69,7 @@ class TrainingSpec:#pylint:disable=too-few-public-methods,too-many-arguments
         self.metrics = metrics
         self.stride = stride
         self.optimizer = optimizer
+        self.max_tile_offset = max_tile_offset
 
 class NetworkConfig(config.DeltaConfigComponent):
     """
@@ -172,6 +173,8 @@ class TrainingConfig(config.DeltaConfigComponent):
                             'Number of times to repeat training on the dataset.')
         self.register_field('batch_size', int, None, config.validate_positive,
                             'Features to group into each training batch.')
+        self.register_field('max_tile_offset', int, None, None,
+                            'Choose random tile offset each epoch within this range.')
         self.register_field('loss', (str, dict), None, None, 'Keras loss function.')
         self.register_field('metrics', list, None, None, 'List of metrics to apply.')
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
@@ -180,10 +183,6 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
-        self.register_field('log_folder', str, 'log_folder', config.validate_path,
-                            'Directory where dataset progress is recorded.')
-        self.register_field('resume_cutoff', int, 'resume_cutoff', None,
-                            'When resuming a dataset, skip images where we have read this many tiles.')
         self.register_field('augmentations', list, None, None, None)
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
@@ -207,7 +206,8 @@ class TrainingConfig(config.DeltaConfigComponent):
                                            validation=validation,
                                            steps=self._config_dict['steps'],
                                            stride=self._config_dict['stride'],
-                                           optimizer=self._config_dict['optimizer'])
+                                           optimizer=self._config_dict['optimizer'],
+                                           max_tile_offset=self._config_dict['max_tile_offset'])
         return self.__training
 
     def augmentations(self):
@@ -272,6 +272,39 @@ class TensorboardConfig(config.DeltaConfigComponent):
             tbd = os.path.join(appdirs.AppDirs('delta', 'nasa').user_data_dir, 'tensorboard')
         return tbd
 
+class ClassifyConfig(config.DeltaConfigComponent):
+    """
+    Configure classification options.
+    """
+    def __init__(self):
+        super().__init__()
+        self.register_field('prob_image', bool, 'prob_image', None, 'Set true to save a probability image.')
+        self.register_field('overlap', int, 'overlap', None, 'Amount to overlap processed tiles.')
+        self.register_field('regions', list, None, None,
+                            'List of region tags to compute statistics over, default is all tags.')
+        self.register_field('metrics', list, None, None, 'List of metrics to apply.')
+        self.register_field('wkt_dir', str, None, None,
+                            'Look for WKT files in this folder, default is look in the input image folder.')
+
+        self.register_arg('prob_image', '--prob', action='store_const', const=True, type=None)
+        self.register_arg('prob_image', '--noprob', action='store_const', const=False, type=None)
+        self.register_arg('overlap', '--overlap')
+
+    def regions(self):
+        if 'regions' in self._config_dict:
+            return self._config_dict['regions']
+        return None
+
+    def wkt_dir(self):
+        if 'wkt_dir' in self._config_dict:
+            return self._config_dict['wkt_dir']
+        return None
+
+    def metrics(self):
+        if 'metrics' in self._config_dict:
+            return self._config_dict['metrics']
+        return []
+
 def register():
     """
     Registers machine learning config options with the global config manager.
@@ -284,3 +317,4 @@ def register():
     config.config.register_component(TrainingConfig(), 'train')
     config.config.register_component(MLFlowConfig(), 'mlflow')
     config.config.register_component(TensorboardConfig(), 'tensorboard')
+    config.config.register_component(ClassifyConfig(), 'classify')

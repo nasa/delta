@@ -21,7 +21,6 @@ Train a neural network.
 
 import sys
 import time
-import os
 
 #import logging
 #logging.getLogger("tensorflow").setLevel(logging.DEBUG)
@@ -38,14 +37,6 @@ from delta.ml.io import save_model, load_model
 
 def main(options):
 
-    log_folder = config.train.log_folder()
-    if log_folder:
-        if not options.resume: # Start fresh and clear the read logs
-            os.system('rm -f ' + log_folder + '/*')
-            print('Dataset progress recording in: ' + log_folder)
-        else:
-            print('Resuming dataset progress recorded in: ' + log_folder)
-
     images = config.dataset.images()
     if not images:
         print('No images specified.', file=sys.stderr)
@@ -53,7 +44,7 @@ def main(options):
 
     img = images.load(0)
     model = config_model(img.num_bands())
-    if options.resume is not None:
+    if options.resume is not None and not options.resume.endswith('.h5'):
         temp_model = load_model(options.resume)
     else:
         # this one is not built with proper scope, just used to get input and output shapes
@@ -76,7 +67,8 @@ def main(options):
 
     if options.autoencoder:
         ids = imagery_dataset.AutoencoderDataset(images, in_shape, tile_shape=tile_size,
-                                                 tile_overlap=tile_overlap, stride=stride)
+                                                 tile_overlap=tile_overlap, stride=stride,
+                                                 max_rand_offset=config.train.spec().max_tile_offset)
     else:
         labels = config.dataset.labels()
         if not labels:
@@ -84,9 +76,7 @@ def main(options):
             return 1
         ids = imagery_dataset.ImageryDataset(images, labels, out_shape, in_shape,
                                              tile_shape=tile_size, tile_overlap=tile_overlap,
-                                             stride=stride)
-    if log_folder is not None:
-        ids.set_resume_mode(options.resume, log_folder)
+                                             stride=stride, max_rand_offset=config.train.spec().max_tile_offset)
 
     assert temp_model.input_shape[1] == temp_model.input_shape[2], 'Must have square chunks in model.'
     assert temp_model.input_shape[3] == ids.num_bands(), 'Model takes wrong number of bands.'

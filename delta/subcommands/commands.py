@@ -45,13 +45,11 @@ def main_visualize(options):
 
 def setup_classify(subparsers):
     sub = subparsers.add_parser('classify', help='Classify images given a model.')
-    config.setup_arg_parser(sub, ['general', 'io', 'dataset'])
+    config.setup_arg_parser(sub, ['general', 'io', 'dataset', 'classify'])
 
-    sub.add_argument('--prob', dest='prob', action='store_true', help='Save image of class probabilities.')
     sub.add_argument('--autoencoder', dest='autoencoder', action='store_true', help='Classify with the autoencoder.')
     sub.add_argument('--no-colormap', dest='noColormap', action='store_true',
                      help='Save raw classification values instead of colormapped values.')
-    sub.add_argument('--overlap', dest='overlap', type=int, default=0, help='Classify with the autoencoder.')
     sub.add_argument('--validation', dest='validation', help='Classify validation images instead.')
     sub.add_argument('--outdir', dest='outdir', type=str, help='Directory to save output to.')
     sub.add_argument('--basedir', dest='basedir', type=str, help='Preserve paths of files relative to this directory.')

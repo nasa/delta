@@ -40,7 +40,6 @@ def test_general():
     io:
       threads: 5
       tile_size: [5, 5]
-      interleave_images: 3
       cache:
         dir: nonsense
         limit: 2
@@ -51,7 +50,6 @@ def test_general():
     assert config.io.threads() == 5
     assert config.io.tile_size()[0] == 5
     assert config.io.tile_size()[1] == 5
-    assert config.io.interleave_images() == 3
     cache = config.io.cache.manager()
     assert cache.folder() == 'nonsense'
     assert cache.limit() == 2
@@ -383,6 +381,38 @@ def test_train():
     assert tc.validation.steps == 20
     assert tc.validation.from_training
 
+def test_optimizer():
+    config_reset()
+    test_str = '''
+    train:
+      optimizer:
+        Adam:
+          learning_rate: 0.05
+    '''
+    config.load(yaml_str=test_str)
+    opt = config_parser.optimizer_from_dict(config.train.spec().optimizer)
+    assert opt.lr.numpy() == pytest.approx(0.05)
+
+    config_reset()
+    test_str = '''
+    train:
+      optimizer:
+        Adam:
+          learning_rate:
+            PolynomialDecay:
+              initial_learning_rate: 0.0001
+              decay_steps: 100000
+              end_learning_rate: 0.0000001
+              power: 0.9
+              cycle: false
+          epsilon: 0.0001
+    '''
+    config.load(yaml_str=test_str)
+    opt = config_parser.optimizer_from_dict(config.train.spec().optimizer)
+    assert isinstance(opt.lr, tf.keras.optimizers.schedules.PolynomialDecay)
+    assert opt.lr(0).numpy() == pytest.approx(0.0001)
+    assert opt.lr(100000).numpy() == pytest.approx(0.0000001)
+
 def test_augmentations():
     config_reset()
     test_str = '''
@@ -512,4 +542,4 @@ def test_missing_file():
 def test_dump():
     config_reset()
 
-    assert config.to_dict() == yaml.load(config.export())
+    assert config.to_dict() == yaml.load(config.export(), Loader=yaml.FullLoader)

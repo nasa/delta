@@ -150,35 +150,52 @@ def test_rectangle_rois():
     Tests make_tile_rois.
     """
     r = rectangle.Rectangle(0, 0, 10, 10)
-    tiles = r.make_tile_rois((5, 5), include_partials=False)
+    tiles = r.make_tile_rois((5, 5), include_partials=False)[0]
     assert len(tiles) == 4
     for t in tiles:
         assert t.width() == 5 and t.height() == 5
-    tiles = r.make_tile_rois((5, 10), include_partials=False)
+    tiles = r.make_tile_rois((5, 10), include_partials=False)[0]
     assert len(tiles) == 2
-    tiles = r.make_tile_rois((11, 11), include_partials=False)
+    tiles, valid_tiles = r.make_tile_rois((11, 11), include_partials=False)
     assert len(tiles) == 0
-    tiles = r.make_tile_rois((11, 11), include_partials=True)
+    assert len(valid_tiles) == 0
+    tiles = r.make_tile_rois((11, 11), include_partials=True)[0]
     assert len(tiles) == 1
     assert tiles[0].bounds() == (0, 10, 0, 10)
-    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(11, 11))
+    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(11, 11))[0]
     assert len(tiles) == 0
-    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(10, 10))
+    tiles = r.make_tile_rois((20, 20), include_partials=True, min_shape=(10, 10))[0]
     assert len(tiles) == 1
-
-    tiles = r.make_tile_rois((6, 6), include_partials=False)
+    tiles = r.make_tile_rois((6, 6), include_partials=False)[0]
     assert len(tiles) == 1
-    tiles = r.make_tile_rois((6, 6), include_partials=False, overlap_shape=(2, 2))
+    tiles, valid_tiles = r.make_tile_rois((6, 6), include_partials=False, overlap_shape=(2, 2))
     assert len(tiles) == 4
-    tiles = r.make_tile_rois((6, 6), include_partials=False, partials_overlap=True)
+    assert len(valid_tiles) == 4
+    assert valid_tiles[0].width() == 5 and valid_tiles[0].height() == 5
+    assert valid_tiles[3].width() == 5 and valid_tiles[3].height() == 5
+    tiles, valid_tiles = r.make_tile_rois((6, 6), include_partials=False, partials_overlap=True)
     assert len(tiles) == 4
+    assert len(valid_tiles) == 4
     for t in tiles:
         assert t.width() == 6 and t.height() == 6
-
-    tiles = r.make_tile_rois((5, 5), include_partials=False, by_block=True)
+    assert valid_tiles[1].width() == 4 and valid_tiles[1].height() == 6
+    assert valid_tiles[2].width() == 6 and valid_tiles[2].height() == 4
+    assert valid_tiles[3].width() == 4 and valid_tiles[3].height() == 4
+    tiles = r.make_tile_rois((5, 5), include_partials=False, by_block=True)[0]
     assert len(tiles) == 2
     for row in tiles:
         assert len(row) == 2
+    r = rectangle.Rectangle(0, 0, 12, 10)
+    tiles, valid_tiles = r.make_tile_rois((6, 6), include_partials=False, overlap_shape=(2, 2))
+    assert len(tiles) == 4
+    assert len(valid_tiles) == 4
+    for t in tiles:
+        assert t.width() == 6 and t.height() == 6
+    for t in valid_tiles:
+        assert t.width() == 5 and t.height() == 5
+    c = rectangle.Rectangle(0, 0, 20, 20)
+    tiles = r.make_tile_rois((7, 7), include_partials=False, containing_rect=c)[0]
+    assert len(tiles) == 4
 
 @pytest.fixture(scope="function")
 def autoencoder(all_sources):
@@ -209,22 +226,3 @@ def test_autoencoder(autoencoder):
     ds = autoencoder.dataset()
     for (image, label) in ds.take(1000):
         assert (image.numpy() == label.numpy()).all()
-
-def test_resume_mode(autoencoder, tmpdir):
-    """
-    Test imagery dataset's resume functionality.
-    """
-    try:
-        autoencoder.set_resume_mode(True, str(tmpdir))
-        autoencoder.reset_access_counts()
-        for i in range(len(autoencoder.image_set())):
-            autoencoder.resume_log_update(i, count=10000, need_check=True)
-            assert autoencoder.resume_log_read(i) == (True, 10000)
-
-        ds = autoencoder.dataset()
-        count = 0
-        for (_, unused_) in ds.take(100):
-            count += 1
-        assert count == 0
-    finally:
-        autoencoder.set_resume_mode(False, None)
