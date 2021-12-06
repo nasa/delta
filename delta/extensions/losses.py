@@ -199,7 +199,7 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
             nodata = tf.expand_dims(nodata, -1)
 
         # zero all nodata entries
-        y_pred = y_pred * tf.cast(tf.logical_not(nodata), tf.float32)
+        y_pred = tf.cast(y_pred, tf.float32) * tf.cast(tf.logical_not(nodata), tf.float32)
 
         true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
         return (true_convert, y_pred)
