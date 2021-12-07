@@ -223,8 +223,9 @@ def add_fist_cost_channel(source_path, cost_path, output_path):
         temp_path4 = output_path + '_temp4.tif'
 
         # Crop cost image to the source image extents
-        cmd = ['gdal_translate', cost_path, '-outsize', image_info['width'], image_info['height'],
-               '-projwin', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
+        cmd = ['gdalwarp', cost_path, '-overwrite',  '-tr', image_info['xres'],  image_info['yres'],
+               '-t_srs', image_info['proj_str'],           
+               '-te', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
                temp_path1]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
@@ -247,7 +248,7 @@ def add_fist_cost_channel(source_path, cost_path, output_path):
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         # Pack into a three channel image
-        cmd = ['gdal_merge.py', '-a_nodata', '-0.5',  '-o', output_path, '-separate', temp_path2, temp_path3, temp_path4]
+        cmd = ['gdal_merge.py', '-a_nodata', '-0.5',  '-o', output_path, '-separate', temp_path3, temp_path4, temp_path2]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
@@ -268,10 +269,10 @@ def call_presoak(args, input_path, output_folder, unknown_args):
 
     if not args.fist_data_dir:
         print('Missing required input argument --fist-data-dir to run presoak!')
-        return (False, None, None)
+        return (False, None, None, None)
     if not args.unfilled_presoak_dem:
         print('Missing required input argument --unfilled-presoak-dem to run presoak!')
-        return (False, None, None)
+        return (False, None, None, None)
 
     presoak_output_folder = os.path.join(output_folder, 'presoak')
     if not os.path.exists(presoak_output_folder):
@@ -293,10 +294,11 @@ def call_presoak(args, input_path, output_folder, unknown_args):
         for line in result.stdout.decode('ascii').split(os.linesep):
             print(line)
         print('presoak processing FAILED to generate file ' + presoak_output_path)
-        return (False, None, None)
+        return (False, None, None, None)
 
     presoak_output_cost_path = os.path.join(presoak_output_folder, 'merged_cost.tif')
-    return (True, presoak_output_folder, presoak_output_cost_path)
+    presoak_output_dem_path = os.path.join(presoak_output_folder, 'input_dem.tif')
+    return (True, presoak_output_folder, presoak_output_cost_path, presoak_output_dem_path)
 
 
 def delete_from_dict(d, name):
@@ -320,7 +322,16 @@ def delete_from_dict(d, name):
         d.pop(remove) 
 
 
-def call_delta(args, input_path, output_folder,
+def make_no_preprocess_config(input_path, output_path):
+    '''Generate version of config file with preprocess steps stripped out'''
+    with open(input_path) as f:
+        config_yaml = yaml.safe_load(f)
+        delete_from_dict(config_yaml, 'preprocess')
+        with open(output_path, 'w') as f:
+            yaml.dump(config_yaml, f)
+
+
+def call_delta(args, input_path, output_folder, input_name,
                presoak_succeeded, presoak_output_cost_path):
     '''Run the DELTA tool'''
 
@@ -330,11 +341,19 @@ def call_delta(args, input_path, output_folder,
     no_preprocess_config = None
     delta_input_image = input_path
     model_to_use = args.delta_model
-    if (args.sensor == 'sentinel1') and args.s1_delta_elevation_augment_model:
+    if (args.sensor == 'sentinel1') and args.s1_delta_presoak_augment_model:
         # Augment the input Sentinel1 image with a presoak cost channel before running DELTA
         if not presoak_succeeded:
             print('presoak failed, unable to use augmented DELTA model')
         else:
+
+            ## TODO: REMOVE
+            #tmp_path = os.path.splitext(os.path.basename(input_path))[0] + '_cost_aug.tif'
+            #print('tmp_path = ' + tmp_path)
+            #if is_valid_image(tmp_path):
+            #    print('Already have file: ' + tmp_path)
+            #    return (False, None, None)
+
             # Apply preprocessing to the input image before we merge with the presoak cost
             preprocessed_input = os.path.join(delta_output_folder, tif_to_tiff(os.path.basename(input_path)))
             this_folder = os.path.dirname(__file__)
@@ -350,28 +369,27 @@ def call_delta(args, input_path, output_folder,
             if not add_fist_cost_channel(preprocessed_input, presoak_output_cost_path, merged_path):
                 print('Failed to add channel, unable to use augmented DELTA model')
             else:
-                print('Using elevation augmented model file: ' + args.s1_delta_elevation_augment_model)
-                model_to_use = args.s1_delta_elevation_augment_model
+                print('Using presoak augmented model file: ' + args.s1_delta_presoak_augment_model)
+                model_to_use = args.s1_delta_presoak_augment_model
                 delta_input_image = merged_path
                 os.remove(preprocessed_input)
 
                 # Generate version of config file with preprocess steps stripped out
                 no_preprocess_config = os.path.join(delta_output_folder, 'delta_no_preprocess_config.yaml')
                 delta_config_to_use = no_preprocess_config
-                with open(args.delta_config) as f:
-                    config_yaml = yaml.safe_load(f)
-                delete_from_dict(config_yaml, 'preprocess')
-                with open(no_preprocess_config, 'w') as f:
-                    yaml.dump(config_yaml, f)
+                make_no_preprocess_config(args.delta_config, no_preprocess_config)
+
+            ## TODO DELETE!!!
+            #shutil.move(merged_path, os.path.join(delta_output_folder, tmp_path))
+            #return (False, None, None)
 
 
     PREFIX = 'IF_' # This is required by DELTA, but we will remove on output
     fname_in = PREFIX + os.path.basename(delta_input_image)
-    fname = os.path.basename(input_path)
+
     delta_output_path_in = os.path.join(delta_output_folder, fname_in)
-    delta_output_path = os.path.join(delta_output_folder, fname)
+    delta_output_path = os.path.join(delta_output_folder, input_name + '.tiff')
     delta_output_path_in = tif_to_tiff(delta_output_path_in) # DELTA writes with .tiff extension
-    delta_output_path = tif_to_tiff(delta_output_path)
     if os.path.exists(delta_output_path):
         print('DELTA output already exists.')
     else:
@@ -442,9 +460,40 @@ def call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
         return False
     return True
 
+def unpack_input_image(input_path, args, output_path):
+    '''Unpack a single input image'''
+
+    if is_valid_image(output_path):
+        print('Already have unpacked image: ' + output_path)
+        return True
+
+    # Run a conversion tool with preprocess instructions stripped so it just unpacks
+    no_preprocess_config = output_path + '_no_preprocess_config.yaml'
+    make_no_preprocess_config(args.delta_config, no_preprocess_config)
+
+    output_folder = os.path.dirname(output_path)
+    output_name = os.path.splitext(os.path.basename(input_path))[0] + '.tiff'
+    unpacked_input = os.path.join(output_folder, output_name)
+    this_folder = os.path.dirname(__file__)
+    cmd = [os.path.join(this_folder, 'convert/save_tiffs.py'), '--image', input_path,
+           '--image-type', args.sensor, '--config', no_preprocess_config, output_folder]
+    print(' '.join(cmd))
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    if not is_valid_image(unpacked_input):
+         raise Exception('Failed to unpack image: ' + input_path)
+
+    shutil.move(unpacked_input, output_path)
+    os.remove(no_preprocess_config)
+    return True
 
 def find_targets(args):
     '''Find input files and choose output paths'''
+
+    INPUT_FILE_TYPES = ['.tif', '.tiff', '.zip']
+
+    if not os.path.exists(args.input_dir):
+        print('Error: Input folder does not exist: ' + args.input_dir)
+        return []
 
     target_paths = []
     for r, _, f in os.walk(args.input_dir):
@@ -457,13 +506,54 @@ def find_targets(args):
                 if not os.path.exists(output_path):
                     shutil.copy(input_path, output_path)
             # Get a list of tiff files that must be processed
-            if file.endswith('.tiff') or file.endswith('.tif'):
+            is_match = False
+            for t in INPUT_FILE_TYPES:
+                if file.endswith(t):
+                    is_match = True
+            if is_match:
                 relative_folder = os.path.relpath(r, args.input_dir)
                 if relative_folder == '.': # Create subdirectories for input images in the same folder
                     relative_folder = os.path.splitext(file)[0]
                 output_folder = os.path.join(args.output_dir, relative_folder)
                 target_paths.append((input_path, output_folder))
     return target_paths
+
+
+def classify_image(input_path, output_folder, input_name, args, unknown_args):
+    '''Run all classification steps on a single image'''
+
+    all_succeeded = True
+
+    # presoak
+    # - Only run presoak if another tool requires it or if --force-presoak was set
+    if (args.force_presoak or ENABLE_HMTFIST or
+            ((args.sensor == 'sentinel1') and args.s1_delta_presoak_augment_model)):
+
+        presoak_succeeded, presoak_output_folder, presoak_output_cost_path, presoak_output_dem_path = \
+            call_presoak(args, input_path, output_folder, unknown_args)
+        if not presoak_succeeded:
+            print('presoak processing unsuccessful')
+            all_succeeded = False
+    else:
+        print('presoak is not needed to run DELTA, skipping it')
+        presoak_output_folder = None
+        presoak_output_cost_path = None
+
+    # DELTA
+    delta_succeeded, delta_output_folder, delta_output_path = call_delta(args, input_path,
+                                                                         output_folder, input_name,
+                                                                         all_succeeded,
+                                                                         presoak_output_cost_path)
+    if not delta_succeeded:
+        print('DELTA processing unsuccessful')
+        all_succeeded = False
+
+    # HMTFIST
+    if all_succeeded and ENABLE_HMTFIST:
+        all_succeeded = call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
+                                     delta_output_folder, delta_output_path, output_folder)
+
+    return all_succeeded
 
 def main(argsIn): #pylint: disable=R0912
 
@@ -474,6 +564,9 @@ def main(argsIn): #pylint: disable=R0912
 
         parser.add_argument("--input-dir", "-i", required=True,
                             help="Directory containing input images")
+        parser.add_argument("--unpack-inputs", action="store_true", default=False,
+                            help="Add additional unpack step before processing if unputs are still packed")
+
         parser.add_argument("--output-dir", "-o", required=True,
                             help="Directory to store output images")
         parser.add_argument("--sensor", default="worldview",
@@ -552,33 +645,17 @@ def main(argsIn): #pylint: disable=R0912
         if not os.path.exists(output_folder):
             os.mkdir(output_folder)
 
-        # presoak
-        # - Only run presoak if another tool requires it or if --force-presoak was set
-        if (args.force_presoak or ENABLE_HMTFIST or
-                ((args.sensor == 'sentinel1') and args.s1_delta_presoak_augment_model)):
+        input_name = os.path.splitext(os.path.basename(input_path))[0]
 
-            presoak_succeeded, presoak_output_folder, presoak_output_cost_path = \
-                call_presoak(args, input_path, output_folder, unknown_args)
-            if not presoak_succeeded:
-                print('presoak processing unsuccessful')
+        # Optional unpack step
+        if args.unpack_inputs:
+            unpacked_path = os.path.join(output_folder, 'unpacked_input.tif')
+            if not unpack_input_image(input_path, args, unpacked_path):
                 all_succeeded = False
-        else:
-            print('presoak is not needed to run DELTA, skipping it')
-            presoak_output_folder = None
-            presoak_output_cost_path = None
+            input_path = unpacked_path
 
-        # DELTA
-        delta_succeeded, delta_output_folder, delta_output_path = call_delta(args, input_path,
-                                                                             output_folder, all_succeeded,
-                                                                             presoak_output_cost_path)
-        if not delta_succeeded:
-            print('DELTA processing unsuccessful')
-            all_succeeded = False
-
-        # HMTFIST
-        if all_succeeded and ENABLE_HMTFIST:
-            all_succeeded = call_hmtfist(args, presoak_output_folder, presoak_output_dem_path,
-                                         delta_output_folder, delta_output_path, output_folder)
+        if all_succeeded:
+            all_succeeded = classify_image(input_path, output_folder, input_name, args, unknown_args)
 
         if all_succeeded:
             print('Completed processing file: ' + input_path)
