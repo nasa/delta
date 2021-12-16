@@ -79,6 +79,7 @@ train:
   callbacks:       ~
   # augmentation functions to apply to training data
   augmentations:   ~
+  disable_mixed_precision: false
   validation:
     # if true, skips the first steps from the training set to use for validation instead
     from_training: true

@@ -180,9 +180,15 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field('steps', int, None, config.validate_non_negative, 'Batches to train per epoch.')
         self.register_field('optimizer', (str, dict), None, None, 'Keras optimizer to use.')
         self.register_field('callbacks', list, 'callbacks', None, 'Callbacks used to modify training')
+        self.register_field('disable_mixed_precision', bool, 'disable_mixed_precision', None,
+                            'Disables mixed precision tensorflow policy. By default DELTA will use mixed '
+                            'precision if the hardware supports it. Details on ways to improve mixed '
+                            'precision performance: '
+                            'https://www.tensorflow.org/guide/mixed_precision#summary')
         self.register_arg('epochs', '--epochs')
         self.register_arg('batch_size', '--batch-size')
         self.register_arg('steps', '--steps')
+        self.register_arg('disable_mixed_precision', '--disable-mixed-precision', action="store_true", type=None)
         self.register_field('augmentations', list, None, None, None)
         self.register_component(ValidationConfig(), 'validation')
         self.register_component(NetworkConfig(), 'network')
