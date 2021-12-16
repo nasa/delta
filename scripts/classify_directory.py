@@ -224,7 +224,7 @@ def add_fist_cost_channel(source_path, cost_path, output_path):
 
         # Crop cost image to the source image extents
         cmd = ['gdalwarp', cost_path, '-overwrite',  '-tr', image_info['xres'],  image_info['yres'],
-               '-t_srs', image_info['proj_str'],           
+               '-t_srs', image_info['proj_str'],
                '-te', image_info['minX'], image_info['maxY'], image_info['maxX'], image_info['minY'],
                temp_path1]
         print(' '.join(cmd))
@@ -235,20 +235,24 @@ def add_fist_cost_channel(source_path, cost_path, output_path):
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         # Scale the presoak value (0-20 range) and apply nodata cutoff
-        cmd = ['gdal_calc.py', '-A', temp_path1, '--calc=numpy.where(numpy.isinf(A), 1.05, 0.05*A)', '--outfile='+temp_path2]
+        cmd = ['gdal_calc.py', '-A', temp_path1,
+               '--calc=numpy.where(numpy.isinf(A), 1.05, 0.05*A)', '--outfile='+temp_path2]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         # Apply nodata cutoff
-        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=1', '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path3]
+        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=1',
+               '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path3]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=2', '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path4]
+        cmd = ['gdal_calc.py', '-A', source_path, '--A_band=2',
+               '--calc=numpy.where(A <= 0, -0.5, A)', '--outfile='+temp_path4]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
         # Pack into a three channel image
-        cmd = ['gdal_merge.py', '-a_nodata', '-0.5',  '-o', output_path, '-separate', temp_path3, temp_path4, temp_path2]
+        cmd = ['gdal_merge.py', '-a_nodata', '-0.5',  '-o', output_path,
+               '-separate', temp_path3, temp_path4, temp_path2]
         print(' '.join(cmd))
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
@@ -309,17 +313,17 @@ def delete_from_dict(d, name):
             if k == name:
                 remove = name
                 continue
-            if isinstance(v, dict) or isinstance(v, list):
+            if isinstance(v, (dict, list)):
                 delete_from_dict(v, name)
     else:
         for i, v in enumerate(d):
-             if v == name:
-                 remove = i
-                 continue
-             if isinstance(v, dict) or isinstance(v, list):
-                  delete_from_dict(v, name)
+            if v == name:
+                remove = i
+                continue
+            if isinstance(v, (dict, list)):
+                delete_from_dict(v, name)
     if remove is not None:
-        d.pop(remove) 
+        d.pop(remove)
 
 
 def make_no_preprocess_config(input_path, output_path):
@@ -480,7 +484,7 @@ def unpack_input_image(input_path, args, output_path):
     print(' '.join(cmd))
     subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
     if not is_valid_image(unpacked_input):
-         raise Exception('Failed to unpack image: ' + input_path)
+        raise Exception('Failed to unpack image: ' + input_path)
 
     shutil.move(unpacked_input, output_path)
     os.remove(no_preprocess_config)
