@@ -178,6 +178,8 @@ class Sentinel1Image(tiff.TiffImage):
         assert isinstance(paths, str)
         ext = os.path.splitext(paths)[1]
 
+        self._name = os.path.splitext(os.path.basename(paths))[0]
+
         tif_path = None
         if ext == '.zip': # Need to unpack
 
