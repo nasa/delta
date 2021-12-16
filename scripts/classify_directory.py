@@ -306,6 +306,7 @@ def call_presoak(args, input_path, output_folder, unknown_args):
 
 
 def delete_from_dict(d, name):
+    '''Delete the named field from the provided dictionary d'''
 
     remove = None
     if isinstance(d, dict):
@@ -351,13 +352,6 @@ def call_delta(args, input_path, output_folder, input_name,
             print('presoak failed, unable to use augmented DELTA model')
         else:
 
-            ## TODO: REMOVE
-            #tmp_path = os.path.splitext(os.path.basename(input_path))[0] + '_cost_aug.tif'
-            #print('tmp_path = ' + tmp_path)
-            #if is_valid_image(tmp_path):
-            #    print('Already have file: ' + tmp_path)
-            #    return (False, None, None)
-
             # Apply preprocessing to the input image before we merge with the presoak cost
             preprocessed_input = os.path.join(delta_output_folder, tif_to_tiff(os.path.basename(input_path)))
             this_folder = os.path.dirname(__file__)
@@ -383,11 +377,6 @@ def call_delta(args, input_path, output_folder, input_name,
                 delta_config_to_use = no_preprocess_config
                 make_no_preprocess_config(args.delta_config, no_preprocess_config)
 
-            ## TODO DELETE!!!
-            #shutil.move(merged_path, os.path.join(delta_output_folder, tmp_path))
-            #return (False, None, None)
-
-
     PREFIX = 'IF_' # This is required by DELTA, but we will remove on output
     fname_in = PREFIX + os.path.basename(delta_input_image)
 
@@ -408,7 +397,7 @@ def call_delta(args, input_path, output_folder, input_name,
     if not is_valid_image(delta_output_path):
         print('delta processing FAILED to generate file ' + delta_output_path)
         return (False, None, None)
-    #raise Exception('DEBUG')
+
     return (True, delta_output_folder, delta_output_path)
 
 
