@@ -310,8 +310,6 @@ def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.Delta
             block_x = output_roi.min_x // ts[1]
             block_y = output_roi.min_y // ts[0]
 
-            print('Write output_roi = ' + str(output_roi))
-
             # Loop on bands
             if len(data.shape) == 2:
                 writer.write_block(data[:, :], block_y, block_x, 0)

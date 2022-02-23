@@ -35,7 +35,7 @@ if os.path.exists('bin'):
 
 setuptools.setup(
     name="delta",
-    version="1.0.0",
+    version="1.0.1",
     author="NASA Ames",
     author_email="todo@todo",
     description="Deep learning for satellite imagery",

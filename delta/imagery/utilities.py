@@ -69,6 +69,6 @@ def progress_bar(text, fill_amount, prefix = '', length = 80): #pylint: disable=
         Number of characters to fill as bar
     """
     filled_length = int(length * fill_amount)
-    fill_char = '█' if sys.stdout.encoding.lower() == 'utf-8' else 'X'
+    fill_char = '█' if str(sys.stdout.encoding).lower() == 'utf-8' else 'X'
     prog_bar = fill_char * filled_length + '-' * (length - filled_length)
     print('\r%s |%s| %s' % (prefix, prog_bar, text), end = '\r')
