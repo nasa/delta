@@ -209,9 +209,15 @@ class TrainingConfig(config.DeltaConfigComponent):
         self.register_field(&#39;steps&#39;, int, None, config.validate_non_negative, &#39;Batches to train per epoch.&#39;)
         self.register_field(&#39;optimizer&#39;, (str, dict), None, None, &#39;Keras optimizer to use.&#39;)
         self.register_field(&#39;callbacks&#39;, list, &#39;callbacks&#39;, None, &#39;Callbacks used to modify training&#39;)
+        self.register_field(&#39;disable_mixed_precision&#39;, bool, &#39;disable_mixed_precision&#39;, None,
+                            &#39;Disables mixed precision tensorflow policy. By default DELTA will use mixed &#39;
+                            &#39;precision if the hardware supports it. Details on ways to improve mixed &#39;
+                            &#39;precision performance: &#39;
+                            &#39;https://www.tensorflow.org/guide/mixed_precision#summary&#39;)
         self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
         self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
         self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
+        self.register_arg(&#39;disable_mixed_precision&#39;, &#39;--disable-mixed-precision&#39;, action=&#34;store_true&#34;, type=None)
         self.register_field(&#39;augmentations&#39;, list, None, None, None)
         self.register_component(ValidationConfig(), &#39;validation&#39;)
         self.register_component(NetworkConfig(), &#39;network&#39;)
@@ -818,9 +824,15 @@ def register():
         self.register_field(&#39;steps&#39;, int, None, config.validate_non_negative, &#39;Batches to train per epoch.&#39;)
         self.register_field(&#39;optimizer&#39;, (str, dict), None, None, &#39;Keras optimizer to use.&#39;)
         self.register_field(&#39;callbacks&#39;, list, &#39;callbacks&#39;, None, &#39;Callbacks used to modify training&#39;)
+        self.register_field(&#39;disable_mixed_precision&#39;, bool, &#39;disable_mixed_precision&#39;, None,
+                            &#39;Disables mixed precision tensorflow policy. By default DELTA will use mixed &#39;
+                            &#39;precision if the hardware supports it. Details on ways to improve mixed &#39;
+                            &#39;precision performance: &#39;
+                            &#39;https://www.tensorflow.org/guide/mixed_precision#summary&#39;)
         self.register_arg(&#39;epochs&#39;, &#39;--epochs&#39;)
         self.register_arg(&#39;batch_size&#39;, &#39;--batch-size&#39;)
         self.register_arg(&#39;steps&#39;, &#39;--steps&#39;)
+        self.register_arg(&#39;disable_mixed_precision&#39;, &#39;--disable-mixed-precision&#39;, action=&#34;store_true&#34;, type=None)
         self.register_field(&#39;augmentations&#39;, list, None, None, None)
         self.register_component(ValidationConfig(), &#39;validation&#39;)
         self.register_component(NetworkConfig(), &#39;network&#39;)

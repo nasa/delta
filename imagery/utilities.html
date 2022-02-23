@@ -98,7 +98,7 @@ def progress_bar(text, fill_amount, prefix = &#39;&#39;, length = 80): #pylint: 
         Number of characters to fill as bar
     &#34;&#34;&#34;
     filled_length = int(length * fill_amount)
-    fill_char = &#39;█&#39; if sys.stdout.encoding.lower() == &#39;utf-8&#39; else &#39;X&#39;
+    fill_char = &#39;█&#39; if str(sys.stdout.encoding).lower() == &#39;utf-8&#39; else &#39;X&#39;
     prog_bar = fill_char * filled_length + &#39;-&#39; * (length - filled_length)
     print(&#39;\r%s |%s| %s&#39; % (prefix, prog_bar, text), end = &#39;\r&#39;)</code></pre>
 </details>
@@ -148,7 +148,7 @@ overwrite the printed line.</p>
         Number of characters to fill as bar
     &#34;&#34;&#34;
     filled_length = int(length * fill_amount)
-    fill_char = &#39;█&#39; if sys.stdout.encoding.lower() == &#39;utf-8&#39; else &#39;X&#39;
+    fill_char = &#39;█&#39; if str(sys.stdout.encoding).lower() == &#39;utf-8&#39; else &#39;X&#39;
     prog_bar = fill_char * filled_length + &#39;-&#39; * (length - filled_length)
     print(&#39;\r%s |%s| %s&#39; % (prefix, prog_bar, text), end = &#39;\r&#39;)</code></pre>
 </details>

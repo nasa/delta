@@ -785,7 +785,7 @@ should be size num_bands.</dd>
 <dt><strong><code>prob_image</code></strong> :&ensp;<code>str</code></dt>
 <dd>If given, output a probability image to this file. Probabilities are scaled as bytes
 1-255, with 0 as nodata.</dd>
-<dt><strong><code>error_image</code></strong> :&ensp;<code><a title="delta.extensions.sources.tiff.TiffWriter" href="../extensions/sources/tiff.html#delta.extensions.sources.tiff.TiffWriter">TiffWriter</a></code></dt>
+<dt><strong><code>error_image</code></strong> :&ensp;<code>delta.extensions.sources.tiff.TiffWriter</code></dt>
 <dd>If given, outputs an error image showing the difference between the predicted probability and
 the binary label. i.e. prediction - label. The values [-1,1] are linearly scaled and clipped as bytes
 [1-255], with 0 as nodata.</dd>

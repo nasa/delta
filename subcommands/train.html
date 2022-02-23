@@ -51,10 +51,11 @@ Train a neural network.
 import sys
 import time
 
-#import logging
-#logging.getLogger(&#34;tensorflow&#34;).setLevel(logging.DEBUG)
+# import logging
+# logging.getLogger(&#34;tensorflow&#34;).setLevel(logging.DEBUG)
 
 import tensorflow as tf
+from tensorflow.keras import mixed_precision
 
 from delta.config import config
 from delta.imagery import imagery_dataset
@@ -62,9 +63,42 @@ from delta.ml.train import train
 from delta.ml.config_parser import config_model
 from delta.ml.io import save_model, load_model
 
-#tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+
+def mixed_policy_device_compatible():
+
+    # gpu check logic taken from https://github.com/keras-team/keras/blob/70d7d07bd186b929d81f7a8ceafff5d78d8bd701/keras/mixed_precision/device_compatibility_check.py # pylint: disable=line-too-long
+    gpus = tf.config.list_physical_devices(&#39;GPU&#39;)
+    gpu_details_list = [tf.config.experimental.get_device_details(g) for g in gpus]
+
+    supported_device_strs = []
+    unsupported_device_strs = []
+    for details in gpu_details_list:
+        name = details.get(&#39;device_name&#39;, &#39;Unknown GPU&#39;)
+        cc = details.get(&#39;compute_capability&#39;)
+        if cc:
+            device_str = &#39;%s, compute capability %s.%s&#39; % (name, cc[0], cc[1])
+            if cc &gt;= (7, 0):
+                supported_device_strs.append(device_str)
+            else:
+                unsupported_device_strs.append(device_str)
+        else:
+            unsupported_device_strs.append(
+                name + &#39;, no compute capability (probably not an Nvidia GPU)&#39;)
+
+    if unsupported_device_strs or not supported_device_strs:
+        return False
+    # else mixed policy is compatible
+    return True
+
 
 def main(options):
+    if mixed_policy_device_compatible() and not config.train.disable_mixed_precision():
+        mixed_precision.set_global_policy(&#39;mixed_float16&#39;)
+        print(&#39;Tensorflow Mixed Precision is enabled. This improves training performance on compatible GPUs. &#39;
+              &#39;However certain precautions should be taken and several additional changes can be made to improve &#39;
+              &#39;performance further. Details: https://www.tensorflow.org/guide/mixed_precision#summary&#39;)
 
     images = config.dataset.images()
     if not images:
@@ -145,6 +179,11 @@ def main(options):
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def main(options):
+    if mixed_policy_device_compatible() and not config.train.disable_mixed_precision():
+        mixed_precision.set_global_policy(&#39;mixed_float16&#39;)
+        print(&#39;Tensorflow Mixed Precision is enabled. This improves training performance on compatible GPUs. &#39;
+              &#39;However certain precautions should be taken and several additional changes can be made to improve &#39;
+              &#39;performance further. Details: https://www.tensorflow.org/guide/mixed_precision#summary&#39;)
 
     images = config.dataset.images()
     if not images:
@@ -208,6 +247,42 @@ def main(options):
     return 0</code></pre>
 </details>
 </dd>
+<dt id="delta.subcommands.train.mixed_policy_device_compatible"><code class="name flex">
+<span>def <span class="ident">mixed_policy_device_compatible</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def mixed_policy_device_compatible():
+
+    # gpu check logic taken from https://github.com/keras-team/keras/blob/70d7d07bd186b929d81f7a8ceafff5d78d8bd701/keras/mixed_precision/device_compatibility_check.py # pylint: disable=line-too-long
+    gpus = tf.config.list_physical_devices(&#39;GPU&#39;)
+    gpu_details_list = [tf.config.experimental.get_device_details(g) for g in gpus]
+
+    supported_device_strs = []
+    unsupported_device_strs = []
+    for details in gpu_details_list:
+        name = details.get(&#39;device_name&#39;, &#39;Unknown GPU&#39;)
+        cc = details.get(&#39;compute_capability&#39;)
+        if cc:
+            device_str = &#39;%s, compute capability %s.%s&#39; % (name, cc[0], cc[1])
+            if cc &gt;= (7, 0):
+                supported_device_strs.append(device_str)
+            else:
+                unsupported_device_strs.append(device_str)
+        else:
+            unsupported_device_strs.append(
+                name + &#39;, no compute capability (probably not an Nvidia GPU)&#39;)
+
+    if unsupported_device_strs or not supported_device_strs:
+        return False
+    # else mixed policy is compatible
+    return True</code></pre>
+</details>
+</dd>
 </dl>
 </section>
 <section>
@@ -227,6 +302,7 @@ def main(options):
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="delta.subcommands.train.main" href="#delta.subcommands.train.main">main</a></code></li>
+<li><code><a title="delta.subcommands.train.mixed_policy_device_compatible" href="#delta.subcommands.train.mixed_policy_device_compatible">mixed_policy_device_compatible</a></code></li>
 </ul>
 </li>
 </ul>
