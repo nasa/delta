@@ -108,9 +108,13 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder)
             utilities.unpack_to_folder(zip_path, unpack_folder)
             subdirs = os.listdir(unpack_folder)
-            if len(subdirs) != 1:
+            safe_folder = None
+            for s in subdirs:
+                if s.endswith('.SAFE'):
+                    safe_folder = s
+            if not safe_folder:
                 raise Exception('Unexpected Sentinel1 subdirectories: ' + str(subdirs))
-            cmd = 'mv ' + os.path.join(unpack_folder, subdirs[0]) +'/* ' + unpack_folder
+            cmd = 'mv ' + os.path.join(unpack_folder, safe_folder) +'/* ' + unpack_folder
             print(cmd)
             os.system(cmd)
         source_image_paths = get_files_from_unpack_folder(unpack_folder)
