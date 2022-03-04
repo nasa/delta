@@ -332,8 +332,11 @@ def make_no_preprocess_config(input_path, output_path):
     with open(input_path) as f:
         config_yaml = yaml.safe_load(f)
         delete_from_dict(config_yaml, 'preprocess')
+        config_yaml['dataset']['images']['preprocess'] = '~'
+        text = yaml.dump(config_yaml)
+        text = text.replace("'~'", "~") # Remove unwanted quotes
         with open(output_path, 'w') as f:
-            yaml.dump(config_yaml, f)
+            f.write(text)
 
 
 def call_delta(args, input_path, output_folder, input_name,
@@ -358,7 +361,8 @@ def call_delta(args, input_path, output_folder, input_name,
             cmd = [os.path.join(this_folder, 'convert/save_tiffs.py'), '--image', input_path,
                    '--image-type', 'sentinel1', '--config', args.delta_config, delta_output_folder]
             print(' '.join(cmd))
-            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+            print(result.stdout.decode('ascii'))
             if not is_valid_image(preprocessed_input):
                 raise Exception('Failed to run preprocessing on image: ' + input_path)
 
@@ -390,7 +394,8 @@ def call_delta(args, input_path, output_folder, input_name,
                '--outdir', delta_output_folder, '--outprefix', PREFIX,
                '--prob', model_to_use, '--config', delta_config_to_use]
         print(' '.join(cmd))
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+        #print(result.stdout.decode('ascii'))
         shutil.move(delta_output_path_in, delta_output_path)
         if no_preprocess_config:
             os.remove(no_preprocess_config)
@@ -471,7 +476,8 @@ def unpack_input_image(input_path, args, output_path):
     cmd = [os.path.join(this_folder, 'convert/save_tiffs.py'), '--image', input_path,
            '--image-type', args.sensor, '--config', no_preprocess_config, output_folder]
     print(' '.join(cmd))
-    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    print(result.stdout.decode('ascii'))
     if not is_valid_image(unpacked_input):
         raise Exception('Failed to unpack image: ' + input_path)
 
