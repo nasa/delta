@@ -206,6 +206,7 @@ class TiffImage(delta_image.DeltaImage):
         data['gcps'] = h.GetGCPs()
         data['gcpproj'] = h.GetGCPProjection()
         data['metadata'] = h.GetMetadata()
+        data['spatial_ref'] = h.GetSpatialRef()
         return data
 
     def block_aligned_roi(self, desired_roi):
@@ -363,6 +364,7 @@ class _TiffWriter:
             self._handle.SetGeoTransform(metadata['geotransform'])
             self._handle.SetMetadata    (metadata['metadata'    ])
             self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
+            self._handle.SetSpatialRef  (metadata['spatial_ref' ])
 
     def __del__(self):
         self.close()
