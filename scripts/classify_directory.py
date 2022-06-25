@@ -362,7 +362,7 @@ def call_delta(args, input_path, output_folder, input_name,
                    '--image-type', 'sentinel1', '--config', args.delta_config, delta_output_folder]
             print(' '.join(cmd))
             result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-            print(result.stdout.decode('ascii'))
+            #print(result.stdout.decode('ascii'))
             if not is_valid_image(preprocessed_input):
                 raise Exception('Failed to run preprocessing on image: ' + input_path)
 
@@ -477,7 +477,7 @@ def unpack_input_image(input_path, args, output_path):
            '--image-type', args.sensor, '--config', no_preprocess_config, output_folder]
     print(' '.join(cmd))
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-    print(result.stdout.decode('ascii'))
+    #print(result.stdout.decode('ascii'))
     if not is_valid_image(unpacked_input):
         raise Exception('Failed to unpack image: ' + input_path)
 
