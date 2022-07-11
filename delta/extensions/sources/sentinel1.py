@@ -72,7 +72,6 @@ def run_ffilipponi_preprocessing(source_file, target_file):
     print(cmd)
     os.system(cmd)
 
-
 def unpack_s1_to_folder(zip_path, unpack_folder):
     '''Returns the merged image path from the unpack folder.
        Unpacks the zip file and merges the source images as needed.'''
@@ -133,7 +132,6 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
 
             dimap_path = temp_out_path + '.dim'
             cmd = 'pconvert -s 0,0 -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
-            print(cmd)
             os.system(cmd)
             MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger
             if not os.path.exists(temp_out_path):
