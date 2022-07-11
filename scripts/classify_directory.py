@@ -305,35 +305,36 @@ def call_presoak(args, input_path, output_folder, unknown_args):
     return (True, presoak_output_folder, presoak_output_cost_path, presoak_output_dem_path)
 
 
-def delete_from_dict(d, name):
-    '''Delete the named field from the provided dictionary d'''
+def set_value_in_dict_recursive(d, name, newValue):
+    '''Find the named field in the dictionary d and set it to the given value'''
 
-    remove = None
+    index = None
     if isinstance(d, dict):
         for k, v in d.items():
             if k == name:
-                remove = name
+                index = name
                 continue
             if isinstance(v, (dict, list)):
-                delete_from_dict(v, name)
+                set_value_in_dict_recursive(v, name, newValue)
     else:
         for i, v in enumerate(d):
             if v == name:
-                remove = i
+                index = i
                 continue
             if isinstance(v, (dict, list)):
-                delete_from_dict(v, name)
-    if remove is not None:
-        d.pop(remove)
+                set_value_in_dict_recursive(v, name, newValue)
+    if index is not None:
+        d[index] = newValue
 
 
 def make_no_preprocess_config(input_path, output_path):
     '''Generate version of config file with preprocess steps stripped out'''
     with open(input_path) as f:
         config_yaml = yaml.safe_load(f)
-        delete_from_dict(config_yaml, 'preprocess')
+        set_value_in_dict_recursive(config_yaml, 'preprocess', None)
+        text = yaml.dump(config_yaml)
         with open(output_path, 'w') as f:
-            yaml.dump(config_yaml, f)
+            f.write(text)
 
 
 def call_delta(args, input_path, output_folder, input_name,
