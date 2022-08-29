@@ -100,7 +100,7 @@ and shows how DELTA can be used. The steps involved in this, and other, classifi
     image. The command outputs a predicted image and confusion matrix.
 
 The results could be improved--- with more training, more data, an improved network, or more--- but this
-example shows the basic usage of DETLA.
+example shows the basic usage of DELTA.
 
 ### JupyterLab Example (Linux/Mac)
 
