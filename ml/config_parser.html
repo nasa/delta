@@ -635,7 +635,7 @@ def config_augmentation():
 </details>
 </dd>
 <dt id="delta.ml.config_parser.learning_rate_from_dict"><code class="name flex">
-<span>def <span class="ident">learning_rate_from_dict</span></span>(<span>spec: Union[dict, float]) ‑> Union[keras.optimizer_v2.learning_rate_schedule.LearningRateSchedule, float]</span>
+<span>def <span class="ident">learning_rate_from_dict</span></span>(<span>spec: Union[dict, float]) ‑> Union[keras.optimizers.schedules.learning_rate_schedule.LearningRateSchedule, float]</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a learning rate schedule from a dictionary or float.</p>
@@ -733,7 +733,7 @@ of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</d
 </details>
 </dd>
 <dt id="delta.ml.config_parser.metric_from_dict"><code class="name flex">
-<span>def <span class="ident">metric_from_dict</span></span>(<span>metric_spec: Union[dict, str]) ‑> keras.metrics.Metric</span>
+<span>def <span class="ident">metric_from_dict</span></span>(<span>metric_spec: Union[dict, str]) ‑> keras.metrics.base_metric.Metric</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct a metric.</p>
@@ -821,7 +821,7 @@ of the form {'LossFunctionName': {'arg1':arg1_val, &hellip;,'argN',argN_val}}</d
 </details>
 </dd>
 <dt id="delta.ml.config_parser.optimizer_from_dict"><code class="name flex">
-<span>def <span class="ident">optimizer_from_dict</span></span>(<span>spec: Union[dict, str]) ‑> keras.optimizer_v2.optimizer_v2.OptimizerV2</span>
+<span>def <span class="ident">optimizer_from_dict</span></span>(<span>spec: Union[dict, str]) ‑> keras.optimizers.optimizer_v2.optimizer_v2.OptimizerV2</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Construct an optimizer from a dictionary or string.</p>

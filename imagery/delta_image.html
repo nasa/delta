@@ -455,7 +455,7 @@ class DeltaImageWriter(ABC):
 <dd>
 <div class="desc"><p>Base class used for wrapping input images in DELTA. Can be extended
 to support new data types. A variety of image types are implemented in
-<code>delta.extensions.sources</code>.</p>
+<code><a title="delta.extensions.sources" href="../extensions/sources/index.html">delta.extensions.sources</a></code>.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>nodata_value</code></strong> :&ensp;<code>Optional[Any]</code></dt>
@@ -791,6 +791,11 @@ to support new data types. A variety of image types are implemented in
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.sources.npy.NumpyImage" href="../extensions/sources/npy.html#delta.extensions.sources.npy.NumpyImage">NumpyImage</a></li>
+<li><a title="delta.extensions.sources.tiff.TiffImage" href="../extensions/sources/tiff.html#delta.extensions.sources.tiff.TiffImage">TiffImage</a></li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -1412,6 +1417,11 @@ instead, where the first rectangle is a larger block containing multiple tiles i
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li>abc.ABC</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.sources.npy.NumpyWriter" href="../extensions/sources/npy.html#delta.extensions.sources.npy.NumpyWriter">NumpyWriter</a></li>
+<li><a title="delta.extensions.sources.tiff.TiffWriter" href="../extensions/sources/tiff.html#delta.extensions.sources.tiff.TiffWriter">TiffWriter</a></li>
 </ul>
 <h3>Methods</h3>
 <dl>

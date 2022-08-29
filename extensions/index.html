@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>delta.subcommands API documentation</title>
-<meta name="description" content="Subcommands called from the main `delta` executable …" />
+<title>delta.extensions API documentation</title>
+<meta name="description" content="Module for extensions to DELTA …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,14 +19,12 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>delta.subcommands</code></h1>
+<h1 class="title">Module <code>delta.extensions</code></h1>
 </header>
 <section id="section-intro">
-<p>Subcommands called from the main <code><a title="delta" href="../index.html">delta</a></code> executable.</p>
-<p>Each subcommand contains a <code>setup_parser</code> function which
-sets up the ArgParser to handle itself, setting the
-appropriate main function and appropriate arguments for
-when the subcommand is called.</p>
+<p>Module for extensions to DELTA.</p>
+<p>This is a collection of default extensions that come with DELTA. If you
+are interested in making your own extensions, see <code><a title="delta.config.extensions" href="../config/extensions.html">delta.config.extensions</a></code>.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -49,45 +47,51 @@ when the subcommand is called.</p>
 # limitations under the License.
 
 &#34;&#34;&#34;
-Subcommands called from the main `delta` executable.
+Module for extensions to DELTA.
 
-Each subcommand contains a `setup_parser` function which
-sets up the ArgParser to handle itself, setting the
-appropriate main function and appropriate arguments for
-when the subcommand is called.
-&#34;&#34;&#34;</code></pre>
+This is a collection of default extensions that come with DELTA. If you
+are interested in making your own extensions, see `delta.config.extensions`.
+&#34;&#34;&#34;
+
+from .defaults import initialize
+
+initialize()</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="delta.subcommands.classify" href="classify.html">delta.subcommands.classify</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.augmentations" href="augmentations.html">delta.extensions.augmentations</a></code></dt>
 <dd>
-<div class="desc"><p>Classify input images given a model.</p></div>
+<div class="desc"><p>Various helpful augmentation functions …</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.commands" href="commands.html">delta.subcommands.commands</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.callbacks" href="callbacks.html">delta.extensions.callbacks</a></code></dt>
 <dd>
-<div class="desc"><p>Lists all avaiable commands.</p></div>
+<div class="desc"><p>Custom callbacks that come with DELTA.</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.main" href="main.html">delta.subcommands.main</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.defaults" href="defaults.html">delta.extensions.defaults</a></code></dt>
 <dd>
-<div class="desc"><p>Main delta command, calls subcommands.</p></div>
+<div class="desc"><p>Module to install all extensions that come with DELTA by default.</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.mlflow_ui" href="mlflow_ui.html">delta.subcommands.mlflow_ui</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.layers" href="layers/index.html">delta.extensions.layers</a></code></dt>
 <dd>
-<div class="desc"><p>Run the MLFlow UI to visualize the history of training runs.</p></div>
+<div class="desc"><p>Custom layers provided by DELTA.</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.train" href="train.html">delta.subcommands.train</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.losses" href="losses.html">delta.extensions.losses</a></code></dt>
 <dd>
-<div class="desc"><p>Train a neural network.</p></div>
+<div class="desc"><p>Various helpful loss functions.</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.validate" href="validate.html">delta.subcommands.validate</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.metrics" href="metrics.html">delta.extensions.metrics</a></code></dt>
 <dd>
-<div class="desc"><p>Check if the input data is valid.</p></div>
+<div class="desc"><p>Various helpful loss functions.</p></div>
 </dd>
-<dt><code class="name"><a title="delta.subcommands.visualize" href="visualize.html">delta.subcommands.visualize</a></code></dt>
+<dt><code class="name"><a title="delta.extensions.preprocess" href="preprocess.html">delta.extensions.preprocess</a></code></dt>
 <dd>
-<div class="desc"><p>Visualize the training data.</p></div>
+<div class="desc"><p>Various helpful preprocessing functions …</p></div>
+</dd>
+<dt><code class="name"><a title="delta.extensions.sources" href="sources/index.html">delta.extensions.sources</a></code></dt>
+<dd>
+<div class="desc"><p>Imagery types for DELTA …</p></div>
 </dd>
 </dl>
 </section>
@@ -111,13 +115,14 @@ when the subcommand is called.
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="delta.subcommands.classify" href="classify.html">delta.subcommands.classify</a></code></li>
-<li><code><a title="delta.subcommands.commands" href="commands.html">delta.subcommands.commands</a></code></li>
-<li><code><a title="delta.subcommands.main" href="main.html">delta.subcommands.main</a></code></li>
-<li><code><a title="delta.subcommands.mlflow_ui" href="mlflow_ui.html">delta.subcommands.mlflow_ui</a></code></li>
-<li><code><a title="delta.subcommands.train" href="train.html">delta.subcommands.train</a></code></li>
-<li><code><a title="delta.subcommands.validate" href="validate.html">delta.subcommands.validate</a></code></li>
-<li><code><a title="delta.subcommands.visualize" href="visualize.html">delta.subcommands.visualize</a></code></li>
+<li><code><a title="delta.extensions.augmentations" href="augmentations.html">delta.extensions.augmentations</a></code></li>
+<li><code><a title="delta.extensions.callbacks" href="callbacks.html">delta.extensions.callbacks</a></code></li>
+<li><code><a title="delta.extensions.defaults" href="defaults.html">delta.extensions.defaults</a></code></li>
+<li><code><a title="delta.extensions.layers" href="layers/index.html">delta.extensions.layers</a></code></li>
+<li><code><a title="delta.extensions.losses" href="losses.html">delta.extensions.losses</a></code></li>
+<li><code><a title="delta.extensions.metrics" href="metrics.html">delta.extensions.metrics</a></code></li>
+<li><code><a title="delta.extensions.preprocess" href="preprocess.html">delta.extensions.preprocess</a></code></li>
+<li><code><a title="delta.extensions.sources" href="sources/index.html">delta.extensions.sources</a></code></li>
 </ul>
 </li>
 </ul>

@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>delta.extensions.losses API documentation</title>
+<meta name="description" content="Various helpful loss functions." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.extensions.losses</code></h1>
+</header>
+<section id="section-intro">
+<p>Various helpful loss functions.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+&#34;&#34;&#34;
+Various helpful loss functions.
+&#34;&#34;&#34;
+
+import numpy as np
+
+import tensorflow as tf
+import tensorflow.keras.losses #pylint: disable=no-name-in-module
+import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils import losses_utils
+import tensorflow_addons as tfa
+from scipy.ndimage import distance_transform_edt as distance
+
+from delta.config import config
+from delta.config.extensions import register_loss
+from delta.ml.config_parser import loss_from_dict
+
+
+def suggest_filter_size(image1, image2, power_factors, filter_size):
+    &#39;&#39;&#39;Figure out if we need to shrink the filter to accomodate a smaller
+       input image&#39;&#39;&#39;
+
+    cap = 2**(len(power_factors)-1)
+    if not(image1.shape[0]/cap &gt;= filter_size and
+           image1.shape[1]/cap &gt;= filter_size and
+           image1.shape[0]/cap &gt;= filter_size and
+           image2.shape[1]/cap &gt;= filter_size):
+        H = tf.math.reduce_min((image1.shape, image2.shape))
+        suggested_filter_size = int(H/(2**(len(power_factors)-1)))
+    else:
+        suggested_filter_size = filter_size
+    return suggested_filter_size
+
+def ms_ssim(y_true, y_pred):
+    &#34;&#34;&#34;
+    `tf.image.ssim_multiscale` as a loss function. This loss function requires two
+    dimensional inputs.
+    &#34;&#34;&#34;
+
+    # This logic supports [h, w] inputs a well as [h, w, b] and [h, w, b, m] inputs by
+    # padding the dimensions up to three if needed.
+    def expand_ytrue():
+        with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
+            return tf.expand_dims(y_true, -1)
+    def expand_ypred():
+        with tf.control_dependencies([tf.expand_dims(y_pred, -1)]):
+            return tf.expand_dims(y_pred, -1)
+    y_true = tf.cond(tf.math.less(tf.rank(y_true), 3),
+                     expand_ytrue,
+                     lambda: y_true)
+    y_pred = tf.cond(tf.math.less(tf.rank(y_pred), 3),
+                     expand_ypred,
+                     lambda: y_pred)
+
+    filter_size = 11 # Default size
+    power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
+    new_filter_size = suggest_filter_size(y_true, y_pred, power_factors, filter_size)
+    result = 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0, filter_size=new_filter_size)
+    return result
+
+def ms_ssim_mse(y_true, y_pred):
+    &#34;&#34;&#34;
+    Sum of MS-SSIM and Mean Squared Error.
+    &#34;&#34;&#34;
+    return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)
+
+# from https://gist.github.com/wassname/7793e2058c5c9dacb5212c0ac0b18a8a
+def dice_coef(y_true, y_pred, smooth=1):
+    &#34;&#34;&#34;
+    Dice = (2*|X &amp; Y|)/ (|X|+ |Y|)
+         =  2*sum(|A*B|)/(sum(A^2)+sum(B^2))
+    ref: https://arxiv.org/pdf/1606.04797v1.pdf
+    &#34;&#34;&#34;
+    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+    return (2. * intersection + smooth) / (
+                K.sum(K.square(y_true), -1) + K.sum(K.square(y_pred), -1) + smooth + K.epsilon())
+
+def dice_loss(y_true, y_pred):
+    &#34;&#34;&#34;
+    Dice coefficient as a loss function.
+    &#34;&#34;&#34;
+    return 1 - dice_coef(y_true, y_pred)
+
+# # Simple script which includes functions for calculating surface loss in keras
+# ## See the related discussion: https://github.com/LIVIAETS/boundary-loss/issues/14
+def _calc_dist_map(seg):
+    res = np.zeros_like(seg)
+    posmask = seg.astype(np.bool)
+
+    if posmask.any():
+        negmask = ~posmask
+        res = distance(negmask) * negmask - (distance(posmask) - 1) * posmask
+
+    return res
+
+def _calc_dist_map_batch(y_true):
+    y_true_numpy = y_true.numpy()
+    result = np.stack([_calc_dist_map(y) for y in [y_true_numpy == 0, y_true_numpy == 1]],
+                      axis=-1).astype(np.float32)
+    return result
+
+def surface_loss(y_true, y_pred):
+    # currently only works for binary classification of two classes
+    y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
+                                     inp=[y_true],
+                                     Tout=tf.float32)
+    y_true_dist_map.set_shape((y_true.shape[0], y_true.shape[1], y_true.shape[2], y_true.shape[3], 2))
+    multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
+    return tf.squeeze(multipled, -1)
+
+class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
+        &#34;&#34;&#34;
+        This is a base class for losses when the labels of the input images do not match the labels
+        output by the network. For example, if one class in the labels should be ignored, or two
+        classes in the label should map to the same output, or one label should be treated as a probability
+        between two classes. It applies a transform to the output labels and then applies the loss function.
+
+        Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+        in order, and nodata will be n+1).
+
+        Parameters
+        ----------
+        mapping
+            One of:
+             * A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+               [1, 0] will swap the order of two labels.
+             * A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+               number (see `delta.imagery.imagery_config.ClassesConfig.class_id` for class formats).
+        name: Optional[str]
+            Optional name for the loss function.
+        &#34;&#34;&#34;
+        super().__init__(name=name, reduction=reduction)
+        self._mapping = mapping
+        self._nodata_classes = []
+        if isinstance(mapping, list):
+            map_list = mapping
+            # replace nodata
+            for (i, me) in enumerate(map_list):
+                if me == &#39;nodata&#39;:
+                    j = 0
+                    while map_list[i] == &#39;nodata&#39;:
+                        if j == len(map_list):
+                            raise ValueError(&#39;All mapping entries are nodata.&#39;)
+                        if map_list[j] != &#39;nodata&#39;:
+                            map_list[i] = map_list[j]
+                            break
+                        j += 1
+                    self._nodata_classes.append(i)
+        else:
+            # automatically set nodata to 0 (even if there is none it&#39;s fine)
+            entry = mapping[next(iter(mapping))]
+            if np.isscalar(entry):
+                map_list = np.zeros((len(config.dataset.classes) + 1,))
+            else:
+                map_list = np.zeros((len(config.dataset.classes) + 1, len(entry)))
+            assert len(mapping) == len(config.dataset.classes), &#39;Must specify all classes in loss mapping.&#39;
+            for k in mapping:
+                i = config.dataset.classes.class_id(k)
+                if isinstance(mapping[k], (int, float)):
+                    map_list[i] = mapping[k]
+                elif mapping[k] == &#39;nodata&#39;:
+                    self._nodata_classes.append(i)
+                else:
+                    assert len(mapping[k]) == map_list.shape[1], &#39;Mapping entry wrong length.&#39;
+                    map_list[i, :] = np.asarray(mapping[k])
+        self._lookup = tf.constant(map_list, dtype=tf.float32)
+
+    # makes nodata labels 0 in predictions
+    def preprocess(self, y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+
+        true_convert = tf.gather(self._lookup, y_true, axis=None)
+        nodata_value = config.dataset.classes.class_id(&#39;nodata&#39;)
+        nodata = (y_true == nodata_value)
+
+        # ignore additional nodata classes
+        for c in self._nodata_classes:
+            nodata = tf.logical_or(nodata, y_true == c)
+
+        while len(nodata.shape) &lt; len(y_pred.shape):
+            nodata = tf.expand_dims(nodata, -1)
+
+        # zero all nodata entries
+        y_pred = tf.cast(y_pred, tf.float32) * tf.cast(tf.logical_not(nodata), tf.float32)
+
+        true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
+        return (true_convert, y_pred)
+
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, &#39;mapping&#39; : self._mapping}
+
+class MappedCategoricalCrossentropy(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for categorical_crossentropy.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        y_true = tf.squeeze(y_true)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.categorical_crossentropy(y_true, y_pred)
+
+class MappedBinaryCrossentropy(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for binary_crossentropy.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
+
+class MappedDiceLoss(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for `dice_loss`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return dice_loss(y_true, y_pred)
+
+class MappedMsssim(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for `ms_ssim`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return ms_ssim(y_true, y_pred)
+
+class MappedDiceBceMsssim(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for sum of `ms_ssim`, `dice_loss`, and `binary_crossentropy`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        dice = dice_loss(y_true, y_pred)
+        bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
+        msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
+        msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
+
+        return dice + bce + msssim
+
+class MappedLossSum(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for sum of any loss functions.
+    &#34;&#34;&#34;
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO, losses=None, weights=None):
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        losses: List[Union[str, dict]]
+            List of loss functions to add.
+        weights: Union[List[float], None]
+            Optional list of weights for the corresponding loss functions.
+        &#34;&#34;&#34;
+        super().__init__(mapping, name=name)
+        self._losses = list(map(loss_from_dict, losses))
+        if weights is None:
+            weights = [1] * len(losses)
+        self._weights = weights
+
+    def _get_loss(self, i, y_true, y_pred):
+        l = self._losses[i](y_true, y_pred)
+        while len(l.shape) &lt; 3:
+            l = tf.expand_dims(l, -1)
+        return self._weights[i] * l
+
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        total = self._get_loss(0, y_true, y_pred)
+        for i in range(1, len(self._losses)):
+            total += self._get_loss(i, y_true, y_pred)
+
+        return total
+
+register_loss(&#39;ms_ssim&#39;, ms_ssim)
+register_loss(&#39;ms_ssim_mse&#39;, ms_ssim_mse)
+register_loss(&#39;dice&#39;, dice_loss)
+register_loss(&#39;surface&#39;, surface_loss)
+register_loss(&#39;focal&#39;, tfa.losses.SigmoidFocalCrossEntropy)
+register_loss(&#39;MappedCategoricalCrossentropy&#39;, MappedCategoricalCrossentropy)
+register_loss(&#39;MappedBinaryCrossentropy&#39;, MappedBinaryCrossentropy)
+register_loss(&#39;MappedDice&#39;, MappedDiceLoss)
+register_loss(&#39;MappedMsssim&#39;, MappedMsssim)
+register_loss(&#39;MappedDiceBceMsssim&#39;, MappedDiceBceMsssim)
+register_loss(&#39;MappedLossSum&#39;, MappedLossSum)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.extensions.losses.dice_coef"><code class="name flex">
+<span>def <span class="ident">dice_coef</span></span>(<span>y_true, y_pred, smooth=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Dice = (2<em>|X &amp; Y|)/ (|X|+ |Y|)
+=
+2</em>sum(|A*B|)/(sum(A^2)+sum(B^2))
+ref: <a href="https://arxiv.org/pdf/1606.04797v1.pdf">https://arxiv.org/pdf/1606.04797v1.pdf</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dice_coef(y_true, y_pred, smooth=1):
+    &#34;&#34;&#34;
+    Dice = (2*|X &amp; Y|)/ (|X|+ |Y|)
+         =  2*sum(|A*B|)/(sum(A^2)+sum(B^2))
+    ref: https://arxiv.org/pdf/1606.04797v1.pdf
+    &#34;&#34;&#34;
+    intersection = K.sum(K.abs(y_true * y_pred), axis=-1)
+    return (2. * intersection + smooth) / (
+                K.sum(K.square(y_true), -1) + K.sum(K.square(y_pred), -1) + smooth + K.epsilon())</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.dice_loss"><code class="name flex">
+<span>def <span class="ident">dice_loss</span></span>(<span>y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Dice coefficient as a loss function.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dice_loss(y_true, y_pred):
+    &#34;&#34;&#34;
+    Dice coefficient as a loss function.
+    &#34;&#34;&#34;
+    return 1 - dice_coef(y_true, y_pred)</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.ms_ssim"><code class="name flex">
+<span>def <span class="ident">ms_ssim</span></span>(<span>y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code>tf.image.ssim_multiscale</code> as a loss function. This loss function requires two
+dimensional inputs.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ms_ssim(y_true, y_pred):
+    &#34;&#34;&#34;
+    `tf.image.ssim_multiscale` as a loss function. This loss function requires two
+    dimensional inputs.
+    &#34;&#34;&#34;
+
+    # This logic supports [h, w] inputs a well as [h, w, b] and [h, w, b, m] inputs by
+    # padding the dimensions up to three if needed.
+    def expand_ytrue():
+        with tf.control_dependencies([tf.expand_dims(y_true, -1)]):
+            return tf.expand_dims(y_true, -1)
+    def expand_ypred():
+        with tf.control_dependencies([tf.expand_dims(y_pred, -1)]):
+            return tf.expand_dims(y_pred, -1)
+    y_true = tf.cond(tf.math.less(tf.rank(y_true), 3),
+                     expand_ytrue,
+                     lambda: y_true)
+    y_pred = tf.cond(tf.math.less(tf.rank(y_pred), 3),
+                     expand_ypred,
+                     lambda: y_pred)
+
+    filter_size = 11 # Default size
+    power_factors = (0.0448, 0.2856, 0.3001, 0.2363, 0.1333)  # Default from tf.image.ssim_multiscale
+    new_filter_size = suggest_filter_size(y_true, y_pred, power_factors, filter_size)
+    result = 1.0 - tf.image.ssim_multiscale(y_true, y_pred, 4.0, filter_size=new_filter_size)
+    return result</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.ms_ssim_mse"><code class="name flex">
+<span>def <span class="ident">ms_ssim_mse</span></span>(<span>y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Sum of MS-SSIM and Mean Squared Error.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def ms_ssim_mse(y_true, y_pred):
+    &#34;&#34;&#34;
+    Sum of MS-SSIM and Mean Squared Error.
+    &#34;&#34;&#34;
+    return ms_ssim(y_true, y_pred) + K.mean(K.mean(tensorflow.keras.losses.MSE(y_true, y_pred), -1), -1)</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.suggest_filter_size"><code class="name flex">
+<span>def <span class="ident">suggest_filter_size</span></span>(<span>image1, image2, power_factors, filter_size)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Figure out if we need to shrink the filter to accomodate a smaller
+input image</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def suggest_filter_size(image1, image2, power_factors, filter_size):
+    &#39;&#39;&#39;Figure out if we need to shrink the filter to accomodate a smaller
+       input image&#39;&#39;&#39;
+
+    cap = 2**(len(power_factors)-1)
+    if not(image1.shape[0]/cap &gt;= filter_size and
+           image1.shape[1]/cap &gt;= filter_size and
+           image1.shape[0]/cap &gt;= filter_size and
+           image2.shape[1]/cap &gt;= filter_size):
+        H = tf.math.reduce_min((image1.shape, image2.shape))
+        suggested_filter_size = int(H/(2**(len(power_factors)-1)))
+    else:
+        suggested_filter_size = filter_size
+    return suggested_filter_size</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.surface_loss"><code class="name flex">
+<span>def <span class="ident">surface_loss</span></span>(<span>y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def surface_loss(y_true, y_pred):
+    # currently only works for binary classification of two classes
+    y_true_dist_map = tf.py_function(func=_calc_dist_map_batch,
+                                     inp=[y_true],
+                                     Tout=tf.float32)
+    y_true_dist_map.set_shape((y_true.shape[0], y_true.shape[1], y_true.shape[2], y_true.shape[3], 2))
+    multipled = y_pred * y_true_dist_map[:, :, :, :, 0] + (1 - y_pred) * y_true_dist_map[:, :, :, :, 1]
+    return tf.squeeze(multipled, -1)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="delta.extensions.losses.MappedBinaryCrossentropy"><code class="flex name class">
+<span>class <span class="ident">MappedBinaryCrossentropy</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for binary_crossentropy.</p>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedBinaryCrossentropy(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for binary_crossentropy.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedBinaryCrossentropy.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+    return tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.losses.MappedCategoricalCrossentropy"><code class="flex name class">
+<span>class <span class="ident">MappedCategoricalCrossentropy</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for categorical_crossentropy.</p>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedCategoricalCrossentropy(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for categorical_crossentropy.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        y_true = tf.squeeze(y_true)
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return tensorflow.keras.losses.categorical_crossentropy(y_true, y_pred)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedCategoricalCrossentropy.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    y_true = tf.squeeze(y_true)
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+    return tensorflow.keras.losses.categorical_crossentropy(y_true, y_pred)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.losses.MappedDiceBceMsssim"><code class="flex name class">
+<span>class <span class="ident">MappedDiceBceMsssim</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for sum of <code><a title="delta.extensions.losses.ms_ssim" href="#delta.extensions.losses.ms_ssim">ms_ssim()</a></code>, <code><a title="delta.extensions.losses.dice_loss" href="#delta.extensions.losses.dice_loss">dice_loss()</a></code>, and <code>binary_crossentropy</code>.</p>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedDiceBceMsssim(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for sum of `ms_ssim`, `dice_loss`, and `binary_crossentropy`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        dice = dice_loss(y_true, y_pred)
+        bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
+        msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
+        msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
+
+        return dice + bce + msssim</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedDiceBceMsssim.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+    dice = dice_loss(y_true, y_pred)
+    bce = tensorflow.keras.losses.binary_crossentropy(y_true, y_pred)
+    msssim = ms_ssim(y_true, y_pred) # / tf.cast(tf.size(y_true), tf.float32)
+    msssim = tf.expand_dims(tf.expand_dims(msssim, -1), -1)
+
+    return dice + bce + msssim</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.losses.MappedDiceLoss"><code class="flex name class">
+<span>class <span class="ident">MappedDiceLoss</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for <code><a title="delta.extensions.losses.dice_loss" href="#delta.extensions.losses.dice_loss">dice_loss()</a></code>.</p>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedDiceLoss(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for `dice_loss`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return dice_loss(y_true, y_pred)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedDiceLoss.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+    return dice_loss(y_true, y_pred)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.losses.MappedLoss"><code class="flex name class">
+<span>class <span class="ident">MappedLoss</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Loss base class.</p>
+<p>To be implemented by subclasses:
+* <code>call()</code>: Contains the logic for loss calculation using <code>y_true</code>, <code>y_pred</code>.</p>
+<p>Example subclass implementation:</p>
+<pre><code class="language-python">class MeanSquaredError(Loss):
+
+  def call(self, y_true, y_pred):
+    return tf.reduce_mean(tf.math.square(y_pred - y_true), axis=-1)
+</code></pre>
+<p>When used with <code>tf.distribute.Strategy</code>, outside of built-in training loops
+such as <code>tf.keras</code> <code>compile</code> and <code>fit</code>, please use 'SUM' or 'NONE' reduction
+types, and reduce losses explicitly in your training loop. Using 'AUTO' or
+'SUM_OVER_BATCH_SIZE' will raise an error.</p>
+<p>Please see this custom training <a href="https://www.tensorflow.org/tutorials/distribute/custom_training">tutorial</a> for more
+details on this.</p>
+<p>You can implement 'SUM_OVER_BATCH_SIZE' using global batch size like:</p>
+<pre><code class="language-python">with strategy.scope():
+  loss_obj = tf.keras.losses.CategoricalCrossentropy(
+      reduction=tf.keras.losses.Reduction.NONE)
+  ....
+  loss = (tf.reduce_sum(loss_obj(labels, predictions)) *
+          (1. / global_batch_size))
+</code></pre>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO):
+        &#34;&#34;&#34;
+        This is a base class for losses when the labels of the input images do not match the labels
+        output by the network. For example, if one class in the labels should be ignored, or two
+        classes in the label should map to the same output, or one label should be treated as a probability
+        between two classes. It applies a transform to the output labels and then applies the loss function.
+
+        Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+        in order, and nodata will be n+1).
+
+        Parameters
+        ----------
+        mapping
+            One of:
+             * A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+               [1, 0] will swap the order of two labels.
+             * A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+               number (see `delta.imagery.imagery_config.ClassesConfig.class_id` for class formats).
+        name: Optional[str]
+            Optional name for the loss function.
+        &#34;&#34;&#34;
+        super().__init__(name=name, reduction=reduction)
+        self._mapping = mapping
+        self._nodata_classes = []
+        if isinstance(mapping, list):
+            map_list = mapping
+            # replace nodata
+            for (i, me) in enumerate(map_list):
+                if me == &#39;nodata&#39;:
+                    j = 0
+                    while map_list[i] == &#39;nodata&#39;:
+                        if j == len(map_list):
+                            raise ValueError(&#39;All mapping entries are nodata.&#39;)
+                        if map_list[j] != &#39;nodata&#39;:
+                            map_list[i] = map_list[j]
+                            break
+                        j += 1
+                    self._nodata_classes.append(i)
+        else:
+            # automatically set nodata to 0 (even if there is none it&#39;s fine)
+            entry = mapping[next(iter(mapping))]
+            if np.isscalar(entry):
+                map_list = np.zeros((len(config.dataset.classes) + 1,))
+            else:
+                map_list = np.zeros((len(config.dataset.classes) + 1, len(entry)))
+            assert len(mapping) == len(config.dataset.classes), &#39;Must specify all classes in loss mapping.&#39;
+            for k in mapping:
+                i = config.dataset.classes.class_id(k)
+                if isinstance(mapping[k], (int, float)):
+                    map_list[i] = mapping[k]
+                elif mapping[k] == &#39;nodata&#39;:
+                    self._nodata_classes.append(i)
+                else:
+                    assert len(mapping[k]) == map_list.shape[1], &#39;Mapping entry wrong length.&#39;
+                    map_list[i, :] = np.asarray(mapping[k])
+        self._lookup = tf.constant(map_list, dtype=tf.float32)
+
+    # makes nodata labels 0 in predictions
+    def preprocess(self, y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+
+        true_convert = tf.gather(self._lookup, y_true, axis=None)
+        nodata_value = config.dataset.classes.class_id(&#39;nodata&#39;)
+        nodata = (y_true == nodata_value)
+
+        # ignore additional nodata classes
+        for c in self._nodata_classes:
+            nodata = tf.logical_or(nodata, y_true == c)
+
+        while len(nodata.shape) &lt; len(y_pred.shape):
+            nodata = tf.expand_dims(nodata, -1)
+
+        # zero all nodata entries
+        y_pred = tf.cast(y_pred, tf.float32) * tf.cast(tf.logical_not(nodata), tf.float32)
+
+        true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
+        return (true_convert, y_pred)
+
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, &#39;mapping&#39; : self._mapping}</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedBinaryCrossentropy" href="#delta.extensions.losses.MappedBinaryCrossentropy">MappedBinaryCrossentropy</a></li>
+<li><a title="delta.extensions.losses.MappedCategoricalCrossentropy" href="#delta.extensions.losses.MappedCategoricalCrossentropy">MappedCategoricalCrossentropy</a></li>
+<li><a title="delta.extensions.losses.MappedDiceBceMsssim" href="#delta.extensions.losses.MappedDiceBceMsssim">MappedDiceBceMsssim</a></li>
+<li><a title="delta.extensions.losses.MappedDiceLoss" href="#delta.extensions.losses.MappedDiceLoss">MappedDiceLoss</a></li>
+<li><a title="delta.extensions.losses.MappedLossSum" href="#delta.extensions.losses.MappedLossSum">MappedLossSum</a></li>
+<li><a title="delta.extensions.losses.MappedMsssim" href="#delta.extensions.losses.MappedMsssim">MappedMsssim</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedLoss.get_config"><code class="name flex">
+<span>def <span class="ident">get_config</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns the config dictionary for a <code>Loss</code> instance.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_config(self):
+    base_config = super().get_config()
+    return {**base_config, &#39;mapping&#39; : self._mapping}</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.losses.MappedLoss.preprocess"><code class="name flex">
+<span>def <span class="ident">preprocess</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def preprocess(self, y_true, y_pred):
+    y_true = tf.cast(y_true, tf.int32)
+
+    true_convert = tf.gather(self._lookup, y_true, axis=None)
+    nodata_value = config.dataset.classes.class_id(&#39;nodata&#39;)
+    nodata = (y_true == nodata_value)
+
+    # ignore additional nodata classes
+    for c in self._nodata_classes:
+        nodata = tf.logical_or(nodata, y_true == c)
+
+    while len(nodata.shape) &lt; len(y_pred.shape):
+        nodata = tf.expand_dims(nodata, -1)
+
+    # zero all nodata entries
+    y_pred = tf.cast(y_pred, tf.float32) * tf.cast(tf.logical_not(nodata), tf.float32)
+
+    true_convert = tf.cast(tf.logical_not(nodata), tf.float32) * true_convert
+    return (true_convert, y_pred)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="delta.extensions.losses.MappedLossSum"><code class="flex name class">
+<span>class <span class="ident">MappedLossSum</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto', losses=None, weights=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for sum of any loss functions.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>losses</code></strong> :&ensp;<code>List[Union[str, dict]]</code></dt>
+<dd>List of loss functions to add.</dd>
+<dt><strong><code>weights</code></strong> :&ensp;<code>Union[List[float], None]</code></dt>
+<dd>Optional list of weights for the corresponding loss functions.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedLossSum(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for sum of any loss functions.
+    &#34;&#34;&#34;
+    def __init__(self, mapping, name=None, reduction=losses_utils.ReductionV2.AUTO, losses=None, weights=None):
+        &#34;&#34;&#34;
+        Parameters
+        ----------
+        losses: List[Union[str, dict]]
+            List of loss functions to add.
+        weights: Union[List[float], None]
+            Optional list of weights for the corresponding loss functions.
+        &#34;&#34;&#34;
+        super().__init__(mapping, name=name)
+        self._losses = list(map(loss_from_dict, losses))
+        if weights is None:
+            weights = [1] * len(losses)
+        self._weights = weights
+
+    def _get_loss(self, i, y_true, y_pred):
+        l = self._losses[i](y_true, y_pred)
+        while len(l.shape) &lt; 3:
+            l = tf.expand_dims(l, -1)
+        return self._weights[i] * l
+
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+        total = self._get_loss(0, y_true, y_pred)
+        for i in range(1, len(self._losses)):
+            total += self._get_loss(i, y_true, y_pred)
+
+        return total</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedLossSum.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+
+    total = self._get_loss(0, y_true, y_pred)
+    for i in range(1, len(self._losses)):
+        total += self._get_loss(i, y_true, y_pred)
+
+    return total</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="delta.extensions.losses.MappedMsssim"><code class="flex name class">
+<span>class <span class="ident">MappedMsssim</span></span>
+<span>(</span><span>mapping, name=None, reduction='auto')</span>
+</code></dt>
+<dd>
+<div class="desc"><p><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code> for <code><a title="delta.extensions.losses.ms_ssim" href="#delta.extensions.losses.ms_ssim">ms_ssim()</a></code>.</p>
+<p>This is a base class for losses when the labels of the input images do not match the labels
+output by the network. For example, if one class in the labels should be ignored, or two
+classes in the label should map to the same output, or one label should be treated as a probability
+between two classes. It applies a transform to the output labels and then applies the loss function.</p>
+<p>Note that the transform is applied after preprocessing (labels in the config will be transformed to 0-n
+in order, and nodata will be n+1).</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>mapping</code></strong></dt>
+<dd>One of:
+* A list with transforms, where the first entry is what to transform the first label, to etc., i.e.,
+[1, 0] will swap the order of two labels.
+* A dictionary with classes mapped to transformed values. Classes can be referenced by name or by
+number (see <code><a title="delta.imagery.imagery_config.ClassesConfig.class_id" href="../imagery/imagery_config.html#delta.imagery.imagery_config.ClassesConfig.class_id">ClassesConfig.class_id()</a></code> for class formats).</dd>
+<dt><strong><code>name</code></strong> :&ensp;<code>Optional[str]</code></dt>
+<dd>Optional name for the loss function.</dd>
+</dl></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class MappedMsssim(MappedLoss):
+    &#34;&#34;&#34;
+    `MappedLoss` for `ms_ssim`.
+    &#34;&#34;&#34;
+    def call(self, y_true, y_pred):
+        (y_true, y_pred) = self.preprocess(y_true, y_pred)
+        return ms_ssim(y_true, y_pred)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></li>
+<li>keras.losses.Loss</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="delta.extensions.losses.MappedMsssim.call"><code class="name flex">
+<span>def <span class="ident">call</span></span>(<span>self, y_true, y_pred)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Invokes the <code>Loss</code> instance.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>y_true</code></strong></dt>
+<dd>Ground truth values. shape = <code>[batch_size, d0, .. dN]</code>, except
+sparse loss functions such as sparse categorical crossentropy where
+shape = <code>[batch_size, d0, .. dN-1]</code></dd>
+<dt><strong><code>y_pred</code></strong></dt>
+<dd>The predicted values. shape = <code>[batch_size, d0, .. dN]</code></dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>Loss values with the shape <code>[batch_size, d0, .. dN-1]</code>.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def call(self, y_true, y_pred):
+    (y_true, y_pred) = self.preprocess(y_true, y_pred)
+    return ms_ssim(y_true, y_pred)</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></b></code>:
+<ul class="hlist">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.extensions" href="index.html">delta.extensions</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="delta.extensions.losses.dice_coef" href="#delta.extensions.losses.dice_coef">dice_coef</a></code></li>
+<li><code><a title="delta.extensions.losses.dice_loss" href="#delta.extensions.losses.dice_loss">dice_loss</a></code></li>
+<li><code><a title="delta.extensions.losses.ms_ssim" href="#delta.extensions.losses.ms_ssim">ms_ssim</a></code></li>
+<li><code><a title="delta.extensions.losses.ms_ssim_mse" href="#delta.extensions.losses.ms_ssim_mse">ms_ssim_mse</a></code></li>
+<li><code><a title="delta.extensions.losses.suggest_filter_size" href="#delta.extensions.losses.suggest_filter_size">suggest_filter_size</a></code></li>
+<li><code><a title="delta.extensions.losses.surface_loss" href="#delta.extensions.losses.surface_loss">surface_loss</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedBinaryCrossentropy" href="#delta.extensions.losses.MappedBinaryCrossentropy">MappedBinaryCrossentropy</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedBinaryCrossentropy.call" href="#delta.extensions.losses.MappedBinaryCrossentropy.call">call</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedCategoricalCrossentropy" href="#delta.extensions.losses.MappedCategoricalCrossentropy">MappedCategoricalCrossentropy</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedCategoricalCrossentropy.call" href="#delta.extensions.losses.MappedCategoricalCrossentropy.call">call</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedDiceBceMsssim" href="#delta.extensions.losses.MappedDiceBceMsssim">MappedDiceBceMsssim</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedDiceBceMsssim.call" href="#delta.extensions.losses.MappedDiceBceMsssim.call">call</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedDiceLoss" href="#delta.extensions.losses.MappedDiceLoss">MappedDiceLoss</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedDiceLoss.call" href="#delta.extensions.losses.MappedDiceLoss.call">call</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedLoss" href="#delta.extensions.losses.MappedLoss">MappedLoss</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedLoss.get_config" href="#delta.extensions.losses.MappedLoss.get_config">get_config</a></code></li>
+<li><code><a title="delta.extensions.losses.MappedLoss.preprocess" href="#delta.extensions.losses.MappedLoss.preprocess">preprocess</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedLossSum" href="#delta.extensions.losses.MappedLossSum">MappedLossSum</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedLossSum.call" href="#delta.extensions.losses.MappedLossSum.call">call</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="delta.extensions.losses.MappedMsssim" href="#delta.extensions.losses.MappedMsssim">MappedMsssim</a></code></h4>
+<ul class="">
+<li><code><a title="delta.extensions.losses.MappedMsssim.call" href="#delta.extensions.losses.MappedMsssim.call">call</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

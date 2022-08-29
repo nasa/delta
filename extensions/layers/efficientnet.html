@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>delta.extensions.layers.efficientnet API documentation</title>
+<meta name="description" content="An implementation of EfficientNet. This is
+taken from tensorflow but modified to remove initial layers." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>delta.extensions.layers.efficientnet</code></h1>
+</header>
+<section id="section-intro">
+<p>An implementation of EfficientNet. This is
+taken from tensorflow but modified to remove initial layers.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># Copyright © 2020, United States Government, as represented by the
+# Administrator of the National Aeronautics and Space Administration.
+# All rights reserved.
+#
+# The DELTA (Deep Earth Learning, Tools, and Analysis) platform is
+# licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0.
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#pylint:disable=dangerous-default-value, too-many-arguments
+&#34;&#34;&#34;
+An implementation of EfficientNet. This is
+taken from tensorflow but modified to remove initial layers.
+&#34;&#34;&#34;
+# https://github.com/keras-team/keras-applications/blob/master/keras_applications/efficientnet.py
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from copy import deepcopy
+import math
+
+import tensorflow
+#from tensorflow.keras.applications import imagenet_utils
+
+from delta.config.extensions import register_layer
+
+backend = tensorflow.keras.backend
+layers = tensorflow.keras.layers
+models = tensorflow.keras.models
+keras_utils = tensorflow.keras.utils
+
+#BASE_WEIGHTS_PATH = (
+#    &#39;https://github.com/Callidior/keras-applications/&#39;
+#    &#39;releases/download/efficientnet/&#39;)
+#WEIGHTS_HASHES = {
+#    &#39;b0&#39;: (&#39;e9e877068bd0af75e0a36691e03c072c&#39;,
+#           &#39;345255ed8048c2f22c793070a9c1a130&#39;),
+#    &#39;b1&#39;: (&#39;8f83b9aecab222a9a2480219843049a1&#39;,
+#           &#39;b20160ab7b79b7a92897fcb33d52cc61&#39;),
+#    &#39;b2&#39;: (&#39;b6185fdcd190285d516936c09dceeaa4&#39;,
+#           &#39;c6e46333e8cddfa702f4d8b8b6340d70&#39;),
+#    &#39;b3&#39;: (&#39;b2db0f8aac7c553657abb2cb46dcbfbb&#39;,
+#           &#39;e0cf8654fad9d3625190e30d70d0c17d&#39;),
+#    &#39;b4&#39;: (&#39;ab314d28135fe552e2f9312b31da6926&#39;,
+#           &#39;b46702e4754d2022d62897e0618edc7b&#39;),
+#    &#39;b5&#39;: (&#39;8d60b903aff50b09c6acf8eaba098e09&#39;,
+#           &#39;0a839ac36e46552a881f2975aaab442f&#39;),
+#    &#39;b6&#39;: (&#39;a967457886eac4f5ab44139bdd827920&#39;,
+#           &#39;375a35c17ef70d46f9c664b03b4437f2&#39;),
+#    &#39;b7&#39;: (&#39;e964fd6e26e9a4c144bcb811f2a10f20&#39;,
+#           &#39;d55674cc46b805f4382d18bc08ed43c1&#39;)
+#}
+
+DEFAULT_BLOCKS_ARGS = [
+    {&#39;kernel_size&#39;: 3, &#39;repeats&#39;: 1, &#39;filters_in&#39;: 32, &#39;filters_out&#39;: 16,
+     &#39;expand_ratio&#39;: 1, &#39;id_skip&#39;: True, &#39;strides&#39;: 1, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 3, &#39;repeats&#39;: 2, &#39;filters_in&#39;: 16, &#39;filters_out&#39;: 24,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 2, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 5, &#39;repeats&#39;: 2, &#39;filters_in&#39;: 24, &#39;filters_out&#39;: 40,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 2, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 3, &#39;repeats&#39;: 3, &#39;filters_in&#39;: 40, &#39;filters_out&#39;: 80,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 2, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 5, &#39;repeats&#39;: 3, &#39;filters_in&#39;: 80, &#39;filters_out&#39;: 112,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 1, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 5, &#39;repeats&#39;: 4, &#39;filters_in&#39;: 112, &#39;filters_out&#39;: 192,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 2, &#39;se_ratio&#39;: 0.25},
+    {&#39;kernel_size&#39;: 3, &#39;repeats&#39;: 1, &#39;filters_in&#39;: 192, &#39;filters_out&#39;: 320,
+     &#39;expand_ratio&#39;: 6, &#39;id_skip&#39;: True, &#39;strides&#39;: 1, &#39;se_ratio&#39;: 0.25}
+]
+
+CONV_KERNEL_INITIALIZER = {
+    &#39;class_name&#39;: &#39;VarianceScaling&#39;,
+    &#39;config&#39;: {
+        &#39;scale&#39;: 2.0,
+        &#39;mode&#39;: &#39;fan_out&#39;,
+        # EfficientNet actually uses an untruncated normal distribution for
+        # initializing conv layers, but keras.initializers.VarianceScaling use
+        # a truncated distribution.
+        # We decided against a custom initializer for better serializability.
+        &#39;distribution&#39;: &#39;normal&#39;
+    }
+}
+
+DENSE_KERNEL_INITIALIZER = {
+    &#39;class_name&#39;: &#39;VarianceScaling&#39;,
+    &#39;config&#39;: {
+        &#39;scale&#39;: 1. / 3.,
+        &#39;mode&#39;: &#39;fan_out&#39;,
+        &#39;distribution&#39;: &#39;uniform&#39;
+    }
+}
+
+def correct_pad(inputs, kernel_size):
+    &#34;&#34;&#34;Returns a tuple for zero-padding for 2D convolution with downsampling.
+    # Arguments
+        input_size: An integer or tuple/list of 2 integers.
+        kernel_size: An integer or tuple/list of 2 integers.
+    # Returns
+        A tuple.
+    &#34;&#34;&#34;
+    img_dim = 2 if backend.image_data_format() == &#39;channels_first&#39; else 1
+    input_size = backend.int_shape(inputs)[img_dim:(img_dim + 2)]
+
+    if isinstance(kernel_size, int):
+        kernel_size = (kernel_size, kernel_size)
+
+    if input_size[0] is None:
+        adjust = (1, 1)
+    else:
+        adjust = (1 - input_size[0] % 2, 1 - input_size[1] % 2)
+
+    correct = (kernel_size[0] // 2, kernel_size[1] // 2)
+
+    return ((correct[0] - adjust[0], correct[0]),
+            (correct[1] - adjust[1], correct[1]))
+
+def swish(x):
+    &#34;&#34;&#34;Swish activation function.
+
+    # Arguments
+        x: Input tensor.
+
+    # Returns
+        The Swish activation: `x * sigmoid(x)`.
+
+    # References
+        [Searching for Activation Functions](https://arxiv.org/abs/1710.05941)
+    &#34;&#34;&#34;
+    if backend.backend() == &#39;tensorflow&#39;:
+        try:
+            # The native TF implementation has a more
+            # memory-efficient gradient implementation
+            return backend.tf.nn.swish(x)
+        except AttributeError:
+            pass
+
+    return x * backend.sigmoid(x)
+
+
+def block(inputs, activation_fn=swish, drop_rate=0., name=&#39;&#39;,
+          filters_in=32, filters_out=16, kernel_size=3, strides=1,
+          expand_ratio=1, se_ratio=0., id_skip=True):
+    &#34;&#34;&#34;A mobile inverted residual block.
+
+    # Arguments
+        inputs: input tensor.
+        activation_fn: activation function.
+        drop_rate: float between 0 and 1, fraction of the input units to drop.
+        name: string, block label.
+        filters_in: integer, the number of input filters.
+        filters_out: integer, the number of output filters.
+        kernel_size: integer, the dimension of the convolution window.
+        strides: integer, the stride of the convolution.
+        expand_ratio: integer, scaling coefficient for the input filters.
+        se_ratio: float between 0 and 1, fraction to squeeze the input filters.
+        id_skip: boolean.
+
+    # Returns
+        output tensor for the block.
+    &#34;&#34;&#34;
+    bn_axis = 3 if backend.image_data_format() == &#39;channels_last&#39; else 1
+
+    # Expansion phase
+    filters = filters_in * expand_ratio
+    if expand_ratio != 1:
+        x = layers.Conv2D(filters, 1,
+                          padding=&#39;same&#39;,
+                          use_bias=False,
+                          kernel_initializer=CONV_KERNEL_INITIALIZER,
+                          name=name + &#39;expand_conv&#39;)(inputs)
+        x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;expand_bn&#39;)(x)
+        x = layers.Activation(activation_fn, name=name + &#39;expand_activation&#39;)(x)
+    else:
+        x = inputs
+
+    # Depthwise Convolution
+    if strides == 2:
+        x = layers.ZeroPadding2D(padding=correct_pad(x, kernel_size),
+                                 name=name + &#39;dwconv_pad&#39;)(x)
+        conv_pad = &#39;valid&#39;
+    else:
+        conv_pad = &#39;same&#39;
+    x = layers.DepthwiseConv2D(kernel_size,
+                               strides=strides,
+                               padding=conv_pad,
+                               use_bias=False,
+                               depthwise_initializer=CONV_KERNEL_INITIALIZER,
+                               name=name + &#39;dwconv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;bn&#39;)(x)
+    x = layers.Activation(activation_fn, name=name + &#39;activation&#39;)(x)
+
+    # Squeeze and Excitation phase
+    if 0 &lt; se_ratio &lt;= 1:
+        filters_se = max(1, int(filters_in * se_ratio))
+        se = layers.GlobalAveragePooling2D(name=name + &#39;se_squeeze&#39;)(x)
+        if bn_axis == 1:
+            se = layers.Reshape((filters, 1, 1), name=name + &#39;se_reshape&#39;)(se)
+        else:
+            se = layers.Reshape((1, 1, filters), name=name + &#39;se_reshape&#39;)(se)
+        se = layers.Conv2D(filters_se, 1,
+                           padding=&#39;same&#39;,
+                           activation=activation_fn,
+                           kernel_initializer=CONV_KERNEL_INITIALIZER,
+                           name=name + &#39;se_reduce&#39;)(se)
+        se = layers.Conv2D(filters, 1,
+                           padding=&#39;same&#39;,
+                           activation=&#39;sigmoid&#39;,
+                           kernel_initializer=CONV_KERNEL_INITIALIZER,
+                           name=name + &#39;se_expand&#39;)(se)
+        if backend.backend() == &#39;theano&#39;:
+            # For the Theano backend, we have to explicitly make
+            # the excitation weights broadcastable.
+            se = layers.Lambda(
+                lambda x: backend.pattern_broadcast(x, [True, True, True, False]),
+                output_shape=lambda input_shape: input_shape,
+                name=name + &#39;se_broadcast&#39;)(se)
+        x = layers.multiply([x, se], name=name + &#39;se_excite&#39;)
+
+    # Output phase
+    x = layers.Conv2D(filters_out, 1,
+                      padding=&#39;same&#39;,
+                      use_bias=False,
+                      kernel_initializer=CONV_KERNEL_INITIALIZER,
+                      name=name + &#39;project_conv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;project_bn&#39;)(x)
+    if (id_skip is True and strides == 1 and filters_in == filters_out):
+        if drop_rate &gt; 0:
+            x = layers.Dropout(drop_rate,
+                               noise_shape=(None, 1, 1, 1),
+                               name=name + &#39;drop&#39;)(x)
+        x = layers.add([x, inputs], name=name + &#39;add&#39;)
+
+    return x
+
+
+def EfficientNet(width_coefficient,
+                 depth_coefficient,
+                 drop_connect_rate=0.2,
+                 depth_divisor=8,
+                 activation_fn=swish,
+                 blocks_args=DEFAULT_BLOCKS_ARGS,
+                 model_name=&#39;efficientnet&#39;,
+                 weights=&#39;imagenet&#39;,
+                 input_tensor=None,
+                 input_shape=None,
+                 name=None):
+    #pylint: disable=too-many-locals
+    if input_tensor is None:
+        img_input = layers.Input(shape=input_shape)
+    else:
+        if not backend.is_keras_tensor(input_tensor):
+            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
+        else:
+            img_input = input_tensor
+
+    bn_axis = 3 if backend.image_data_format() == &#39;channels_last&#39; else 1
+
+    def round_filters(filters, divisor=depth_divisor):
+        &#34;&#34;&#34;Round number of filters based on depth multiplier.&#34;&#34;&#34;
+        filters *= width_coefficient
+        new_filters = max(divisor, int(filters + divisor / 2) // divisor * divisor)
+        # Make sure that round down does not go down by more than 10%.
+        if new_filters &lt; 0.9 * filters:
+            new_filters += divisor
+        return int(new_filters)
+
+    def round_repeats(repeats):
+        &#34;&#34;&#34;Round number of repeats based on depth multiplier.&#34;&#34;&#34;
+        return int(math.ceil(depth_coefficient * repeats))
+
+    # Build stem
+    x = img_input
+    x = layers.ZeroPadding2D(padding=correct_pad(x, 3),
+                             name=&#39;stem_conv_pad&#39;)(x)
+    x = layers.Conv2D(round_filters(32), 3,
+                      strides=2,
+                      padding=&#39;valid&#39;,
+                      use_bias=False,
+                      kernel_initializer=CONV_KERNEL_INITIALIZER,
+                      name=&#39;stem_conv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=&#39;stem_bn&#39;)(x)
+    x = layers.Activation(activation_fn, name=&#39;stem_activation&#39;)(x)
+
+    # Build blocks
+    blocks_args = deepcopy(blocks_args)
+
+    b = 0
+    blocks = float(sum(args[&#39;repeats&#39;] for args in blocks_args))
+    for (i, args) in enumerate(blocks_args):
+        assert args[&#39;repeats&#39;] &gt; 0
+        # Update block input and output filters based on depth multiplier.
+        args[&#39;filters_in&#39;] = round_filters(args[&#39;filters_in&#39;])
+        args[&#39;filters_out&#39;] = round_filters(args[&#39;filters_out&#39;])
+
+        for j in range(round_repeats(args.pop(&#39;repeats&#39;))):
+            # The first block needs to take care of stride and filter size increase.
+            if j &gt; 0:
+                args[&#39;strides&#39;] = 1
+                args[&#39;filters_in&#39;] = args[&#39;filters_out&#39;]
+            x = block(x, activation_fn, drop_connect_rate * b / blocks,
+                      name=&#39;block{}{}_&#39;.format(i + 1, chr(j + 97)), **args)
+            b += 1
+
+    # Build top
+    #x = layers.Conv2D(round_filters(1280), 1,
+    #                  padding=&#39;same&#39;,
+    #                  use_bias=False,
+    #                  kernel_initializer=CONV_KERNEL_INITIALIZER,
+    #                  name=&#39;top_conv&#39;)(x)
+    #x = layers.BatchNormalization(axis=bn_axis, name=&#39;top_bn&#39;)(x)
+    #x = layers.Activation(activation_fn, name=&#39;top_activation&#39;)(x)
+    #if include_top:
+    #    x = layers.GlobalAveragePooling2D(name=&#39;avg_pool&#39;)(x)
+    #    if dropout_rate &gt; 0:
+    #        x = layers.Dropout(dropout_rate, name=&#39;top_dropout&#39;)(x)
+    #    x = layers.Dense(classes,
+    #                     activation=&#39;softmax&#39;,
+    #                     kernel_initializer=DENSE_KERNEL_INITIALIZER,
+    #                     name=&#39;probs&#39;)(x)
+    #else:
+    #    if pooling == &#39;avg&#39;:
+    #        x = layers.GlobalAveragePooling2D(name=&#39;avg_pool&#39;)(x)
+    #    elif pooling == &#39;max&#39;:
+    #        x = layers.GlobalMaxPooling2D(name=&#39;max_pool&#39;)(x)
+
+    # Ensure that the model takes into account
+    # any potential predecessors of `input_tensor`.
+    if input_tensor is not None:
+        inputs = keras_utils.get_source_inputs(input_tensor)
+    else:
+        inputs = img_input
+
+    # Create model.
+    model = models.Model(inputs, x, name=name if name is not None else model_name)
+
+    # Load weights.
+    #if weights == &#39;imagenet&#39;:
+    #    if include_top:
+    #        file_suff = &#39;_weights_tf_dim_ordering_tf_kernels_autoaugment.h5&#39;
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][0]
+    #    else:
+    #        file_suff = &#39;_weights_tf_dim_ordering_tf_kernels_autoaugment_notop.h5&#39;
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][1]
+    #    file_name = model_name + file_suff
+    #    weights_path = keras_utils.get_file(file_name,
+    #                                        BASE_WEIGHTS_PATH + file_name,
+    #                                        cache_subdir=&#39;models&#39;,
+    #                                        file_hash=file_hash)
+    #    model.load_weights(weights_path, by_name=True, skip_mismatch=True)
+    if weights is not None:
+        model.load_weights(weights)
+
+    return model
+
+
+#def EfficientNetB0(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.0, 1.0,
+#                        model_name=&#39;efficientnet-b0&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB1(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.0, 1.1,
+#                        model_name=&#39;efficientnet-b1&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB2(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.1, 1.2,
+#                        model_name=&#39;efficientnet-b2&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB3(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.2, 1.4,
+#                        model_name=&#39;efficientnet-b3&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB4(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.4, 1.8,
+#                        model_name=&#39;efficientnet-b4&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB5(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.6, 2.2,
+#                        model_name=&#39;efficientnet-b5&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB6(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(1.8, 2.6,
+#                        model_name=&#39;efficientnet-b6&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+#
+#
+#def EfficientNetB7(include_top=True,
+#                   input_tensor=None,
+#                   input_shape=None,
+#                   **kwargs):
+#    return EfficientNet(2.0, 3.1,
+#                        model_name=&#39;efficientnet-b7&#39;,
+#                        include_top=include_top,
+#                        input_tensor=input_tensor, input_shape=input_shape,
+#                        **kwargs)
+
+def DeltaEfficientNet(input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None):
+    return EfficientNet(width_coefficient, depth_coefficient,
+                        input_shape=input_shape, weights=None, name=name)
+
+#def preprocess_input(x, data_format=None, **kwargs):
+#    &#34;&#34;&#34;Preprocesses a numpy array encoding a batch of images.
+#
+#    # Arguments
+#        x: a 3D or 4D numpy array consists of RGB values within [0, 255].
+#        data_format: data format of the image tensor.
+#
+#    # Returns
+#        Preprocessed array.
+#    &#34;&#34;&#34;
+#    return imagenet_utils.preprocess_input(x, data_format,
+#                                           mode=&#39;torch&#39;, **kwargs)
+
+
+#setattr(EfficientNetB0, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB1, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB2, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB3, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB4, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB5, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB6, &#39;__doc__&#39;, EfficientNet.__doc__)
+#setattr(EfficientNetB7, &#39;__doc__&#39;, EfficientNet.__doc__)
+
+register_layer(&#39;EfficientNet&#39;, DeltaEfficientNet)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="delta.extensions.layers.efficientnet.DeltaEfficientNet"><code class="name flex">
+<span>def <span class="ident">DeltaEfficientNet</span></span>(<span>input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def DeltaEfficientNet(input_shape, width_coefficient=1.1, depth_coefficient=1.2, name=None):
+    return EfficientNet(width_coefficient, depth_coefficient,
+                        input_shape=input_shape, weights=None, name=name)</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.layers.efficientnet.EfficientNet"><code class="name flex">
+<span>def <span class="ident">EfficientNet</span></span>(<span>width_coefficient, depth_coefficient, drop_connect_rate=0.2, depth_divisor=8, activation_fn=&lt;function swish&gt;, blocks_args=[{'kernel_size': 3, 'repeats': 1, 'filters_in': 32, 'filters_out': 16, 'expand_ratio': 1, 'id_skip': True, 'strides': 1, 'se_ratio': 0.25}, {'kernel_size': 3, 'repeats': 2, 'filters_in': 16, 'filters_out': 24, 'expand_ratio': 6, 'id_skip': True, 'strides': 2, 'se_ratio': 0.25}, {'kernel_size': 5, 'repeats': 2, 'filters_in': 24, 'filters_out': 40, 'expand_ratio': 6, 'id_skip': True, 'strides': 2, 'se_ratio': 0.25}, {'kernel_size': 3, 'repeats': 3, 'filters_in': 40, 'filters_out': 80, 'expand_ratio': 6, 'id_skip': True, 'strides': 2, 'se_ratio': 0.25}, {'kernel_size': 5, 'repeats': 3, 'filters_in': 80, 'filters_out': 112, 'expand_ratio': 6, 'id_skip': True, 'strides': 1, 'se_ratio': 0.25}, {'kernel_size': 5, 'repeats': 4, 'filters_in': 112, 'filters_out': 192, 'expand_ratio': 6, 'id_skip': True, 'strides': 2, 'se_ratio': 0.25}, {'kernel_size': 3, 'repeats': 1, 'filters_in': 192, 'filters_out': 320, 'expand_ratio': 6, 'id_skip': True, 'strides': 1, 'se_ratio': 0.25}], model_name='efficientnet', weights='imagenet', input_tensor=None, input_shape=None, name=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def EfficientNet(width_coefficient,
+                 depth_coefficient,
+                 drop_connect_rate=0.2,
+                 depth_divisor=8,
+                 activation_fn=swish,
+                 blocks_args=DEFAULT_BLOCKS_ARGS,
+                 model_name=&#39;efficientnet&#39;,
+                 weights=&#39;imagenet&#39;,
+                 input_tensor=None,
+                 input_shape=None,
+                 name=None):
+    #pylint: disable=too-many-locals
+    if input_tensor is None:
+        img_input = layers.Input(shape=input_shape)
+    else:
+        if not backend.is_keras_tensor(input_tensor):
+            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
+        else:
+            img_input = input_tensor
+
+    bn_axis = 3 if backend.image_data_format() == &#39;channels_last&#39; else 1
+
+    def round_filters(filters, divisor=depth_divisor):
+        &#34;&#34;&#34;Round number of filters based on depth multiplier.&#34;&#34;&#34;
+        filters *= width_coefficient
+        new_filters = max(divisor, int(filters + divisor / 2) // divisor * divisor)
+        # Make sure that round down does not go down by more than 10%.
+        if new_filters &lt; 0.9 * filters:
+            new_filters += divisor
+        return int(new_filters)
+
+    def round_repeats(repeats):
+        &#34;&#34;&#34;Round number of repeats based on depth multiplier.&#34;&#34;&#34;
+        return int(math.ceil(depth_coefficient * repeats))
+
+    # Build stem
+    x = img_input
+    x = layers.ZeroPadding2D(padding=correct_pad(x, 3),
+                             name=&#39;stem_conv_pad&#39;)(x)
+    x = layers.Conv2D(round_filters(32), 3,
+                      strides=2,
+                      padding=&#39;valid&#39;,
+                      use_bias=False,
+                      kernel_initializer=CONV_KERNEL_INITIALIZER,
+                      name=&#39;stem_conv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=&#39;stem_bn&#39;)(x)
+    x = layers.Activation(activation_fn, name=&#39;stem_activation&#39;)(x)
+
+    # Build blocks
+    blocks_args = deepcopy(blocks_args)
+
+    b = 0
+    blocks = float(sum(args[&#39;repeats&#39;] for args in blocks_args))
+    for (i, args) in enumerate(blocks_args):
+        assert args[&#39;repeats&#39;] &gt; 0
+        # Update block input and output filters based on depth multiplier.
+        args[&#39;filters_in&#39;] = round_filters(args[&#39;filters_in&#39;])
+        args[&#39;filters_out&#39;] = round_filters(args[&#39;filters_out&#39;])
+
+        for j in range(round_repeats(args.pop(&#39;repeats&#39;))):
+            # The first block needs to take care of stride and filter size increase.
+            if j &gt; 0:
+                args[&#39;strides&#39;] = 1
+                args[&#39;filters_in&#39;] = args[&#39;filters_out&#39;]
+            x = block(x, activation_fn, drop_connect_rate * b / blocks,
+                      name=&#39;block{}{}_&#39;.format(i + 1, chr(j + 97)), **args)
+            b += 1
+
+    # Build top
+    #x = layers.Conv2D(round_filters(1280), 1,
+    #                  padding=&#39;same&#39;,
+    #                  use_bias=False,
+    #                  kernel_initializer=CONV_KERNEL_INITIALIZER,
+    #                  name=&#39;top_conv&#39;)(x)
+    #x = layers.BatchNormalization(axis=bn_axis, name=&#39;top_bn&#39;)(x)
+    #x = layers.Activation(activation_fn, name=&#39;top_activation&#39;)(x)
+    #if include_top:
+    #    x = layers.GlobalAveragePooling2D(name=&#39;avg_pool&#39;)(x)
+    #    if dropout_rate &gt; 0:
+    #        x = layers.Dropout(dropout_rate, name=&#39;top_dropout&#39;)(x)
+    #    x = layers.Dense(classes,
+    #                     activation=&#39;softmax&#39;,
+    #                     kernel_initializer=DENSE_KERNEL_INITIALIZER,
+    #                     name=&#39;probs&#39;)(x)
+    #else:
+    #    if pooling == &#39;avg&#39;:
+    #        x = layers.GlobalAveragePooling2D(name=&#39;avg_pool&#39;)(x)
+    #    elif pooling == &#39;max&#39;:
+    #        x = layers.GlobalMaxPooling2D(name=&#39;max_pool&#39;)(x)
+
+    # Ensure that the model takes into account
+    # any potential predecessors of `input_tensor`.
+    if input_tensor is not None:
+        inputs = keras_utils.get_source_inputs(input_tensor)
+    else:
+        inputs = img_input
+
+    # Create model.
+    model = models.Model(inputs, x, name=name if name is not None else model_name)
+
+    # Load weights.
+    #if weights == &#39;imagenet&#39;:
+    #    if include_top:
+    #        file_suff = &#39;_weights_tf_dim_ordering_tf_kernels_autoaugment.h5&#39;
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][0]
+    #    else:
+    #        file_suff = &#39;_weights_tf_dim_ordering_tf_kernels_autoaugment_notop.h5&#39;
+    #        file_hash = WEIGHTS_HASHES[model_name[-2:]][1]
+    #    file_name = model_name + file_suff
+    #    weights_path = keras_utils.get_file(file_name,
+    #                                        BASE_WEIGHTS_PATH + file_name,
+    #                                        cache_subdir=&#39;models&#39;,
+    #                                        file_hash=file_hash)
+    #    model.load_weights(weights_path, by_name=True, skip_mismatch=True)
+    if weights is not None:
+        model.load_weights(weights)
+
+    return model</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.layers.efficientnet.block"><code class="name flex">
+<span>def <span class="ident">block</span></span>(<span>inputs, activation_fn=&lt;function swish&gt;, drop_rate=0.0, name='', filters_in=32, filters_out=16, kernel_size=3, strides=1, expand_ratio=1, se_ratio=0.0, id_skip=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>A mobile inverted residual block.</p>
+<h1 id="arguments">Arguments</h1>
+<pre><code>inputs: input tensor.
+activation_fn: activation function.
+drop_rate: float between 0 and 1, fraction of the input units to drop.
+name: string, block label.
+filters_in: integer, the number of input filters.
+filters_out: integer, the number of output filters.
+kernel_size: integer, the dimension of the convolution window.
+strides: integer, the stride of the convolution.
+expand_ratio: integer, scaling coefficient for the input filters.
+se_ratio: float between 0 and 1, fraction to squeeze the input filters.
+id_skip: boolean.
+</code></pre>
+<h1 id="returns">Returns</h1>
+<pre><code>output tensor for the block.
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def block(inputs, activation_fn=swish, drop_rate=0., name=&#39;&#39;,
+          filters_in=32, filters_out=16, kernel_size=3, strides=1,
+          expand_ratio=1, se_ratio=0., id_skip=True):
+    &#34;&#34;&#34;A mobile inverted residual block.
+
+    # Arguments
+        inputs: input tensor.
+        activation_fn: activation function.
+        drop_rate: float between 0 and 1, fraction of the input units to drop.
+        name: string, block label.
+        filters_in: integer, the number of input filters.
+        filters_out: integer, the number of output filters.
+        kernel_size: integer, the dimension of the convolution window.
+        strides: integer, the stride of the convolution.
+        expand_ratio: integer, scaling coefficient for the input filters.
+        se_ratio: float between 0 and 1, fraction to squeeze the input filters.
+        id_skip: boolean.
+
+    # Returns
+        output tensor for the block.
+    &#34;&#34;&#34;
+    bn_axis = 3 if backend.image_data_format() == &#39;channels_last&#39; else 1
+
+    # Expansion phase
+    filters = filters_in * expand_ratio
+    if expand_ratio != 1:
+        x = layers.Conv2D(filters, 1,
+                          padding=&#39;same&#39;,
+                          use_bias=False,
+                          kernel_initializer=CONV_KERNEL_INITIALIZER,
+                          name=name + &#39;expand_conv&#39;)(inputs)
+        x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;expand_bn&#39;)(x)
+        x = layers.Activation(activation_fn, name=name + &#39;expand_activation&#39;)(x)
+    else:
+        x = inputs
+
+    # Depthwise Convolution
+    if strides == 2:
+        x = layers.ZeroPadding2D(padding=correct_pad(x, kernel_size),
+                                 name=name + &#39;dwconv_pad&#39;)(x)
+        conv_pad = &#39;valid&#39;
+    else:
+        conv_pad = &#39;same&#39;
+    x = layers.DepthwiseConv2D(kernel_size,
+                               strides=strides,
+                               padding=conv_pad,
+                               use_bias=False,
+                               depthwise_initializer=CONV_KERNEL_INITIALIZER,
+                               name=name + &#39;dwconv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;bn&#39;)(x)
+    x = layers.Activation(activation_fn, name=name + &#39;activation&#39;)(x)
+
+    # Squeeze and Excitation phase
+    if 0 &lt; se_ratio &lt;= 1:
+        filters_se = max(1, int(filters_in * se_ratio))
+        se = layers.GlobalAveragePooling2D(name=name + &#39;se_squeeze&#39;)(x)
+        if bn_axis == 1:
+            se = layers.Reshape((filters, 1, 1), name=name + &#39;se_reshape&#39;)(se)
+        else:
+            se = layers.Reshape((1, 1, filters), name=name + &#39;se_reshape&#39;)(se)
+        se = layers.Conv2D(filters_se, 1,
+                           padding=&#39;same&#39;,
+                           activation=activation_fn,
+                           kernel_initializer=CONV_KERNEL_INITIALIZER,
+                           name=name + &#39;se_reduce&#39;)(se)
+        se = layers.Conv2D(filters, 1,
+                           padding=&#39;same&#39;,
+                           activation=&#39;sigmoid&#39;,
+                           kernel_initializer=CONV_KERNEL_INITIALIZER,
+                           name=name + &#39;se_expand&#39;)(se)
+        if backend.backend() == &#39;theano&#39;:
+            # For the Theano backend, we have to explicitly make
+            # the excitation weights broadcastable.
+            se = layers.Lambda(
+                lambda x: backend.pattern_broadcast(x, [True, True, True, False]),
+                output_shape=lambda input_shape: input_shape,
+                name=name + &#39;se_broadcast&#39;)(se)
+        x = layers.multiply([x, se], name=name + &#39;se_excite&#39;)
+
+    # Output phase
+    x = layers.Conv2D(filters_out, 1,
+                      padding=&#39;same&#39;,
+                      use_bias=False,
+                      kernel_initializer=CONV_KERNEL_INITIALIZER,
+                      name=name + &#39;project_conv&#39;)(x)
+    x = layers.BatchNormalization(axis=bn_axis, name=name + &#39;project_bn&#39;)(x)
+    if (id_skip is True and strides == 1 and filters_in == filters_out):
+        if drop_rate &gt; 0:
+            x = layers.Dropout(drop_rate,
+                               noise_shape=(None, 1, 1, 1),
+                               name=name + &#39;drop&#39;)(x)
+        x = layers.add([x, inputs], name=name + &#39;add&#39;)
+
+    return x</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.layers.efficientnet.correct_pad"><code class="name flex">
+<span>def <span class="ident">correct_pad</span></span>(<span>inputs, kernel_size)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Returns a tuple for zero-padding for 2D convolution with downsampling.</p>
+<h1 id="arguments">Arguments</h1>
+<pre><code>input_size: An integer or tuple/list of 2 integers.
+kernel_size: An integer or tuple/list of 2 integers.
+</code></pre>
+<h1 id="returns">Returns</h1>
+<pre><code>A tuple.
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def correct_pad(inputs, kernel_size):
+    &#34;&#34;&#34;Returns a tuple for zero-padding for 2D convolution with downsampling.
+    # Arguments
+        input_size: An integer or tuple/list of 2 integers.
+        kernel_size: An integer or tuple/list of 2 integers.
+    # Returns
+        A tuple.
+    &#34;&#34;&#34;
+    img_dim = 2 if backend.image_data_format() == &#39;channels_first&#39; else 1
+    input_size = backend.int_shape(inputs)[img_dim:(img_dim + 2)]
+
+    if isinstance(kernel_size, int):
+        kernel_size = (kernel_size, kernel_size)
+
+    if input_size[0] is None:
+        adjust = (1, 1)
+    else:
+        adjust = (1 - input_size[0] % 2, 1 - input_size[1] % 2)
+
+    correct = (kernel_size[0] // 2, kernel_size[1] // 2)
+
+    return ((correct[0] - adjust[0], correct[0]),
+            (correct[1] - adjust[1], correct[1]))</code></pre>
+</details>
+</dd>
+<dt id="delta.extensions.layers.efficientnet.swish"><code class="name flex">
+<span>def <span class="ident">swish</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Swish activation function.</p>
+<h1 id="arguments">Arguments</h1>
+<pre><code>x: Input tensor.
+</code></pre>
+<h1 id="returns">Returns</h1>
+<pre><code>The Swish activation: `x * sigmoid(x)`.
+</code></pre>
+<h1 id="references">References</h1>
+<pre><code>[Searching for Activation Functions](https://arxiv.org/abs/1710.05941)
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def swish(x):
+    &#34;&#34;&#34;Swish activation function.
+
+    # Arguments
+        x: Input tensor.
+
+    # Returns
+        The Swish activation: `x * sigmoid(x)`.
+
+    # References
+        [Searching for Activation Functions](https://arxiv.org/abs/1710.05941)
+    &#34;&#34;&#34;
+    if backend.backend() == &#39;tensorflow&#39;:
+        try:
+            # The native TF implementation has a more
+            # memory-efficient gradient implementation
+            return backend.tf.nn.swish(x)
+        except AttributeError:
+            pass
+
+    return x * backend.sigmoid(x)</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="delta.extensions.layers" href="index.html">delta.extensions.layers</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="delta.extensions.layers.efficientnet.DeltaEfficientNet" href="#delta.extensions.layers.efficientnet.DeltaEfficientNet">DeltaEfficientNet</a></code></li>
+<li><code><a title="delta.extensions.layers.efficientnet.EfficientNet" href="#delta.extensions.layers.efficientnet.EfficientNet">EfficientNet</a></code></li>
+<li><code><a title="delta.extensions.layers.efficientnet.block" href="#delta.extensions.layers.efficientnet.block">block</a></code></li>
+<li><code><a title="delta.extensions.layers.efficientnet.correct_pad" href="#delta.extensions.layers.efficientnet.correct_pad">correct_pad</a></code></li>
+<li><code><a title="delta.extensions.layers.efficientnet.swish" href="#delta.extensions.layers.efficientnet.swish">swish</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
