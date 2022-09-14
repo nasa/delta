@@ -50,6 +50,8 @@ class ImageSet:
         nodata_value: image dtype
             A no data value for pixels to disregard
         """
+        # TODO: if a list of a list of file strings is passed it, it will open them up all together and concatenate 
+        #  them. Is this intended behavior or a bug? Could be useful? 🤷‍♀️
         self._images = images
         self._image_type = image_type
         self._preprocess = preprocess
@@ -531,6 +533,7 @@ class CacheConfig(DeltaConfigComponent):
     Configuration for cache.
     """
     def __init__(self):
+        # TODO: Is this missing a "Cache" in the __init__Function like the IOConfig has?
         super().__init__()
         self.register_field('dir', str, None, validate_path, 'Cache directory.')
         self.register_field('limit', int, None, validate_positive, 'Number of items to cache.')
