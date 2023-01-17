@@ -342,11 +342,14 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
         """
 
         # Pair the data and labels in our dataset
-        ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        if self._labels:
+            ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        else:
+            ds = self.data()
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
         # cannot do with max_rand_offset since would have different number of tiles which
         # breaks keras fit
-        if self._labels.nodata_value() is not None:
+        if self._labels and self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if augment_function is not None:
             ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)
