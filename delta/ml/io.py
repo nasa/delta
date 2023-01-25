@@ -67,7 +67,7 @@ def load_model(filename):
     if version.parse(tensorflow.__version__) < version.parse('2.2'): # need to load newer models
         # renamed to Model from Functional in newer versions.
         # Also added Conv2D groups parameter
-        class OldModel(tensorflow.keras.models.Model): # pylint: disable=too-many-ancestors
+        class OldModel(tensorflow.keras.models.Model): # pylint: disable=too-many-ancestors,abstract-method
             @classmethod
             def from_config(cls, config, custom_objects=None): #pylint: disable=redefined-outer-name
                 for l in config['layers']:
