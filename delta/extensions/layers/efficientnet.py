@@ -217,13 +217,13 @@ def block(inputs, activation_fn=swish, drop_rate=0., name='',
                            activation='sigmoid',
                            kernel_initializer=CONV_KERNEL_INITIALIZER,
                            name=name + 'se_expand')(se)
-        if backend.backend() == 'theano':
-            # For the Theano backend, we have to explicitly make
-            # the excitation weights broadcastable.
-            se = layers.Lambda(
-                lambda x: backend.pattern_broadcast(x, [True, True, True, False]),
-                output_shape=lambda input_shape: input_shape,
-                name=name + 'se_broadcast')(se)  # pylint:disable=no-member
+        #if backend.backend() == 'theano':
+        #    # For the Theano backend, we have to explicitly make
+        #    # the excitation weights broadcastable.
+        #    se = layers.Lambda(
+        #        lambda x: backend.pattern_broadcast(x, [True, True, True, False]),
+        #        output_shape=lambda input_shape: input_shape,
+        #        name=name + 'se_broadcast')(se)  # pylint:disable=no-member
         x = layers.multiply([x, se], name=name + 'se_excite')
 
     # Output phase
