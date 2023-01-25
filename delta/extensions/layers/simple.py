@@ -35,7 +35,7 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
     def compute_output_shape(self, input_shape): # pylint: disable=no-self-use
         return input_shape
 
-    def call(self, inputs, **_): # pylint: disable=no-self-use
+    def call(self, inputs, **_): # pylint: disable=no-self-use,arguments-differ
         ones = tf.fill(tf.shape(inputs)[:-1], 1.0)
         ones = tf.expand_dims(ones, -1)
         mean = K.mean(inputs, axis=[1, 2])
@@ -56,7 +56,7 @@ class ReflectionPadding2D(tensorflow.keras.layers.Layer):
         config.update({'padding': self.padding})
         return config
 
-    def call(self, inputs, **_):
+    def call(self, inputs, **_): # pylint: disable=arguments-differ
         w_pad,h_pad = self.padding
         return tf.pad(inputs, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
 

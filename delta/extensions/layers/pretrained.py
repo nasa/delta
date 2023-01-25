@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#pylint: disable=unsubscriptable-object
+
 """
 Use a pretrained model inside another network.
 """
@@ -38,7 +40,7 @@ class InputSelectLayer(tensorflow.keras.layers.Layer):
         """
         super().__init__(**kwargs)
         self._arg = arg_number
-    def call(self, inputs, **kwargs): #pylint: disable=unused-argument
+    def call(self, inputs, **kwargs): #pylint: disable=unused-argument,arguments-differ
         return inputs[self._arg]
     def get_config(self):
         return {'arg_number' : self._arg}
