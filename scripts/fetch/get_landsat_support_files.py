@@ -27,7 +27,7 @@ import argparse
 import subprocess
 import shutil
 
-import gdal
+from osgeo import gdal
 from osgeo import osr
 
 from usgs import api

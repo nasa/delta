@@ -223,7 +223,7 @@ def block(inputs, activation_fn=swish, drop_rate=0., name='',
             se = layers.Lambda(
                 lambda x: backend.pattern_broadcast(x, [True, True, True, False]),
                 output_shape=lambda input_shape: input_shape,
-                name=name + 'se_broadcast')(se)
+                name=name + 'se_broadcast')(se)  # pylint:disable=no-member
         x = layers.multiply([x, se], name=name + 'se_excite')
 
     # Output phase
