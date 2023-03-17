@@ -50,7 +50,7 @@ class ImageSet:
         nodata_value: image dtype
             A no data value for pixels to disregard
         """
-        # TODO: if a list of a list of file strings is passed it, it will open them up all together and concatenate 
+        # TODO: if a list of a list of file strings is passed it, it will open them up all together and concatenate
         #  them. Is this intended behavior or a bug? Could be useful? 🤷‍♀️
         self._images = images
         self._image_type = image_type
