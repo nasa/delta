@@ -15,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#pylint: disable=unsubscriptable-object
+
 """
 Functions to support loading custom ML-related objects from dictionaries specified
 in yaml files. Includes constructing custom neural networks and more.

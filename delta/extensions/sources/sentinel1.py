@@ -72,7 +72,6 @@ def run_ffilipponi_preprocessing(source_file, target_file):
     print(cmd)
     os.system(cmd)
 
-
 def unpack_s1_to_folder(zip_path, unpack_folder):
     '''Returns the merged image path from the unpack folder.
        Unpacks the zip file and merges the source images as needed.'''
@@ -108,9 +107,13 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
             print('Unpacking file ' + zip_path + ' to folder ' + unpack_folder)
             utilities.unpack_to_folder(zip_path, unpack_folder)
             subdirs = os.listdir(unpack_folder)
-            if len(subdirs) != 1:
+            safe_folder = None
+            for s in subdirs:
+                if s.endswith('.SAFE'):
+                    safe_folder = s
+            if not safe_folder:
                 raise Exception('Unexpected Sentinel1 subdirectories: ' + str(subdirs))
-            cmd = 'mv ' + os.path.join(unpack_folder, subdirs[0]) +'/* ' + unpack_folder
+            cmd = 'mv ' + os.path.join(unpack_folder, safe_folder) +'/* ' + unpack_folder
             print(cmd)
             os.system(cmd)
         source_image_paths = get_files_from_unpack_folder(unpack_folder)
@@ -129,7 +132,6 @@ def unpack_s1_to_folder(zip_path, unpack_folder):
 
             dimap_path = temp_out_path + '.dim'
             cmd = 'pconvert -s 0,0 -f GeoTIFF-BigTiff -o ' + os.path.dirname(temp_out_path) +' '+ dimap_path
-            print(cmd)
             os.system(cmd)
             MIN_IMAGE_SIZE = 1024*1024*500 # 500 MB, expected size is much larger
             if not os.path.exists(temp_out_path):
