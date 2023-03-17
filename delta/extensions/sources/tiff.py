@@ -206,6 +206,7 @@ class TiffImage(delta_image.DeltaImage):
         data['gcps'] = h.GetGCPs()
         data['gcpproj'] = h.GetGCPProjection()
         data['metadata'] = h.GetMetadata()
+        data['spatial_ref'] = h.GetSpatialRef()
         return data
 
     def block_aligned_roi(self, desired_roi):
@@ -359,10 +360,11 @@ class _TiffWriter:
                 self._handle.GetRasterBand(i).SetNoDataValue(nodata_value)
 
         if metadata:
+            self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
             self._handle.SetProjection  (metadata['projection'  ])
             self._handle.SetGeoTransform(metadata['geotransform'])
             self._handle.SetMetadata    (metadata['metadata'    ])
-            self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
+            self._handle.SetSpatialRef  (metadata['spatial_ref' ])
 
     def __del__(self):
         self.close()
@@ -380,6 +382,7 @@ class _TiffWriter:
     def close(self):
         if self._handle is not None:
             self._handle.FlushCache()
+            del self._handle
             self._handle = None
 
     def get_num_tiles(self):

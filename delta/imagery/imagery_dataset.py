@@ -34,7 +34,7 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
     """
 
     def __init__(self, images, labels, output_shape, chunk_shape, stride=None,
-                 tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None):
+                 tile_shape=(256, 256), tile_overlap=None, max_rand_offset=None, label_type=tf.uint8, shuffle=True):
         """
         Parameters
         ----------
@@ -56,7 +56,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
             If specified, in each epoch, offset all tiles by a random amount in x and y
             in the range(-max_rand_offset, max_rand_offset).
         """
-
+        # TODO: description implies this should be optional, need to add logic to set it equal to tile_shape if
+        #  optional?
         self._iopool = ThreadPoolExecutor(config.io.threads())
 
         # Record some of the config values
@@ -67,7 +68,8 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
             stride = (1, 1)
         self._stride = stride
         self._data_type    = tf.float32
-        self._label_type   = tf.uint8
+        # self._label_type   = tf.uint8
+        self._label_type = label_type
         self._tile_shape = tile_shape
         if tile_overlap is None:
             tile_overlap = (0, 0)
@@ -83,6 +85,9 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
         # Load the first image to get the number of bands for the input files.
         self._num_bands = images.load(0).num_bands()
         self._random_seed = random.randint(0, 1 << 16)
+        #TODO: go through details more to ensure shuffle=False does result in non shuffled behavior for repeated
+        # calls of .dataset - seems to bbe mostly implemented. Some more testing thougd before submitting. Maybe pytest?
+        self._shuffle=shuffle
 
     def _list_tiles(self, i): # pragma: no cover
         """
@@ -147,12 +152,18 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
         def tile_gen():
             image_tiles = [(images[i], self._list_tiles(i)) for i in range(len(images))]
             # shuffle tiles within each image
-            for (img, tiles) in image_tiles:
-                rand.shuffle(tiles)
+            # TODO: implement toggleable shuffle
+            if self._shuffle:
+                for (img, tiles) in image_tiles:
+                    rand.shuffle(tiles)
             # create iterator
             image_tiles = [(img, iter(tiles)) for (img, tiles) in image_tiles]
             while image_tiles:
-                index = rand.randrange(len(image_tiles))
+                # TODO: implement toggleable shuffle
+                if self._shuffle:
+                    index = rand.randrange(len(image_tiles))
+                else:
+                    index=0
                 (img, it) = image_tiles[index]
                 try:
                     yield (img, next(it))
@@ -212,12 +223,20 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
                 except StopIteration:
                     pass
             while True:
-                buf_index = rand.randrange(len(cur_bufs))
+                # TODO: implement toggleable shuffle
+                if self._shuffle:
+                    buf_index = rand.randrange(len(cur_bufs))
+                else:
+                    buf_index=0
                 (sub_tiles, buf) = cur_bufs[buf_index]
                 if not sub_tiles:
                     del cur_bufs[buf_index]
                     break
-                sub_index = rand.randrange(len(sub_tiles))
+                # TODO: implement toggleable shuffle
+                if self._shuffle:
+                    sub_index = rand.randrange(len(sub_tiles))
+                else:
+                    sub_index=0
                 s = sub_tiles[sub_index]
                 del sub_tiles[sub_index]
                 yield buf[s.min_y:s.max_y, s.min_x:s.max_x, :]
@@ -323,11 +342,14 @@ class ImageryDataset: # pylint: disable=too-many-instance-attributes,too-many-ar
         """
 
         # Pair the data and labels in our dataset
-        ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        if self._labels:
+            ds = tf.data.Dataset.zip((self.data(), self.labels()))
+        else:
+            ds = self.data()
         # ignore chunks which are all nodata (nodata is re-indexed to be after the classes)
         # cannot do with max_rand_offset since would have different number of tiles which
         # breaks keras fit
-        if self._labels.nodata_value() is not None:
+        if self._labels and self._labels.nodata_value() is not None:
             ds = ds.filter(lambda x, y: tf.math.reduce_any(tf.math.not_equal(y, self._labels.nodata_value())))
         if augment_function is not None:
             ds = ds.map(augment_function, num_parallel_calls=tf.data.experimental.AUTOTUNE)

@@ -14,6 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+#pylint: disable=unsubscriptable-object
+
 """
 Loading configuration from command line arguments and yaml files.
 
@@ -309,7 +312,7 @@ class DeltaConfig(DeltaConfigComponent):
         yaml_file: Optional[str]
             Filename of a yaml file to load.
         yaml_str: Optional[str]
-            Load yaml directly from a str. Exactly one of `yaml_file` and `yaml_str`
+            Load yaml directly from a str. Exactly one of `yaml_file` or `yaml_str`
             must be specified.
         """
         base_path = None
@@ -350,11 +353,14 @@ class DeltaConfig(DeltaConfigComponent):
         """
         self.reset()
 
+        #TODO: when none is supplied to this function, AppDirs doesn't find the right folder for the default
+        #  delta.yaml file. It needs to look in python/conda installs
         if config_files is None:
             dirs = appdirs.AppDirs('delta', 'nasa')
             config_files = [os.path.join(dirs.site_config_dir, 'delta.yaml'),
                             os.path.join(dirs.user_config_dir, 'delta.yaml')]
 
+        #TODO: needs to check if list or string and deal with appropriately
         for filename in config_files:
             if os.path.exists(filename):
                 config.load(filename)
@@ -362,5 +368,7 @@ class DeltaConfig(DeltaConfigComponent):
         if options is not None:
             config.parse_args(options)
 
+# TODO: need some sort of check that this is called in the highest script so that it's acceessible everywhere. Just
+#  use global?
 config = DeltaConfig()
 """Global config object. Use this to access all configuration."""
