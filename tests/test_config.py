@@ -58,14 +58,14 @@ def test_general():
 def test_images_dir():
     config_reset()
     dir_path = os.path.join(os.path.dirname(__file__), 'data')
-    test_str = '''
+    test_str = f'''
     dataset:
       images:
         type: tiff
         preprocess: ~
-        directory: %s/
+        directory: {dir_path}/
         extension: .tiff
-    ''' % (dir_path)
+    '''
     config.load(yaml_str=test_str)
     im = config.dataset.images()
     assert im.type() == 'tiff'
@@ -95,13 +95,13 @@ def test_preprocess():
 def test_images_files():
     config_reset()
     file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
-    test_str = '''
+    test_str = f'''
     dataset:
       images:
         type: tiff
         preprocess: ~
-        files: [%s]
-    ''' % (file_path)
+        files: [{file_path}]
+    '''
     config.load(yaml_str=test_str)
     im = config.dataset.images()
     assert im.type() == 'tiff'
@@ -227,14 +227,14 @@ def test_pretrained_layer():
 
     tf.keras.models.save_model(m1, tmp_filename)
 
-    pretrained_model = '''
+    pretrained_model = f'''
     params:
         v1 : 10
     layers:
     - Input:
         shape: in_shape
     - Pretrained:
-        filename: %s 
+        filename: {tmp_filename}
         encoding_layer: encoding
     - Dense:
         units: 100
@@ -242,7 +242,7 @@ def test_pretrained_layer():
     - Dense:
         units: out_shape
         activation: softmax
-    ''' % tmp_filename
+    '''
     m2 = config_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
     m2.compile(optimizer='adam', loss='mse')
     assert len(m2.layers[1].layers) == 3
@@ -252,14 +252,14 @@ def test_pretrained_layer():
             break
 
     # test using internal layer of pretrained as input
-    pretrained_model = '''
+    pretrained_model = f'''
     params:
         v1 : 10
     layers:
     - Input:
         shape: in_shape
     - Pretrained:
-        filename: %s
+        filename: {tmp_filename}
         encoding_layer: encoding
         name: pretrained
         outputs: [encoding]
@@ -270,7 +270,7 @@ def test_pretrained_layer():
     - Dense:
         units: out_shape
         activation: softmax
-    ''' % tmp_filename
+    '''
     m2 = config_parser.model_from_dict(yaml.safe_load(pretrained_model), params_exposed)()
     m2.compile(optimizer='adam', loss='mse')
     assert len(m2.layers[1].layers) == (len(m1.layers) - 1) # also don't take the input layer
@@ -445,7 +445,7 @@ def test_augmentations():
             max_angle: 0.5
         - random_translate:
             probability: 1.0
-            max_pixels: 10
+            max_factor: 0.1
     '''
     config.load(yaml_str=test_str)
     aug = config_parser.config_augmentation()
@@ -498,8 +498,8 @@ def test_argparser():
     config.setup_arg_parser(parser)
 
     file_path = os.path.join(os.path.dirname(__file__), 'data', 'landsat.tiff')
-    options = parser.parse_args(('--image-type tiff --image %s' % (file_path) +
-                                 ' --label-type tiff --label %s' % (file_path)).split())
+    options = parser.parse_args((f'--image-type tiff --image {file_path}' +
+                                 f' --label-type tiff --label {file_path}').split())
     config.parse_args(options)
 
     im = config.dataset.images()

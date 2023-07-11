@@ -25,7 +25,6 @@ import tensorflow as tf
 import tensorflow.keras.losses #pylint: disable=no-name-in-module
 import tensorflow.keras.backend as K #pylint: disable=no-name-in-module
 from tensorflow.python.keras.utils import losses_utils
-import tensorflow_addons as tfa
 from scipy.ndimage import distance_transform_edt as distance
 
 from delta.config import config
@@ -38,11 +37,13 @@ def suggest_filter_size(image1, image2, power_factors, filter_size):
        input image'''
 
     cap = 2**(len(power_factors)-1)
-    if not(image1.shape[0]/cap >= filter_size and
-           image1.shape[1]/cap >= filter_size and
-           image1.shape[0]/cap >= filter_size and
-           image2.shape[1]/cap >= filter_size):
-        H = tf.math.reduce_min((image1.shape, image2.shape))
+    img1_shape = image1.shape[1:-1]
+    img2_shape = image2.shape[1:-1]
+    if not(img1_shape[0]/cap >= filter_size and
+           img1_shape[1]/cap >= filter_size and
+           img2_shape[0]/cap >= filter_size and
+           img2_shape[1]/cap >= filter_size):
+        H = tf.math.reduce_min((img1_shape, img2_shape))
         suggested_filter_size = int(H/(2**(len(power_factors)-1)))
     else:
         suggested_filter_size = filter_size
@@ -189,7 +190,7 @@ class MappedLoss(tf.keras.losses.Loss): #pylint: disable=abstract-method
 
         true_convert = tf.gather(self._lookup, y_true, axis=None)
         nodata_value = config.dataset.classes.class_id('nodata')
-        nodata = (y_true == nodata_value)
+        nodata = y_true == nodata_value
 
         # ignore additional nodata classes
         for c in self._nodata_classes:
@@ -293,7 +294,6 @@ register_loss('ms_ssim', ms_ssim)
 register_loss('ms_ssim_mse', ms_ssim_mse)
 register_loss('dice', dice_loss)
 register_loss('surface', surface_loss)
-register_loss('focal', tfa.losses.SigmoidFocalCrossEntropy)
 register_loss('MappedCategoricalCrossentropy', MappedCategoricalCrossentropy)
 register_loss('MappedBinaryCrossentropy', MappedBinaryCrossentropy)
 register_loss('MappedDice', MappedDiceLoss)

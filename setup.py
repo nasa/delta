@@ -21,7 +21,7 @@ import setuptools
 
 # so we can list dependencies in docker
 if os.path.exists('README.md'):
-    with open("README.md", "r") as f:
+    with open("README.md", "r", encoding="utf-8") as f:
         long_description = f.read()
 else:
     long_description = 'DELTA'
@@ -35,7 +35,7 @@ if os.path.exists('bin'):
 
 setuptools.setup(
     name="delta",
-    version="1.0.1",
+    version="1.0.2",
     author="NASA Ames",
     author_email="todo@todo",
     description="Deep learning for satellite imagery",
@@ -52,14 +52,13 @@ setuptools.setup(
     ],
     install_requires=[
         'tensorflow>=2.1',
-        'tensorflow_addons',
         'usgs<0.3',
         'scipy',
         'matplotlib',
         'mlflow',
         'portalocker',
         'appdirs',
-        'gdal',
+        'gdal>=3.0',
         'shapely',
         'pillow'
         #'numpy', # these are included by tensorflow with restrictions

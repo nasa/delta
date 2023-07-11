@@ -23,9 +23,7 @@ See the `delta.config` documentation for details.
 """
 import math
 
-from packaging import version
 import tensorflow as tf
-import tensorflow_addons as tfa
 
 from delta.config.extensions import register_augmentation
 
@@ -90,19 +88,13 @@ def random_rotate(probability=0.5, max_angle=5.0):
     max_angle = max_angle * math.pi / 180.0
     def rand_rotation(image, label):
         r = tf.random.uniform(shape=[], dtype=tf.dtypes.float32)
-        theta = tf.random.uniform([], -max_angle, max_angle, tf.dtypes.float32)
-        if version.parse(tfa.__version__) < version.parse('0.12'): # fill_mode not supported
-            result = tf.cond(r > probability, lambda: (image, label),
-                             lambda: (tfa.image.rotate(image, theta),
-                                      tfa.image.rotate(label, theta)))
-        else:
-            result = tf.cond(r > probability, lambda: (image, label),
-                             lambda: (tfa.image.rotate(image, theta, fill_mode='reflect'),
-                                      tfa.image.rotate(label, theta, fill_mode='reflect')))
-        return result
+        rand = tf.random.uniform([], -max_angle, max_angle, tf.dtypes.float32)
+        theta = tf.cond(r > probability, lambda: rand, lambda: tf.constant(0.0))
+        layer = tf.keras.layers.RandomRotation((theta, theta))
+        return layer(image), layer(label)
     return rand_rotation
 
-def random_translate(probability=0.5, max_pixels=7):
+def random_translate(probability=0.5, max_factor=0.1):
     """
     Apply a random translation.
 
@@ -110,9 +102,9 @@ def random_translate(probability=0.5, max_pixels=7):
     ----------
     probability: float
         Probability to apply the transform.
-    max_pixels: int
-        If applied, the image will be rotated by a random number of pixels
-        in the range [-max_pixels, max_pixels] in both the x and y directions.
+    max_factor: int
+        If applied, the image will be translated by a random fraction
+        in the range [-max_factor, max_factor] in both the x and y directions.
 
     Returns
     -------
@@ -120,16 +112,11 @@ def random_translate(probability=0.5, max_pixels=7):
     """
     def rand_translate(image, label):
         r = tf.random.uniform(shape=[], dtype=tf.dtypes.float32)
-        t = tf.random.uniform([2], -max_pixels, max_pixels, tf.dtypes.float32)
-        if version.parse(tfa.__version__) < version.parse('0.12'): # fill_mode not supported
-            result = tf.cond(r > probability, lambda: (image, label),
-                             lambda: (tfa.image.translate(image, t),
-                                      tfa.image.translate(label, t)))
-        else:
-            result = tf.cond(r > probability, lambda: (image, label),
-                             lambda: (tfa.image.translate(image, t, fill_mode='reflect'),
-                                      tfa.image.translate(label, t, fill_mode='reflect')))
-        return result
+        rx = tf.random.uniform([], -max_factor, max_factor, tf.dtypes.float32)
+        ry = tf.random.uniform([], -max_factor, max_factor, tf.dtypes.float32)
+        rx, ry = tf.cond(r > probability, lambda: (tf.constant(0.0), tf.constant(0.0)), lambda: (rx, ry))
+        layer = tf.keras.layers.RandomTranslation((ry, ry), (rx, rx))
+        return layer(image), layer(label)
     return rand_translate
 
 def random_brightness(probability=0.5, min_factor=0.5, max_factor=1.5):
