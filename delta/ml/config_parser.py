@@ -34,7 +34,7 @@ from tensorflow.python.keras.utils import losses_utils #pylint: disable=no-name-
 import tensorflow.keras.models #pylint: disable=no-name-in-module
 
 from delta.config import config
-import delta.config.extensions as extensions
+from delta.config import extensions
 
 class _LayerWrapper:
     def __init__(self, layer_type, layer_name, inputs, params, all_layers):
@@ -119,7 +119,7 @@ def _make_layer(layer_dict, layer_id, prev_layer, all_layers):
     """
     if len(layer_dict.keys()) > 1:
         raise ValueError('Layer with multiple types.')
-    layer_type = next(layer_dict.keys().__iter__())
+    layer_type = next(iter(layer_dict.keys()))
     l = layer_dict[layer_type]
     if l is None:
         l = {}
@@ -190,7 +190,7 @@ def _apply_params(model_dict, exposed_params):
     # checks if the first layer is an Input, if not insert one
     layer_list = model_dict_copy['layers']
     assert layer_list is not None, 'No model specified!'
-    first_layer_type = next(layer_list[0].keys().__iter__())
+    first_layer_type = next(iter(layer_list[0].keys()))
     if first_layer_type != 'Input' and 'input' not in layer_list[0][first_layer_type]:
         model_dict_copy['layers'] = [{'Input' : {'shape' : params['in_shape']}}] + layer_list
 
@@ -418,5 +418,5 @@ def config_augmentation():
     func = None
     for a in augs:
         f = augmentation_from_dict(a)
-        func = f if func is None else (lambda f1, f2: lambda x, y: f1(*f2(x, y)))(f, func)
+        func = f if func is None else (lambda f1, f2: lambda x, y: f1(*f2(x, y)))(f, func) #pylint:disable=C3002
     return func

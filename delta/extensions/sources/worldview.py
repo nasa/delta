@@ -117,7 +117,7 @@ class WorldviewImage(tiff.TiffImage):
 
         if ext == '.zip': # Need to unpack
 
-            zip_file = zipfile.ZipFile(paths, 'r')
+            zip_file = zipfile.ZipFile(paths, 'r') #pylint:disable=R1732
             tif_names = list(filter(lambda x: x.lower().endswith('.tif'), zip_file.namelist()))
             assert len(tif_names) > 0, f'Error: no tif files in the file {paths}'
             assert len(tif_names) == 1, f'Error: too many tif files in {paths}: {tif_names}'

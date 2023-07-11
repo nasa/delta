@@ -36,7 +36,7 @@ load-plugins=delta_lint
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=C0103,C0111,W0511,C0321,similarities
+disable=C0103,C0111,W0511,C0321,C0209,W1514,R1732,similarities
 
 
 [REPORTS]

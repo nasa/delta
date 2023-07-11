@@ -134,7 +134,7 @@ class DeltaImage(ABC):
             The relevant part of the image as a numpy array.
         """
 
-    def metadata(self): #pylint:disable=no-self-use
+    def metadata(self):
         """
         Returns
         -------
@@ -169,7 +169,7 @@ class DeltaImage(ABC):
             The underlying data type of the image.
         """
 
-    def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -> rectangle.Rectangle:#pylint:disable=no-self-use
+    def block_aligned_roi(self, desired_roi: rectangle.Rectangle) -> rectangle.Rectangle:
         """
         Parameters
         ----------
@@ -183,7 +183,7 @@ class DeltaImage(ABC):
         """
         return desired_roi
 
-    def block_size(self) -> Tuple[int, int]: #pylint: disable=no-self-use
+    def block_size(self) -> Tuple[int, int]:
         """
         Returns
         -------

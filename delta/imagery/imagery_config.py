@@ -213,7 +213,7 @@ def load_images_labels(images_comp, labels_comp, classes_comp):
             data = pre_orig(data, _, dummy)
         # set any nodata values to be past the expected range
         if labels_nodata is not None:
-            nodata_indices = (data == labels_nodata)
+            nodata_indices = data == labels_nodata
         conv = classes_comp.classes_to_indices_func()
         if conv is not None:
             data = conv(data)
@@ -262,7 +262,7 @@ class ImagePreprocessConfig(DeltaConfigComponent):
         Callable:
             The specified preprocessing function to apply to the image.
         """
-        prep = lambda data, _, dummy: data
+        prep = lambda data, _, dummy: data # pylint:disable=C3001
         for (name, args) in self._functions:
             t = preprocess_function(name)
             assert t is not None, 'Preprocess function %s not found.' % (name)

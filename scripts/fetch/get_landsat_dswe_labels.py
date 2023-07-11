@@ -158,7 +158,7 @@ def fetch_dswe_images(date, ll_coord, ur_coord, output_folder, user, password, f
         if not r['data']:
             raise Exception('Failed to get download URL!')
         url = r['data'][0]['url']
-        cmd = ('wget "%s" --user %s --password %s -O %s' % (url, user, password, output_path))
+        cmd = 'wget "%s" --user %s --password %s -O %s' % (url, user, password, output_path)
         print(cmd)
         os.system(cmd)
 

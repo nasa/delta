@@ -127,7 +127,7 @@ def main(argsIn): #pylint: disable=R0912
             continue
 
         # Use for validation or for training?
-        use_for_valid = (random.random() < options.validate_fraction)
+        use_for_valid = random.random() < options.validate_fraction
 
         # Handle the image file
         target_name = image_name

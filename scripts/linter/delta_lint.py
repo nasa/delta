@@ -19,7 +19,7 @@ from pylint.interfaces import IRawChecker
 from pylint.checkers import BaseChecker
 
 COPYRIGHT_HEADER = \
-u"""
+"""
 # Copyright © 2020, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.

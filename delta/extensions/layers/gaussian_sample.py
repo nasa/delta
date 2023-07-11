@@ -51,7 +51,7 @@ class GaussianSample(DeltaLayer):
     def callback(self):
         kl_enabled = self._kl_enabled
         class GaussianSampleCallback(Callback):
-            def on_epoch_begin(self, epoch, _=None): # pylint:disable=no-self-use
+            def on_epoch_begin(self, epoch, _=None):
                 if epoch > 0:
                     K.set_value(kl_enabled, 1.0)
         return GaussianSampleCallback()
