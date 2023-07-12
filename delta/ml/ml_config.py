@@ -31,7 +31,7 @@ import pkg_resources
 import yaml
 
 from delta.imagery.imagery_config import ImageSet, ImageSetConfig, load_images_labels
-import delta.config as config
+from delta import config
 
 class ValidationSet:#pylint:disable=too-few-public-methods
     """

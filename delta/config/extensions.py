@@ -48,7 +48,6 @@ def __initialize():
     This function is called before each use of extensions to import
     the needed modules. This is only done at first use to not delay loading.
     """
-    global __extensions_to_load
     while __extensions_to_load:
         ext = __extensions_to_load.pop()
         importlib.import_module(ext)
@@ -63,7 +62,6 @@ def register_extension(name : str):
     name: str
         Name of the extension to load.
     """
-    global __extensions_to_load
     __extensions_to_load.add(name)
 
 def register_layer(layer_type : str, layer_constructor):
@@ -83,7 +81,6 @@ def register_layer(layer_type : str, layer_constructor):
     --------
     delta.ml.train.DeltaLayer : Layer wrapper with Delta extensions
     """
-    global __layers
     __layers[layer_type] = layer_constructor
 
 def register_image_reader(image_type : str, image_class):
@@ -97,7 +94,6 @@ def register_image_reader(image_type : str, image_class):
     image_class: Type[`delta.imagery.delta_image.DeltaImage`]
         A class that extends `delta.imagery.delta_image.DeltaImage`.
     """
-    global __readers
     __readers[image_type] = image_class
 
 def register_image_writer(image_type : str, writer_class):
@@ -111,7 +107,6 @@ def register_image_writer(image_type : str, writer_class):
     writer_class: Type[`delta.imagery.delta_image.DeltaImageWriter`]
         A class that extends `delta.imagery.delta_image.DeltaImageWriter`.
     """
-    global __writers
     __writers[image_type] = writer_class
 
 def register_loss(loss_type : str, custom_loss):
@@ -128,7 +123,6 @@ def register_loss(loss_type : str, custom_loss):
         Either a loss extending [Loss](https://www.tensorflow.org/api_docs/python/tf/keras/losses/Loss) or a
         function of the form loss(y_true, y_pred) which returns a tensor of the loss.
     """
-    global __losses
     __losses[loss_type] = custom_loss
 
 def register_metric(metric_type : str, custom_metric):
@@ -142,7 +136,6 @@ def register_metric(metric_type : str, custom_metric):
     custom_metric: Type[`tensorflow.keras.metrics.Metric`]
         A class extending [Metric](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric).
     """
-    global __metrics
     __metrics[metric_type] = custom_metric
 
 def register_callback(cb_type : str, cb):
@@ -157,7 +150,6 @@ def register_callback(cb_type : str, cb):
         A class extending [Callback](https://www.tensorflow.org/api_docs/python/tf/keras/callbacks/Callback)
         or a function that returns one.
     """
-    global __callbacks
     __callbacks[cb_type] = cb
 
 def register_preprocess(function_name : str, prep_function):
@@ -175,7 +167,6 @@ def register_preprocess(function_name : str, prep_function):
         numpy array, rectangle a `delta.imagery.rectangle.Rectangle` specifying the region covered by data,
         and bands_list is an integer list of bands loaded. The function must return a numpy array.
     """
-    global __prep_funcs
     __prep_funcs[function_name] = prep_function
 
 def register_augmentation(function_name : str, aug_function):
@@ -192,7 +183,6 @@ def register_augmentation(function_name : str, aug_function):
     aug_function:
         A function of the form aug(image, label), where image and labels are both tensors.
     """
-    global __augmentations
     __augmentations[function_name] = aug_function
 
 def layer(layer_type : str) -> str:

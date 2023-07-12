@@ -45,7 +45,7 @@ def check_landsat_tiff(filename):
     assert geo[5] == pytest.approx(0.0, abs=0.01)
     assert 'gcps' in meta
     assert 'gcpproj' in meta
-    assert 'projection' in meta
+    assert 'spatial_ref' in meta
     assert 'metadata' in meta
 
     r = rectangle.Rectangle(0, 0, width=input_reader.size()[1],
@@ -72,7 +72,7 @@ def check_same(filename1, filename2, data_only=False):
         assert m_1['geotransform'] == m_2['geotransform']
         assert m_1['gcps'] == m_2['gcps']
         assert m_1['gcpproj'] == m_2['gcpproj']
-        assert m_1['projection'] == m_2['projection']
+        assert m_1['spatial_ref'].IsSameGeogCS(m_2['spatial_ref'])
         assert m_1['metadata'] == m_2['metadata']
 
     d1 = in1.read()

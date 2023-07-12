@@ -63,15 +63,15 @@ class TiffImage(delta_image.DeltaImage):
         self._handles = []
         for p in paths:
             if not os.path.exists(p):
-                raise Exception('Image file does not exist: ' + p)
+                raise IOError('Image file does not exist: ' + p)
             result = gdal.Open(p)
             if result is None:
-                raise Exception('Failed to open tiff file %s.' % (p))
+                raise IOError(f'Failed to open tiff file {p}.')
             self._handles.append(result)
         self._band_map = []
         for i, h in enumerate(self._handles):
             if h.RasterXSize != self._handles[0].RasterXSize or h.RasterYSize != self._handles[0].RasterYSize:
-                raise Exception('Images %s and %s have different sizes!' % (self._paths[0], self._paths[i]))
+                raise IOError(f'Images {self._paths[0]} and {self._paths[i]} have different sizes!')
             for j in range(h.RasterCount):
                 self._band_map.append((i, j + 1)) # gdal uses 1-based band indexing
 
@@ -84,7 +84,7 @@ class TiffImage(delta_image.DeltaImage):
     def __del__(self):
         self.close()
 
-    def _prep(self, paths): #pylint:disable=no-self-use
+    def _prep(self, paths):
         """
         Prepare the file to be opened by other tools (unpack, etc).
 
@@ -139,8 +139,7 @@ class TiffImage(delta_image.DeltaImage):
         else:
             s = buf[0, :, :].shape
             if s != (roi.height(), roi.width()):
-                raise IOError('Buffer shape should be (%d, %d) but is (%d, %d)!' %
-                              (roi.height(), roi.width(), s[0], s[1]))
+                raise IOError(f'Buffer shape should be ({roi.height()}, {roi.width()}) but is ({s[0]}, {s[1]})!')
         if bands:
             for i, b in enumerate(bands):
                 band_handle = self._gdal_band(b)
@@ -173,7 +172,7 @@ class TiffImage(delta_image.DeltaImage):
         dtype = self._gdal_type(0)
         if dtype in _GDAL_TO_NUMPY_TYPES:
             return _GDAL_TO_NUMPY_TYPES[dtype]
-        raise Exception('Unrecognized gdal data type: ' + str(dtype))
+        raise ValueError('Unrecognized gdal data type: ' + str(dtype))
 
     def bytes_per_pixel(self, band=0):
         """
@@ -199,9 +198,9 @@ class TiffImage(delta_image.DeltaImage):
 
     def metadata(self):
         self.__asert_open()
-        data = dict()
+        data = {}
         h = self._handles[0]
-        data['projection'] = h.GetProjection()
+        data['spatial_ref'] = h.GetSpatialRef()
         data['geotransform'] = h.GetGeoTransform()
         data['gcps'] = h.GetGCPs()
         data['gcpproj'] = h.GetGCPProjection()
@@ -213,7 +212,7 @@ class TiffImage(delta_image.DeltaImage):
         self.__asert_open()
         bounds = rectangle.Rectangle(0, 0, width=self.width(), height=self.height())
         if not bounds.contains_rect(desired_roi):
-            raise Exception('desired_roi ' + str(desired_roi)
+            raise ValueError('desired_roi ' + str(desired_roi)
                             + ' is outside the bounds of image with size' + str(self.size()))
 
         block_height, block_width = self.block_size()
@@ -257,7 +256,7 @@ class TiffImage(delta_image.DeltaImage):
 def _numpy_dtype_to_gdal_type(dtype): #pylint: disable=R0911
     if dtype in _NUMPY_TO_GDAL_TYPES:
         return _NUMPY_TO_GDAL_TYPES[dtype]
-    raise Exception('Unrecognized numpy data type: ' + str(dtype))
+    raise ValueError('Unrecognized numpy data type: ' + str(dtype))
 
 def write_tiff(output_path: str, data: np.ndarray=None, image: delta_image.DeltaImage=None,
                nodata=None, metadata: dict=None, block_size=None, show_progress: bool=False):
@@ -353,7 +352,7 @@ class _TiffWriter:
         self._handle = driver.Create(path, ysize=self._height, xsize=self._width,
                                      bands=num_bands, eType=data_type, options=options)
         if not self._handle:
-            raise Exception('Failed to create output file: ' + path)
+            raise IOError('Failed to create output file: ' + path)
 
         if nodata_value is not None:
             for i in range(1,num_bands+1):
@@ -361,7 +360,7 @@ class _TiffWriter:
 
         if metadata:
             self._handle.SetGCPs        (metadata['gcps'], metadata['gcpproj'])
-            self._handle.SetProjection  (metadata['projection'  ])
+            self._handle.SetSpatialRef  (metadata['spatial_ref' ])
             self._handle.SetGeoTransform(metadata['geotransform'])
             self._handle.SetMetadata    (metadata['metadata'    ])
             self._handle.SetSpatialRef  (metadata['spatial_ref' ])
@@ -398,7 +397,7 @@ class _TiffWriter:
         # Check that the tile position is valid
         num_tiles = self.get_num_tiles()
         if (block_x >= num_tiles[1]) or (block_y >= num_tiles[0]):
-            raise Exception('Block position ' + str((block_x, block_y))
+            raise ValueError('Block position ' + str((block_x, block_y))
                             + ' is outside the tile count: ' + str(num_tiles))
         is_edge_block = ((block_x == num_tiles[1]-1) or
                          (block_y == num_tiles[0]-1))
@@ -407,14 +406,14 @@ class _TiffWriter:
             max_x = block_x * self._tile_width  + data.shape[1]
             max_y = block_y * self._tile_height + data.shape[0]
             if max_x > self._width or max_y > self._height:
-                raise Exception('Error: Data block max position '
+                raise ValueError('Error: Data block max position '
                                 + str((max_y, max_x))
                                 + ' falls outside the image bounds: '
                                 + str((self._height, self._width)))
         else: # Shape must be exactly one tile
             if ( (data.shape[1] != self._tile_width) or
                  (data.shape[0] != self._tile_height)  ):
-                raise Exception('Error: Data block size is ' + str(data.shape)
+                raise ValueError('Error: Data block size is ' + str(data.shape)
                                 + ', output file block size is '
                                 + str((self._tile_height, self._tile_width)))
 

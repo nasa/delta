@@ -36,7 +36,7 @@ lab_plots = []
 figure = None
 
 def plot_images(images, labels):
-    global done_plot, img_plots, lab_plots, figure #pylint: disable=global-statement
+    global done_plot, figure #pylint: disable=global-statement
     if figure is None:
         figure, axarr = plt.subplots(len(images), images[0].shape[2] + 1)
         label_norm = matplotlib.colors.Normalize(0, len(config.dataset.classes) + 1)

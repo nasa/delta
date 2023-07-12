@@ -32,10 +32,10 @@ class RepeatedGlobalAveragePooling2D(tensorflow.keras.layers.Layer):
     Takes the global average over the entire input, and repeats
     it to return a tensor the same size as the input.
     """
-    def compute_output_shape(self, input_shape): # pylint: disable=no-self-use
+    def compute_output_shape(self, input_shape):
         return input_shape
 
-    def call(self, inputs, **_): # pylint: disable=no-self-use,arguments-differ
+    def call(self, inputs, **_): # pylint: disable=arguments-differ
         ones = tf.fill(tf.shape(inputs)[:-1], 1.0)
         ones = tf.expand_dims(ones, -1)
         mean = K.mean(inputs, axis=[1, 2])

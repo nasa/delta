@@ -319,7 +319,7 @@ class DeltaConfig(DeltaConfigComponent):
         if yaml_file:
             if not os.path.exists(yaml_file):
                 raise FileNotFoundError(f'Config file does not exist: {yaml_file}')
-            with open(yaml_file, 'r') as f:
+            with open(yaml_file, 'r', encoding='utf-8') as f:
                 config_data = yaml.safe_load(f)
             base_path = os.path.normpath(os.path.dirname(yaml_file))
         else:

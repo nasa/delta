@@ -43,7 +43,7 @@ class DeltaLayer(Layer):
 
     Extentds `tensorflow.keras.layers.Layer`.
     """
-    def callback(self): # pylint:disable=no-self-use
+    def callback(self):
         """
         Override this method to make a layer automatically register
         a training callback.

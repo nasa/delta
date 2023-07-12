@@ -82,9 +82,9 @@ def pretrained(filename, encoding_layer, outputs: Optional[List[str]]=None, trai
     model = load_model(filename)
 
     if isinstance(encoding_layer, int):
-        break_point = lambda x, y: x == encoding_layer
+        break_point = lambda x, y: x == encoding_layer #pylint:disable=C3001
     elif isinstance(encoding_layer, str):
-        break_point = lambda x, y: y.name == encoding_layer
+        break_point = lambda x, y: y.name == encoding_layer #pylint:disable=C3001
 
     output_layers = _model_to_output_layers(model, break_point, trainable)
 

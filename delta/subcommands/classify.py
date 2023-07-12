@@ -76,7 +76,7 @@ def ae_convert(data):
 def print_classes(output_file, cm, metrics, comment):
 
     if output_file is not None:
-        file_handle = open(output_file, 'a')
+        file_handle = open(output_file, 'a') #pylint:disable=R0402
 
     print(comment)
     if output_file is not None:
