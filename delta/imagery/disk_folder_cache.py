@@ -19,6 +19,7 @@
 Caches large images.
 """
 import os
+import shutil
 
 class DiskCache:
     """
@@ -105,7 +106,7 @@ class DiskCache:
         if self.num_cached() > self._limit:
             old_name = self._item_list.pop(0)
             old_path = self._full_path(old_name)
-            os.system('rm -rf ' + old_path) # Delete the entire old folder/file
+            shutil.rmtree(old_path) # Delete the entire old folder/file
 
         # Return the full path to the new folder/file location
         return self._full_path(name)
