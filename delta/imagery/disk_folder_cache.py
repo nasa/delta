@@ -106,7 +106,10 @@ class DiskCache:
         if self.num_cached() > self._limit:
             old_name = self._item_list.pop(0)
             old_path = self._full_path(old_name)
-            shutil.rmtree(old_path) # Delete the entire old folder/file
+            if os.path.isdir(old_path) and not os.path.islink(old_path):
+                shutil.rmtree(old_path)
+            else:
+                os.remove(old_path)
 
         # Return the full path to the new folder/file location
         return self._full_path(name)
@@ -127,5 +130,5 @@ class DiskCache:
             # Skip text files
             # -> It is important that we don't delete the list file if the user puts it here!
             ext = os.path.splitext(f)[1]
-            if ext not in ['.csv', 'txt']:
+            if ext not in ['.csv', '.txt']:
                 self._item_list.append(f)
