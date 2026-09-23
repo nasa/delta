@@ -140,7 +140,10 @@ the folder will count towards the limit.</p>
         if self.num_cached() &gt; self._limit:
             old_name = self._item_list.pop(0)
             old_path = self._full_path(old_name)
-            shutil.rmtree(old_path) # Delete the entire old folder/file
+            if os.path.isdir(old_path) and not os.path.islink(old_path):
+                shutil.rmtree(old_path)
+            else:
+                os.remove(old_path)
 
         # Return the full path to the new folder/file location
         return self._full_path(name)
@@ -161,7 +164,7 @@ the folder will count towards the limit.</p>
             # Skip text files
             # -&gt; It is important that we don&#39;t delete the list file if the user puts it here!
             ext = os.path.splitext(f)[1]
-            if ext not in [&#39;.csv&#39;, &#39;txt&#39;]:
+            if ext not in [&#39;.csv&#39;, &#39;.txt&#39;]:
                 self._item_list.append(f)</code></pre>
 </details>
 <h3>Methods</h3>
